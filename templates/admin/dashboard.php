@@ -28,6 +28,7 @@ $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn(
             <a href="/admin" class="active">📊 Dashboard</a>
             <a href="/admin/products">📦 Productos</a>
             <a href="/admin/import">📥 Importar Excel</a>
+            <a href="/admin/media">🖼️ Media</a>
             <a href="/" target="_blank">🌐 Ver Portal</a>
         </nav>
 
@@ -65,6 +66,7 @@ $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn(
         <div class="btn-group">
             <a href="/admin/import" class="btn btn-primary">📥 Importar Excel</a>
             <a href="/admin/products" class="btn btn-secondary">📦 Ver Productos</a>
+            <a href="/admin/media" class="btn btn-secondary">🖼️ Google Drive Media</a>
             <a href="/" target="_blank" class="btn btn-secondary">🌐 Abrir Portal</a>
         </div>
     </main>

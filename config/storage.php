@@ -1,16 +1,14 @@
 <?php
 /**
- * Configuración de almacenamiento (Cloudflare R2 / S3 compatible).
- * Se usa en Fase 2 para subida de media.
+ * Configuración de almacenamiento — Google Drive via OAuth 2.0.
  */
 
-function getStorageConfig(): array
+function getDriveConfig(): array
 {
     return [
-        'endpoint' => getenv('R2_ENDPOINT') ?: '',
-        'access_key' => getenv('R2_ACCESS_KEY') ?: '',
-        'secret_key' => getenv('R2_SECRET_KEY') ?: '',
-        'bucket' => getenv('R2_BUCKET') ?: 'visor-kino-media',
-        'public_url' => getenv('R2_PUBLIC_URL') ?: '',
+        'client_id' => env('GOOGLE_CLIENT_ID', ''),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET', ''),
+        'redirect_uri' => env('GOOGLE_REDIRECT_URI', ''),
+        'folder_id' => env('GOOGLE_DRIVE_FOLDER_ID', ''),
     ];
 }

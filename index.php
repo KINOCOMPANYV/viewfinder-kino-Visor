@@ -123,6 +123,57 @@ if ($uri === '/admin/product/delete' && $method === 'POST') {
 }
 
 // ============================================================
+// RUTAS GOOGLE DRIVE / MEDIA
+// ============================================================
+
+if ($uri === '/admin/media') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_media.php';
+    exit;
+}
+
+if ($uri === '/admin/google/auth') {
+    requireAdmin();
+    require_once __DIR__ . '/src/services/GoogleDriveService.php';
+    $drive = new GoogleDriveService();
+    header('Location: ' . $drive->getAuthUrl());
+    exit;
+}
+
+if ($uri === '/admin/google/callback') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_google_callback.php';
+    exit;
+}
+
+if ($uri === '/admin/media/upload' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_media_upload.php';
+    exit;
+}
+
+if ($uri === '/admin/media/delete' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_media_delete.php';
+    exit;
+}
+
+if (preg_match('#^/api/media/([A-Za-z0-9\-_]+)$#', $uri, $matches)) {
+    // API para obtener media de un producto por SKU
+    require_once __DIR__ . '/src/services/GoogleDriveService.php';
+    $sku = $matches[1];
+    $folderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
+    $drive = new GoogleDriveService();
+    $token = $drive->getValidToken(getDB());
+    if ($token && $folderId) {
+        $files = $drive->findBySku($folderId, $sku);
+        jsonResponse(['files' => $files]);
+    } else {
+        jsonResponse(['files' => [], 'error' => 'Drive not connected'], 503);
+    }
+}
+
+// ============================================================
 // HEALTH CHECK
 // ============================================================
 
