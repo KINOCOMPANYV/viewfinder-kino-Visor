@@ -24,7 +24,7 @@ if (!$product) {
     <meta name="robots" content="noindex, nofollow">
     <title>
         <?= e($product['sku']) ?> —
-        <?= e($product['name']) ?> · KINO
+        <?= e($product['name']) ?> · Viewfinder
     </title>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
@@ -32,7 +32,7 @@ if (!$product) {
 <body>
     <header class="header">
         <div class="container header-inner">
-            <a href="/" class="logo"><span class="logo-icon">K</span> KINO</a>
+            <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
         </div>
     </header>
 
@@ -129,7 +129,7 @@ if (!$product) {
 
     <footer class="footer">
         <div class="container">
-            <p>Solo para distribuidores autorizados · KINO ©
+            <p>Solo para distribuidores autorizados · Viewfinder Kino Visor ©
                 <?= date('Y') ?>
             </p>
         </div>

@@ -1,4 +1,4 @@
-# VISOR KINO
+# Viewfinder Kino Visor
 
 Centro de contenido para distribuidores. Busca por SKU, consulta fichas de producto, y descarga fotos/videos.
 

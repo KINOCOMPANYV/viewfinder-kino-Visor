@@ -58,7 +58,7 @@ $totalPages = ceil($total / $perPage);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>
-        <?= $q ? e($q) . ' — ' : '' ?>Búsqueda · KINO
+        <?= $q ? e($q) . ' — ' : '' ?>Búsqueda · Viewfinder
     </title>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
@@ -66,7 +66,7 @@ $totalPages = ceil($total / $perPage);
 <body>
     <header class="header">
         <div class="container header-inner">
-            <a href="/" class="logo"><span class="logo-icon">K</span> KINO</a>
+            <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
         </div>
     </header>
 
@@ -162,7 +162,7 @@ $totalPages = ceil($total / $perPage);
 
     <footer class="footer">
         <div class="container">
-            <p>Solo para distribuidores autorizados · KINO ©
+            <p>Solo para distribuidores autorizados · Viewfinder Kino Visor ©
                 <?= date('Y') ?>
             </p>
         </div>

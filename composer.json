@@ -1,6 +1,6 @@
 {
-    "name": "kino/visor",
-    "description": "VISOR KINO - Centro de Contenido para Distribuidores",
+    "name": "kino/viewfinder",
+    "description": "Viewfinder Kino Visor - Centro de Contenido para Distribuidores",
     "type": "project",
     "require": {
         "php": ">=8.1",

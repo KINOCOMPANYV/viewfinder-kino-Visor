@@ -11,14 +11,14 @@ $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard · KINO Admin</title>
+    <title>Dashboard · Viewfinder Admin</title>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 
 <body>
     <header class="header">
         <div class="container header-inner">
-            <a href="/admin" class="logo"><span class="logo-icon">K</span> KINO Admin</a>
+            <a href="/admin" class="logo"><span class="logo-icon">VF</span> Viewfinder Admin</a>
             <a href="/admin/logout" class="btn btn-sm btn-secondary">Cerrar Sesión</a>
         </div>
     </header>
@@ -71,7 +71,7 @@ $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn(
 
     <footer class="footer">
         <div class="container">
-            <p>KINO Admin Panel · v1.0</p>
+            <p>Viewfinder Admin Panel · v1.0</p>
         </div>
     </footer>
 </body>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login · KINO</title>
+    <title>Admin Login · Viewfinder</title>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 
@@ -13,8 +13,8 @@
         <div class="container-sm fade-in" style="max-width:400px;">
             <div style="text-align:center; margin-bottom:2rem;">
                 <div class="logo" style="justify-content:center; font-size:2rem; margin-bottom:0.5rem;">
-                    <span class="logo-icon" style="width:48px;height:48px;font-size:1.5rem;">K</span>
-                    KINO
+                    <span class="logo-icon" style="width:48px;height:48px;font-size:1rem;">VF</span>
+                    Viewfinder
                 </div>
                 <p style="color:var(--color-text-muted); font-size:0.9rem;">Panel de Administración</p>
             </div>

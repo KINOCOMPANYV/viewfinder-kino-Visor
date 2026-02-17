@@ -1,6 +1,6 @@
 <?php
 /**
- * VISOR KINO — Router principal.
+ * Viewfinder Kino Visor — Router principal.
  * Todas las peticiones pasan por aquí gracias a .htaccess
  */
 session_start();

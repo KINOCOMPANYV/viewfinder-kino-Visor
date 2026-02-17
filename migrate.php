@@ -6,7 +6,7 @@
 require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/database.php';
 
-echo "🔄 VISOR KINO — Ejecutando migraciones...\n\n";
+echo "🔄 Viewfinder Kino Visor — Ejecutando migraciones...\n\n";
 
 try {
     $db = getDB();

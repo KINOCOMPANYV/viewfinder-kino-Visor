@@ -5,9 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>KINO — Centro de Contenido</title>
+    <title>Viewfinder — Centro de Contenido</title>
     <meta name="description"
-        content="Centro de contenido exclusivo para distribuidores KINO. Busca por SKU y descarga fotos y videos.">
+        content="Centro de contenido exclusivo para distribuidores. Busca por SKU y descarga fotos y videos — Viewfinder Kino Visor.">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23c9a84c'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='18' fill='black' font-weight='bold'>K</text></svg>">
@@ -18,8 +18,8 @@
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo">
-                <span class="logo-icon">K</span>
-                KINO
+                <span class="logo-icon">VF</span>
+                Viewfinder
             </a>
             <a href="/admin/login" class="btn btn-sm btn-secondary"
                 style="font-size:0.75rem; padding:0.4rem 0.8rem; opacity:0.4;">Admin</a>
@@ -107,7 +107,7 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>Solo para distribuidores autorizados · KINO ©
+            <p>Solo para distribuidores autorizados · Viewfinder Kino Visor ©
                 <?= date('Y') ?>
             </p>
         </div>
