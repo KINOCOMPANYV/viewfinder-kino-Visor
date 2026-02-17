@@ -52,7 +52,7 @@ for ($i = 0; $i < count($files['name']); $i++) {
         $uploaded++;
 
         // --- Enlazar con producto por SKU ---
-        $driveUrl = "https://drive.google.com/uc?id={$result['id']}";
+        $driveUrl = "https://lh3.googleusercontent.com/d/{$result['id']}";
         $matchedProduct = null;
 
         foreach ($allProducts as $prod) {
