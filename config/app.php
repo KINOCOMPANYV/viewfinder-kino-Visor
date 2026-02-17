@@ -39,3 +39,6 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROT
 
 // Cache buster
 define('APP_VERSION', substr(md5_file(__FILE__), 0, 8));
+
+// App info
+define('APP_BUILD', '2026-02-17');
