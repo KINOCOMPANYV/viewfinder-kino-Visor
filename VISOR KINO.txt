@@ -1,0 +1,409 @@
+0) Resultado esperado
+
+Un Centro de Contenido para Distribuidores donde el cliente:
+
+Entra con un QR único (el mismo para todas las cajas).
+
+Busca por Referencia/SKU.
+
+Ve la ficha del producto (foto principal + datos).
+
+Descarga Pack Fotos / Pack Videos / Todo (ZIP).
+
+Copia descripción lista para publicar.
+
+Tú (admin):
+
+Subes un Excel exportado desde tu sistema (sin API).
+
+Subes fotos/videos o pegas enlaces a una carpeta por SKU.
+
+El sistema actualiza el catálogo automáticamente.
+
+1) Decisiones clave de arquitectura (recomendación)
+Opción A (rápida y robusta)
+
+Web app + Base de datos + Almacenamiento en nube
+
+Backend: Node/Express o PHP (Laravel) o Python (Flask)
+
+DB: MySQL/PostgreSQL
+
+Storage: Google Drive / Dropbox / S3 (ideal S3-compatible)
+
+Recomendación práctica:
+Si quieres cero lío con permisos y alto control: S3 compatible (Wasabi/Cloudflare R2/AWS S3).
+Si quieres aprovechar lo que ya usas: Google Drive, pero con reglas claras de enlaces.
+
+2) Requerimientos funcionales (lo que debe cumplir sí o sí)
+2.1 Portal cliente (front)
+
+Login simple (opcional pero recomendado):
+
+Clave única para distribuidores o usuarios/contraseña por cliente.
+
+Buscador:
+
+Búsqueda exacta por SKU y búsqueda parcial (autocomplete).
+
+Ficha del producto:
+
+SKU grande
+
+Nombre modelo
+
+Categoría (hombre/mujer/etc.)
+
+Foto principal
+
+Botones:
+
+“Descargar Fotos (ZIP)”
+
+“Descargar Videos (ZIP)”
+
+“Descargar Pack Completo (ZIP)”
+
+“Copiar descripción”
+
+Acceso móvil perfecto (la mayoría escanea QR desde celular).
+
+2.2 Panel admin
+
+Importar catálogo desde Excel:
+
+Subir archivo .xlsx
+
+Mapear columnas
+
+“Insertar/Actualizar” por SKU (upsert)
+
+Gestión de media:
+
+Opción 1: Cargar archivos (fotos/videos) al sistema
+
+Opción 2: Pegar link de carpeta (Drive) por SKU
+
+Generación de ZIP:
+
+Generar ZIP bajo demanda (en el momento)
+
+Cachear ZIP por SKU para no recalcular siempre
+
+Auditoría:
+
+Log de descargas por SKU (fecha, cliente, ip)
+
+Control de “Estado”:
+
+Activo / Descontinuado (solo activos visibles para clientes)
+
+3) Modelo de datos (base de datos)
+
+Tabla: products
+
+id (pk)
+
+sku (unique)
+
+name
+
+category
+
+gender
+
+movement
+
+price_suggested
+
+status (active/discontinued)
+
+description (texto)
+
+cover_image_url (principal)
+
+media_source_type (“UPLOAD” o “DRIVE_LINK”)
+
+drive_folder_url (si aplica)
+
+created_at, updated_at
+
+Tabla: media_assets (si se suben archivos)
+
+id
+
+product_id
+
+type (“image” / “video”)
+
+url
+
+sort_order
+
+created_at
+
+Tabla: downloads_log
+
+id
+
+product_id
+
+client_id (opcional)
+
+download_type (photos/videos/all)
+
+timestamp
+
+ip
+
+user_agent
+
+Tabla: clients (opcional)
+
+id
+
+name
+
+access_user
+
+access_pass_hash
+
+active
+
+4) Estandarización de carpetas y nombres (para que 4.000 SKUs no se vuelvan infierno)
+4.1 Si usas Drive por carpetas
+
+Estructura:
+
+/MEDIA_RELOJES/HOMBRE/SKU-XXXXX/
+
+/MEDIA_RELOJES/MUJER/SKU-YYYYY/
+
+Contenido mínimo por SKU:
+
+01_principal.jpg
+
+02_lifestyle.jpg
+
+03_detalle.jpg
+
+04_caja.jpg
+
+05_muneca.jpg
+
+06_fondo_blanco.jpg
+
+reel_vertical.mp4
+
+video_horizontal.mp4
+
+descripcion.txt (opcional)
+
+Regla: La carpeta se llama EXACTAMENTE igual al SKU.
+
+4.2 Si subes al sistema
+
+Se guarda en:
+
+/storage/products/{sku}/images/
+
+/storage/products/{sku}/videos/
+
+5) Importación de Excel (sin API, pero automático)
+
+El programador debe implementar:
+
+Plantilla oficial Excel (la que tú exportas y/o transformas)
+Columnas mínimas:
+
+sku
+
+name
+
+category
+
+gender
+
+movement
+
+price_suggested
+
+status
+
+description (opcional)
+
+drive_folder_url (si aplica)
+
+Proceso:
+
+Subes Excel
+
+Valida:
+
+SKU no vacío
+
+SKU único en archivo
+
+Hace UPSERT:
+
+Si SKU existe: actualiza campos
+
+Si no existe: crea producto
+
+Reporte final:
+
+Insertados: N
+
+Actualizados: N
+
+Errores: listado con fila/columna
+
+6) Descargas (ZIP) y rendimiento
+6.1 ZIP bajo demanda + caché
+
+Cuando el cliente pide “Descargar Fotos”, el backend:
+
+Reúne las imágenes (de Drive o storage)
+
+Crea ZIP
+
+Guarda ZIP cacheado por 24h o hasta cambio de media
+
+Devuelve link de descarga
+
+6.2 Estrategia si es Drive
+
+Dos caminos:
+
+Camino simple: el botón abre la carpeta (menos pro).
+
+Camino pro: el servidor descarga temporalmente desde Drive y genera ZIP.
+(Esto requiere credenciales y es más trabajo, pero queda “premium”.)
+
+Recomendación para 4.000 SKUs: ZIP bajo demanda con caché.
+
+7) Seguridad y control de acceso
+
+Mínimo:
+
+Portal protegido con clave o usuarios
+
+“No indexar” por Google (robots + headers)
+
+Enlaces de descarga con token temporal:
+
+/download/sku-xxx/photos?token=...&expires=...
+
+Opcional pro:
+
+Usuario por cliente (para saber quién descarga qué)
+
+8) QR (una sola vez, para todo)
+
+QR único apunta a:
+
+https://tudominio.com/media
+
+En la landing:
+
+Campo para ingresar SKU
+
+Botón buscar
+
+Nota de “solo distribuidores autorizados”
+
+Si quieres nivel “wow”:
+
+En la caja imprimes el SKU y el QR:
+
+El cliente escanea QR y escribe SKU.
+
+(Sin 4.000 QRs distintos.)
+
+9) Entregables que debes pedirle al programador
+
+Repositorio (Git) con:
+
+Backend + Frontend
+
+Migraciones de BD
+
+Documento de despliegue:
+
+Cómo instalar
+
+Variables de entorno
+
+Cómo hacer backup
+
+Panel admin funcional:
+
+Import Excel
+
+CRUD productos
+
+Gestión de media
+
+Portal cliente:
+
+Buscador
+
+Ficha
+
+Descarga ZIP
+
+Logs:
+
+Descargas por SKU
+
+Pruebas:
+
+100 SKUs simulados
+
+10 descargas concurrentes sin caerse
+
+10) Criterios de aceptación (para que no te vendan humo)
+
+Importar Excel de 4.000 SKUs en menos de 2–5 minutos (dependiendo hosting).
+
+Búsqueda por SKU responde en < 1s.
+
+ZIP se genera y descarga sin errores.
+
+Mobile first: usable desde celular.
+
+Si un SKU no tiene media:
+
+Mensaje claro: “Contenido en producción / no disponible”
+
+Si un SKU está “descontinuado”:
+
+No aparece o aparece marcado (según decisión)
+
+11) Plan de implementación por fases (para arrancar rápido)
+Fase 1 (MVP)
+
+Portal cliente con buscador + fichas + links a carpeta Drive por SKU
+
+Admin para importar Excel y pegar drive_folder_url
+
+Fase 2 (PRO)
+
+ZIP de fotos/videos + caché
+
+Logs de descarga
+
+Autocomplete y filtros
+
+Fase 3 (B2B)
+
+Login por cliente
+
+Inventario visible (si lo exportas a Excel, también se actualiza)
+
+Pedidos desde el portal
+
+Bonus (humor útil)
+
+Dile al programador que esto debe aguantar 4.000 referencias sin que parezca “Drive 2008: La Venganza”.
+La clave es: BD + buscador + reglas de nombres + ZIP cacheado.

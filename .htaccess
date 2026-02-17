@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# Forzar HTTPS detrás de proxy (Railway/Cloudflare)
+RewriteCond %{HTTP:X-Forwarded-Proto} =http
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Si el archivo o directorio existe, servirlo directamente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Todo lo demás va al router (index.php)
+RewriteRule ^ index.php [QSA,L]
