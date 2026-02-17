@@ -1,5 +1,7 @@
 <?php $results = $_SESSION['import_results'] ?? null;
-unset($_SESSION['import_results']); ?>
+unset($_SESSION['import_results']);
+$hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
+?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -38,6 +40,27 @@ unset($_SESSION['import_results']); ?>
             Sube un archivo Excel (.xlsx) o CSV con las columnas: <code
                 style="color:var(--color-primary);">sku, name, category, gender, movement, price_suggested, status, description</code>
         </p>
+
+        <!-- ========== GOOGLE SHEETS SYNC ========== -->
+        <?php if ($hasSheetId): ?>
+            <div
+                style="margin-bottom:2rem; padding:1.5rem; background:linear-gradient(135deg, rgba(52,168,83,0.08), rgba(66,133,244,0.08)); border:1px solid rgba(52,168,83,0.25); border-radius:var(--radius-sm);">
+                <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
+                    <span style="font-size:1.5rem;">📊</span>
+                    <div>
+                        <h3 style="font-size:1rem; margin:0; color:var(--color-text);">Sincronizar desde Google Sheets</h3>
+                        <p style="font-size:0.8rem; color:var(--color-text-muted); margin:0.25rem 0 0;">
+                            Importa directamente desde tu hoja de cálculo master sin descargar archivos.
+                        </p>
+                    </div>
+                </div>
+                <button type="button" id="syncSheetsBtn" onclick="syncFromSheets()"
+                    style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.6rem 1.25rem; background:#34A853; color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.2s;">
+                    🔄 Sincronizar Ahora
+                </button>
+                <div id="syncStatus" style="display:none; margin-top:1rem;"></div>
+            </div>
+        <?php endif; ?>
 
         <!-- Import Results -->
         <?php if ($results): ?>
@@ -151,6 +174,54 @@ unset($_SESSION['import_results']); ?>
             btn.textContent = '⏳ Importando...';
             btn.disabled = true;
         });
+
+        // ========== GOOGLE SHEETS SYNC ==========
+        async function syncFromSheets() {
+            const btn = document.getElementById('syncSheetsBtn');
+            const status = document.getElementById('syncStatus');
+
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Sincronizando...';
+            btn.style.opacity = '0.7';
+            status.style.display = 'block';
+            status.innerHTML = '<div style="padding:0.75rem; background:var(--color-surface); border-radius:var(--radius-sm); font-size:0.85rem; color:var(--color-text-muted);">⏳ Descargando datos de Google Sheets...</div>';
+
+            try {
+                const res = await fetch('/admin/sync-sheets', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': '<?= csrfToken() ?>',
+                        'Content-Type': 'application/json',
+                    },
+                });
+                const data = await res.json();
+
+                if (!res.ok || data.error) {
+                    status.innerHTML = `<div style="padding:0.75rem; background:rgba(220,53,69,0.1); border:1px solid rgba(220,53,69,0.3); border-radius:var(--radius-sm); font-size:0.85rem; color:#dc3545;">❌ ${data.error || 'Error desconocido'}</div>`;
+                } else {
+                    let errHtml = '';
+                    if (data.errors && data.errors.length > 0) {
+                        errHtml = `<div style="margin-top:0.5rem; font-size:0.8rem; color:var(--color-text-muted);">⚠️ ${data.errors.length} advertencia(s): ${data.errors.slice(0, 5).join(', ')}</div>`;
+                    }
+                    status.innerHTML = `
+                        <div style="padding:1rem; background:rgba(52,168,83,0.1); border:1px solid rgba(52,168,83,0.3); border-radius:var(--radius-sm);">
+                            <div style="font-size:0.95rem; font-weight:600; color:#34A853; margin-bottom:0.5rem;">✅ Sincronización completada</div>
+                            <div style="display:flex; gap:1.5rem; font-size:0.85rem; color:var(--color-text);">
+                                <span>🆕 <strong>${data.inserted}</strong> nuevos</span>
+                                <span>🔄 <strong>${data.updated}</strong> actualizados</span>
+                                <span>📄 <strong>${data.total}</strong> filas</span>
+                            </div>
+                            ${errHtml}
+                        </div>`;
+                }
+            } catch (err) {
+                status.innerHTML = `<div style="padding:0.75rem; background:rgba(220,53,69,0.1); border:1px solid rgba(220,53,69,0.3); border-radius:var(--radius-sm); font-size:0.85rem; color:#dc3545;">❌ Error de conexión: ${err.message}</div>`;
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '🔄 Sincronizar Ahora';
+            btn.style.opacity = '1';
+        }
     </script>
 </body>
 

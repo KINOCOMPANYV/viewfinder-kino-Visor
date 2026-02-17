@@ -171,6 +171,12 @@ if ($uri === '/admin/media/delete' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/sync-sheets' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_sync_sheets.php';
+    exit;
+}
+
 if (preg_match('#^/api/media/([A-Za-z0-9\-_]+)$#', $uri, $matches)) {
     // API para obtener media de un producto por SKU
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
