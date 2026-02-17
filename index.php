@@ -9,6 +9,35 @@ require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/src/helpers.php';
 
+// Obtener la ruta antes de auto-migrar
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$method = $_SERVER['REQUEST_METHOD'];
+
+// Health debug — funciona SIN conexión a DB
+if ($uri === '/health/debug') {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'env_method' => [
+            'getenv_DB_HOST' => getenv('DB_HOST') ?: '(empty)',
+            'getenv_MYSQLHOST' => getenv('MYSQLHOST') ?: '(empty)',
+            'getenv_MYSQL_HOST' => getenv('MYSQL_HOST') ?: '(empty)',
+            'getenv_MYSQL_URL' => getenv('MYSQL_URL') ? '(set)' : '(empty)',
+            'getenv_DATABASE_URL' => getenv('DATABASE_URL') ? '(set)' : '(empty)',
+            '$_ENV_DB_HOST' => $_ENV['DB_HOST'] ?? '(empty)',
+            '$_ENV_MYSQLHOST' => $_ENV['MYSQLHOST'] ?? '(empty)',
+            '$_SERVER_DB_HOST' => $_SERVER['DB_HOST'] ?? '(empty)',
+            '$_SERVER_MYSQLHOST' => $_SERVER['MYSQLHOST'] ?? '(empty)',
+        ],
+        'resolved' => [
+            'host' => env('DB_HOST', env('MYSQLHOST', env('MYSQL_HOST', '127.0.0.1'))),
+            'port' => env('DB_PORT', env('MYSQLPORT', env('MYSQL_PORT', '3306'))),
+            'database' => env('DB_DATABASE', env('MYSQLDATABASE', env('MYSQL_DATABASE', 'viewfinder_kino'))),
+            'user' => env('DB_USERNAME', env('MYSQLUSER', env('MYSQL_USER', 'root'))),
+        ]
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
 // Auto-migrar en primer uso
 try {
     $db = getDB();
@@ -19,9 +48,7 @@ try {
     $db = getDB();
 }
 
-// Obtener la ruta solicitada
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$method = $_SERVER['REQUEST_METHOD'];
+// Ruta ya obtenida arriba
 
 // ============================================================
 // RUTAS PÚBLICAS (Portal del Distribuidor)
