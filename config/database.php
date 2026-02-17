@@ -10,11 +10,13 @@ function getDB(): PDO
     if ($pdo !== null)
         return $pdo;
 
-    $host = getenv('DB_HOST') ?: '127.0.0.1';
-    $port = getenv('DB_PORT') ?: '3306';
-    $name = getenv('DB_DATABASE') ?: 'visor_kino';
-    $user = getenv('DB_USERNAME') ?: 'root';
-    $pass = getenv('DB_PASSWORD') ?: '';
+    // Railway provee variables nativas: MYSQLHOST, MYSQL_HOST, etc.
+    // También soportamos DB_HOST (custom) como primera opción.
+    $host = getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: getenv('MYSQL_HOST') ?: '127.0.0.1';
+    $port = getenv('DB_PORT') ?: getenv('MYSQLPORT') ?: getenv('MYSQL_PORT') ?: '3306';
+    $name = getenv('DB_DATABASE') ?: getenv('MYSQLDATABASE') ?: getenv('MYSQL_DATABASE') ?: 'viewfinder_kino';
+    $user = getenv('DB_USERNAME') ?: getenv('MYSQLUSER') ?: getenv('MYSQL_USER') ?: 'root';
+    $pass = getenv('DB_PASSWORD') ?: getenv('MYSQLPASSWORD') ?: getenv('MYSQL_PASSWORD') ?: '';
 
     $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
 
