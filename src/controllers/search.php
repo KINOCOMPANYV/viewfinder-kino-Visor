@@ -119,11 +119,6 @@ $totalPages = ceil($total / $perPage);
                                         <?= e($p['category']) ?>
                                     </span>
                                 <?php endif; ?>
-                                <?php if ($p['price_suggested'] > 0): ?>
-                                    <span class="card-price">
-                                        <?= formatPrice($p['price_suggested']) ?>
-                                    </span>
-                                <?php endif; ?>
                             </div>
                         </div>
                     </a>
