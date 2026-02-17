@@ -35,14 +35,27 @@ if ($uri === '/health/debug') {
     exit;
 }
 
-// Auto-migrar en primer uso
+// Auto-migrar: ejecutar migraciones pendientes en cada deploy
 try {
     $db = getDB();
-    $db->query("SELECT 1 FROM products LIMIT 1");
+    // Verificar si hay migraciones pendientes
+    $db->exec("CREATE TABLE IF NOT EXISTS migrations (id INT AUTO_INCREMENT PRIMARY KEY, filename VARCHAR(255) NOT NULL, executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $executed = $db->query("SELECT filename FROM migrations")->fetchAll(PDO::FETCH_COLUMN);
+    $files = glob(__DIR__ . '/migrations/*.sql');
+    sort($files);
+    foreach ($files as $file) {
+        $filename = basename($file);
+        if ($filename === '000_create_migrations.sql')
+            continue;
+        if (in_array($filename, $executed))
+            continue;
+        $sql = file_get_contents($file);
+        $db->exec($sql);
+        $stmt = $db->prepare("INSERT INTO migrations (filename) VALUES (?)");
+        $stmt->execute([$filename]);
+    }
 } catch (\Exception $e) {
-    // Si la tabla no existe, ejecutar migraciones
-    include __DIR__ . '/migrate.php';
-    $db = getDB();
+    // Silenciar errores de migración en producción
 }
 
 // Ruta ya obtenida arriba
