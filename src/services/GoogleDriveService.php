@@ -130,10 +130,13 @@ class GoogleDriveService
 
     /**
      * Busca archivos cuyo nombre contenga el SKU.
+     * Primero busca en la carpeta raíz, luego en subcarpetas.
      */
     public function findBySku(string $folderId, string $sku): array
     {
         $skuEscaped = str_replace("'", "\\'", $sku);
+
+        // 1) Buscar directamente en la carpeta raíz
         $query = "'{$folderId}' in parents and name contains '{$skuEscaped}' and trashed = false";
         $params = [
             'q' => $query,
@@ -144,7 +147,42 @@ class GoogleDriveService
         $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
         $response = $this->httpGet($url);
         $data = json_decode($response, true) ?: [];
-        return $data['files'] ?? [];
+        $files = $data['files'] ?? [];
+
+        if (!empty($files)) {
+            return $files;
+        }
+
+        // 2) Si no hay resultados, buscar subcarpetas y luego dentro de ellas
+        $subQuery = "'{$folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+        $subParams = [
+            'q' => $subQuery,
+            'fields' => 'files(id,name)',
+            'pageSize' => 50,
+        ];
+        $subUrl = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($subParams);
+        $subResp = $this->httpGet($subUrl);
+        $subData = json_decode($subResp, true) ?: [];
+        $subfolders = $subData['files'] ?? [];
+
+        foreach ($subfolders as $sub) {
+            $subFileQuery = "'{$sub['id']}' in parents and name contains '{$skuEscaped}' and trashed = false";
+            $subFileParams = [
+                'q' => $subFileQuery,
+                'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink)',
+                'pageSize' => 50,
+            ];
+            $subFileUrl = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($subFileParams);
+            $subFileResp = $this->httpGet($subFileUrl);
+            $subFileData = json_decode($subFileResp, true) ?: [];
+            $subFiles = $subFileData['files'] ?? [];
+
+            if (!empty($subFiles)) {
+                $files = array_merge($files, $subFiles);
+            }
+        }
+
+        return $files;
     }
 
     /**

@@ -76,7 +76,7 @@ if ($uri === '/buscar' || $uri === '/search') {
     exit;
 }
 
-if (preg_match('#^/producto/([A-Za-z0-9\-_]+)$#', $uri, $matches)) {
+if (preg_match('#^/producto/([^/]+)$#', $uri, $matches)) {
     // Ficha del producto por SKU
     $_GET['sku'] = $matches[1];
     include __DIR__ . '/src/controllers/product.php';
@@ -177,7 +177,7 @@ if ($uri === '/admin/sync-sheets' && $method === 'POST') {
     exit;
 }
 
-if (preg_match('#^/api/media/([A-Za-z0-9\-_]+)$#', $uri, $matches)) {
+if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     // API para obtener media de un producto por SKU
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
     $sku = $matches[1];
