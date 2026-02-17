@@ -928,3 +928,33 @@ textarea.form-input {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
+/* === WhatsApp Share Button === */
+.btn-whatsapp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    background: #25D366;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: var(--font);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    margin-top: 0.5rem;
+    width: 100%;
+    justify-content: center;
+}
+
+.btn-whatsapp:hover {
+    background: #1da851;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+.btn-whatsapp svg {
+    flex-shrink: 0;
+}
