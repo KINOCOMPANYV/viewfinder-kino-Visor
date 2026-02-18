@@ -141,7 +141,7 @@ class GoogleDriveService
 
     /**
      * Busca archivos cuyo nombre contenga el SKU.
-     * Primero busca en la carpeta raíz, luego en subcarpetas.
+     * Busca recursivamente en todas las subcarpetas (Marca > Referencia, etc.).
      */
     public function findBySku(string $folderId, string $sku): array
     {
@@ -164,36 +164,58 @@ class GoogleDriveService
             return $files;
         }
 
-        // 2) Si no hay resultados, buscar subcarpetas y luego dentro de ellas
-        $subQuery = "'{$folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+        // 2) Buscar recursivamente en subcarpetas (hasta 3 niveles: Marca > Referencia > ...)
+        return $this->findBySkuRecursive($folderId, $skuEscaped, 0, 3);
+    }
+
+    /**
+     * Búsqueda recursiva de archivos por SKU en subcarpetas.
+     */
+    private function findBySkuRecursive(string $parentId, string $skuEscaped, int $depth, int $maxDepth): array
+    {
+        if ($depth >= $maxDepth) {
+            return [];
+        }
+
+        // Obtener subcarpetas del nivel actual
+        $subQuery = "'{$parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
         $subParams = [
             'q' => $subQuery,
             'fields' => 'files(id,name)',
-            'pageSize' => 50,
+            'pageSize' => 100,
         ];
         $subUrl = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($subParams);
         $subResp = $this->httpGet($subUrl);
         $subData = json_decode($subResp, true) ?: [];
         $subfolders = $subData['files'] ?? [];
 
+        $allFiles = [];
+
         foreach ($subfolders as $sub) {
-            $subFileQuery = "'{$sub['id']}' in parents and name contains '{$skuEscaped}' and trashed = false";
-            $subFileParams = [
-                'q' => $subFileQuery,
+            // Buscar archivos con el SKU en esta subcarpeta
+            $fileQuery = "'{$sub['id']}' in parents and name contains '{$skuEscaped}' and trashed = false";
+            $fileParams = [
+                'q' => $fileQuery,
                 'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink)',
                 'pageSize' => 50,
             ];
-            $subFileUrl = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($subFileParams);
-            $subFileResp = $this->httpGet($subFileUrl);
-            $subFileData = json_decode($subFileResp, true) ?: [];
-            $subFiles = $subFileData['files'] ?? [];
+            $fileUrl = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($fileParams);
+            $fileResp = $this->httpGet($fileUrl);
+            $fileData = json_decode($fileResp, true) ?: [];
+            $found = $fileData['files'] ?? [];
 
-            if (!empty($subFiles)) {
-                $files = array_merge($files, $subFiles);
+            if (!empty($found)) {
+                $allFiles = array_merge($allFiles, $found);
+            }
+
+            // Seguir buscando en subcarpetas más profundas
+            $deepFiles = $this->findBySkuRecursive($sub['id'], $skuEscaped, $depth + 1, $maxDepth);
+            if (!empty($deepFiles)) {
+                $allFiles = array_merge($allFiles, $deepFiles);
             }
         }
 
-        return $files;
+        return $allFiles;
     }
 
     /**
