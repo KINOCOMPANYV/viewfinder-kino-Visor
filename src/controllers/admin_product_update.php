@@ -73,6 +73,7 @@ jsonResponse([
 
 /**
  * Buscar la fila del SKU en Google Sheets y actualizar la celda correspondiente.
+ * Usa caché en sesión para el mapeo SKU→fila (evita leer columna A cada vez).
  */
 function updateGoogleSheet(string $token, string $sheetId, string $sku, string $field, string $value): bool
 {
@@ -84,34 +85,47 @@ function updateGoogleSheet(string $token, string $sheetId, string $sku, string $
 
     $colLetter = chr(65 + $colIndex); // A=0, B=1, etc.
 
-    // 1) Leer columna A (SKUs) para encontrar la fila
-    $range = urlencode('A:A');
-    $url = "https://sheets.googleapis.com/v4/spreadsheets/{$sheetId}/values/{$range}";
+    // Intentar usar caché de mapeo SKU→fila (válido por 30 minutos)
+    $cacheKey = 'sheets_sku_map_' . $sheetId;
+    $cacheTimeKey = 'sheets_sku_map_time_' . $sheetId;
+    $skuMap = $_SESSION[$cacheKey] ?? [];
+    $cacheTime = $_SESSION[$cacheTimeKey] ?? 0;
+    $cacheExpired = (time() - $cacheTime) > 1800; // 30 minutos
 
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
-    ]);
-    $resp = curl_exec($ch);
-    curl_close($ch);
+    if (empty($skuMap) || $cacheExpired || !isset($skuMap[$sku])) {
+        // Leer columna A (SKUs) y construir/actualizar el mapa
+        $range = urlencode('A:A');
+        $url = "https://sheets.googleapis.com/v4/spreadsheets/{$sheetId}/values/{$range}";
 
-    $data = json_decode($resp, true);
-    $values = $data['values'] ?? [];
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
+        ]);
+        $resp = curl_exec($ch);
+        curl_close($ch);
 
-    // Buscar fila del SKU
-    $rowNumber = null;
-    foreach ($values as $i => $row) {
-        if (isset($row[0]) && trim($row[0]) === $sku) {
-            $rowNumber = $i + 1; // Sheets usa 1-indexed
-            break;
+        $data = json_decode($resp, true);
+        $values = $data['values'] ?? [];
+
+        // Construir mapa completo SKU → número de fila
+        $skuMap = [];
+        foreach ($values as $i => $row) {
+            if (isset($row[0]) && trim($row[0]) !== '') {
+                $skuMap[trim($row[0])] = $i + 1; // Sheets es 1-indexed
+            }
         }
+
+        // Guardar en sesión
+        $_SESSION[$cacheKey] = $skuMap;
+        $_SESSION[$cacheTimeKey] = time();
     }
 
+    $rowNumber = $skuMap[$sku] ?? null;
     if (!$rowNumber)
         return false;
 
-    // 2) Escribir la celda
+    // Escribir la celda directamente (sin leer columna A de nuevo)
     $cellRange = urlencode("{$colLetter}{$rowNumber}");
     $updateUrl = "https://sheets.googleapis.com/v4/spreadsheets/{$sheetId}/values/{$cellRange}?valueInputOption=USER_ENTERED";
 
@@ -135,3 +149,4 @@ function updateGoogleSheet(string $token, string $sheetId, string $sku, string $
 
     return $httpCode === 200;
 }
+

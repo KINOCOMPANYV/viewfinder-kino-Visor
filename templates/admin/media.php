@@ -537,9 +537,24 @@
                     <p style="font-weight:600;">Archivos seleccionados:</p>
                     <ul id="selectedFiles" style="font-size:0.85rem; color:var(--color-text-muted);"></ul>
                 </div>
-                <button type="submit" class="btn btn-primary" id="uploadBtn" style="display:none;">
+                <button type="button" class="btn btn-primary" id="uploadBtn" style="display:none;"
+                    onclick="uploadWithProgress()">
                     📤 Subir a Google Drive
                 </button>
+                <!-- Progress Bar -->
+                <div id="progressContainer" style="display:none; margin-top:1rem;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+                        <span id="progressLabel" style="font-size:0.85rem; font-weight:600;">Subiendo...</span>
+                        <span id="progressPercent" style="font-size:0.85rem; color:var(--color-gold);">0%</span>
+                    </div>
+                    <div style="background:var(--color-border); border-radius:10px; height:12px; overflow:hidden;">
+                        <div id="progressBar"
+                            style="height:100%; width:0%; background:linear-gradient(90deg, var(--color-gold), #e6c040); border-radius:10px; transition:width 0.3s;">
+                        </div>
+                    </div>
+                    <div id="progressSpeed" style="font-size:0.75rem; color:var(--color-text-muted); margin-top:0.3rem;">
+                    </div>
+                </div>
             </form>
 
             <!-- Navegación de carpetas - Breadcrumb multi-nivel -->
@@ -733,12 +748,75 @@
             fileList.style.display = 'block';
             uploadBtn.style.display = 'inline-flex';
             selectedFiles.innerHTML = '';
+            let totalSize = 0;
             for (const f of files) {
                 const li = document.createElement('li');
                 const sizeMB = (f.size / 1024 / 1024).toFixed(1);
                 li.textContent = `${f.name} (${sizeMB} MB)`;
                 selectedFiles.appendChild(li);
+                totalSize += f.size;
             }
+            const totalMB = (totalSize / 1024 / 1024).toFixed(1);
+            const totalLi = document.createElement('li');
+            totalLi.style.fontWeight = '700';
+            totalLi.style.color = 'var(--color-gold)';
+            totalLi.textContent = `Total: ${totalMB} MB (${files.length} archivo${files.length > 1 ? 's' : ''})`;
+            selectedFiles.appendChild(totalLi);
+        }
+
+        function uploadWithProgress() {
+            const form = document.getElementById('uploadForm');
+            const formData = new FormData(form);
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressPercent = document.getElementById('progressPercent');
+            const progressLabel = document.getElementById('progressLabel');
+            const progressSpeed = document.getElementById('progressSpeed');
+            const btn = document.getElementById('uploadBtn');
+
+            progressContainer.style.display = 'block';
+            btn.disabled = true;
+            btn.textContent = '⏳ Subiendo...';
+
+            const startTime = Date.now();
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/admin/media/upload', true);
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = percent + '%';
+                    progressPercent.textContent = percent + '%';
+
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    const speed = (e.loaded / 1024 / 1024 / elapsed).toFixed(1);
+                    const remaining = ((e.total - e.loaded) / (e.loaded / elapsed) / 1000);
+                    const remSec = Math.ceil(remaining);
+
+                    progressLabel.textContent = `Subiendo... ${(e.loaded / 1024 / 1024).toFixed(1)} / ${(e.total / 1024 / 1024).toFixed(1)} MB`;
+                    progressSpeed.textContent = `${speed} MB/s · ~${remSec}s restante${remSec !== 1 ? 's' : ''}`;
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                progressBar.style.width = '100%';
+                progressPercent.textContent = '100%';
+                progressLabel.textContent = '✅ ¡Subida completada!';
+                progressSpeed.textContent = '';
+                showToast('✅ Archivos subidos exitosamente.');
+                setTimeout(() => location.reload(), 1500);
+            });
+
+            xhr.addEventListener('error', () => {
+                progressLabel.textContent = '❌ Error en la subida';
+                progressBar.style.background = '#e74c3c';
+                btn.disabled = false;
+                btn.textContent = '📤 Reintentar';
+                showToast('Error al subir archivos.', 'error');
+            });
+
+            xhr.send(formData);
         }
 
         async function setCover(productId, fileId, btn) {

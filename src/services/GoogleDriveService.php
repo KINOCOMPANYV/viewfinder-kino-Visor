@@ -141,7 +141,9 @@ class GoogleDriveService
 
     /**
      * Busca archivos cuyo nombre contenga el SKU.
-     * Busca recursivamente en todas las subcarpetas (Marca > Referencia, etc.).
+     * Estrategia optimizada:
+     *   1) Búsqueda GLOBAL en todo Drive (un solo API call, sin restricción de carpeta)
+     *   2) Fallback: búsqueda recursiva carpeta por carpeta
      * Aplica filtro de prefijo: el SKU debe estar al inicio y el siguiente carácter
      * NO puede ser un dígito (para evitar que "123-1" coincida con "123-10").
      */
@@ -149,12 +151,12 @@ class GoogleDriveService
     {
         $skuEscaped = str_replace("'", "\\'", $sku);
 
-        // 1) Buscar directamente en la carpeta raíz
-        $query = "'{$folderId}' in parents and name contains '{$skuEscaped}' and trashed = false";
+        // 1) Búsqueda GLOBAL — un solo API call que busca en TODAS las carpetas
+        $query = "name contains '{$skuEscaped}' and trashed = false and mimeType != 'application/vnd.google-apps.folder'";
         $params = [
             'q' => $query,
             'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink)',
-            'pageSize' => 50,
+            'pageSize' => 100,
         ];
 
         $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
@@ -165,19 +167,15 @@ class GoogleDriveService
         // Post-filtrar con regla de prefijo
         $files = $this->filterBySku($files, $sku);
 
-        // 2) Buscar SIEMPRE en subcarpetas (hasta 3 niveles: Marca > Referencia > ...)
-        $recursiveFiles = $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 3);
-
-        // 3) Combinar resultados sin duplicados (por file ID)
-        $existingIds = array_column($files, 'id');
-        foreach ($recursiveFiles as $rf) {
-            if (!in_array($rf['id'], $existingIds)) {
-                $files[] = $rf;
-            }
+        // Si la búsqueda global encontró resultados, usarlos
+        if (!empty($files)) {
+            return $files;
         }
 
-        return $files;
+        // 2) Fallback: búsqueda recursiva (por si la global falla o no tenga permisos)
+        return $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 3);
     }
+
 
     /**
      * Búsqueda recursiva de archivos por SKU en subcarpetas.
