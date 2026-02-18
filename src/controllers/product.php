@@ -221,57 +221,47 @@ if (!$product) {
         .btn-back-catalog {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
             background: linear-gradient(135deg, #c9a84c, #e6c040, #c9a84c);
             color: #000;
-            padding: 0.75rem 1.6rem;
-            border-radius: 30px;
+            padding: 0.45rem 1rem;
+            border-radius: 20px;
             text-decoration: none;
-            font-weight: 800;
-            font-size: 0.95rem;
+            font-weight: 700;
+            font-size: 0.8rem;
             transition: all 0.3s;
-            box-shadow: 0 4px 20px rgba(201, 168, 76, 0.5), 0 0 0 2px rgba(201, 168, 76, 0.25);
-            letter-spacing: 0.3px;
+            box-shadow: 0 2px 10px rgba(201, 168, 76, 0.4);
+            margin-right: auto;
         }
 
         .btn-back-catalog:hover {
-            transform: translateY(-3px) scale(1.03);
-            box-shadow: 0 8px 30px rgba(201, 168, 76, 0.7), 0 0 0 3px rgba(201, 168, 76, 0.35);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 18px rgba(201, 168, 76, 0.6);
         }
 
-        .floating-back {
-            position: fixed;
-            bottom: 25px;
-            left: 25px;
-            z-index: 100;
-            animation: fadeInUp 0.5s ease 0.3s both;
+        .breadcrumb-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
         }
 
-        @keyframes fadeInUp {
-            from {
-                transform: translateY(20px);
-                opacity: 0;
-            }
+        .breadcrumb-path {
+            color: var(--color-text-muted);
+            font-size: 0.875rem;
+        }
 
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+        .breadcrumb-path a {
+            color: var(--color-text-muted);
+        }
+
+        .breadcrumb-path a:hover {
+            color: var(--color-primary);
         }
 
         /* Mobile responsive for product page */
         @media (max-width: 768px) {
-            .floating-back {
-                bottom: 15px;
-                left: 50%;
-                transform: translateX(-50%);
-            }
-
-            .btn-back-catalog {
-                font-size: 0.8rem;
-                padding: 0.6rem 1.2rem;
-            }
-
             .lightbox img {
                 max-width: 96vw;
                 max-height: 80vh;
@@ -306,12 +296,15 @@ if (!$product) {
 
     <section class="product-detail">
         <div class="container">
-            <div class="breadcrumb">
-                <a href="/">Inicio</a> ›
-                <a href="/buscar">Catálogo</a> ›
-                <span style="color:var(--color-text)">
-                    <?= e($product['sku']) ?>
-                </span>
+            <div class="breadcrumb-bar">
+                <a href="/" class="btn-back-catalog">⬅️ Volver al catálogo</a>
+                <div class="breadcrumb-path">
+                    <a href="/">Inicio</a> ›
+                    <a href="/buscar">Catálogo</a> ›
+                    <span style="color:var(--color-text)">
+                        <?= e($product['sku']) ?>
+                    </span>
+                </div>
             </div>
 
             <div class="detail-grid">
@@ -624,10 +617,6 @@ if (!$product) {
         <div class="lb-name" id="lb-name"></div>
     </div>
 
-    <!-- Floating back button -->
-    <div class="floating-back">
-        <a href="/" class="btn-back-catalog">⬅️ Volver al catálogo</a>
-    </div>
 </body>
 
 </html>
