@@ -197,10 +197,115 @@
             opacity: 0.7;
         }
 
-        .folder-card:hover {
-            border-color: var(--color-gold);
-            transform: translateY(-2px);
+        /* Breadcrumb navigation */
+        .folder-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.2rem;
+            background: linear-gradient(135deg, rgba(30, 30, 50, 0.9), rgba(20, 20, 40, 0.95));
+            border: 1px solid rgba(var(--color-gold-rgb, 212, 175, 55), 0.3);
+            border-radius: var(--radius);
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .bc-item {
+            color: var(--color-text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
             transition: all 0.2s;
+        }
+
+        .bc-item:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--color-gold);
+        }
+
+        .bc-item.active {
+            color: var(--color-gold);
+            font-weight: 700;
+        }
+
+        .bc-sep {
+            color: var(--color-text-muted);
+            font-size: 1.2rem;
+        }
+
+        .bc-back {
+            margin-left: auto;
+            background: linear-gradient(135deg, var(--color-gold), #e6a800);
+            color: #000;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .bc-back:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+        }
+
+        /* Folder grid */
+        .folder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .folder-card-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 1rem;
+            background: linear-gradient(145deg, rgba(30, 35, 60, 0.8), rgba(20, 25, 45, 0.9));
+            border: 1px solid rgba(var(--color-gold-rgb, 212, 175, 55), 0.15);
+            border-radius: var(--radius);
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .folder-card-item:hover {
+            border-color: var(--color-gold);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.15);
+            background: linear-gradient(145deg, rgba(40, 45, 70, 0.9), rgba(25, 30, 55, 0.95));
+        }
+
+        .folder-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            transition: transform 0.3s;
+        }
+
+        .folder-card-item:hover .folder-icon {
+            transform: scale(1.15);
+        }
+
+        .folder-name {
+            color: var(--color-gold);
+            font-weight: 700;
+            font-size: 0.95rem;
+            text-align: center;
+            margin-bottom: 0.3rem;
+        }
+
+        .folder-hint {
+            color: var(--color-text-muted);
+            font-size: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .folder-card-item:hover .folder-hint {
+            opacity: 1;
         }
 
         /* Lightbox */
@@ -431,38 +536,40 @@
                 </button>
             </form>
 
-            <!-- Navegación de carpetas -->
-            <?php if (!$isRoot): ?>
-                <div style="margin-top:2rem; margin-bottom:1rem;">
-                    <a href="/admin/media" class="btn btn-sm btn-secondary">⬅️ Volver a raíz</a>
-                </div>
-            <?php endif; ?>
+            <!-- Navegación de carpetas - Breadcrumb -->
+            <div class="folder-breadcrumb">
+                <a href="/admin/media" class="bc-item <?= $isRoot ? 'active' : '' ?>">
+                    🏠 Raíz
+                </a>
+                <?php if (!$isRoot): ?>
+                    <span class="bc-sep">›</span>
+                    <span class="bc-item active">📁 <?= e($folderLabel ?: 'Subcarpeta') ?></span>
+                <?php endif; ?>
+                <?php if (!$isRoot): ?>
+                    <a href="/admin/media" class="bc-back">⬅️ Volver</a>
+                <?php endif; ?>
+            </div>
 
             <!-- Subcarpetas -->
             <?php if (!empty($subfolders)): ?>
-                <div class="section-title" style="margin-top:2rem;">
+                <div class="section-title" style="margin-top:1.5rem;">
                     <h2>📁 Carpetas (<?= count($subfolders) ?>)</h2>
                 </div>
-                <div class="file-grid">
+                <div class="folder-grid">
                     <?php foreach ($subfolders as $folder): ?>
-                        <a href="/admin/media?folder=<?= urlencode($folder['id']) ?>" class="file-card folder-card"
-                            style="text-decoration:none; cursor:pointer;">
-                            <div class="video-thumb" style="font-size:3rem;">📁</div>
-                            <div class="info">
-                                <div class="name" style="color:var(--color-gold); font-weight:600;">
-                                    <?= e($folder['name']) ?>
-                                </div>
-                            </div>
+                        <a href="/admin/media?folder=<?= urlencode($folder['id']) ?>&name=<?= urlencode($folder['name']) ?>"
+                            class="folder-card-item">
+                            <div class="folder-icon">📁</div>
+                            <div class="folder-name"><?= e($folder['name']) ?></div>
+                            <div class="folder-hint">Click para explorar →</div>
                         </a>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
 
             <!-- Archivos en Drive -->
-            <div class="section-title" style="margin-top:3rem;">
-                <h2>📂 Archivos en Drive (
-                    <?= count($driveFiles) ?>)
-                </h2>
+            <div class="section-title" style="margin-top:2rem;">
+                <h2>📂 Archivos (<?= count($driveFiles) ?>)</h2>
             </div>
 
             <?php if (empty($driveFiles) && empty($subfolders)): ?>

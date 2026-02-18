@@ -13,6 +13,7 @@ $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
 $currentFolderId = $_GET['folder'] ?? $rootFolderId;
 $currentFolderName = 'Raíz';
 $isRoot = ($currentFolderId === $rootFolderId);
+$folderLabel = $_GET['name'] ?? '';
 
 // Verificar si hay conexión a Google
 $token = $drive->getValidToken($db);
