@@ -60,31 +60,11 @@ if ($isConnected && !empty($driveFiles)) {
     }
 }
 
-// Auto-asignar imagen principal: busca en TODAS las carpetas usando findBySku
-$autoAssigned = 0;
-if ($isConnected && $isRoot) {
-    $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
-    foreach ($productsBySku as $sku => $prod) {
-        if (!empty($prod['cover_image_url']))
-            continue;
-
-        // findBySku busca en carpeta raíz Y subcarpetas
-        $skuFiles = $drive->findBySku($rootFolderId, $sku);
-        foreach ($skuFiles as $file) {
-            $isImage = str_starts_with($file['mimeType'] ?? '', 'image/');
-            if ($isImage) {
-                $coverUrl = "https://lh3.googleusercontent.com/d/{$file['id']}";
-                $updateStmt->execute([$coverUrl, $prod['id']]);
-                $productsBySku[$sku]['cover_image_url'] = $coverUrl;
-                $autoAssigned++;
-                break;
-            }
-        }
-    }
-    if ($autoAssigned > 0) {
-        $_SESSION['flash_success'] = ($_SESSION['flash_success'] ?? '') .
-            " ⭐ {$autoAssigned} producto(s) recibieron imagen principal automáticamente.";
-    }
+// Contar productos sin portada (para mostrar en botón de sync)
+$withoutCover = 0;
+foreach ($productsBySku as $prod) {
+    if (empty($prod['cover_image_url']))
+        $withoutCover++;
 }
 
 include __DIR__ . '/../../templates/admin/media.php';

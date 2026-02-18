@@ -280,6 +280,19 @@
 
         <?php if ($isConnected): ?>
 
+            <!-- Botón sincronizar portadas -->
+            <?php if ($withoutCover > 0): ?>
+                <div style="margin: 1.5rem 0; text-align:center;">
+                    <button class="btn btn-primary" id="syncCoversBtn" onclick="syncCovers()"
+                        style="font-size:1rem; padding:0.8rem 2rem;">
+                        ⭐ Auto-asignar portadas (<?= $withoutCover ?> sin imagen)
+                    </button>
+                    <p style="font-size:0.8rem; color:var(--color-text-muted); margin-top:0.5rem;">
+                        Busca en Drive (incluyendo subcarpetas) la primera imagen para cada producto sin portada.
+                    </p>
+                </div>
+            <?php endif; ?>
+
             <!-- Subir archivos -->
             <div class="section-title">
                 <h2>📤 Subir archivos</h2>
@@ -497,6 +510,34 @@
                     alert('✅ Imagen principal actualizada.');
                 } else {
                     alert(data.error || 'Error al cambiar imagen.');
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function syncCovers() {
+            const btn = document.getElementById('syncCoversBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Buscando imágenes en Drive...';
+            btn.disabled = true;
+
+            try {
+                const resp = await fetch('/admin/media/sync-covers', { method: 'POST' });
+                const data = await resp.json();
+                if (data.ok) {
+                    alert(data.message);
+                    if (data.assigned > 0) location.reload();
+                    else {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                } else {
+                    alert(data.error || 'Error al sincronizar.');
                     btn.textContent = originalText;
                     btn.disabled = false;
                 }

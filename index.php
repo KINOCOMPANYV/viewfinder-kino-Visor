@@ -177,6 +177,12 @@ if ($uri === '/admin/media/delete' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/media/sync-covers' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_sync_covers.php';
+    exit;
+}
+
 if ($uri === '/admin/sync-sheets' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_sync_sheets.php';
