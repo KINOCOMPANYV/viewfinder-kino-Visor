@@ -293,6 +293,7 @@
     <script>
         const CSRF = '<?= csrfToken() ?>';
         let activeEdit = null;
+        let ignoreBlur = false;
 
         function showToast(msg, type = 'success') {
             const container = document.getElementById('toast-container');
@@ -304,6 +305,8 @@
         }
 
         function startEdit(el) {
+            // Don't re-trigger if already editing this cell
+            if (activeEdit === el) return;
             if (activeEdit) cancelEdit();
 
             const field = el.dataset.field;
@@ -314,10 +317,14 @@
             el.dataset.original = el.innerHTML;
             activeEdit = el;
 
+            // Remove onclick while editing
+            el.removeAttribute('onclick');
+
             let input;
             if (type === 'select') {
                 input = document.createElement('select');
                 input.className = 'edit-select';
+                input.style.minWidth = '100px';
                 options.split(',').forEach(opt => {
                     const o = document.createElement('option');
                     o.value = opt.trim();
@@ -325,48 +332,67 @@
                     if (opt.trim().toLowerCase() === value.toLowerCase()) o.selected = true;
                     input.appendChild(o);
                 });
-                input.addEventListener('change', () => saveEdit(el, input.value));
+                input.addEventListener('change', () => {
+                    saveEdit(el, input.value);
+                });
+                input.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        if (activeEdit === el) cancelEdit();
+                    }, 200);
+                });
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') cancelEdit();
+                });
             } else {
                 input = document.createElement('input');
                 input.className = 'edit-input';
                 input.type = type === 'number' ? 'number' : 'text';
                 input.value = value;
-                if (type === 'number') input.step = '0.01';
+                input.style.minWidth = '120px';
+                if (type === 'number') {
+                    input.step = '0.01';
+                    input.style.minWidth = '80px';
+                }
                 input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') saveEdit(el, input.value);
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveEdit(el, input.value);
+                    }
                     if (e.key === 'Escape') cancelEdit();
                 });
+                input.addEventListener('blur', () => {
+                    // Small delay to check if we're still editing
+                    setTimeout(() => {
+                        if (activeEdit === el) {
+                            saveEdit(el, input.value);
+                        }
+                    }, 150);
+                });
             }
+
+            // Stop click from propagating (prevents outsideClick)
+            input.addEventListener('click', (e) => e.stopPropagation());
+            input.addEventListener('mousedown', (e) => e.stopPropagation());
 
             el.innerHTML = '';
             el.appendChild(input);
             input.focus();
-            if (input.select) input.select();
-
-            // Close on outside click
-            setTimeout(() => {
-                document.addEventListener('click', outsideClick);
-            }, 100);
-        }
-
-        function outsideClick(e) {
-            if (activeEdit && !activeEdit.contains(e.target)) {
-                const input = activeEdit.querySelector('input, select');
-                if (input) saveEdit(activeEdit, input.value);
+            // For text inputs, put cursor at end
+            if (input.type === 'text') {
+                input.setSelectionRange(input.value.length, input.value.length);
             }
         }
 
         function cancelEdit() {
             if (activeEdit) {
-                activeEdit.innerHTML = activeEdit.dataset.original;
+                const el = activeEdit;
+                el.innerHTML = el.dataset.original;
+                el.setAttribute('onclick', 'startEdit(this)');
                 activeEdit = null;
-                document.removeEventListener('click', outsideClick);
             }
         }
 
         async function saveEdit(el, newValue) {
-            document.removeEventListener('click', outsideClick);
-
             const field = el.dataset.field;
             const oldValue = el.dataset.value;
             const row = el.closest('tr');
@@ -377,6 +403,7 @@
                 return;
             }
 
+            activeEdit = null; // Prevent blur from re-triggering
             el.classList.add('saving');
             el.innerHTML = '⏳';
 
@@ -427,7 +454,7 @@
             }
 
             el.classList.remove('saving');
-            activeEdit = null;
+            el.setAttribute('onclick', 'startEdit(this)');
         }
     </script>
 </body>
