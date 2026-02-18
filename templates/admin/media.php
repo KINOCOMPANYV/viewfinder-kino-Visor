@@ -202,6 +202,119 @@
             transform: translateY(-2px);
             transition: all 0.2s;
         }
+
+        /* Lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            cursor: zoom-out;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .lightbox .lb-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox .lb-name {
+            position: absolute;
+            bottom: 20px;
+            color: #fff;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+        }
+
+        .thumbnail {
+            cursor: zoom-in;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            padding: 0.8rem 1.5rem;
+            border-radius: var(--radius);
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.85rem;
+            animation: toast-in 0.3s ease, toast-out 0.3s ease 3.7s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            max-width: 350px;
+        }
+
+        .toast.success {
+            background: #27ae60;
+        }
+
+        .toast.error {
+            background: #e74c3c;
+        }
+
+        .toast.info {
+            background: #2980b9;
+        }
+
+        @keyframes toast-in {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes toast-out {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 
@@ -390,7 +503,8 @@
                         ?>
                         <div class="file-card">
                             <?php if ($isImage && $thumbUrl): ?>
-                                <img src="<?= e($thumbUrl) ?>" alt="<?= e($file['name']) ?>" class="thumbnail" loading="lazy">
+                                <img src="<?= e($thumbUrl) ?>" alt="<?= e($file['name']) ?>" class="thumbnail" loading="lazy"
+                                    onclick="openLightbox('https://lh3.googleusercontent.com/d/<?= e($file['id']) ?>=s1200', '<?= e(addslashes($file['name'])) ?>')">
                             <?php elseif ($isVideo): ?>
                                 <div class="video-thumb">🎬</div>
                             <?php else: ?>
@@ -507,14 +621,14 @@
                     btn.classList.add('current');
                     btn.disabled = true;
                     btn.textContent = '⭐ Principal';
-                    alert('✅ Imagen principal actualizada.');
+                    showToast('✅ Imagen principal actualizada.');
                 } else {
-                    alert(data.error || 'Error al cambiar imagen.');
+                    showToast(data.error || 'Error al cambiar imagen.', 'error');
                     btn.textContent = originalText;
                     btn.disabled = false;
                 }
             } catch (e) {
-                alert('Error de conexión.');
+                showToast('Error de conexión.', 'error');
                 btn.textContent = originalText;
                 btn.disabled = false;
             }
@@ -530,24 +644,59 @@
                 const resp = await fetch('/admin/media/sync-covers', { method: 'POST' });
                 const data = await resp.json();
                 if (data.ok) {
-                    alert(data.message);
+                    showToast(data.message);
                     if (data.assigned > 0) location.reload();
                     else {
                         btn.textContent = originalText;
                         btn.disabled = false;
                     }
                 } else {
-                    alert(data.error || 'Error al sincronizar.');
+                    showToast(data.error || 'Error al sincronizar.', 'error');
                     btn.textContent = originalText;
                     btn.disabled = false;
                 }
             } catch (e) {
-                alert('Error de conexión.');
+                showToast('Error de conexión.', 'error');
                 btn.textContent = originalText;
                 btn.disabled = false;
             }
         }
+        function openLightbox(url, name) {
+            const lb = document.getElementById('lightbox');
+            document.getElementById('lb-img').src = url;
+            document.getElementById('lb-name').textContent = name;
+            lb.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            const lb = document.getElementById('lightbox');
+            lb.classList.remove('active');
+            document.getElementById('lb-img').src = '';
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            container.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        }
     </script>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <button class="lb-close" onclick="closeLightbox()">✕</button>
+        <img id="lb-img" src="" alt="Preview">
+        <div class="lb-name" id="lb-name"></div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toast-container"></div>
 </body>
 
 </html>
