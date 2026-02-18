@@ -60,16 +60,28 @@ foreach ($allProducts as $prod) {
 
 // Obtener productos enlazados (que tienen archivos en Drive con su SKU)
 $linkedCount = 0;
-if ($isConnected && !empty($driveFiles)) {
-    foreach ($productsBySku as $sku => $prod) {
-        foreach ($driveFiles as $file) {
-            if (skuMatchesFilename($sku, $file['name'])) {
+if ($isConnected && !empty($rootFolderId)) {
+    if ($isRoot) {
+        // En raíz: buscar recursivamente en todas las subcarpetas para cada producto
+        foreach ($productsBySku as $sku => $prod) {
+            $skuFiles = $drive->findBySku($rootFolderId, $sku);
+            if (!empty($skuFiles)) {
                 $linkedCount++;
-                break;
+            }
+        }
+    } else {
+        // En subcarpeta: solo verificar archivos de la carpeta actual (más rápido)
+        foreach ($productsBySku as $sku => $prod) {
+            foreach ($driveFiles as $file) {
+                if (skuMatchesFilename($sku, $file['name'])) {
+                    $linkedCount++;
+                    break;
+                }
             }
         }
     }
 }
+
 
 // Contar productos sin portada (para mostrar en botón de sync)
 $withoutCover = 0;

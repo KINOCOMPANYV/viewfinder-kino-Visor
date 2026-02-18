@@ -165,12 +165,18 @@ class GoogleDriveService
         // Post-filtrar con regla de prefijo
         $files = $this->filterBySku($files, $sku);
 
-        if (!empty($files)) {
-            return $files;
+        // 2) Buscar SIEMPRE en subcarpetas (hasta 3 niveles: Marca > Referencia > ...)
+        $recursiveFiles = $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 3);
+
+        // 3) Combinar resultados sin duplicados (por file ID)
+        $existingIds = array_column($files, 'id');
+        foreach ($recursiveFiles as $rf) {
+            if (!in_array($rf['id'], $existingIds)) {
+                $files[] = $rf;
+            }
         }
 
-        // 2) Buscar recursivamente en subcarpetas (hasta 3 niveles: Marca > Referencia > ...)
-        return $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 3);
+        return $files;
     }
 
     /**
