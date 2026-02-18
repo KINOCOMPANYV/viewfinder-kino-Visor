@@ -90,7 +90,7 @@ for ($i = 1; $i < count($lines); $i++) {
 
 // ============================================================
 // Auto-asignar portadas a TODOS los productos (después de sincronizar)
-// Enlaza la imagen principal de Drive con el SKU de cada producto
+// OPTIMIZADO: Una sola búsqueda masiva en Drive, luego match local
 // ============================================================
 $coversAssigned = 0;
 try {
@@ -100,21 +100,49 @@ try {
     $token = $drive->getValidToken($db);
 
     if ($token && $rootFolderId) {
-        // Buscar para TODOS los productos — asigna la mejor imagen automáticamente
-        $allProducts = $db->query("SELECT id, sku, cover_image_url FROM products")->fetchAll(PDO::FETCH_ASSOC);
+        // 1) UNA SOLA BÚSQUEDA: traer TODAS las imágenes de Drive de una vez
+        $allImagesQuery = "mimeType contains 'image/' and trashed = false";
+        $allImages = [];
+        $nextPage = '';
+        do {
+            $params = [
+                'q' => $allImagesQuery,
+                'fields' => 'nextPageToken,files(id,name,mimeType)',
+                'pageSize' => 1000,
+            ];
+            if ($nextPage)
+                $params['pageToken'] = $nextPage;
 
-        // Priorización de portadas
+            $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
+            ]);
+            $resp = curl_exec($ch);
+            curl_close($ch);
+            $data = json_decode($resp, true) ?: [];
+            $allImages = array_merge($allImages, $data['files'] ?? []);
+            $nextPage = $data['nextPageToken'] ?? '';
+        } while (!empty($nextPage));
+
+        // 2) Match local: para cada producto, buscar su mejor imagen en el array local
+        $allProducts = $db->query("SELECT id, sku, cover_image_url FROM products")->fetchAll(PDO::FETCH_ASSOC);
         $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
         $numericPriority = ['01', '_1', '-1', 'f1'];
         $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 
         foreach ($allProducts as $prod) {
-            $skuFiles = $drive->findBySku($rootFolderId, $prod['sku']);
-            $images = array_filter($skuFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
-            if (empty($images))
+            // Filtrar imágenes que coincidan con el SKU (usando skuMatchesFilename)
+            $matched = array_filter($allImages, function ($f) use ($prod) {
+                return skuMatchesFilename($prod['sku'], $f['name'] ?? '');
+            });
+            if (empty($matched))
                 continue;
 
-            usort($images, function ($a, $b) use ($coverKeywords, $numericPriority) {
+            // Priorizar por keywords
+            $matched = array_values($matched);
+            usort($matched, function ($a, $b) use ($coverKeywords, $numericPriority) {
                 $nameA = strtolower($a['name'] ?? '');
                 $nameB = strtolower($b['name'] ?? '');
                 $scoreA = 0;
@@ -134,10 +162,9 @@ try {
                 return $scoreB - $scoreA;
             });
 
-            $bestImage = reset($images);
+            $bestImage = $matched[0];
             $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
 
-            // Solo actualizar si cambió o no tenía cover
             if (empty($prod['cover_image_url']) || $prod['cover_image_url'] !== $coverUrl) {
                 $updateStmt->execute([$coverUrl, $prod['id']]);
                 $coversAssigned++;
@@ -147,6 +174,7 @@ try {
 } catch (Exception $e) {
     // No romper la respuesta principal por un error en covers
 }
+
 
 jsonResponse([
     'success' => true,
