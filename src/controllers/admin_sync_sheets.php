@@ -88,12 +88,67 @@ for ($i = 1; $i < count($lines); $i++) {
     processRow($db, $data, $rowNum, $inserted, $updated, $errors);
 }
 
+// ============================================================
+// Auto-asignar portadas a productos sin cover (después de sincronizar)
+// ============================================================
+$coversAssigned = 0;
+try {
+    require_once __DIR__ . '/../services/GoogleDriveService.php';
+    $drive = new GoogleDriveService();
+    $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
+    $token = $drive->getValidToken($db);
+
+    if ($token && $rootFolderId) {
+        $noCover = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = ''")->fetchAll(PDO::FETCH_ASSOC);
+
+        // Priorización de portadas
+        $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
+        $numericPriority = ['01', '_1', '-1', 'f1'];
+        $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
+
+        foreach ($noCover as $prod) {
+            $skuFiles = $drive->findBySku($rootFolderId, $prod['sku']);
+            $images = array_filter($skuFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+            if (empty($images))
+                continue;
+
+            usort($images, function ($a, $b) use ($coverKeywords, $numericPriority) {
+                $nameA = strtolower($a['name'] ?? '');
+                $nameB = strtolower($b['name'] ?? '');
+                $scoreA = 0;
+                $scoreB = 0;
+                foreach ($coverKeywords as $kw) {
+                    if (str_contains($nameA, $kw))
+                        $scoreA += 10;
+                    if (str_contains($nameB, $kw))
+                        $scoreB += 10;
+                }
+                foreach ($numericPriority as $np) {
+                    if (str_contains($nameA, $np))
+                        $scoreA += 5;
+                    if (str_contains($nameB, $np))
+                        $scoreB += 5;
+                }
+                return $scoreB - $scoreA;
+            });
+
+            $bestImage = reset($images);
+            $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
+            $updateStmt->execute([$coverUrl, $prod['id']]);
+            $coversAssigned++;
+        }
+    }
+} catch (Exception $e) {
+    // No romper la respuesta principal por un error en covers
+}
+
 jsonResponse([
     'success' => true,
     'inserted' => $inserted,
     'updated' => $updated,
     'errors' => $errors,
     'total' => $rowNum,
+    'covers_assigned' => $coversAssigned,
 ]);
 
 // ============================================================

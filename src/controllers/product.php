@@ -542,6 +542,9 @@ if (!$product) {
                 return `
                     <div class="gallery-item" data-file-id="${f.id}">
                         ${mediaHtml}
+                        <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">
+                            ${f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name}
+                        </div>
                         <div class="item-actions">
                             <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-secondary">👁️ Ver</a>
                             <a href="${downloadUrl}" target="_blank" class="btn btn-sm btn-primary">⬇️</a>

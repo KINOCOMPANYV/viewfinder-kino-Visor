@@ -210,6 +210,7 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
                                 <span>🆕 <strong>${data.inserted}</strong> nuevos</span>
                                 <span>🔄 <strong>${data.updated}</strong> actualizados</span>
                                 <span>📄 <strong>${data.total}</strong> filas</span>
+                                ${data.covers_assigned > 0 ? '<span>🖼️ <strong>' + data.covers_assigned + '</strong> portadas asignadas</span>' : ''}
                             </div>
                             ${errHtml}
                         </div>`;
