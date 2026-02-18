@@ -2,6 +2,7 @@
 /**
  * Viewfinder Kino Visor — Router principal.
  * Todas las peticiones pasan por aquí gracias a .htaccess
+ * @deploy 2026-02-18
  */
 session_start();
 
