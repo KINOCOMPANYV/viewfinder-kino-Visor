@@ -144,6 +144,119 @@ if (!$product) {
             color: var(--color-text-muted);
             margin-top: 0.25rem;
         }
+
+        /* Lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            cursor: zoom-out;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 92vw;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+            object-fit: contain;
+        }
+
+        .lightbox .lb-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .lightbox .lb-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .lightbox .lb-name {
+            position: absolute;
+            bottom: 20px;
+            color: #fff;
+            font-size: 0.85rem;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+        }
+
+        .main-image img {
+            cursor: zoom-in;
+            transition: transform 0.2s;
+        }
+
+        .main-image img:hover {
+            transform: scale(1.02);
+        }
+
+        .gallery-item img {
+            cursor: zoom-in;
+        }
+
+        /* Back to catalog button */
+        .btn-back-catalog {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--color-gold), #e6a800);
+            color: #000;
+            padding: 0.7rem 1.4rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+
+        .btn-back-catalog:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
+        }
+
+        .floating-back {
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            z-index: 100;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
@@ -168,7 +281,8 @@ if (!$product) {
                 <!-- Image -->
                 <div class="main-image">
                     <?php if ($product['cover_image_url']): ?>
-                        <img src="<?= e($product['cover_image_url']) ?>" alt="<?= e($product['name']) ?>">
+                        <img src="<?= e($product['cover_image_url']) ?>" alt="<?= e($product['name']) ?>"
+                            onclick="openLightbox(this.src, '<?= e(addslashes($product['name'])) ?>')">
                     <?php else: ?>
                         ⌚
                     <?php endif; ?>
@@ -362,7 +476,8 @@ if (!$product) {
 
                 let mediaHtml;
                 if (isImage && thumbUrl) {
-                    mediaHtml = `<img src="${thumbUrl}" alt="${f.name}" loading="lazy">`;
+                    const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
+                    mediaHtml = `<img src="${thumbUrl}" alt="${f.name}" loading="lazy" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
                 } else if (isVideo) {
                     mediaHtml = `<div class="video-placeholder">🎬</div>`;
                 } else {
@@ -449,7 +564,33 @@ if (!$product) {
 
         // Init
         loadMedia();
+        function openLightbox(url, name) {
+            const lb = document.getElementById('lightbox');
+            document.getElementById('lb-img').src = url;
+            document.getElementById('lb-name').textContent = name;
+            lb.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeLightbox() {
+            const lb = document.getElementById('lightbox');
+            lb.classList.remove('active');
+            document.getElementById('lb-img').src = '';
+            document.body.style.overflow = '';
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
     </script>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <button class="lb-close" onclick="closeLightbox()">✕</button>
+        <img id="lb-img" src="" alt="Preview">
+        <div class="lb-name" id="lb-name"></div>
+    </div>
+
+    <!-- Floating back button -->
+    <div class="floating-back">
+        <a href="/" class="btn-back-catalog">⬅️ Volver al catálogo</a>
+    </div>
 </body>
 
 </html>
