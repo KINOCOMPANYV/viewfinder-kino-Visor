@@ -212,6 +212,7 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
                                 <span>📄 <strong>${data.total}</strong> filas</span>
                                 ${data.covers_assigned > 0 ? '<span>🖼️ <strong>' + data.covers_assigned + '</strong> portadas asignadas</span>' : ''}
                             </div>
+                            ${data.cover_errors ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ Cover sync: ' + data.cover_errors + '</div>' : ''}
                             ${errHtml}
                         </div>`;
                 }

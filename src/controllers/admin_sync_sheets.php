@@ -89,10 +89,11 @@ for ($i = 1; $i < count($lines); $i++) {
 }
 
 // ============================================================
-// Auto-asignar portadas a TODOS los productos (después de sincronizar)
-// OPTIMIZADO: Una sola búsqueda masiva en Drive, luego match local
+// Auto-asignar portadas a productos SIN cover (después de sincronizar)
+// Usa findBySku por producto (búsqueda global probada que funciona)
 // ============================================================
 $coversAssigned = 0;
+$coverErrors = '';
 try {
     require_once __DIR__ . '/../services/GoogleDriveService.php';
     $drive = new GoogleDriveService();
@@ -100,49 +101,25 @@ try {
     $token = $drive->getValidToken($db);
 
     if ($token && $rootFolderId) {
-        // 1) UNA SOLA BÚSQUEDA: traer TODAS las imágenes de Drive de una vez
-        $allImagesQuery = "mimeType contains 'image/' and trashed = false";
-        $allImages = [];
-        $nextPage = '';
-        do {
-            $params = [
-                'q' => $allImagesQuery,
-                'fields' => 'nextPageToken,files(id,name,mimeType)',
-                'pageSize' => 1000,
-            ];
-            if ($nextPage)
-                $params['pageToken'] = $nextPage;
+        // Solo productos sin cover (rápido)
+        $noCover = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = ''")->fetchAll(PDO::FETCH_ASSOC);
 
-            $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
-            ]);
-            $resp = curl_exec($ch);
-            curl_close($ch);
-            $data = json_decode($resp, true) ?: [];
-            $allImages = array_merge($allImages, $data['files'] ?? []);
-            $nextPage = $data['nextPageToken'] ?? '';
-        } while (!empty($nextPage));
-
-        // 2) Match local: para cada producto, buscar su mejor imagen en el array local
-        $allProducts = $db->query("SELECT id, sku, cover_image_url FROM products")->fetchAll(PDO::FETCH_ASSOC);
         $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
         $numericPriority = ['01', '_1', '-1', 'f1'];
         $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 
-        foreach ($allProducts as $prod) {
-            // Filtrar imágenes que coincidan con el SKU (usando skuMatchesFilename)
-            $matched = array_filter($allImages, function ($f) use ($prod) {
-                return skuMatchesFilename($prod['sku'], $f['name'] ?? '');
-            });
-            if (empty($matched))
+        foreach ($noCover as $prod) {
+            // Buscar archivos por SKU (búsqueda global — funciona con subcarpetas)
+            $skuFiles = $drive->findBySku($rootFolderId, $prod['sku']);
+
+            // Filtrar solo imágenes
+            $images = array_filter($skuFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+            if (empty($images))
                 continue;
 
             // Priorizar por keywords
-            $matched = array_values($matched);
-            usort($matched, function ($a, $b) use ($coverKeywords, $numericPriority) {
+            $images = array_values($images);
+            usort($images, function ($a, $b) use ($coverKeywords, $numericPriority) {
                 $nameA = strtolower($a['name'] ?? '');
                 $nameB = strtolower($b['name'] ?? '');
                 $scoreA = 0;
@@ -162,19 +139,18 @@ try {
                 return $scoreB - $scoreA;
             });
 
-            $bestImage = $matched[0];
+            $bestImage = $images[0];
+            // Hacer público para que URL lh3 funcione
+            $drive->makePublic($bestImage['id']);
             $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
-
-            if (empty($prod['cover_image_url']) || $prod['cover_image_url'] !== $coverUrl) {
-                // Hacer público el archivo para que la URL lh3 funcione
-                $drive->makePublic($bestImage['id']);
-                $updateStmt->execute([$coverUrl, $prod['id']]);
-                $coversAssigned++;
-            }
+            $updateStmt->execute([$coverUrl, $prod['id']]);
+            $coversAssigned++;
         }
+    } else {
+        $coverErrors = $token ? 'GOOGLE_DRIVE_FOLDER_ID no configurado' : 'Sin token de Google Drive';
     }
 } catch (Exception $e) {
-    // No romper la respuesta principal por un error en covers
+    $coverErrors = $e->getMessage();
 }
 
 
@@ -185,6 +161,7 @@ jsonResponse([
     'errors' => $errors,
     'total' => $rowNum,
     'covers_assigned' => $coversAssigned,
+    'cover_errors' => $coverErrors,
 ]);
 
 // ============================================================
