@@ -5,6 +5,8 @@
  * Actualiza la BD local y opcionalmente Google Sheets.
  */
 
+require_once __DIR__ . '/../services/GoogleDriveService.php';
+
 header('Content-Type: application/json');
 
 // CSRF
