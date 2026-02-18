@@ -222,20 +222,21 @@ if (!$product) {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            background: linear-gradient(135deg, var(--color-gold), #e6a800);
+            background: linear-gradient(135deg, #c9a84c, #e6c040, #c9a84c);
             color: #000;
-            padding: 0.7rem 1.4rem;
-            border-radius: 25px;
+            padding: 0.75rem 1.6rem;
+            border-radius: 30px;
             text-decoration: none;
-            font-weight: 700;
-            font-size: 0.9rem;
+            font-weight: 800;
+            font-size: 0.95rem;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+            box-shadow: 0 4px 20px rgba(201, 168, 76, 0.5), 0 0 0 2px rgba(201, 168, 76, 0.25);
+            letter-spacing: 0.3px;
         }
 
         .btn-back-catalog:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 8px 30px rgba(201, 168, 76, 0.7), 0 0 0 3px rgba(201, 168, 76, 0.35);
         }
 
         .floating-back {
@@ -243,7 +244,7 @@ if (!$product) {
             bottom: 25px;
             left: 25px;
             z-index: 100;
-            animation: fadeInUp 0.5s ease;
+            animation: fadeInUp 0.5s ease 0.3s both;
         }
 
         @keyframes fadeInUp {
@@ -255,6 +256,42 @@ if (!$product) {
             to {
                 transform: translateY(0);
                 opacity: 1;
+            }
+        }
+
+        /* Mobile responsive for product page */
+        @media (max-width: 768px) {
+            .floating-back {
+                bottom: 15px;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            .btn-back-catalog {
+                font-size: 0.8rem;
+                padding: 0.6rem 1.2rem;
+            }
+
+            .lightbox img {
+                max-width: 96vw;
+                max-height: 80vh;
+            }
+
+            .lightbox .lb-close {
+                top: 10px;
+                right: 10px;
+                width: 36px;
+                height: 36px;
+                font-size: 1.4rem;
+            }
+
+            .gallery-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+                gap: 0.75rem !important;
+            }
+
+            .media-gallery h2 {
+                font-size: 1rem;
             }
         }
     </style>
