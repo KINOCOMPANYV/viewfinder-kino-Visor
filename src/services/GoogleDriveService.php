@@ -109,23 +109,34 @@ class GoogleDriveService
     // ========================================
 
     /**
-     * Lista archivos en una carpeta de Drive.
+     * Lista archivos en una carpeta de Drive (todas las páginas).
      */
     public function listFiles(string $folderId, int $pageSize = 100, string $pageToken = ''): array
     {
-        $query = "'{$folderId}' in parents and trashed = false";
-        $params = [
-            'q' => $query,
-            'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,createdTime)',
-            'pageSize' => $pageSize,
-            'orderBy' => 'name',
-        ];
-        if ($pageToken)
-            $params['pageToken'] = $pageToken;
+        $allFiles = [];
+        $token = $pageToken;
 
-        $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
-        $response = $this->httpGet($url);
-        return json_decode($response, true) ?: [];
+        do {
+            $query = "'{$folderId}' in parents and trashed = false";
+            $params = [
+                'q' => $query,
+                'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,createdTime)',
+                'pageSize' => $pageSize,
+                'orderBy' => 'name',
+            ];
+            if ($token)
+                $params['pageToken'] = $token;
+
+            $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
+            $response = $this->httpGet($url);
+            $data = json_decode($response, true) ?: [];
+
+            $files = $data['files'] ?? [];
+            $allFiles = array_merge($allFiles, $files);
+            $token = $data['nextPageToken'] ?? '';
+        } while (!empty($token));
+
+        return ['files' => $allFiles];
     }
 
     /**
