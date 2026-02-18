@@ -102,16 +102,22 @@ function truncate(string $text, int $length = 100): string
  * Verifica si un nombre de archivo coincide con un SKU usando regla de prefijo.
  * 
  * Regla: El nombre del archivo debe comenzar con el SKU y el siguiente carácter
- * (si existe) NO puede ser un dígito. Esto evita que "123-1" coincida con "123-10".
+ * (si existe) NO puede ser un dígito (evita que "123-1" coincida con "123-10").
+ * 
+ * Soporta variantes de SKU separadas por: guion bajo, punto, espacio o letra directa.
  * 
  * Ejemplos para SKU "123-1":
- *   ✅ 123-1.jpg     (SKU + extensión)
- *   ✅ 123-1f1.jpg   (SKU + letra + ...)
- *   ✅ 123-1v2.jpg   (SKU + letra + ...)
- *   ✅ 123-1_foto.jpg(SKU + guion bajo + ...)
- *   ❌ 123-10.jpg    (SKU + dígito = otro producto)
- *   ❌ 123-12.jpg    (SKU + dígito = otro producto)
- *   ❌ 456-1.jpg     (SKU diferente)
+ *   ✅ 123-1.jpg        (SKU + extensión)
+ *   ✅ 123-1f1.jpg      (SKU + letra + ...)
+ *   ✅ 123-1v2.jpg      (SKU + letra + ...)
+ *   ✅ 123-1_foto.jpg   (SKU + guion bajo + ...)
+ *   ✅ 123-1_V1.jpg     (Variante V1)
+ *   ✅ 123-1_ROJO.jpg   (Variante ROJO)
+ *   ✅ 123-1.A.jpg      (Variante .A)
+ *   ✅ 123-1 foto.jpg   (SKU + espacio + ...)
+ *   ❌ 123-10.jpg       (SKU + dígito = otro producto)
+ *   ❌ 123-12.jpg       (SKU + dígito = otro producto)
+ *   ❌ 456-1.jpg        (SKU diferente)
  */
 function skuMatchesFilename(string $sku, string $filename): bool
 {
@@ -128,7 +134,16 @@ function skuMatchesFilename(string $sku, string $filename): bool
         return true;
     }
 
-    // El carácter siguiente al SKU NO puede ser un dígito
+    // El carácter siguiente al SKU determina si es match
     $nextChar = $nameOnly[strlen($sku)];
-    return !ctype_digit($nextChar);
+
+    // Si es dígito, NO es match (evita 123-1 → 123-10)
+    if (ctype_digit($nextChar)) {
+        return false;
+    }
+
+    // Cualquier otro carácter es válido: letra (f, v), guion bajo (_), 
+    // punto (.), espacio ( ), guion (-) → soporta variantes y sufijos
+    return true;
 }
+

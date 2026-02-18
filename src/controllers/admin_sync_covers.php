@@ -31,16 +31,50 @@ $assigned = 0;
 
 foreach ($products as $prod) {
     $skuFiles = $drive->findBySku($rootFolderId, $prod['sku']);
-    foreach ($skuFiles as $file) {
-        $isImage = str_starts_with($file['mimeType'] ?? '', 'image/');
-        if ($isImage) {
-            $coverUrl = "https://lh3.googleusercontent.com/d/{$file['id']}";
-            $updateStmt->execute([$coverUrl, $prod['id']]);
-            $assigned++;
-            break;
+
+    // Filtrar solo imágenes
+    $images = array_filter($skuFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+
+    if (empty($images))
+        continue;
+
+    // Priorizar por keywords en el nombre del archivo
+    // "principal", "cover", "portada", "01", "_1" tienen mayor prioridad
+    $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
+    $numericPriority = ['01', '_1', '-1', 'f1'];
+
+    usort($images, function ($a, $b) use ($coverKeywords, $numericPriority) {
+        $nameA = strtolower($a['name'] ?? '');
+        $nameB = strtolower($b['name'] ?? '');
+
+        $scoreA = 0;
+        $scoreB = 0;
+
+        // Keywords de portada = máxima prioridad
+        foreach ($coverKeywords as $kw) {
+            if (str_contains($nameA, $kw))
+                $scoreA += 10;
+            if (str_contains($nameB, $kw))
+                $scoreB += 10;
         }
-    }
+
+        // Indicadores numéricos = prioridad media
+        foreach ($numericPriority as $np) {
+            if (str_contains($nameA, $np))
+                $scoreA += 5;
+            if (str_contains($nameB, $np))
+                $scoreB += 5;
+        }
+
+        return $scoreB - $scoreA; // Mayor score primero
+    });
+
+    $bestImage = reset($images);
+    $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
+    $updateStmt->execute([$coverUrl, $prod['id']]);
+    $assigned++;
 }
+
 
 echo json_encode([
     'ok' => true,

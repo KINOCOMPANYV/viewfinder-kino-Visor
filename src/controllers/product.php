@@ -509,7 +509,13 @@ if (!$product) {
                     const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
                     mediaHtml = `<img src="${thumbUrl}" alt="${f.name}" loading="lazy" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
                 } else if (isVideo) {
-                    mediaHtml = `<div class="video-placeholder">🎬</div>`;
+                    // Streaming: usar reproductor embebido de Google Drive
+                    mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
+                        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
+                            <span style="font-size:2.5rem;">▶️</span>
+                            <span style="font-size:0.7rem;margin-top:0.3rem;opacity:0.7;">Click para reproducir</span>
+                        </div>
+                    </div>`;
                 } else {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
@@ -537,6 +543,7 @@ if (!$product) {
                     </div>
                 `;
             }).join('');
+
         }
 
         function downloadMedia(type) {
