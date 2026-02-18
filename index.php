@@ -197,18 +197,41 @@ if ($uri === '/admin/sync-sheets' && $method === 'POST') {
 
 if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     // API para obtener media de un producto por SKU
+    // Soporta búsqueda bidireccional (padre↔hijo)
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
-    $sku = $matches[1];
+    $sku = urldecode($matches[1]);
+    $rootSku = extractRootSku($sku);
     $folderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
     $drive = new GoogleDriveService();
     $token = $drive->getValidToken(getDB());
+
     if ($token && $folderId) {
-        $files = $drive->findBySku($folderId, $sku);
-        jsonResponse(['files' => $files]);
+        // 1) Buscar por el SKU raíz (trae padre + todos los hijos)
+        $files = $drive->findBySku($folderId, $rootSku);
+
+        // 2) Si el input es diferente al root (es un hijo), también buscar específicamente por el input
+        //    para asegurar que aparezca aunque el nombre no empiece por el root
+        if ($sku !== $rootSku) {
+            $childFiles = $drive->findBySku($folderId, $sku);
+            $existingIds = array_column($files, 'id');
+            foreach ($childFiles as $cf) {
+                if (!in_array($cf['id'], $existingIds)) {
+                    $files[] = $cf;
+                }
+            }
+        }
+
+        jsonResponse([
+            'files' => $files,
+            'sku' => $sku,
+            'root_sku' => $rootSku,
+            'is_variant' => ($sku !== $rootSku),
+        ]);
     } else {
         jsonResponse(['files' => [], 'error' => 'Drive not connected'], 503);
     }
 }
+
 
 // ============================================================
 // HEALTH CHECK

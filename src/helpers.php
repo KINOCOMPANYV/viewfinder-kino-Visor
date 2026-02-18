@@ -147,3 +147,34 @@ function skuMatchesFilename(string $sku, string $filename): bool
     return true;
 }
 
+/**
+ * Extrae el SKU raíz (padre) de un código de variante.
+ * 
+ * Lógica: Busca el patrón base (dígitos-dígitos) y elimina sufijos de variante.
+ * El SKU raíz es todo hasta que aparece una letra después del último grupo de dígitos.
+ * 
+ * Ejemplos:
+ *   "839-5"     → "839-5"    (ya es raíz)
+ *   "839-5V1"   → "839-5"    (quita V1)
+ *   "839-5F2"   → "839-5"    (quita F2)
+ *   "839-5_V1"  → "839-5"    (quita _V1)
+ *   "839-5.A"   → "839-5"    (quita .A)
+ *   "1234-12"   → "1234-12"  (ya es raíz)
+ *   "1234-12v3" → "1234-12"  (quita v3)
+ *   "ABC-1F1"   → "ABC-1"    (quita F1 — también funciona con letras antes del guion)
+ */
+function extractRootSku(string $code): string
+{
+    $code = trim($code);
+
+    // Patrón: capturar todo hasta el último dígito de la secuencia "X-NNN"
+    // donde X puede ser alfanumérico y NNN son dígitos
+    if (preg_match('/^(.+?-\d+)/i', $code, $matches)) {
+        return $matches[1];
+    }
+
+    // Si no tiene guion, intentar separar por primer carácter no-alfanumérico
+    // o devolver tal cual si no tiene patrón reconocible
+    return $code;
+}
+

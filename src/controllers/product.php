@@ -1,6 +1,8 @@
 <?php
 /**
  * Ficha de producto — detalle completo por SKU.
+ * Soporta búsqueda bidireccional: si el SKU es una variante (839-5V1),
+ * busca primero el producto exacto y si no existe, busca el padre (839-5).
  */
 $sku = $_GET['sku'] ?? '';
 $db = getDB();
@@ -8,6 +10,19 @@ $db = getDB();
 $stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
 $stmt->execute([$sku]);
 $product = $stmt->fetch();
+
+// Si no encontró producto exacto, intentar con el SKU raíz (padre)
+$originalSku = $sku;
+$isVariant = false;
+if (!$product) {
+    $rootSku = extractRootSku($sku);
+    if ($rootSku !== $sku) {
+        $stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
+        $stmt->execute([$rootSku]);
+        $product = $stmt->fetch();
+        $isVariant = true;
+    }
+}
 
 if (!$product) {
     http_response_code(404);
@@ -399,9 +414,11 @@ if (!$product) {
 
     <script>
         const SKU = '<?= e($product['sku']) ?>';
+        const SEARCH_SKU = '<?= e($originalSku) ?>'; // SKU original para búsqueda bidireccional
         const PRODUCT_NAME = '<?= e(addslashes($product['name'])) ?>';
         const PRODUCT_ID = <?= intval($product['id']) ?>;
         const IS_ADMIN = <?= isAdminLoggedIn() ? 'true' : 'false' ?>;
+        const IS_VARIANT = <?= $isVariant ? 'true' : 'false' ?>;
         let currentCover = '<?= e($product['cover_image_url']) ?>';
         let mediaFiles = { images: [], videos: [] };
 
@@ -434,10 +451,10 @@ if (!$product) {
             });
         }
 
-        // Load media from Drive API
+        // Load media from Drive API (búsqueda bidireccional)
         async function loadMedia() {
             try {
-                const resp = await fetch('/api/media/' + encodeURIComponent(SKU));
+                const resp = await fetch('/api/media/' + encodeURIComponent(SEARCH_SKU));
                 const data = await resp.json();
                 const files = data.files || [];
 
