@@ -135,6 +135,12 @@ if ($uri === '/admin/product/delete' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/product/set-cover' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_set_cover.php';
+    exit;
+}
+
 // ============================================================
 // RUTAS GOOGLE DRIVE / MEDIA
 // ============================================================

@@ -25,11 +25,17 @@ if ($isConnected && !empty($folderId)) {
 // Contar productos para info
 $totalProducts = $db->query("SELECT COUNT(*) FROM products")->fetchColumn();
 
+// Cargar todos los productos (id, sku, cover) para enlazar en la vista
+$allProducts = $db->query("SELECT id, sku, cover_image_url FROM products")->fetchAll(PDO::FETCH_ASSOC);
+$productsBySku = [];
+foreach ($allProducts as $prod) {
+    $productsBySku[$prod['sku']] = $prod;
+}
+
 // Obtener productos enlazados (que tienen archivos en Drive con su SKU)
 $linkedCount = 0;
 if ($isConnected && !empty($driveFiles)) {
-    $skus = $db->query("SELECT sku FROM products")->fetchAll(PDO::FETCH_COLUMN);
-    foreach ($skus as $sku) {
+    foreach ($productsBySku as $sku => $prod) {
         foreach ($driveFiles as $file) {
             if (stripos($file['name'], $sku) !== false) {
                 $linkedCount++;
@@ -40,3 +46,4 @@ if ($isConnected && !empty($driveFiles)) {
 }
 
 include __DIR__ . '/../../templates/admin/media.php';
+

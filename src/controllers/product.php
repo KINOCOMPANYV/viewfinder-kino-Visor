@@ -77,11 +77,35 @@ if (!$product) {
             display: flex;
             gap: 0.5rem;
             justify-content: center;
+            flex-wrap: wrap;
         }
 
-        .gallery-item .item-actions a {
+        .gallery-item .item-actions a,
+        .gallery-item .item-actions button {
             font-size: 0.75rem;
             padding: 0.3rem 0.6rem;
+        }
+
+        .btn-set-cover {
+            background: rgba(201, 168, 76, 0.15);
+            color: var(--color-gold);
+            border: 1px solid var(--color-gold);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-set-cover:hover {
+            background: var(--color-gold);
+            color: #000;
+        }
+
+        .btn-set-cover.current {
+            background: var(--color-gold);
+            color: #000;
+            cursor: default;
+            opacity: 0.7;
         }
 
         .download-section {
@@ -232,6 +256,9 @@ if (!$product) {
     <script>
         const SKU = '<?= e($product['sku']) ?>';
         const PRODUCT_NAME = '<?= e(addslashes($product['name'])) ?>';
+        const PRODUCT_ID = <?= intval($product['id']) ?>;
+        const IS_ADMIN = <?= isAdminLoggedIn() ? 'true' : 'false' ?>;
+        let currentCover = '<?= e($product['cover_image_url']) ?>';
         let mediaFiles = { images: [], videos: [] };
 
         function shareWhatsApp() {
@@ -342,12 +369,25 @@ if (!$product) {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
 
+                // Build set-cover button for images (admin only)
+                let coverBtn = '';
+                if (IS_ADMIN && isImage) {
+                    const driveUrl = `https://lh3.googleusercontent.com/d/${f.id}`;
+                    const isCurrent = driveUrl === currentCover;
+                    if (isCurrent) {
+                        coverBtn = `<button class="btn-set-cover current" disabled>⭐ Principal</button>`;
+                    } else {
+                        coverBtn = `<button class="btn-set-cover" onclick="setCover('${f.id}', this)">⭐ Hacer principal</button>`;
+                    }
+                }
+
                 return `
-                    <div class="gallery-item">
+                    <div class="gallery-item" data-file-id="${f.id}">
                         ${mediaHtml}
                         <div class="item-actions">
                             <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-secondary">👁️ Ver</a>
                             <a href="${downloadUrl}" target="_blank" class="btn btn-sm btn-primary">⬇️</a>
+                            ${coverBtn}
                         </div>
                     </div>
                 `;
@@ -365,6 +405,46 @@ if (!$product) {
                     window.open(url, '_blank');
                 }, i * 300); // Stagger to avoid popup blocker
             });
+        }
+
+        async function setCover(fileId, btn) {
+            if (btn.classList.contains('current')) return;
+            btn.textContent = '⏳...';
+            btn.disabled = true;
+
+            const imageUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+            const form = new FormData();
+            form.append('product_id', PRODUCT_ID);
+            form.append('image_url', imageUrl);
+
+            try {
+                const resp = await fetch('/admin/product/set-cover', { method: 'POST', body: form });
+                const data = await resp.json();
+                if (data.ok) {
+                    currentCover = imageUrl;
+                    // Update main image
+                    const mainImg = document.querySelector('.main-image');
+                    mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}">`;
+
+                    // Reset all cover buttons
+                    document.querySelectorAll('.btn-set-cover').forEach(b => {
+                        b.classList.remove('current');
+                        b.disabled = false;
+                        b.textContent = '⭐ Hacer principal';
+                    });
+                    btn.classList.add('current');
+                    btn.disabled = true;
+                    btn.textContent = '⭐ Principal';
+                } else {
+                    alert(data.error || 'Error al cambiar imagen.');
+                    btn.textContent = '⭐ Hacer principal';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.textContent = '⭐ Hacer principal';
+                btn.disabled = false;
+            }
         }
 
         // Init

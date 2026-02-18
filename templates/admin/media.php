@@ -172,6 +172,30 @@
         .btn-google:hover {
             background: #3367d6;
         }
+
+        .btn-set-cover {
+            background: rgba(201, 168, 76, 0.15);
+            color: var(--color-gold);
+            border: 1px solid var(--color-gold);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.7rem;
+            padding: 0.3rem 0.6rem;
+            transition: all 0.2s;
+        }
+
+        .btn-set-cover:hover {
+            background: var(--color-gold);
+            color: #000;
+        }
+
+        .btn-set-cover.current {
+            background: var(--color-gold);
+            color: #000;
+            cursor: default;
+            opacity: 0.7;
+        }
     </style>
 </head>
 
@@ -298,15 +322,21 @@
                         $sizeMB = round($sizeKB / 1024, 1);
                         $sizeLabel = $sizeKB > 1024 ? "{$sizeMB} MB" : "{$sizeKB} KB";
 
-                        // Buscar SKU match
+                        // Buscar SKU match usando el diccionario precargado
                         $skuMatch = '';
-                        $skus = $db->query("SELECT sku FROM products")->fetchAll(PDO::FETCH_COLUMN);
-                        foreach ($skus as $sku) {
+                        $matchedProductId = 0;
+                        $matchedCover = '';
+                        foreach ($productsBySku as $sku => $prod) {
                             if (stripos($file['name'], $sku) !== false) {
                                 $skuMatch = $sku;
+                                $matchedProductId = $prod['id'];
+                                $matchedCover = $prod['cover_image_url'];
                                 break;
                             }
                         }
+
+                        $driveImageUrl = "https://lh3.googleusercontent.com/d/{$file['id']}";
+                        $isCover = ($isImage && $skuMatch && $matchedCover === $driveImageUrl);
                         ?>
                         <div class="file-card">
                             <?php if ($isImage && $thumbUrl): ?>
@@ -334,6 +364,16 @@
                             <div class="actions">
                                 <a href="<?= e($file['webViewLink'] ?? '#') ?>" target="_blank"
                                     class="btn btn-sm btn-secondary">Ver</a>
+                                <?php if ($isImage && $skuMatch): ?>
+                                    <?php if ($isCover): ?>
+                                        <button class="btn btn-sm btn-set-cover current" disabled>⭐ Principal</button>
+                                    <?php else: ?>
+                                        <button class="btn btn-sm btn-set-cover"
+                                            onclick="setCover(<?= $matchedProductId ?>, '<?= e($file['id']) ?>', this)">
+                                            ⭐ Principal
+                                        </button>
+                                    <?php endif; ?>
+                                <?php endif; ?>
                                 <form action="/admin/media/delete" method="POST" style="margin:0;"
                                     onsubmit="return confirm('¿Eliminar este archivo?')">
                                     <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
@@ -390,6 +430,43 @@
                 const sizeMB = (f.size / 1024 / 1024).toFixed(1);
                 li.textContent = `${f.name} (${sizeMB} MB)`;
                 selectedFiles.appendChild(li);
+            }
+        }
+
+        async function setCover(productId, fileId, btn) {
+            if (btn.classList.contains('current')) return;
+            const originalText = btn.textContent;
+            btn.textContent = '⏳...';
+            btn.disabled = true;
+
+            const imageUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+            const form = new FormData();
+            form.append('product_id', productId);
+            form.append('image_url', imageUrl);
+
+            try {
+                const resp = await fetch('/admin/product/set-cover', { method: 'POST', body: form });
+                const data = await resp.json();
+                if (data.ok) {
+                    // Reset all cover buttons for the same product
+                    document.querySelectorAll('.btn-set-cover').forEach(b => {
+                        b.classList.remove('current');
+                        b.disabled = false;
+                        b.textContent = '⭐ Principal';
+                    });
+                    btn.classList.add('current');
+                    btn.disabled = true;
+                    btn.textContent = '⭐ Principal';
+                    alert('✅ Imagen principal actualizada.');
+                } else {
+                    alert(data.error || 'Error al cambiar imagen.');
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
         }
     </script>
