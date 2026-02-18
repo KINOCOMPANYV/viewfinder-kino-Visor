@@ -196,6 +196,12 @@
             cursor: default;
             opacity: 0.7;
         }
+
+        .folder-card:hover {
+            border-color: var(--color-gold);
+            transform: translateY(-2px);
+            transition: all 0.2s;
+        }
     </style>
 </head>
 
@@ -299,6 +305,33 @@
                 </button>
             </form>
 
+            <!-- Navegación de carpetas -->
+            <?php if (!$isRoot): ?>
+                <div style="margin-top:2rem; margin-bottom:1rem;">
+                    <a href="/admin/media" class="btn btn-sm btn-secondary">⬅️ Volver a raíz</a>
+                </div>
+            <?php endif; ?>
+
+            <!-- Subcarpetas -->
+            <?php if (!empty($subfolders)): ?>
+                <div class="section-title" style="margin-top:2rem;">
+                    <h2>📁 Carpetas (<?= count($subfolders) ?>)</h2>
+                </div>
+                <div class="file-grid">
+                    <?php foreach ($subfolders as $folder): ?>
+                        <a href="/admin/media?folder=<?= urlencode($folder['id']) ?>" class="file-card folder-card"
+                            style="text-decoration:none; cursor:pointer;">
+                            <div class="video-thumb" style="font-size:3rem;">📁</div>
+                            <div class="info">
+                                <div class="name" style="color:var(--color-gold); font-weight:600;">
+                                    <?= e($folder['name']) ?>
+                                </div>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Archivos en Drive -->
             <div class="section-title" style="margin-top:3rem;">
                 <h2>📂 Archivos en Drive (
@@ -306,11 +339,15 @@
                 </h2>
             </div>
 
-            <?php if (empty($driveFiles)): ?>
+            <?php if (empty($driveFiles) && empty($subfolders)): ?>
                 <div style="text-align:center; padding:3rem; color:var(--color-text-muted);">
                     <div style="font-size:4rem; margin-bottom:1rem;">📭</div>
-                    <p>No hay archivos en la carpeta de Drive.</p>
+                    <p>No hay archivos en esta carpeta.</p>
                     <p style="font-size:0.85rem;">Sube archivos usando el formulario de arriba.</p>
+                </div>
+            <?php elseif (empty($driveFiles)): ?>
+                <div style="text-align:center; padding:2rem; color:var(--color-text-muted);">
+                    <p>Solo subcarpetas en esta ubicación. Entra a una carpeta para ver archivos.</p>
                 </div>
             <?php else: ?>
                 <div class="file-grid">
