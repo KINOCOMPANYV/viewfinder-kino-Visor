@@ -254,9 +254,18 @@ class GoogleDriveService
 
     /**
      * Sube un archivo a Drive.
+     * Auto-selecciona: simple upload (<5MB) o resumable upload (>=5MB).
      */
     public function uploadFile(string $folderId, string $filename, string $filePath, string $mimeType): ?array
     {
+        $fileSize = filesize($filePath);
+
+        // Para archivos grandes (>=5MB), usar resumable upload
+        if ($fileSize >= 5 * 1024 * 1024) {
+            return $this->uploadFileResumable($folderId, $filename, $filePath, $mimeType, $fileSize);
+        }
+
+        // Simple upload para archivos pequeños
         $boundary = 'viewfinder_boundary_' . uniqid();
         $fileContent = file_get_contents($filePath);
 
@@ -291,6 +300,95 @@ class GoogleDriveService
 
         return json_decode($response, true) ?: null;
     }
+
+    /**
+     * Resumable upload — sube archivos grandes en trozos de 5MB.
+     * Protocolo: https://developers.google.com/drive/api/guides/manage-uploads#resumable
+     */
+    private function uploadFileResumable(string $folderId, string $filename, string $filePath, string $mimeType, int $fileSize): ?array
+    {
+        $chunkSize = 5 * 1024 * 1024; // 5MB chunks
+
+        // Paso 1: Iniciar sesión de subida resumable
+        $metadata = json_encode([
+            'name' => $filename,
+            'parents' => [$folderId],
+        ]);
+
+        $initUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink,webContentLink';
+        $ch = curl_init($initUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $metadata,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER => true,
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer {$this->accessToken}",
+                "Content-Type: application/json; charset=UTF-8",
+                "X-Upload-Content-Type: {$mimeType}",
+                "X-Upload-Content-Length: {$fileSize}",
+            ],
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200) {
+            return null;
+        }
+
+        // Extraer la URL de sesión de subida del header Location
+        $uploadUrl = null;
+        foreach (explode("\r\n", $response) as $line) {
+            if (stripos($line, 'Location:') === 0) {
+                $uploadUrl = trim(substr($line, 9));
+                break;
+            }
+        }
+
+        if (!$uploadUrl) {
+            return null;
+        }
+
+        // Paso 2: Subir en chunks
+        $handle = fopen($filePath, 'rb');
+        $offset = 0;
+        $lastResponse = null;
+
+        while ($offset < $fileSize) {
+            $chunk = fread($handle, $chunkSize);
+            $chunkLen = strlen($chunk);
+            $endByte = $offset + $chunkLen - 1;
+
+            $ch = curl_init($uploadUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_CUSTOMREQUEST => 'PUT',
+                CURLOPT_POSTFIELDS => $chunk,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "Content-Length: {$chunkLen}",
+                    "Content-Range: bytes {$offset}-{$endByte}/{$fileSize}",
+                ],
+            ]);
+            $lastResponse = curl_exec($ch);
+            $chunkCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            // 308 = Resume Incomplete (más chunks por enviar)
+            // 200/201 = Upload completo
+            if ($chunkCode !== 308 && $chunkCode !== 200 && $chunkCode !== 201) {
+                fclose($handle);
+                return null;
+            }
+
+            $offset += $chunkLen;
+        }
+
+        fclose($handle);
+
+        return json_decode($lastResponse, true) ?: null;
+    }
+
 
     /**
      * Elimina un archivo de Drive.
