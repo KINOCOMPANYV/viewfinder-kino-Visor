@@ -537,17 +537,7 @@ if (!$product) {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
 
-                // Build set-cover button for images (admin only)
-                let coverBtn = '';
-                if (IS_ADMIN && isImage) {
-                    const driveUrl = `https://lh3.googleusercontent.com/d/${f.id}`;
-                    const isCurrent = driveUrl === currentCover;
-                    if (isCurrent) {
-                        coverBtn = `<button class="btn-set-cover current" disabled>⭐ Principal</button>`;
-                    } else {
-                        coverBtn = `<button class="btn-set-cover" onclick="setCover('${f.id}', this)">⭐ Hacer principal</button>`;
-                    }
-                }
+
 
                 return `
                     <div class="gallery-item" data-file-id="${f.id}">
@@ -555,7 +545,6 @@ if (!$product) {
                         <div class="item-actions">
                             <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-secondary">👁️ Ver</a>
                             <a href="${downloadUrl}" target="_blank" class="btn btn-sm btn-primary">⬇️</a>
-                            ${coverBtn}
                         </div>
                     </div>
                 `;
