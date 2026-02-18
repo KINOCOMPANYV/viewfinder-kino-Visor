@@ -45,5 +45,31 @@ if ($isConnected && !empty($driveFiles)) {
     }
 }
 
+// Auto-asignar imagen principal: para productos sin cover, usar la primera imagen de Drive
+$autoAssigned = 0;
+if ($isConnected && !empty($driveFiles)) {
+    $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
+    foreach ($productsBySku as $sku => $prod) {
+        if (!empty($prod['cover_image_url']))
+            continue; // ya tiene cover
+
+        foreach ($driveFiles as $file) {
+            $isImage = str_starts_with($file['mimeType'] ?? '', 'image/');
+            if ($isImage && stripos($file['name'], $sku) !== false) {
+                $coverUrl = "https://lh3.googleusercontent.com/d/{$file['id']}";
+                $updateStmt->execute([$coverUrl, $prod['id']]);
+                $productsBySku[$sku]['cover_image_url'] = $coverUrl;
+                $autoAssigned++;
+                break;
+            }
+        }
+    }
+    if ($autoAssigned > 0) {
+        $_SESSION['flash_success'] = ($_SESSION['flash_success'] ?? '') .
+            " ⭐ {$autoAssigned} producto(s) recibieron imagen principal automáticamente.";
+    }
+}
+
 include __DIR__ . '/../../templates/admin/media.php';
+
 
