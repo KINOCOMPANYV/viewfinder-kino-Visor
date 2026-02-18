@@ -97,3 +97,38 @@ function truncate(string $text, int $length = 100): string
         return $text;
     return mb_substr($text, 0, $length) . '...';
 }
+
+/**
+ * Verifica si un nombre de archivo coincide con un SKU usando regla de prefijo.
+ * 
+ * Regla: El nombre del archivo debe comenzar con el SKU y el siguiente carácter
+ * (si existe) NO puede ser un dígito. Esto evita que "123-1" coincida con "123-10".
+ * 
+ * Ejemplos para SKU "123-1":
+ *   ✅ 123-1.jpg     (SKU + extensión)
+ *   ✅ 123-1f1.jpg   (SKU + letra + ...)
+ *   ✅ 123-1v2.jpg   (SKU + letra + ...)
+ *   ✅ 123-1_foto.jpg(SKU + guion bajo + ...)
+ *   ❌ 123-10.jpg    (SKU + dígito = otro producto)
+ *   ❌ 123-12.jpg    (SKU + dígito = otro producto)
+ *   ❌ 456-1.jpg     (SKU diferente)
+ */
+function skuMatchesFilename(string $sku, string $filename): bool
+{
+    // Quitar extensión del nombre para comparar
+    $nameOnly = pathinfo($filename, PATHINFO_FILENAME);
+
+    // Verificar que el nombre comience con el SKU (case-insensitive)
+    if (stripos($nameOnly, $sku) !== 0) {
+        return false;
+    }
+
+    // Si el nombre es exactamente el SKU, es match
+    if (strlen($nameOnly) === strlen($sku)) {
+        return true;
+    }
+
+    // El carácter siguiente al SKU NO puede ser un dígito
+    $nextChar = $nameOnly[strlen($sku)];
+    return !ctype_digit($nextChar);
+}

@@ -142,6 +142,8 @@ class GoogleDriveService
     /**
      * Busca archivos cuyo nombre contenga el SKU.
      * Busca recursivamente en todas las subcarpetas (Marca > Referencia, etc.).
+     * Aplica filtro de prefijo: el SKU debe estar al inicio y el siguiente carácter
+     * NO puede ser un dígito (para evitar que "123-1" coincida con "123-10").
      */
     public function findBySku(string $folderId, string $sku): array
     {
@@ -160,18 +162,21 @@ class GoogleDriveService
         $data = json_decode($response, true) ?: [];
         $files = $data['files'] ?? [];
 
+        // Post-filtrar con regla de prefijo
+        $files = $this->filterBySku($files, $sku);
+
         if (!empty($files)) {
             return $files;
         }
 
         // 2) Buscar recursivamente en subcarpetas (hasta 3 niveles: Marca > Referencia > ...)
-        return $this->findBySkuRecursive($folderId, $skuEscaped, 0, 3);
+        return $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 3);
     }
 
     /**
      * Búsqueda recursiva de archivos por SKU en subcarpetas.
      */
-    private function findBySkuRecursive(string $parentId, string $skuEscaped, int $depth, int $maxDepth): array
+    private function findBySkuRecursive(string $parentId, string $skuEscaped, string $skuOriginal, int $depth, int $maxDepth): array
     {
         if ($depth >= $maxDepth) {
             return [];
@@ -204,18 +209,43 @@ class GoogleDriveService
             $fileData = json_decode($fileResp, true) ?: [];
             $found = $fileData['files'] ?? [];
 
+            // Post-filtrar con regla de prefijo
+            $found = $this->filterBySku($found, $skuOriginal);
+
             if (!empty($found)) {
                 $allFiles = array_merge($allFiles, $found);
             }
 
             // Seguir buscando en subcarpetas más profundas
-            $deepFiles = $this->findBySkuRecursive($sub['id'], $skuEscaped, $depth + 1, $maxDepth);
+            $deepFiles = $this->findBySkuRecursive($sub['id'], $skuEscaped, $skuOriginal, $depth + 1, $maxDepth);
             if (!empty($deepFiles)) {
                 $allFiles = array_merge($allFiles, $deepFiles);
             }
         }
 
         return $allFiles;
+    }
+
+    /**
+     * Filtra archivos aplicando la regla de prefijo de SKU.
+     * El nombre debe comenzar con el SKU y el siguiente carácter (si existe)
+     * NO puede ser un dígito. Esto evita que "123-1" coincida con "123-10".
+     */
+    private function filterBySku(array $files, string $sku): array
+    {
+        return array_values(array_filter($files, function ($file) use ($sku) {
+            $name = pathinfo($file['name'] ?? '', PATHINFO_FILENAME);
+            // Debe comenzar con el SKU
+            if (stripos($name, $sku) !== 0) {
+                return false;
+            }
+            // Si es exacto, match
+            if (strlen($name) === strlen($sku)) {
+                return true;
+            }
+            // El siguiente carácter no puede ser dígito
+            return !ctype_digit($name[strlen($sku)]);
+        }));
     }
 
     /**

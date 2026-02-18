@@ -63,7 +63,7 @@ $linkedCount = 0;
 if ($isConnected && !empty($driveFiles)) {
     foreach ($productsBySku as $sku => $prod) {
         foreach ($driveFiles as $file) {
-            if (stripos($file['name'], $sku) !== false) {
+            if (skuMatchesFilename($sku, $file['name'])) {
                 $linkedCount++;
                 break;
             }

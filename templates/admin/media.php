@@ -634,7 +634,7 @@
                         $matchedProductId = 0;
                         $matchedCover = '';
                         foreach ($productsBySku as $sku => $prod) {
-                            if (stripos($file['name'], $sku) !== false) {
+                            if (skuMatchesFilename($sku, $file['name'])) {
                                 $skuMatch = $sku;
                                 $matchedProductId = $prod['id'];
                                 $matchedCover = $prod['cover_image_url'];

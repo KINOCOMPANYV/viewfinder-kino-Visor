@@ -59,7 +59,7 @@ for ($i = 0; $i < count($files['name']); $i++) {
         $matchedProduct = null;
 
         foreach ($allProducts as $prod) {
-            if (stripos($filename, $prod['sku']) !== false) {
+            if (skuMatchesFilename($prod['sku'], $filename)) {
                 $matchedProduct = $prod;
                 break;
             }
