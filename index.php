@@ -183,6 +183,12 @@ if ($uri === '/admin/media/sync-covers' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/product/update' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_product_update.php';
+    exit;
+}
+
 if ($uri === '/admin/sync-sheets' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_sync_sheets.php';
