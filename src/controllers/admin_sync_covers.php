@@ -70,6 +70,8 @@ foreach ($products as $prod) {
     });
 
     $bestImage = reset($images);
+    // Hacer público el archivo para que la URL lh3 funcione
+    $drive->makePublic($bestImage['id']);
     $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
     $updateStmt->execute([$coverUrl, $prod['id']]);
     $assigned++;

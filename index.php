@@ -222,6 +222,11 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
             }
         }
 
+        // Hacer públicos todos los archivos para que las URLs lh3 funcionen
+        foreach ($files as $f) {
+            $drive->makePublic($f['id']);
+        }
+
         jsonResponse([
             'files' => $files,
             'sku' => $sku,

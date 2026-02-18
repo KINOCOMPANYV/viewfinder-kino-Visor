@@ -522,9 +522,10 @@ if (!$product) {
                 const downloadUrl = f.webContentLink || viewUrl;
 
                 let mediaHtml;
-                if (isImage && thumbUrl) {
+                if (isImage) {
                     const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
-                    mediaHtml = `<img src="${thumbUrl}" alt="${f.name}" loading="lazy" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
+                    const displayUrl = thumbUrl || fullUrl;
+                    mediaHtml = `<img src="${displayUrl}" alt="${f.name}" loading="lazy" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
                 } else if (isVideo) {
                     // Streaming: usar reproductor embebido de Google Drive
                     mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">

@@ -166,6 +166,8 @@ try {
             $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
 
             if (empty($prod['cover_image_url']) || $prod['cover_image_url'] !== $coverUrl) {
+                // Hacer público el archivo para que la URL lh3 funcione
+                $drive->makePublic($bestImage['id']);
                 $updateStmt->execute([$coverUrl, $prod['id']]);
                 $coversAssigned++;
             }
