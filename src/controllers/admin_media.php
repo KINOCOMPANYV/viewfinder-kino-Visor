@@ -2,6 +2,7 @@
 /**
  * Admin Media — Gestión de archivos en Google Drive.
  * Muestra galería con navegación de carpetas, permite subir y sincronizar.
+ * Soporta navegación multi-nivel con breadcrumb (Raíz > Marca > Referencia).
  */
 require_once __DIR__ . '/../services/GoogleDriveService.php';
 
@@ -9,11 +10,20 @@ $db = getDB();
 $drive = new GoogleDriveService();
 $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
 
-// Navegación de carpetas: ?folder=xxx
+// Navegación de carpetas: ?folder=xxx&path=[{id,name},...]
 $currentFolderId = $_GET['folder'] ?? $rootFolderId;
 $currentFolderName = 'Raíz';
 $isRoot = ($currentFolderId === $rootFolderId);
 $folderLabel = $_GET['name'] ?? '';
+
+// Breadcrumb path: array de {id, name} desde la raíz hasta la carpeta actual
+$breadcrumbPath = [];
+if (!empty($_GET['path'])) {
+    $decoded = json_decode($_GET['path'], true);
+    if (is_array($decoded)) {
+        $breadcrumbPath = $decoded;
+    }
+}
 
 // Verificar si hay conexión a Google
 $token = $drive->getValidToken($db);
@@ -67,5 +77,8 @@ foreach ($productsBySku as $prod) {
     if (empty($prod['cover_image_url']))
         $withoutCover++;
 }
+
+// Preparar path JSON para pasar al template
+$currentPathJson = json_encode($breadcrumbPath, JSON_UNESCAPED_UNICODE);
 
 include __DIR__ . '/../../templates/admin/media.php';

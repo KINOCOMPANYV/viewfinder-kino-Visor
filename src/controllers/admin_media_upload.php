@@ -6,7 +6,10 @@ require_once __DIR__ . '/../services/GoogleDriveService.php';
 
 $db = getDB();
 $drive = new GoogleDriveService();
-$folderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
+$rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
+
+// Usar la carpeta actual si se envió desde el form, si no la raíz
+$folderId = !empty($_POST['upload_folder']) ? $_POST['upload_folder'] : $rootFolderId;
 
 $token = $drive->getValidToken($db);
 if (!$token || empty($folderId)) {

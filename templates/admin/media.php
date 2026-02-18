@@ -518,12 +518,18 @@
 
             <form action="/admin/media/upload" method="POST" enctype="multipart/form-data" id="uploadForm">
                 <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
+                <input type="hidden" name="upload_folder" value="<?= e($currentFolderId) ?>">
                 <div class="upload-zone" id="dropZone">
                     <div class="icon">📁</div>
                     <p><strong>Arrastra archivos aquí</strong> o haz click para seleccionar</p>
                     <p style="font-size:0.8rem; color:var(--color-text-muted);">
                         JPG, PNG, WEBP, MP4 · Nombra los archivos con el SKU (ej: <code>SKU123_foto1.jpg</code>)
                     </p>
+                    <?php if (!$isRoot): ?>
+                        <p style="font-size:0.8rem; color:var(--color-gold); margin-top:0.5rem;">
+                            📂 Se subirán a: <strong><?= e($folderLabel ?: 'carpeta actual') ?></strong>
+                        </p>
+                    <?php endif; ?>
                     <input type="file" name="media_files[]" id="fileInput" multiple
                         accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm">
                 </div>
@@ -536,17 +542,43 @@
                 </button>
             </form>
 
-            <!-- Navegación de carpetas - Breadcrumb -->
+            <!-- Navegación de carpetas - Breadcrumb multi-nivel -->
             <div class="folder-breadcrumb">
                 <a href="/admin/media" class="bc-item <?= $isRoot ? 'active' : '' ?>">
                     🏠 Raíz
                 </a>
-                <?php if (!$isRoot): ?>
-                    <span class="bc-sep">›</span>
-                    <span class="bc-item active">📁 <?= e($folderLabel ?: 'Subcarpeta') ?></span>
+                <?php if (!empty($breadcrumbPath)): ?>
+                    <?php foreach ($breadcrumbPath as $idx => $crumb): ?>
+                        <span class="bc-sep">›</span>
+                        <?php
+                        $isLast = ($idx === count($breadcrumbPath) - 1);
+                        // Build path up to this crumb for the link
+                        $subPath = array_slice($breadcrumbPath, 0, $idx + 1);
+                        $subPathJson = urlencode(json_encode($subPath, JSON_UNESCAPED_UNICODE));
+                        ?>
+                        <?php if ($isLast): ?>
+                            <span class="bc-item active">📁 <?= e($crumb['name']) ?></span>
+                        <?php else: ?>
+                            <a href="/admin/media?folder=<?= urlencode($crumb['id']) ?>&name=<?= urlencode($crumb['name']) ?>&path=<?= $subPathJson ?>"
+                                class="bc-item">
+                                📁 <?= e($crumb['name']) ?>
+                            </a>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 <?php endif; ?>
                 <?php if (!$isRoot): ?>
-                    <a href="/admin/media" class="bc-back">⬅️ Volver</a>
+                    <?php
+                    // "Volver" goes to parent (one level up)
+                    if (count($breadcrumbPath) > 1) {
+                        $parentCrumb = $breadcrumbPath[count($breadcrumbPath) - 2];
+                        $parentPath = array_slice($breadcrumbPath, 0, -1);
+                        $parentPathJson = urlencode(json_encode($parentPath, JSON_UNESCAPED_UNICODE));
+                        $backUrl = "/admin/media?folder=" . urlencode($parentCrumb['id']) . "&name=" . urlencode($parentCrumb['name']) . "&path=" . $parentPathJson;
+                    } else {
+                        $backUrl = "/admin/media";
+                    }
+                    ?>
+                    <a href="<?= $backUrl ?>" class="bc-back">⬅️ Volver</a>
                 <?php endif; ?>
             </div>
 
@@ -556,8 +588,13 @@
                     <h2>📁 Carpetas (<?= count($subfolders) ?>)</h2>
                 </div>
                 <div class="folder-grid">
-                    <?php foreach ($subfolders as $folder): ?>
-                        <a href="/admin/media?folder=<?= urlencode($folder['id']) ?>&name=<?= urlencode($folder['name']) ?>"
+                    <?php foreach ($subfolders as $folder):
+                        // Build new path: current path + this folder
+                        $newPath = $breadcrumbPath;
+                        $newPath[] = ['id' => $folder['id'], 'name' => $folder['name']];
+                        $newPathJson = urlencode(json_encode($newPath, JSON_UNESCAPED_UNICODE));
+                        ?>
+                        <a href="/admin/media?folder=<?= urlencode($folder['id']) ?>&name=<?= urlencode($folder['name']) ?>&path=<?= $newPathJson ?>"
                             class="folder-card-item">
                             <div class="folder-icon">📁</div>
                             <div class="folder-name"><?= e($folder['name']) ?></div>
