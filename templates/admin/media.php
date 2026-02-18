@@ -204,7 +204,7 @@
             gap: 0.5rem;
             padding: 0.8rem 1.2rem;
             background: linear-gradient(135deg, rgba(30, 30, 50, 0.9), rgba(20, 20, 40, 0.95));
-            border: 1px solid rgba(var(--color-gold-rgb, 212, 175, 55), 0.3);
+            border: 1px solid rgba(212, 175, 55, 0.3);
             border-radius: var(--radius);
             margin-top: 2rem;
             flex-wrap: wrap;
@@ -265,7 +265,7 @@
             align-items: center;
             padding: 1.5rem 1rem;
             background: linear-gradient(145deg, rgba(30, 35, 60, 0.8), rgba(20, 25, 45, 0.9));
-            border: 1px solid rgba(var(--color-gold-rgb, 212, 175, 55), 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.15);
             border-radius: var(--radius);
             text-decoration: none;
             transition: all 0.3s;
