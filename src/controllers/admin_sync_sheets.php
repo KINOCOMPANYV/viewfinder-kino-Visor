@@ -89,7 +89,8 @@ for ($i = 1; $i < count($lines); $i++) {
 }
 
 // ============================================================
-// Auto-asignar portadas a productos sin cover (después de sincronizar)
+// Auto-asignar portadas a TODOS los productos (después de sincronizar)
+// Enlaza la imagen principal de Drive con el SKU de cada producto
 // ============================================================
 $coversAssigned = 0;
 try {
@@ -99,14 +100,15 @@ try {
     $token = $drive->getValidToken($db);
 
     if ($token && $rootFolderId) {
-        $noCover = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = ''")->fetchAll(PDO::FETCH_ASSOC);
+        // Buscar para TODOS los productos — asigna la mejor imagen automáticamente
+        $allProducts = $db->query("SELECT id, sku, cover_image_url FROM products")->fetchAll(PDO::FETCH_ASSOC);
 
         // Priorización de portadas
         $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
         $numericPriority = ['01', '_1', '-1', 'f1'];
         $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 
-        foreach ($noCover as $prod) {
+        foreach ($allProducts as $prod) {
             $skuFiles = $drive->findBySku($rootFolderId, $prod['sku']);
             $images = array_filter($skuFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
             if (empty($images))
@@ -134,8 +136,12 @@ try {
 
             $bestImage = reset($images);
             $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
-            $updateStmt->execute([$coverUrl, $prod['id']]);
-            $coversAssigned++;
+
+            // Solo actualizar si cambió o no tenía cover
+            if (empty($prod['cover_image_url']) || $prod['cover_image_url'] !== $coverUrl) {
+                $updateStmt->execute([$coverUrl, $prod['id']]);
+                $coversAssigned++;
+            }
         }
     }
 } catch (Exception $e) {
