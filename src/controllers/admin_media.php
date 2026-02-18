@@ -59,28 +59,59 @@ foreach ($allProducts as $prod) {
 }
 
 // Obtener productos enlazados (que tienen archivos en Drive con su SKU)
+// Optimización: listar TODOS los archivos recursivamente una sola vez,
+// luego hacer el matching localmente en PHP (en vez de N llamadas a la API).
 $linkedCount = 0;
 if ($isConnected && !empty($rootFolderId)) {
+    // Recopilar todos los archivos (raíz + subcarpetas)
+    $allDriveFiles = $driveFiles; // archivos de la carpeta actual
     if ($isRoot) {
-        // En raíz: buscar recursivamente en todas las subcarpetas para cada producto
-        foreach ($productsBySku as $sku => $prod) {
-            $skuFiles = $drive->findBySku($rootFolderId, $sku);
-            if (!empty($skuFiles)) {
+        // Agregar archivos de subcarpetas recursivamente
+        $allDriveFiles = collectAllFilesRecursive($drive, $rootFolderId);
+    }
+
+    foreach ($productsBySku as $sku => $prod) {
+        foreach ($allDriveFiles as $file) {
+            if (skuMatchesFilename($sku, $file['name'])) {
                 $linkedCount++;
-            }
-        }
-    } else {
-        // En subcarpeta: solo verificar archivos de la carpeta actual (más rápido)
-        foreach ($productsBySku as $sku => $prod) {
-            foreach ($driveFiles as $file) {
-                if (skuMatchesFilename($sku, $file['name'])) {
-                    $linkedCount++;
-                    break;
-                }
+                break;
             }
         }
     }
 }
+
+/**
+ * Recopila TODOS los archivos de una carpeta y subcarpetas (recursivo).
+ * Hace pocas llamadas a la API (una por carpeta) en vez de una por producto.
+ */
+function collectAllFilesRecursive(GoogleDriveService $drive, string $folderId, int $depth = 0, int $maxDepth = 3): array
+{
+    if ($depth >= $maxDepth)
+        return [];
+
+    $result = $drive->listFiles($folderId);
+    $items = $result['files'] ?? [];
+
+    $files = [];
+    $subfolders = [];
+
+    foreach ($items as $item) {
+        if (($item['mimeType'] ?? '') === 'application/vnd.google-apps.folder') {
+            $subfolders[] = $item;
+        } else {
+            $files[] = $item;
+        }
+    }
+
+    // Recurrir en subcarpetas
+    foreach ($subfolders as $sub) {
+        $subFiles = collectAllFilesRecursive($drive, $sub['id'], $depth + 1, $maxDepth);
+        $files = array_merge($files, $subFiles);
+    }
+
+    return $files;
+}
+
 
 
 // Contar productos sin portada (para mostrar en botón de sync)
