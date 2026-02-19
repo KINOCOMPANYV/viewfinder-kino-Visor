@@ -219,27 +219,33 @@ if (empty($serverCover)) {
         .lightbox {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.92);
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
             z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            cursor: zoom-out;
+            flex-direction: column;
         }
 
         .lightbox.active {
             display: flex;
         }
 
+        .lb-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out;
+            overflow: hidden;
+            padding: 1rem;
+        }
+
         .lightbox img {
             max-width: 92vw;
-            max-height: 90vh;
+            max-height: 80vh;
             border-radius: 8px;
             box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
             object-fit: contain;
+            cursor: default;
         }
 
         .lightbox .lb-close {
@@ -258,20 +264,84 @@ if (empty($serverCover)) {
             align-items: center;
             justify-content: center;
             transition: background 0.2s;
+            z-index: 10;
         }
 
         .lightbox .lb-close:hover {
             background: rgba(255, 255, 255, 0.2);
         }
 
-        .lightbox .lb-name {
+        /* Lightbox navigation */
+        .lb-nav {
             position: absolute;
-            bottom: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .lb-nav:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .lb-prev { left: 15px; }
+        .lb-next { right: 15px; }
+
+        /* Lightbox footer */
+        .lb-footer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            background: rgba(0, 0, 0, 0.7);
+            flex-wrap: wrap;
+        }
+
+        .lb-footer .lb-name {
             color: #fff;
             font-size: 0.85rem;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 0.5rem 1.5rem;
+            opacity: 0.9;
+        }
+
+        .lb-footer .lb-counter {
+            color: var(--color-primary);
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .lb-download {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: #25D366;
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1rem;
             border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font);
+        }
+
+        .lb-download:hover {
+            background: #1fb855;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
         }
 
         .main-image img {
@@ -334,7 +404,7 @@ if (empty($serverCover)) {
         @media (max-width: 768px) {
             .lightbox img {
                 max-width: 96vw;
-                max-height: 80vh;
+                max-height: 70vh;
             }
 
             .lightbox .lb-close {
@@ -344,6 +414,15 @@ if (empty($serverCover)) {
                 height: 36px;
                 font-size: 1.4rem;
             }
+
+            .lb-nav {
+                width: 36px;
+                height: 36px;
+                font-size: 1.3rem;
+            }
+
+            .lb-prev { left: 8px; }
+            .lb-next { right: 8px; }
 
             .gallery-grid {
                 grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
@@ -383,7 +462,7 @@ if (empty($serverCover)) {
                         data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
                     <?php if ($serverCover): ?>
                         <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
-                            decoding="async" onclick="openLightbox(this.src, '<?= e(addslashes($product['name'])) ?>')">
+                            decoding="async" onclick="if(allGalleryFiles.length>0){const idx=allGalleryFiles.findIndex(f=>(f.mimeType||'').startsWith('image/'));if(idx>=0)openLightbox(idx);}">
                     <?php else: ?>
                         <div class="cover-skeleton"
                             style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
@@ -447,14 +526,6 @@ if (empty($serverCover)) {
                             🎥 Cargando videos...
                         </button>
                     </div>
-                    <button class="btn-whatsapp" style="margin-top:0.75rem;"
-                        onclick="openShareModal(SKU, PRODUCT_NAME)">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                            <path
-                                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                        </svg>
-                        Enviar por WhatsApp
-                    </button>
                     <div class="media-count" id="mediaCount"></div>
                 </div>
             </div>
@@ -462,6 +533,21 @@ if (empty($serverCover)) {
             <!-- Media Gallery -->
             <div class="media-gallery" id="mediaGallery" style="display:none;">
                 <h2>📂 Archivos multimedia</h2>
+                <!-- WhatsApp toolbar for gallery -->
+                <div class="search-wa-toolbar" id="galleryWaBar" style="display:none; margin-bottom:1rem;">
+                    <label class="wa-toolbar-select">
+                        <input type="checkbox" id="gallerySelectAll">
+                        <span>Seleccionar todas</span>
+                    </label>
+                    <span id="gallerySelectedCount" class="wa-toolbar-count">0</span>
+                    <button class="wa-toolbar-send" id="btnGalleryWaSend" disabled>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path
+                                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                        </svg>
+                        Enviar por WhatsApp
+                    </button>
+                </div>
                 <div class="gallery-grid" id="galleryGrid"></div>
             </div>
         </div>
@@ -484,10 +570,7 @@ if (empty($serverCover)) {
         const IS_VARIANT = <?= $isVariant ? 'true' : 'false' ?>;
         let currentCover = '<?= e($product['cover_image_url']) ?>';
         let mediaFiles = { images: [], videos: [] };
-
-        function shareWhatsApp() {
-            openShareModal(SKU, PRODUCT_NAME);
-        }
+        let allGalleryFiles = [];
 
         function copyDescription() {
             const text = document.getElementById('descriptionText').innerText;
@@ -578,10 +661,10 @@ if (empty($serverCover)) {
             imgEl.alt = PRODUCT_NAME;
             imgEl.style.opacity = '0';
             imgEl.style.transition = 'opacity 0.4s ease';
-            imgEl.onclick = () => openLightbox(
-                fileId ? `https://lh3.googleusercontent.com/d/${fileId}=s1200` : url,
-                PRODUCT_NAME
-            );
+            imgEl.onclick = () => {
+                const idx = fileId ? allGalleryFiles.findIndex(f => f.id === fileId) : -1;
+                if (idx >= 0) openLightbox(idx);
+            };
             imgEl.onload = () => {
                 container.innerHTML = '';
                 container.appendChild(imgEl);
@@ -628,20 +711,19 @@ if (empty($serverCover)) {
             const gallery = document.getElementById('mediaGallery');
             const grid = document.getElementById('galleryGrid');
             gallery.style.display = 'block';
+            allGalleryFiles = files;
 
-            grid.innerHTML = files.map(f => {
+            grid.innerHTML = files.map((f, idx) => {
                 const isImage = (f.mimeType || '').startsWith('image/');
                 const isVideo = (f.mimeType || '').startsWith('video/');
-                const viewUrl = f.webViewLink || '#';
-                const downloadUrl = f.webContentLink || viewUrl;
+                const downloadUrl = f.webContentLink || f.webViewLink || '#';
 
                 let mediaHtml;
                 if (isImage) {
-                    const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
                     const thumbUrl = f.thumbnailLink
                         ? f.thumbnailLink.replace(/=s\d+/, '=s400')
                         : `https://lh3.googleusercontent.com/d/${f.id}=s400`;
-                    mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
+                    mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" style="cursor:pointer;" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="openLightbox(${idx})">`;
                 } else if (isVideo) {
                     mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
                         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
@@ -653,21 +735,26 @@ if (empty($serverCover)) {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
 
+                // Checkbox for images only
+                const checkHtml = isImage ? `
+                    <label class="search-check-footer">
+                        <input type="checkbox" class="gallery-check" data-index="${idx}" data-file-id="${f.id}" data-name="${f.name.replace(/"/g, '')}">
+                        <span class="search-check-icon">✓</span>
+                        <span class="search-check-text">Seleccionar</span>
+                    </label>` : '';
+
                 return `
                     <div class="gallery-item" data-file-id="${f.id}">
                         ${mediaHtml}
                         <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">
                             ${f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name}
                         </div>
-                        <div class="item-actions">
-                            <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-secondary">👁️ Ver</a>
-                            <a href="${downloadUrl}" target="_blank" class="btn btn-sm btn-primary">⬇️</a>
-                        </div>
+                        ${checkHtml}
                     </div>
                 `;
             }).join('');
 
-            // Intersection Observer para lazy-load de thumbnails de galería
+            // Lazy-load thumbnails
             const lazyObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
@@ -685,6 +772,75 @@ if (empty($serverCover)) {
             grid.querySelectorAll('img.gallery-lazy[data-src]').forEach(img => {
                 lazyObserver.observe(img);
             });
+
+            // --- Gallery WhatsApp selection ---
+            const waBar = document.getElementById('galleryWaBar');
+            const selectAllCb = document.getElementById('gallerySelectAll');
+            const countEl = document.getElementById('gallerySelectedCount');
+            const btnSend = document.getElementById('btnGalleryWaSend');
+            const checks = grid.querySelectorAll('.gallery-check');
+
+            if (checks.length > 0) waBar.style.display = '';
+
+            function updateGalleryCount() {
+                const sel = grid.querySelectorAll('.gallery-check:checked').length;
+                countEl.textContent = sel;
+                btnSend.disabled = sel === 0;
+                selectAllCb.checked = sel === checks.length && checks.length > 0;
+                selectAllCb.indeterminate = sel > 0 && sel < checks.length;
+            }
+
+            checks.forEach(cb => cb.addEventListener('change', updateGalleryCount));
+            selectAllCb.addEventListener('change', () => {
+                checks.forEach(cb => cb.checked = selectAllCb.checked);
+                updateGalleryCount();
+            });
+
+            btnSend.addEventListener('click', async () => {
+                const sel = [];
+                grid.querySelectorAll('.gallery-check:checked').forEach(cb => {
+                    const f = allGalleryFiles[parseInt(cb.dataset.index)];
+                    if (f) sel.push(f);
+                });
+                if (sel.length === 0) return;
+                if (sel.length > 10) {
+                    alert('⚠️ Solo se pueden enviar 10 imágenes a la vez.\n\nPor favor deselecciona algunas.');
+                    return;
+                }
+
+                if (navigator.canShare && navigator.share) {
+                    btnSend.disabled = true;
+                    btnSend.textContent = '⏳ Preparando...';
+                    try {
+                        const fileObjs = (await Promise.all(sel.map(async f => {
+                            try {
+                                const imgUrl = `https://lh3.googleusercontent.com/d/${f.id}=s800`;
+                                const r = await fetch(imgUrl, { mode: 'cors' });
+                                const b = await r.blob();
+                                return new File([b], f.name, { type: b.type || 'image/jpeg' });
+                            } catch { return null; }
+                        }))).filter(Boolean);
+                        if (fileObjs.length > 0) {
+                            const sd = { title: SKU + ' - ' + PRODUCT_NAME, text: SKU + ' - ' + PRODUCT_NAME, files: fileObjs };
+                            if (navigator.canShare(sd)) { await navigator.share(sd); resetGalleryBtn(); return; }
+                        }
+                    } catch (e) { if (e.name === 'AbortError') { resetGalleryBtn(); return; } }
+                    resetGalleryBtn();
+                }
+
+                // Fallback: links
+                let text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n';
+                text += '🔗 ' + location.href + '\n\n';
+                sel.forEach((f, i) => {
+                    text += (i + 1) + '. ' + f.name + '\n';
+                });
+                window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+            });
+
+            function resetGalleryBtn() {
+                btnSend.disabled = false;
+                btnSend.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Enviar por WhatsApp';
+            }
         }
 
         function downloadMedia(type) {
@@ -742,29 +898,101 @@ if (empty($serverCover)) {
 
         // Init
         loadMedia();
-        function openLightbox(url, name) {
+        let currentLbFileId = null;
+        let currentLbIdx = 0;
+
+        function openLightbox(idx) {
+            const f = allGalleryFiles[idx];
+            if (!f) return;
+            const isImage = (f.mimeType || '').startsWith('image/');
+            if (!isImage) return;
+
+            currentLbIdx = idx;
+            currentLbFileId = f.id;
+            const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
             const lb = document.getElementById('lightbox');
-            document.getElementById('lb-img').src = url;
-            document.getElementById('lb-name').textContent = name;
+            document.getElementById('lb-img').src = fullUrl;
+            document.getElementById('lb-name').textContent = f.name;
             lb.classList.add('active');
             document.body.style.overflow = 'hidden';
+
+            // Navegación
+            updateLbNav();
         }
+
+        function updateLbNav() {
+            const images = allGalleryFiles.filter(f => (f.mimeType || '').startsWith('image/'));
+            const imgIdx = images.findIndex(f => f.id === currentLbFileId);
+            document.getElementById('lb-prev').style.display = imgIdx > 0 ? '' : 'none';
+            document.getElementById('lb-next').style.display = imgIdx < images.length - 1 ? '' : 'none';
+            document.getElementById('lb-counter').textContent = (imgIdx + 1) + ' / ' + images.length;
+        }
+
+        function lbNav(dir) {
+            const images = allGalleryFiles.filter(f => (f.mimeType || '').startsWith('image/'));
+            const imgIdx = images.findIndex(f => f.id === currentLbFileId);
+            const newIdx = imgIdx + dir;
+            if (newIdx < 0 || newIdx >= images.length) return;
+            const newFile = images[newIdx];
+            const globalIdx = allGalleryFiles.indexOf(newFile);
+            openLightbox(globalIdx);
+        }
+
+        function downloadLbImage() {
+            if (!currentLbFileId) return;
+            const url = `https://lh3.googleusercontent.com/d/${currentLbFileId}=s1200`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = allGalleryFiles[currentLbIdx]?.name || 'image.jpg';
+            a.target = '_blank';
+            // Try blob download for better mobile support
+            fetch(url, { mode: 'cors' })
+                .then(r => r.blob())
+                .then(blob => {
+                    const blobUrl = URL.createObjectURL(blob);
+                    a.href = blobUrl;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                })
+                .catch(() => {
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+        }
+
         function closeLightbox() {
             const lb = document.getElementById('lightbox');
             lb.classList.remove('active');
             document.getElementById('lb-img').src = '';
             document.body.style.overflow = '';
+            currentLbFileId = null;
         }
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') lbNav(-1);
+            if (e.key === 'ArrowRight') lbNav(1);
+        });
     </script>
 
-    <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
-
     <!-- Lightbox -->
-    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <div class="lightbox" id="lightbox">
         <button class="lb-close" onclick="closeLightbox()">✕</button>
-        <img id="lb-img" src="" alt="Preview">
-        <div class="lb-name" id="lb-name"></div>
+        <button class="lb-nav lb-prev" id="lb-prev" onclick="event.stopPropagation(); lbNav(-1)">❮</button>
+        <button class="lb-nav lb-next" id="lb-next" onclick="event.stopPropagation(); lbNav(1)">❯</button>
+        <div class="lb-content" onclick="closeLightbox()">
+            <img id="lb-img" src="" alt="Preview" onclick="event.stopPropagation()">
+        </div>
+        <div class="lb-footer">
+            <span class="lb-name" id="lb-name"></span>
+            <span class="lb-counter" id="lb-counter"></span>
+            <button class="lb-download" onclick="downloadLbImage()">
+                ⬇️ Descargar
+            </button>
+        </div>
     </div>
 
 </body>
