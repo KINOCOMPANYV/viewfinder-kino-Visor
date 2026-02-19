@@ -222,10 +222,8 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
             }
         }
 
-        // Hacer públicos todos los archivos para que las URLs lh3 funcionen
-        foreach ($files as $f) {
-            $drive->makePublic($f['id']);
-        }
+        // Hacer públicos todos los archivos en PARALELO (evita bloqueo)
+        $drive->makePublicBatch(array_column($files, 'id'));
 
         jsonResponse([
             'files' => $files,

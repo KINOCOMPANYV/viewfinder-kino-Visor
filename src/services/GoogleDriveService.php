@@ -433,6 +433,59 @@ class GoogleDriveService
     }
 
     /**
+     * Hace públicos múltiples archivos en paralelo usando curl_multi.
+     * Mucho más rápido que llamar makePublic() N veces secuencialmente.
+     */
+    public function makePublicBatch(array $fileIds): int
+    {
+        if (empty($fileIds))
+            return 0;
+
+        $mh = curl_multi_init();
+        $handles = [];
+        $body = json_encode(['role' => 'reader', 'type' => 'anyone']);
+
+        foreach ($fileIds as $fileId) {
+            $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions";
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_HTTPHEADER => [
+                    "Authorization: Bearer {$this->accessToken}",
+                    "Content-Type: application/json",
+                ],
+            ]);
+            curl_multi_add_handle($mh, $ch);
+            $handles[] = $ch;
+        }
+
+        // Ejecutar todas las peticiones en paralelo
+        $running = null;
+        do {
+            curl_multi_exec($mh, $running);
+            if ($running > 0) {
+                curl_multi_select($mh, 0.5);
+            }
+        } while ($running > 0);
+
+        // Contar éxitos
+        $success = 0;
+        foreach ($handles as $ch) {
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            if ($code === 200)
+                $success++;
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+        }
+        curl_multi_close($mh);
+
+        return $success;
+    }
+
+    /**
      * Obtiene thumbnail/preview URL de un archivo.
      */
     public function getThumbnailUrl(string $fileId): string
