@@ -90,21 +90,22 @@ for ($i = 1; $i < count($lines); $i++) {
 
 // ============================================================
 // Auto-asignar portadas a productos SIN cover (después de sincronizar)
-// Usa findBySku() por producto para búsqueda precisa con subcarpetas.
-// Limita a 20 productos por ejecución para evitar timeout.
+// Usa findBySku() por producto — LIMITADO a 5 productos y 30s para evitar timeout.
 // ============================================================
 $coversAssigned = 0;
 $coverErrors = '';
 try {
-    set_time_limit(120);
+    $coverStartTime = time();
+    $coverTimeLimit = 30; // máximo 30 segundos para covers
+    set_time_limit(180);
     require_once __DIR__ . '/../services/GoogleDriveService.php';
     $drive = new GoogleDriveService();
     $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
     $token = $drive->getValidToken($db);
 
     if ($token && $rootFolderId) {
-        // Solo productos sin cover (máximo 20)
-        $noCover = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = '' LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+        // Solo productos sin cover (máximo 5 por ejecución para evitar timeout)
+        $noCover = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = '' LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
 
         if (!empty($noCover)) {
             $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
@@ -112,6 +113,12 @@ try {
             $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 
             foreach ($noCover as $prod) {
+                // Time guard: si ya pasaron 30s, parar
+                if ((time() - $coverStartTime) >= $coverTimeLimit) {
+                    $coverErrors = "Tiempo límite alcanzado, se procesaron " . ($coversAssigned) . " de " . count($noCover);
+                    break;
+                }
+
                 try {
                     // Buscar archivos por SKU (global + recursivo en subcarpetas)
                     $allFiles = $drive->findBySku($rootFolderId, $prod['sku']);
