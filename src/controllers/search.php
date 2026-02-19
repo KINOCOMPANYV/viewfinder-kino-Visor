@@ -274,8 +274,9 @@ $totalPages = ceil($total / $perPage);
                     return;
                 }
 
-                // Intentar Web Share API (mobile)
-                if (navigator.canShare && navigator.share) {
+                // Intentar Web Share API solo en mobile (desktop no tiene WhatsApp en share nativo)
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile && navigator.canShare && navigator.share) {
                     btnSend.disabled = true;
                     btnSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Preparando...';
                     try {

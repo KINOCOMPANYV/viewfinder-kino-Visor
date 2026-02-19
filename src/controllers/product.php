@@ -715,7 +715,8 @@ if (empty($serverCover)) {
                     return;
                 }
 
-                if (navigator.canShare && navigator.share) {
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile && navigator.canShare && navigator.share) {
                     btnSend.disabled = true;
                     btnSend.textContent = '⏳ Preparando...';
                     try {

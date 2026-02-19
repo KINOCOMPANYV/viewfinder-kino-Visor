@@ -172,7 +172,8 @@
         if (selected.length === 0) return;
 
         // Intentar Web Share API (mobile) con archivos
-        const canShareFiles = navigator.canShare && navigator.share;
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const canShareFiles = isMobile && navigator.canShare && navigator.share;
 
         if (canShareFiles) {
             sendBtn.disabled = true;
