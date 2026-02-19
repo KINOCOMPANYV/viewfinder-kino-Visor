@@ -252,16 +252,19 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
         // Hacer públicos todos los archivos en PARALELO (evita bloqueo)
         $drive->makePublicBatch(array_column($files, 'id'));
 
-        // === CACHÉ: guardar resultado para futuras peticiones ===
-        try {
-            $saveStmt = $db->prepare(
-                "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
-                 VALUES (?, ?, ?, NOW())
-                 ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
-            );
-            $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
-        } catch (Exception $e) {
-            // Si la tabla no existe aún, ignorar
+        // === CACHÉ: guardar resultado SOLO si hay archivos ===
+        // No cachear resultados vacíos para evitar envenenamiento del caché
+        if (!empty($files)) {
+            try {
+                $saveStmt = $db->prepare(
+                    "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
+                     VALUES (?, ?, ?, NOW())
+                     ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
+                );
+                $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
+            } catch (Exception $e) {
+                // Si la tabla no existe aún, ignorar
+            }
         }
 
         jsonResponse([
