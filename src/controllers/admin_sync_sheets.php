@@ -90,7 +90,7 @@ for ($i = 1; $i < count($lines); $i++) {
 
 // ============================================================
 // Auto-asignar portadas a productos SIN cover (después de sincronizar)
-// Match EXACTO por SKU — LIMITADO a 5 productos y 30s para evitar timeout.
+// Prefiere match exacto, luego prefijo+separador. LIMITADO a 5 + 30s.
 // ============================================================
 $coversAssigned = 0;
 $coverErrors = '';
@@ -118,24 +118,35 @@ try {
                 try {
                     $allFiles = $drive->findBySku($rootFolderId, $prod['sku']);
 
-                    // Filtrar SOLO archivos con nombre EXACTO del SKU
-                    $exactFiles = array_values(array_filter($allFiles, function ($f) use ($prod) {
+                    // Clasificar: exactos vs compatibles (prefijo + separador)
+                    $exact = $compatible = [];
+                    foreach ($allFiles as $f) {
                         $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
-                        return strcasecmp($nameOnly, $prod['sku']) === 0;
-                    }));
+                        if (strcasecmp($nameOnly, $prod['sku']) === 0) {
+                            $exact[] = $f;
+                        } elseif (
+                            stripos($nameOnly, $prod['sku']) === 0
+                            && strlen($nameOnly) > strlen($prod['sku'])
+                            && !ctype_alnum($nameOnly[strlen($prod['sku'])])
+                        ) {
+                            $compatible[] = $f;
+                        }
+                    }
 
-                    $images = array_filter($exactFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
-                    $videos = array_filter($exactFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
+                    $candidates = !empty($exact) ? $exact : $compatible;
+                    if (empty($candidates))
+                        continue;
+
+                    $images = array_values(array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/')));
+                    $videos = array_values(array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/')));
 
                     if (!empty($images)) {
-                        $best = array_values($images)[0];
-                        $drive->makePublic($best['id']);
-                        $updateStmt->execute(["https://lh3.googleusercontent.com/d/{$best['id']}", $prod['id']]);
+                        $drive->makePublic($images[0]['id']);
+                        $updateStmt->execute(["https://lh3.googleusercontent.com/d/{$images[0]['id']}", $prod['id']]);
                         $coversAssigned++;
                     } elseif (!empty($videos)) {
-                        $best = array_values($videos)[0];
-                        $drive->makePublic($best['id']);
-                        $updateStmt->execute(["[VIDEO]https://drive.google.com/thumbnail?id={$best['id']}&sz=w400", $prod['id']]);
+                        $drive->makePublic($videos[0]['id']);
+                        $updateStmt->execute(["[VIDEO]https://drive.google.com/thumbnail?id={$videos[0]['id']}&sz=w400", $prod['id']]);
                         $coversAssigned++;
                     }
                 } catch (Exception $e) {

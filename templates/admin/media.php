@@ -867,8 +867,46 @@
                 const data = await resp.json();
                 if (data.ok) {
                     showToast(data.message);
-                    if (data.assigned > 0) location.reload();
-                    else {
+
+                    // Mostrar diagnósticos si hay productos sin match
+                    if (data.diagnostics && data.diagnostics.length > 0) {
+                        let diagHtml = '<div style="margin-top:1rem; padding:1rem; background:var(--color-surface-2); border:1px solid var(--color-border); border-radius:8px; max-height:400px; overflow-y:auto;">';
+                        diagHtml += '<h4 style="margin-bottom:0.75rem; color:var(--color-primary);">📊 Diagnóstico por SKU:</h4>';
+                        diagHtml += '<table style="width:100%; font-size:0.8rem; border-collapse:collapse;">';
+                        diagHtml += '<tr style="color:var(--color-text-muted);"><th style="text-align:left; padding:0.3rem;">SKU</th><th>Archivos</th><th>Estado</th><th>Nombres en Drive</th></tr>';
+                        data.diagnostics.forEach(d => {
+                            const statusIcons = {
+                                'image_assigned': '✅ Imagen',
+                                'video_assigned': '🎬 Video',
+                                'drive_returned_0': '❌ 0 en Drive',
+                                'no_matching_names': '⚠️ Sin match exacto',
+                                'no_media_files': '⚠️ Sin media',
+                                'error': '🔴 Error'
+                            };
+                            const icon = statusIcons[d.status] || d.status;
+                            const names = (d.file_names || []).join(', ') || '-';
+                            const color = d.status.includes('assigned') ? 'var(--color-success)' : 'var(--color-danger)';
+                            diagHtml += `<tr style="border-top:1px solid var(--color-border);">
+                                <td style="padding:0.4rem; color:var(--color-primary); font-weight:600;">${d.sku}</td>
+                                <td style="padding:0.4rem; text-align:center;">${d.files_found ?? 0}</td>
+                                <td style="padding:0.4rem; color:${color};">${icon}</td>
+                                <td style="padding:0.4rem; color:var(--color-text-muted); font-size:0.75rem; max-width:300px; word-break:break-all;">${names}</td>
+                            </tr>`;
+                        });
+                        diagHtml += '</table></div>';
+
+                        // Insertar diagnóstico después del botón
+                        const existing = document.getElementById('syncDiagnostics');
+                        if (existing) existing.remove();
+                        const div = document.createElement('div');
+                        div.id = 'syncDiagnostics';
+                        div.innerHTML = diagHtml;
+                        btn.parentElement.appendChild(div);
+                    }
+
+                    if (data.assigned > 0) {
+                        setTimeout(() => location.reload(), 3000); // Dar tiempo para ver diagnósticos
+                    } else {
                         btn.textContent = originalText;
                         btn.disabled = false;
                     }

@@ -2,9 +2,13 @@
 /**
  * Admin Sync Covers — Auto-asignar portadas de Drive a productos.
  * POST /admin/media/sync-covers
- * - Match EXACTO por SKU (nombre de archivo sin extensión = SKU)
- * - Si no hay imagen, usa thumbnail de video como fallback
- * - Limita a 20 productos por ejecución
+ *
+ * Estrategia de matching:
+ *   1) Primero busca archivos con nombre EXACTO = SKU (ej: "834-4.jpg")
+ *   2) Si no hay exacto, acepta prefijo SKU + separador (ej: "834-4 front.jpg", "834-4_portada.jpg")
+ *      PERO rechaza hijos/variantes donde el SKU va seguido de letra+dígito (ej: "834-4F1.jpg")
+ *   3) Prioriza imágenes sobre videos. Si solo hay video, usa thumbnail con icono ▶
+ *   4) Limitado a 20 productos por ejecución
  */
 require_once __DIR__ . '/../services/GoogleDriveService.php';
 
@@ -37,54 +41,133 @@ if (empty($products)) {
 }
 
 /**
- * Filtra archivos que coinciden EXACTAMENTE con el SKU.
- * El nombre del archivo sin extensión debe ser igual al SKU (case-insensitive).
+ * Clasificar archivos en: exactos, compatibles (prefijo) y rechazados.
+ * - Exacto: filename sin extensión = SKU (case insensitive)
+ * - Compatible: filename empieza con SKU y el siguiente char NO es alfanumérico
+ *   (acepta espacio, guión bajo, guión, paréntesis, etc.)
+ * - Rechazado: filename empieza con SKU pero seguido de letra o dígito (variante/hijo)
  */
-function exactSkuMatch(array $files, string $sku): array
+function classifyMatches(array $files, string $sku): array
 {
-    return array_values(array_filter($files, function ($f) use ($sku) {
+    $exact = [];
+    $compatible = [];
+
+    foreach ($files as $f) {
         $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
-        return strcasecmp($nameOnly, $sku) === 0;
-    }));
+
+        // ¿Match exacto?
+        if (strcasecmp($nameOnly, $sku) === 0) {
+            $exact[] = $f;
+            continue;
+        }
+
+        // ¿Empieza con el SKU?
+        if (stripos($nameOnly, $sku) === 0 && strlen($nameOnly) > strlen($sku)) {
+            $nextChar = $nameOnly[strlen($sku)];
+            // Aceptar si el siguiente char NO es letra ni dígito (es separador)
+            // Esto permite: "834-4 front.jpg", "834-4_portada.jpg", "834-4 (2).jpg"
+            // Rechaza: "834-4F1.jpg", "834-4V2.jpg", "834-410.jpg"
+            if (!ctype_alnum($nextChar)) {
+                $compatible[] = $f;
+            }
+        }
+    }
+
+    return ['exact' => $exact, 'compatible' => $compatible];
+}
+
+// Palabras clave para priorizar como portada
+$coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
+$numericPriority = ['01', '_1', '-1', 'f1'];
+
+function scoreCover(array $file, array $coverKeywords, array $numericPriority): int
+{
+    $name = strtolower($file['name'] ?? '');
+    $score = 0;
+    foreach ($coverKeywords as $kw) {
+        if (str_contains($name, $kw))
+            $score += 10;
+    }
+    foreach ($numericPriority as $np) {
+        if (str_contains($name, $np))
+            $score += 5;
+    }
+    return $score;
 }
 
 $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 $assigned = 0;
 $assignedVideos = 0;
 $errors = [];
+$diagnostics = [];
 
 foreach ($products as $prod) {
+    $diag = ['sku' => $prod['sku'], 'status' => 'no_files'];
+
     try {
         // Buscar archivos por SKU (global + recursivo en subcarpetas)
         $allFiles = $drive->findBySku($rootFolderId, $prod['sku']);
+        $diag['files_found'] = count($allFiles);
+        $diag['file_names'] = array_map(fn($f) => $f['name'] ?? '?', array_slice($allFiles, 0, 10));
 
-        // Filtrar SOLO archivos con nombre EXACTO del SKU
-        $exactFiles = exactSkuMatch($allFiles, $prod['sku']);
+        if (empty($allFiles)) {
+            $diag['status'] = 'drive_returned_0';
+            $diagnostics[] = $diag;
+            continue;
+        }
+
+        // Clasificar matches
+        $classes = classifyMatches($allFiles, $prod['sku']);
+        $diag['exact_count'] = count($classes['exact']);
+        $diag['compatible_count'] = count($classes['compatible']);
+
+        // Usar exactos primero, luego compatibles
+        $candidates = !empty($classes['exact']) ? $classes['exact'] : $classes['compatible'];
+
+        if (empty($candidates)) {
+            $diag['status'] = 'no_matching_names';
+            $diagnostics[] = $diag;
+            continue;
+        }
 
         // Separar imágenes y videos
-        $images = array_filter($exactFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
-        $videos = array_filter($exactFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
+        $images = array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+        $videos = array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
 
         if (!empty($images)) {
-            // Prioridad: usar imagen
-            $bestImage = array_values($images)[0];
-            $drive->makePublic($bestImage['id']);
-            $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
+            // Ordenar por keywords de portada
+            $images = array_values($images);
+            usort($images, function ($a, $b) use ($coverKeywords, $numericPriority) {
+                return scoreCover($b, $coverKeywords, $numericPriority)
+                    - scoreCover($a, $coverKeywords, $numericPriority);
+            });
+
+            $best = $images[0];
+            $drive->makePublic($best['id']);
+            $coverUrl = "https://lh3.googleusercontent.com/d/{$best['id']}";
             $updateStmt->execute([$coverUrl, $prod['id']]);
             $assigned++;
+            $diag['status'] = 'image_assigned';
+            $diag['assigned_file'] = $best['name'];
         } elseif (!empty($videos)) {
-            // Fallback: usar thumbnail del video
-            $bestVideo = array_values($videos)[0];
-            $drive->makePublic($bestVideo['id']);
-            // Marcar como video con prefijo [VIDEO] para que el frontend muestre icono
-            $coverUrl = "[VIDEO]https://drive.google.com/thumbnail?id={$bestVideo['id']}&sz=w400";
+            $best = array_values($videos)[0];
+            $drive->makePublic($best['id']);
+            $coverUrl = "[VIDEO]https://drive.google.com/thumbnail?id={$best['id']}&sz=w400";
             $updateStmt->execute([$coverUrl, $prod['id']]);
             $assignedVideos++;
             $assigned++;
+            $diag['status'] = 'video_assigned';
+            $diag['assigned_file'] = $best['name'];
+        } else {
+            $diag['status'] = 'no_media_files';
         }
     } catch (Exception $e) {
+        $diag['status'] = 'error';
+        $diag['error'] = $e->getMessage();
         $errors[] = "SKU {$prod['sku']}: {$e->getMessage()}";
     }
+
+    $diagnostics[] = $diag;
 }
 
 $remaining = $totalWithout - $assigned;
@@ -97,8 +180,8 @@ echo json_encode([
     'total' => count($products),
     'remaining' => $remaining,
     'errors' => $errors,
+    'diagnostics' => $diagnostics,
     'message' => $assigned > 0
-        ? "⭐ {$assigned} producto(s) recibieron portada (" . ($assigned - $assignedVideos) . " imagen(es), {$assignedVideos} video(s))." . ($remaining > 0 ? " Quedan {$remaining} sin portada." : '')
-        : "No se encontraron archivos con nombre exacto de SKU para los " . count($products) . " productos procesados."
+        ? "⭐ {$assigned} producto(s) recibieron portada (" . ($assigned - $assignedVideos) . " img, {$assignedVideos} vid)." . ($remaining > 0 ? " Quedan {$remaining} sin portada." : '')
+        : "No se encontraron archivos para los " . count($products) . " productos procesados. Ver diagnósticos."
 ]);
-
