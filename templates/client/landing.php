@@ -100,7 +100,7 @@
                                 <?php endif; ?>
                             </div>
                             <button class="btn-whatsapp"
-                                onclick="event.preventDefault(); event.stopPropagation(); shareWhatsApp('<?= e($p['sku']) ?>', '<?= e(addslashes($p['name'])) ?>');"
+                                onclick="event.preventDefault(); event.stopPropagation(); openShareModal('<?= e($p['sku']) ?>', '<?= e(addslashes($p['name'])) ?>');"
                                 title="Enviar por WhatsApp">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                                     <path
@@ -166,13 +166,9 @@ KV-1003
         </div>
     </div>
 
-    <!-- WhatsApp Share -->
+    <!-- WhatsApp Share Modal -->
+    <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
     <script>
-        function shareWhatsApp(sku, name) {
-            const url = window.location.origin + '/producto/' + sku;
-            const text = `📦 *${name}*\n🔗 SKU: ${sku}\n\n📸 Ver fotos y videos:\n${url}`;
-            window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
-        }
 
         // Renderizar cover dinámicamente (solo para cards sin SSR image)
         function renderCover(el, imgUrl, isVideo) {

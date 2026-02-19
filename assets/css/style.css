@@ -1229,3 +1229,268 @@ textarea.form-input {
         grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     }
 }
+
+/* ============================================================
+   WhatsApp Share Modal
+   ============================================================ */
+.wa-share-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.wa-share-overlay.active {
+    display: flex;
+}
+
+.wa-share-modal {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    animation: fadeSlideIn 0.25s ease;
+}
+
+.wa-share-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.wa-share-header h3 {
+    font-size: 1.05rem;
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+.wa-share-close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+}
+
+.wa-share-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text);
+}
+
+.wa-share-product {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.wa-share-product strong {
+    color: var(--color-primary);
+}
+
+.wa-share-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2.5rem;
+    color: var(--color-text-muted);
+}
+
+.wa-share-body {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.wa-share-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.82rem;
+}
+
+.wa-select-all {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.wa-select-all input[type="checkbox"] {
+    accent-color: var(--color-primary);
+    width: 16px;
+    height: 16px;
+}
+
+.wa-selected-count {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.wa-share-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.wa-share-item {
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+}
+
+.wa-share-item .wa-img-check {
+    display: none;
+}
+
+.wa-share-thumb {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: all var(--transition);
+}
+
+.wa-share-item .wa-img-check:checked~.wa-share-thumb {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 12px var(--color-primary-glow);
+}
+
+.wa-share-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.wa-thumb-error {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface-2);
+    font-size: 1.5rem;
+}
+
+.wa-check-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: transparent;
+    transition: all var(--transition);
+}
+
+.wa-share-item .wa-img-check:checked~.wa-share-thumb .wa-check-indicator {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #000;
+    font-weight: 700;
+}
+
+.wa-share-filename {
+    font-size: 0.65rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.wa-share-empty {
+    padding: 2.5rem;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.wa-share-footer {
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.wa-share-send {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #25D366;
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: var(--font);
+}
+
+.wa-share-send:hover {
+    background: #1fb855;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+}
+
+.wa-share-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+@media (max-width: 640px) {
+    .wa-share-modal {
+        max-height: 92vh;
+    }
+
+    .wa-share-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem;
+    }
+}
