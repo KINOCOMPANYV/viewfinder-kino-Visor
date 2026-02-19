@@ -735,11 +735,13 @@ if (empty($serverCover)) {
                     resetGalleryBtn();
                 }
 
-                // Fallback: links
+                // Fallback: links con URLs directas a las imágenes
                 let text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n';
-                text += '🔗 ' + location.href + '\n\n';
+                text += '🔗 Ver producto: ' + location.href + '\n\n';
+                text += '📸 *Imágenes seleccionadas:*\n\n';
                 sel.forEach((f, i) => {
-                    text += (i + 1) + '. ' + f.name + '\n';
+                    const imgUrl = `https://drive.google.com/uc?export=view&id=${f.id}`;
+                    text += (i + 1) + '. ' + f.name + '\n' + imgUrl + '\n\n';
                 });
                 window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
             });
