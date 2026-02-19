@@ -301,6 +301,7 @@ KV-1003
                         loadingSection.style.display = 'none';
                         const results = data.results || {};
                         let found = 0, notFound = 0;
+                        const needsCover = []; // SKUs que necesitan imagen de Drive
                         resultsGrid.innerHTML = '';
 
                         codes.forEach(code => {
@@ -312,7 +313,7 @@ KV-1003
                                 card.className = 'batch-result-card found';
                                 const imgHtml = item.image
                                     ? `<img src="${item.image}" alt="${item.sku}" loading="lazy" onerror="this.outerHTML='<div class=\\'batch-no-img\\'>📷</div>'">`
-                                    : '<div class="batch-no-img">📷</div>';
+                                    : '<div class="batch-no-img batch-loading-img" data-sku="' + item.sku + '">⏳</div>';
                                 card.innerHTML = `
                             <a href="/producto/${item.sku}" class="batch-result-link" target="_blank">
                                 <div class="batch-result-img">${imgHtml}</div>
@@ -321,6 +322,10 @@ KV-1003
                                     <span class="batch-result-name">${item.name || ''}</span>
                                 </div>
                             </a>`;
+                                // Si no tiene imagen, buscar en Drive
+                                if (!item.image) {
+                                    needsCover.push(item.sku);
+                                }
                             } else {
                                 notFound++;
                                 card.className = 'batch-result-card not-found';
@@ -336,6 +341,36 @@ KV-1003
 
                         summaryEl.innerHTML = `<strong>${found}</strong> encontrado${found !== 1 ? 's' : ''} · <strong>${notFound}</strong> no encontrado${notFound !== 1 ? 's' : ''}`;
                         resultsSection.style.display = '';
+
+                        // Buscar covers de Drive para los que no tienen imagen en BD
+                        if (needsCover.length > 0) {
+                            fetch('/api/covers/batch', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ skus: needsCover })
+                            })
+                            .then(r => r.json())
+                            .then(coverData => {
+                                const covers = coverData.covers || {};
+                                document.querySelectorAll('.batch-loading-img').forEach(el => {
+                                    const sku = el.dataset.sku;
+                                    const cover = covers[sku];
+                                    if (cover && cover.url) {
+                                        const imgContainer = el.closest('.batch-result-img');
+                                        imgContainer.innerHTML = `<img src="${cover.url}" alt="${sku}" loading="lazy" onerror="this.outerHTML='<div class=\\'batch-no-img\\'>📷</div>'">`;
+                                    } else {
+                                        el.textContent = '📷';
+                                        el.classList.remove('batch-loading-img');
+                                    }
+                                });
+                            })
+                            .catch(() => {
+                                document.querySelectorAll('.batch-loading-img').forEach(el => {
+                                    el.textContent = '📷';
+                                    el.classList.remove('batch-loading-img');
+                                });
+                            });
+                        }
                     })
                     .catch(err => {
                         loadingSection.style.display = 'none';
