@@ -39,7 +39,11 @@
                 <form action="/buscar" method="GET" id="searchForm">
                     <input type="text" name="q" id="searchInput" placeholder="Escribe SKU o nombre del producto..."
                         autocomplete="off" autofocus>
-                    <button type="submit" class="search-btn">Buscar</button>
+                    <div class="search-buttons">
+                        <button type="submit" class="search-btn">Buscar</button>
+                        <button type="button" class="search-btn batch-btn" id="btnBatchOpen"
+                            title="Buscar múltiples códigos a la vez">📋 Lote</button>
+                    </div>
                 </form>
                 <div class="autocomplete-dropdown" id="autocomplete"></div>
             </div>
@@ -126,6 +130,42 @@
         </div>
     </footer>
 
+    <!-- Modal Búsqueda por Lote -->
+    <div class="batch-modal-overlay" id="batchModal">
+        <div class="batch-modal">
+            <div class="batch-modal-header">
+                <h2>📋 Búsqueda por Lote</h2>
+                <button class="batch-modal-close" id="btnBatchClose">&times;</button>
+            </div>
+            <div class="batch-modal-body">
+                <div id="batchInputSection">
+                    <label for="batchCodes">Pega los códigos (uno por línea):</label>
+                    <textarea id="batchCodes" class="form-input" rows="8" placeholder="Ejemplo:
+KV-1001
+KV-1002
+KV-1003
+..."></textarea>
+                    <div class="batch-actions">
+                        <span class="batch-count" id="batchCount">0 códigos</span>
+                        <button class="btn btn-primary" id="btnBatchSearch">🔍 Buscar Lote</button>
+                    </div>
+                </div>
+                <div id="batchLoading" style="display:none;">
+                    <div class="batch-spinner"></div>
+                    <p style="text-align:center; color:var(--color-text-muted); margin-top:1rem;">Buscando productos...
+                    </p>
+                </div>
+                <div id="batchResults" style="display:none;">
+                    <div class="batch-results-header">
+                        <span id="batchSummary"></span>
+                        <button class="btn btn-sm btn-secondary" id="btnBatchBack">← Nueva búsqueda</button>
+                    </div>
+                    <div class="batch-results-grid" id="batchResultsGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- WhatsApp Share -->
     <script>
         function shareWhatsApp(sku, name) {
@@ -184,6 +224,127 @@
                 })
                 .catch(() => needsFetch.forEach(el => el.innerHTML = '<div class="cover-placeholder">📷</div>'));
         });
+    </script>
+
+    <!-- Batch Search JS -->
+    <script>
+        (function () {
+            const modal = document.getElementById('batchModal');
+            const btnOpen = document.getElementById('btnBatchOpen');
+            const btnClose = document.getElementById('btnBatchClose');
+            const btnSearch = document.getElementById('btnBatchSearch');
+            const btnBack = document.getElementById('btnBatchBack');
+            const textarea = document.getElementById('batchCodes');
+            const countEl = document.getElementById('batchCount');
+            const inputSection = document.getElementById('batchInputSection');
+            const loadingSection = document.getElementById('batchLoading');
+            const resultsSection = document.getElementById('batchResults');
+            const resultsGrid = document.getElementById('batchResultsGrid');
+            const summaryEl = document.getElementById('batchSummary');
+
+            function getCodes() {
+                return textarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            }
+
+            // Contador de códigos
+            textarea.addEventListener('input', () => {
+                const n = getCodes().length;
+                countEl.textContent = n + (n === 1 ? ' código' : ' códigos');
+            });
+
+            // Abrir modal
+            btnOpen.addEventListener('click', (e) => {
+                e.preventDefault();
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                textarea.focus();
+            });
+
+            // Cerrar modal
+            function closeModal() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            btnClose.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
+            });
+
+            // Volver a input
+            btnBack.addEventListener('click', () => {
+                resultsSection.style.display = 'none';
+                inputSection.style.display = '';
+            });
+
+            // Buscar lote
+            btnSearch.addEventListener('click', () => {
+                const codes = getCodes();
+                if (codes.length === 0) {
+                    textarea.focus();
+                    return;
+                }
+
+                inputSection.style.display = 'none';
+                loadingSection.style.display = '';
+                resultsSection.style.display = 'none';
+
+                fetch('/api/batch-search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codes })
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        loadingSection.style.display = 'none';
+                        const results = data.results || {};
+                        let found = 0, notFound = 0;
+                        resultsGrid.innerHTML = '';
+
+                        codes.forEach(code => {
+                            const item = results[code];
+                            const card = document.createElement('div');
+
+                            if (item && item.sku) {
+                                found++;
+                                card.className = 'batch-result-card found';
+                                const imgHtml = item.image
+                                    ? `<img src="${item.image}" alt="${item.sku}" loading="lazy" onerror="this.outerHTML='<div class=\\'batch-no-img\\'>📷</div>'">`
+                                    : '<div class="batch-no-img">📷</div>';
+                                card.innerHTML = `
+                            <a href="/producto/${item.sku}" class="batch-result-link" target="_blank">
+                                <div class="batch-result-img">${imgHtml}</div>
+                                <div class="batch-result-info">
+                                    <span class="batch-result-sku">${item.sku}</span>
+                                    <span class="batch-result-name">${item.name || ''}</span>
+                                </div>
+                            </a>`;
+                            } else {
+                                notFound++;
+                                card.className = 'batch-result-card not-found';
+                                card.innerHTML = `
+                            <div class="batch-result-img"><div class="batch-no-img">❌</div></div>
+                            <div class="batch-result-info">
+                                <span class="batch-result-sku">${code}</span>
+                                <span class="batch-result-status">No encontrado</span>
+                            </div>`;
+                            }
+                            resultsGrid.appendChild(card);
+                        });
+
+                        summaryEl.innerHTML = `<strong>${found}</strong> encontrado${found !== 1 ? 's' : ''} · <strong>${notFound}</strong> no encontrado${notFound !== 1 ? 's' : ''}`;
+                        resultsSection.style.display = '';
+                    })
+                    .catch(err => {
+                        loadingSection.style.display = 'none';
+                        inputSection.style.display = '';
+                        alert('Error al buscar. Intenta de nuevo.');
+                        console.error(err);
+                    });
+            });
+        })();
     </script>
 
     <!-- Autocomplete JS -->

@@ -90,6 +90,12 @@ if ($uri === '/api/search') {
     exit;
 }
 
+if ($uri === '/api/batch-search' && $method === 'POST') {
+    // API de búsqueda por lote
+    include __DIR__ . '/src/controllers/api_batch_search.php';
+    exit;
+}
+
 // ============================================================
 // RUTAS ADMIN
 // ============================================================

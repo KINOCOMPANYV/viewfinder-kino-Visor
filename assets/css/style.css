@@ -187,11 +187,16 @@ img {
     pointer-events: none;
 }
 
-.search-box .search-btn {
+.search-box .search-buttons {
     position: absolute;
     right: 0.5rem;
     top: 50%;
     transform: translateY(-50%);
+    display: flex;
+    gap: 0.35rem;
+}
+
+.search-box .search-btn {
     padding: 0.6rem 1.25rem;
     background: var(--color-primary);
     color: #000;
@@ -205,7 +210,21 @@ img {
 
 .search-box .search-btn:hover {
     background: var(--color-primary-hover);
-    transform: translateY(-50%) scale(1.02);
+    transform: scale(1.02);
+}
+
+.search-box .batch-btn {
+    background: var(--color-surface-3);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    font-size: 0.82rem;
+    padding: 0.6rem 0.9rem;
+}
+
+.search-box .batch-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(201, 168, 76, 0.1);
 }
 
 /* === Autocomplete Dropdown === */
@@ -989,4 +1008,224 @@ textarea.form-input {
 
 .btn-whatsapp svg {
     flex-shrink: 0;
+}
+
+/* === Batch Search Modal === */
+.batch-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.batch-modal-overlay.active {
+    display: flex;
+    animation: fadeIn 0.2s ease;
+}
+
+.batch-modal {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 700px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    animation: slideDown 0.25s ease;
+}
+
+.batch-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.batch-modal-header h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.batch-modal-close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    line-height: 1;
+    transition: color var(--transition);
+}
+
+.batch-modal-close:hover {
+    color: var(--color-danger);
+}
+
+.batch-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.batch-modal-body label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.batch-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1rem;
+    gap: 1rem;
+}
+
+.batch-count {
+    font-size: 0.85rem;
+    color: var(--color-text-dim);
+    font-weight: 500;
+}
+
+/* Spinner */
+.batch-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 2rem auto;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Results */
+.batch-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+}
+
+.batch-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+
+.batch-result-card {
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: all var(--transition);
+}
+
+.batch-result-card.found:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.batch-result-card.not-found {
+    opacity: 0.55;
+    border-color: rgba(248, 113, 113, 0.25);
+}
+
+.batch-result-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.batch-result-img {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--color-surface-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.batch-result-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.batch-no-img {
+    font-size: 2rem;
+    color: var(--color-text-dim);
+}
+
+.batch-result-info {
+    padding: 0.6rem 0.75rem;
+}
+
+.batch-result-sku {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.batch-result-name {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    line-height: 1.3;
+    margin-top: 0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.batch-result-status {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--color-danger);
+    font-weight: 500;
+    margin-top: 0.15rem;
+}
+
+@media (max-width: 640px) {
+    .search-box .search-buttons {
+        position: static;
+        transform: none;
+        margin-top: 0.5rem;
+        justify-content: center;
+    }
+
+    .search-box input {
+        padding-right: 1.25rem;
+    }
+
+    .batch-modal {
+        max-height: 95vh;
+    }
+
+    .batch-results-grid {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    }
 }
