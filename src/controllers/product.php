@@ -29,6 +29,33 @@ if (!$product) {
     include __DIR__ . '/../../templates/404.php';
     exit;
 }
+
+// Precargar portada desde caché del server (evita esperar JS)
+$serverCover = $product['cover_image_url'] ?? '';
+if (empty($serverCover)) {
+    try {
+        $cacheStmt = $db->prepare(
+            "SELECT files_json FROM media_search_cache 
+             WHERE sku = ? AND cached_at > NOW() - INTERVAL 10 MINUTE"
+        );
+        $cacheStmt->execute([$originalSku]);
+        $cacheRow = $cacheStmt->fetch();
+        if ($cacheRow) {
+            $cachedFiles = json_decode($cacheRow['files_json'], true) ?: [];
+            foreach ($cachedFiles as $cf) {
+                if (str_starts_with($cf['mimeType'] ?? '', 'image/')) {
+                    $thumb = $cf['thumbnailLink'] ?? '';
+                    $serverCover = $thumb
+                        ? preg_replace('/=s\d+/', '=s800', $thumb)
+                        : "https://lh3.googleusercontent.com/d/{$cf['id']}=s800";
+                    break;
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // tabla no existe aún, ignorar
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -336,16 +363,21 @@ if (!$product) {
                 <!-- Image -->
                 <div class="main-image" id="mainCover"
                      data-sku="<?= e($product['sku']) ?>"
-                     <?php if ($product['cover_image_url']): ?>
-                        data-cover="<?= e($product['cover_image_url']) ?>"
+                     <?php if ($serverCover): ?>
+                        data-cover="<?= e($serverCover) ?>"
                      <?php endif; ?>
                 >
-                    <div class="cover-skeleton" style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
-                        <div style="text-align:center;color:var(--color-text-muted);">
-                            <div class="spinner" style="display:inline-block;"></div>
-                            <div style="font-size:0.8rem;margin-top:0.5rem;">Cargando imagen…</div>
+                    <?php if ($serverCover): ?>
+                        <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>"
+                             onclick="openLightbox(this.src, '<?= e(addslashes($product['name'])) ?>')">
+                    <?php else: ?>
+                        <div class="cover-skeleton" style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
+                            <div style="text-align:center;color:var(--color-text-muted);">
+                                <div class="spinner" style="display:inline-block;"></div>
+                                <div style="font-size:0.8rem;margin-top:0.5rem;">Cargando imagen…</div>
+                            </div>
                         </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Info -->
