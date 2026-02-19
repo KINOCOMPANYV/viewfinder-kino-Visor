@@ -182,13 +182,27 @@ if (empty($serverCover)) {
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 0.8; }
+
+            0%,
+            100% {
+                opacity: 0.4;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
         }
 
         @keyframes fadeSlideIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .media-count {
@@ -361,17 +375,14 @@ if (empty($serverCover)) {
 
             <div class="detail-grid">
                 <!-- Image -->
-                <div class="main-image" id="mainCover"
-                     data-sku="<?= e($product['sku']) ?>"
-                     <?php if ($serverCover): ?>
-                        data-cover="<?= e($serverCover) ?>"
-                     <?php endif; ?>
-                >
+                <div class="main-image" id="mainCover" data-sku="<?= e($product['sku']) ?>" <?php if ($serverCover): ?>
+                        data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
                     <?php if ($serverCover): ?>
                         <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>"
-                             onclick="openLightbox(this.src, '<?= e(addslashes($product['name'])) ?>')">
+                            onclick="openLightbox(this.src, '<?= e(addslashes($product['name'])) ?>')">
                     <?php else: ?>
-                        <div class="cover-skeleton" style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
+                        <div class="cover-skeleton"
+                            style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
                             <div style="text-align:center;color:var(--color-text-muted);">
                                 <div class="spinner" style="display:inline-block;"></div>
                                 <div style="font-size:0.8rem;margin-top:0.5rem;">Cargando imagen…</div>
@@ -615,61 +626,43 @@ if (empty($serverCover)) {
             const grid = document.getElementById('galleryGrid');
             gallery.style.display = 'block';
 
-            // Crear skeleton placeholders primero
-            grid.innerHTML = files.map(() => `
-                <div class="gallery-item skeleton-item">
-                    <div style="width:100%;height:150px;background:var(--color-card-bg);border-radius:var(--radius);animation:pulse 1.5s ease-in-out infinite;"></div>
-                </div>
-            `).join('');
+            grid.innerHTML = files.map(f => {
+                const isImage = (f.mimeType || '').startsWith('image/');
+                const isVideo = (f.mimeType || '').startsWith('video/');
+                const viewUrl = f.webViewLink || '#';
+                const downloadUrl = f.webContentLink || viewUrl;
 
-            // Cargar cada archivo progresivamente
-            files.forEach((f, i) => {
-                setTimeout(() => {
-                    const isImage = (f.mimeType || '').startsWith('image/');
-                    const isVideo = (f.mimeType || '').startsWith('video/');
-                    const viewUrl = f.webViewLink || '#';
-                    const downloadUrl = f.webContentLink || viewUrl;
-
-                    let mediaHtml;
-                    if (isImage) {
-                        const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
-                        const thumbUrl = f.thumbnailLink
-                            ? f.thumbnailLink.replace(/=s\d+/, '=s400')
-                            : fullUrl;
-                        mediaHtml = `<img src="${thumbUrl}" alt="${f.name}" loading="lazy" style="opacity:0;transition:opacity 0.3s;" onload="this.style.opacity='1'" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
-                    } else if (isVideo) {
-                        mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
-                            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
-                                <span style="font-size:2.5rem;">▶️</span>
-                                <span style="font-size:0.7rem;margin-top:0.3rem;opacity:0.7;">Click para reproducir</span>
-                            </div>
-                        </div>`;
-                    } else {
-                        mediaHtml = `<div class="video-placeholder">📄</div>`;
-                    }
-
-                    const itemHtml = `
-                        <div class="gallery-item" data-file-id="${f.id}" style="animation:fadeSlideIn 0.3s ease forwards;">
-                            ${mediaHtml}
-                            <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">
-                                ${f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name}
-                            </div>
-                            <div class="item-actions">
-                                <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-secondary">👁️ Ver</a>
-                                <a href="${downloadUrl}" target="_blank" class="btn btn-sm btn-primary">⬇️</a>
-                            </div>
+                let mediaHtml;
+                if (isImage) {
+                    const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
+                    const thumbUrl = f.thumbnailLink
+                        ? f.thumbnailLink.replace(/=s\d+/, '=s400')
+                        : `https://lh3.googleusercontent.com/d/${f.id}=s400`;
+                    mediaHtml = `<img src="${thumbUrl}" alt="${f.name}" loading="lazy" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
+                } else if (isVideo) {
+                    mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
+                        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
+                            <span style="font-size:2.5rem;">▶️</span>
+                            <span style="font-size:0.7rem;margin-top:0.3rem;opacity:0.7;">Click para reproducir</span>
                         </div>
-                    `;
+                    </div>`;
+                } else {
+                    mediaHtml = `<div class="video-placeholder">📄</div>`;
+                }
 
-                    // Reemplazar skeleton con item real
-                    const skeletons = grid.querySelectorAll('.skeleton-item');
-                    if (skeletons[i]) {
-                        skeletons[i].outerHTML = itemHtml;
-                    } else {
-                        grid.insertAdjacentHTML('beforeend', itemHtml);
-                    }
-                }, i * 80);
-            });
+                return `
+                    <div class="gallery-item" data-file-id="${f.id}">
+                        ${mediaHtml}
+                        <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">
+                            ${f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name}
+                        </div>
+                        <div class="item-actions">
+                            <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-secondary">👁️ Ver</a>
+                            <a href="${downloadUrl}" target="_blank" class="btn btn-sm btn-primary">⬇️</a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function downloadMedia(type) {
