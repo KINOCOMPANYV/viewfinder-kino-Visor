@@ -161,6 +161,21 @@ KV-1003
                         <button class="btn btn-sm btn-secondary" id="btnBatchBack">← Nueva búsqueda</button>
                     </div>
                     <div class="batch-results-grid" id="batchResultsGrid"></div>
+                    <div class="batch-wa-footer" id="batchWaFooter" style="display:none;">
+                        <div class="batch-wa-info">
+                            <label class="batch-select-all-label">
+                                <input type="checkbox" id="batchSelectAll"> Seleccionar todas
+                            </label>
+                            <span id="batchSelectedCount" class="batch-selected-count">0 seleccionadas</span>
+                        </div>
+                        <button class="batch-wa-send" id="btnBatchWaSend">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <path
+                                    d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                            </svg>
+                            📲 Enviar por WhatsApp
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -237,18 +252,22 @@ KV-1003
             const resultsSection = document.getElementById('batchResults');
             const resultsGrid = document.getElementById('batchResultsGrid');
             const summaryEl = document.getElementById('batchSummary');
+            const waFooter = document.getElementById('batchWaFooter');
+            const selectAllCb = document.getElementById('batchSelectAll');
+            const selectedCountEl = document.getElementById('batchSelectedCount');
+            const btnWaSend = document.getElementById('btnBatchWaSend');
+
+            let batchFoundItems = [];
 
             function getCodes() {
                 return textarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
             }
 
-            // Contador de códigos
             textarea.addEventListener('input', () => {
                 const n = getCodes().length;
                 countEl.textContent = n + (n === 1 ? ' código' : ' códigos');
             });
 
-            // Abrir modal
             btnOpen.addEventListener('click', (e) => {
                 e.preventDefault();
                 modal.classList.add('active');
@@ -256,36 +275,110 @@ KV-1003
                 textarea.focus();
             });
 
-            // Cerrar modal
             function closeModal() {
                 modal.classList.remove('active');
                 document.body.style.overflow = '';
             }
             btnClose.addEventListener('click', closeModal);
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeModal();
-            });
+            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
             });
 
-            // Volver a input
             btnBack.addEventListener('click', () => {
                 resultsSection.style.display = 'none';
                 inputSection.style.display = '';
+                waFooter.style.display = 'none';
             });
 
-            // Buscar lote
-            btnSearch.addEventListener('click', () => {
-                const codes = getCodes();
-                if (codes.length === 0) {
-                    textarea.focus();
+            // --- Conteo de seleccionadas ---
+            function updateSelectedCount() {
+                const checks = resultsGrid.querySelectorAll('.batch-card-check:checked');
+                const total = resultsGrid.querySelectorAll('.batch-card-check').length;
+                selectedCountEl.textContent = checks.length + ' seleccionada' + (checks.length !== 1 ? 's' : '');
+                btnWaSend.disabled = checks.length === 0;
+                selectAllCb.checked = checks.length === total && total > 0;
+                selectAllCb.indeterminate = checks.length > 0 && checks.length < total;
+            }
+
+            selectAllCb.addEventListener('change', () => {
+                const checked = selectAllCb.checked;
+                resultsGrid.querySelectorAll('.batch-card-check').forEach(cb => cb.checked = checked);
+                updateSelectedCount();
+            });
+
+            // --- Enviar por WhatsApp ---
+            btnWaSend.addEventListener('click', async () => {
+                const checks = resultsGrid.querySelectorAll('.batch-card-check:checked');
+                if (checks.length === 0) return;
+                if (checks.length > 10) {
+                    alert('⚠️ Solo se pueden enviar 10 imágenes a la vez.\n\nPor favor deselecciona algunas y haz otro envío después.');
                     return;
                 }
+
+                const selected = [];
+                checks.forEach(cb => {
+                    const idx = parseInt(cb.dataset.index);
+                    if (batchFoundItems[idx]) selected.push(batchFoundItems[idx]);
+                });
+
+                // Intentar Web Share API (mobile)
+                const canShareFiles = navigator.canShare && navigator.share;
+                if (canShareFiles) {
+                    btnWaSend.disabled = true;
+                    btnWaSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Preparando...';
+                    try {
+                        const filePromises = selected.map(async (item) => {
+                            try {
+                                const imgUrl = item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`;
+                                const resp = await fetch(imgUrl, { mode: 'cors' });
+                                const blob = await resp.blob();
+                                return new File([blob], item.sku + '.jpg', { type: blob.type || 'image/jpeg' });
+                            } catch { return null; }
+                        });
+                        const files = (await Promise.all(filePromises)).filter(Boolean);
+                        if (files.length > 0) {
+                            const shareData = {
+                                title: 'Catálogo - ' + selected.length + ' productos',
+                                text: selected.map(s => s.sku + ' - ' + s.name).join('\n'),
+                                files: files
+                            };
+                            if (navigator.canShare(shareData)) {
+                                await navigator.share(shareData);
+                                resetWaBtn();
+                                return;
+                            }
+                        }
+                    } catch (err) {
+                        if (err.name === 'AbortError') { resetWaBtn(); return; }
+                    }
+                    resetWaBtn();
+                }
+
+                // Fallback: WhatsApp con links
+                let text = '📦 *Catálogo - ' + selected.length + ' productos*\n\n';
+                selected.forEach((item, i) => {
+                    const productUrl = window.location.origin + '/producto/' + item.sku;
+                    text += (i + 1) + '. *' + item.sku + '* - ' + item.name + '\n🔗 ' + productUrl + '\n\n';
+                });
+                window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+            });
+
+            function resetWaBtn() {
+                btnWaSend.disabled = false;
+                btnWaSend.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> 📲 Enviar por WhatsApp';
+            }
+
+            // --- Buscar lote ---
+            btnSearch.addEventListener('click', () => {
+                const codes = getCodes();
+                if (codes.length === 0) { textarea.focus(); return; }
 
                 inputSection.style.display = 'none';
                 loadingSection.style.display = '';
                 resultsSection.style.display = 'none';
+                waFooter.style.display = 'none';
+                batchFoundItems = [];
 
                 fetch('/api/batch-search', {
                     method: 'POST',
@@ -297,31 +390,39 @@ KV-1003
                         loadingSection.style.display = 'none';
                         const results = data.results || {};
                         let found = 0, notFound = 0;
-                        const needsCover = []; // SKUs que necesitan imagen de Drive
+                        const needsCover = [];
                         resultsGrid.innerHTML = '';
+                        batchFoundItems = [];
 
                         codes.forEach(code => {
                             const item = results[code];
                             const card = document.createElement('div');
 
                             if (item && item.sku) {
+                                const idx = batchFoundItems.length;
+                                batchFoundItems.push({
+                                    sku: item.sku,
+                                    name: item.name || '',
+                                    image: item.image || null
+                                });
                                 found++;
                                 card.className = 'batch-result-card found';
                                 const imgHtml = item.image
                                     ? `<img src="${item.image}" alt="${item.sku}" loading="lazy" onerror="this.outerHTML='<div class=\\'batch-no-img\\'>📷</div>'">`
                                     : '<div class="batch-no-img batch-loading-img" data-sku="' + item.sku + '">⏳</div>';
                                 card.innerHTML = `
-                            <a href="/producto/${item.sku}" class="batch-result-link" target="_blank">
-                                <div class="batch-result-img">${imgHtml}</div>
-                                <div class="batch-result-info">
-                                    <span class="batch-result-sku">${item.sku}</span>
-                                    <span class="batch-result-name">${item.name || ''}</span>
-                                </div>
-                            </a>`;
-                                // Si no tiene imagen, buscar en Drive
-                                if (!item.image) {
-                                    needsCover.push(item.sku);
-                                }
+                                    <label class="batch-card-label">
+                                        <input type="checkbox" class="batch-card-check" data-index="${idx}" checked>
+                                        <div class="batch-card-check-mark">✓</div>
+                                        <a href="/producto/${item.sku}" class="batch-result-link" target="_blank" onclick="event.stopPropagation();">
+                                            <div class="batch-result-img">${imgHtml}</div>
+                                            <div class="batch-result-info">
+                                                <span class="batch-result-sku">${item.sku}</span>
+                                                <span class="batch-result-name">${item.name || ''}</span>
+                                            </div>
+                                        </a>
+                                    </label>`;
+                                if (!item.image) needsCover.push(item.sku);
                             } else {
                                 notFound++;
                                 card.className = 'batch-result-card not-found';
@@ -335,37 +436,50 @@ KV-1003
                             resultsGrid.appendChild(card);
                         });
 
+                        // Listeners de checkboxes
+                        resultsGrid.querySelectorAll('.batch-card-check').forEach(cb => {
+                            cb.addEventListener('change', updateSelectedCount);
+                        });
+
                         summaryEl.innerHTML = `<strong>${found}</strong> encontrado${found !== 1 ? 's' : ''} · <strong>${notFound}</strong> no encontrado${notFound !== 1 ? 's' : ''}`;
                         resultsSection.style.display = '';
 
-                        // Buscar covers de Drive para los que no tienen imagen en BD
+                        if (found > 0) {
+                            waFooter.style.display = '';
+                            selectAllCb.checked = true;
+                            updateSelectedCount();
+                        }
+
+                        // Buscar covers de Drive
                         if (needsCover.length > 0) {
                             fetch('/api/covers/batch', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ skus: needsCover })
                             })
-                            .then(r => r.json())
-                            .then(coverData => {
-                                const covers = coverData.covers || {};
-                                document.querySelectorAll('.batch-loading-img').forEach(el => {
-                                    const sku = el.dataset.sku;
-                                    const cover = covers[sku];
-                                    if (cover && cover.url) {
-                                        const imgContainer = el.closest('.batch-result-img');
-                                        imgContainer.innerHTML = `<img src="${cover.url}" alt="${sku}" loading="lazy" onerror="this.outerHTML='<div class=\\'batch-no-img\\'>📷</div>'">`;
-                                    } else {
+                                .then(r => r.json())
+                                .then(coverData => {
+                                    const covers = coverData.covers || {};
+                                    document.querySelectorAll('.batch-loading-img').forEach(el => {
+                                        const sku = el.dataset.sku;
+                                        const cover = covers[sku];
+                                        if (cover && cover.url) {
+                                            const imgContainer = el.closest('.batch-result-img');
+                                            imgContainer.innerHTML = `<img src="${cover.url}" alt="${sku}" loading="lazy" onerror="this.outerHTML='<div class=\\'batch-no-img\\'>📷</div>'">`; 
+                                            const item = batchFoundItems.find(f => f.sku === sku);
+                                            if (item) item.image = cover.url;
+                                        } else {
+                                            el.textContent = '📷';
+                                            el.classList.remove('batch-loading-img');
+                                        }
+                                    });
+                                })
+                                .catch(() => {
+                                    document.querySelectorAll('.batch-loading-img').forEach(el => {
                                         el.textContent = '📷';
                                         el.classList.remove('batch-loading-img');
-                                    }
+                                    });
                                 });
-                            })
-                            .catch(() => {
-                                document.querySelectorAll('.batch-loading-img').forEach(el => {
-                                    el.textContent = '📷';
-                                    el.classList.remove('batch-loading-img');
-                                });
-                            });
                         }
                     })
                     .catch(err => {
