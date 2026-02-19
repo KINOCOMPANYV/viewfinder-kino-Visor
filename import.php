@@ -24,36 +24,45 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
         <nav class="admin-nav">
             <a href="/admin">📊 Dashboard</a>
             <a href="/admin/products">📦 Productos</a>
-            <a href="/admin/import" class="active">📥 Importar Excel</a>
+            <a href="/admin/import" class="active">📥 Importar</a>
+            <a href="/admin/media">🖼️ Media</a>
             <a href="/" target="_blank">🌐 Ver Portal</a>
         </nav>
 
         <?php if (isset($_SESSION['flash_error'])): ?>
-            <div class="alert alert-error">
-                <?= e($_SESSION['flash_error']) ?>
-            </div>
+            <div class="alert alert-error"><?= e($_SESSION['flash_error']) ?></div>
             <?php unset($_SESSION['flash_error']); ?>
         <?php endif; ?>
 
         <h1 style="font-size:1.5rem; margin-bottom:0.5rem;">Importar Catálogo</h1>
-        <p style="color:var(--color-text-muted); margin-bottom:2rem;">
-            Sube un archivo Excel (.xlsx) o CSV con las columnas: <code
-                style="color:var(--color-primary);">sku, name, category, gender, movement, price_suggested, status, description, cover_image_url</code>
-            <br><small style="color:var(--color-text-muted);">💡 <strong>cover_image_url</strong> acepta: link de Drive
-                (<code>https://drive.google.com/file/d/.../view</code>), formato <code>uc?id=...</code>, o solo el File
-                ID.</small>
+
+        <!-- ===== TIP: cover_image_url ===== -->
+        <div style="margin-bottom:1.5rem; padding:1rem 1.25rem; background:rgba(201,168,76,0.06); border:1px solid rgba(201,168,76,0.25); border-radius:var(--radius-sm);">
+            <p style="font-size:0.88rem; color:var(--color-text); margin:0 0 0.4rem; font-weight:600;">💡 Tip: columna <code style="color:var(--color-primary);">cover_image_url</code></p>
+            <p style="font-size:0.82rem; color:var(--color-text-muted); margin:0;">
+                Agrega esta columna en tu Excel o Google Sheets con el <strong>link de la imagen</strong> de Google Drive para sincronizar portadas automáticamente. Acepta cualquiera de estos formatos:
+            </p>
+            <ul style="font-size:0.8rem; color:var(--color-text-muted); margin:0.5rem 0 0 1rem; padding:0;">
+                <li><code>https://drive.google.com/file/d/<strong>FILE_ID</strong>/view</code></li>
+                <li><code>https://drive.google.com/uc?id=<strong>FILE_ID</strong></code></li>
+                <li><code>https://lh3.googleusercontent.com/d/<strong>FILE_ID</strong></code></li>
+                <li>Solo el <strong>ID del archivo</strong> de Drive (ej: <code>1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs</code>)</li>
+            </ul>
+        </div>
+
+        <p style="color:var(--color-text-muted); margin-bottom:1.5rem; font-size:0.9rem;">
+            Columnas soportadas: <code style="color:var(--color-primary);">sku, name, category, gender, movement, price_suggested, status, description, cover_image_url</code>
         </p>
 
         <!-- ========== GOOGLE SHEETS SYNC ========== -->
         <?php if ($hasSheetId): ?>
-            <div
-                style="margin-bottom:2rem; padding:1.5rem; background:linear-gradient(135deg, rgba(52,168,83,0.08), rgba(66,133,244,0.08)); border:1px solid rgba(52,168,83,0.25); border-radius:var(--radius-sm);">
+            <div style="margin-bottom:2rem; padding:1.5rem; background:linear-gradient(135deg, rgba(52,168,83,0.08), rgba(66,133,244,0.08)); border:1px solid rgba(52,168,83,0.25); border-radius:var(--radius-sm);">
                 <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
                     <span style="font-size:1.5rem;">📊</span>
                     <div>
                         <h3 style="font-size:1rem; margin:0; color:var(--color-text);">Sincronizar desde Google Sheets</h3>
                         <p style="font-size:0.8rem; color:var(--color-text-muted); margin:0.25rem 0 0;">
-                            Importa directamente desde tu hoja de cálculo master sin descargar archivos.
+                            Importa directamente tu hoja master. Si tiene la columna <code>cover_image_url</code>, las portadas se asignan automáticamente.
                         </p>
                     </div>
                 </div>
@@ -70,41 +79,24 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
             <div class="import-results fade-in" style="margin-bottom:2rem;">
                 <h3 style="margin-bottom:1rem; font-size:1.1rem;">📊 Resultado de la importación</h3>
                 <div class="import-stat">
-                    <span class="stat-number" style="color:var(--color-success);">✅
-                        <?= $results['inserted'] ?>
-                    </span>
+                    <span class="stat-number" style="color:var(--color-success);">✅ <?= $results['inserted'] ?></span>
                     <span class="stat-label">Productos nuevos insertados</span>
                 </div>
                 <div class="import-stat">
-                    <span class="stat-number" style="color:var(--color-accent);">🔄
-                        <?= $results['updated'] ?>
-                    </span>
+                    <span class="stat-number" style="color:var(--color-accent);">🔄 <?= $results['updated'] ?></span>
                     <span class="stat-label">Productos actualizados</span>
                 </div>
                 <div class="import-stat">
-                    <span class="stat-number" style="color:var(--color-text-dim);">📄
-                        <?= $results['total'] ?>
-                    </span>
+                    <span class="stat-number" style="color:var(--color-text-dim);">📄 <?= $results['total'] ?></span>
                     <span class="stat-label">Filas procesadas</span>
                 </div>
                 <?php if (!empty($results['errors'])): ?>
                     <div style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--color-border);">
-                        <h4 style="color:var(--color-danger); font-size:0.9rem; margin-bottom:0.5rem;">
-                            ⚠️ Errores (
-                            <?= count($results['errors']) ?>)
-                        </h4>
+                        <h4 style="color:var(--color-danger); font-size:0.9rem; margin-bottom:0.5rem;">⚠️ Errores (<?= count($results['errors']) ?>)</h4>
                         <ul style="list-style:none; font-size:0.8rem; color:var(--color-text-muted);">
                             <?php foreach (array_slice($results['errors'], 0, 20) as $err): ?>
-                                <li style="padding:0.25rem 0;">
-                                    <?= e($err) ?>
-                                </li>
+                                <li style="padding:0.25rem 0;"><?= e($err) ?></li>
                             <?php endforeach; ?>
-                            <?php if (count($results['errors']) > 20): ?>
-                                <li style="padding:0.25rem 0; color:var(--color-text-dim);">
-                                    ... y
-                                    <?= count($results['errors']) - 20 ?> errores más.
-                                </li>
-                            <?php endif; ?>
                         </ul>
                     </div>
                 <?php endif; ?>
@@ -121,24 +113,7 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
                 <div class="upload-text" id="uploadText">
                     Arrastra tu archivo aquí o haz clic para seleccionar
                 </div>
-                <div class="upload-hint">Formatos aceptados: .xlsx, .csv (máx 100MB)</div>
-            </div>
-
-            <div
-                style="margin-top:1rem; padding:1rem; background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm);">
-                <h4 style="font-size:0.85rem; color:var(--color-text-muted); margin-bottom:0.5rem;">📋 Columnas
-                    esperadas:</h4>
-                <div
-                    style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:0.5rem; font-size:0.8rem;">
-                    <span><strong style="color:var(--color-success);">sku</strong> (requerido)</span>
-                    <span><strong style="color:var(--color-success);">name</strong> (requerido)</span>
-                    <span>category</span>
-                    <span>gender</span>
-                    <span>movement</span>
-                    <span>price_suggested</span>
-                    <span>status</span>
-                    <span>description</span>
-                </div>
+                <div class="upload-hint">Formatos: .xlsx, .csv — Incluye columna <strong>cover_image_url</strong> para importar portadas</div>
             </div>
 
             <button type="submit" class="btn btn-primary btn-block" style="margin-top:1.5rem;" id="submitBtn">
@@ -154,35 +129,23 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
     </footer>
 
     <script>
-        // File name display
-        document.getElementById('fileInput').addEventListener('change', function (e) {
+        document.getElementById('fileInput').addEventListener('change', function(e) {
             const name = e.target.files[0]?.name;
-            if (name) {
-                document.getElementById('uploadText').textContent = '📎 ' + name;
-            }
+            if (name) document.getElementById('uploadText').textContent = '📎 ' + name;
         });
 
-        // Drag and drop visual
         const zone = document.getElementById('dropZone');
-        ['dragenter', 'dragover'].forEach(event => {
-            zone.addEventListener(event, (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-        });
-        ['dragleave', 'drop'].forEach(event => {
-            zone.addEventListener(event, (e) => { e.preventDefault(); zone.classList.remove('dragover'); });
-        });
-
-        // Loading state on submit
-        document.querySelector('form').addEventListener('submit', function () {
+        ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('dragover'); }));
+        ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('dragover'); }));
+        document.querySelector('form').addEventListener('submit', function() {
             const btn = document.getElementById('submitBtn');
             btn.textContent = '⏳ Importando...';
             btn.disabled = true;
         });
 
-        // ========== GOOGLE SHEETS SYNC ==========
         async function syncFromSheets() {
             const btn = document.getElementById('syncSheetsBtn');
             const status = document.getElementById('syncStatus');
-
             btn.disabled = true;
             btn.innerHTML = '⏳ Sincronizando...';
             btn.style.opacity = '0.7';
@@ -192,30 +155,39 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
             try {
                 const res = await fetch('/admin/sync-sheets', {
                     method: 'POST',
-                    headers: {
-                        'X-CSRF-Token': '<?= csrfToken() ?>',
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'X-CSRF-Token': '<?= csrfToken() ?>', 'Content-Type': 'application/json' },
                 });
                 const data = await res.json();
 
                 if (!res.ok || data.error) {
                     status.innerHTML = `<div style="padding:0.75rem; background:rgba(220,53,69,0.1); border:1px solid rgba(220,53,69,0.3); border-radius:var(--radius-sm); font-size:0.85rem; color:#dc3545;">❌ ${data.error || 'Error desconocido'}</div>`;
                 } else {
+                    const coversTotal = (data.covers_from_sheets || 0) + (data.covers_from_drive || 0);
+                    const coverInfo = data.has_cover_column
+                        ? `<span>🖼️ <strong>${data.covers_from_sheets}</strong> portadas desde Sheets</span>`
+                        : (data.covers_from_drive > 0 ? `<span>🖼️ <strong>${data.covers_from_drive}</strong> portadas desde Drive</span>` : '');
+
+                    const noCoverTip = !data.has_cover_column
+                        ? `<div style="margin-top:0.75rem; padding:0.6rem 0.8rem; background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.2); border-radius:6px; font-size:0.8rem; color:var(--color-primary);">
+                            💡 <strong>Tip:</strong> Agrega la columna <code>cover_image_url</code> en tu Google Sheets con el link de Drive de la foto principal. Así se sincronizan automáticamente.
+                           </div>`
+                        : '';
+
                     let errHtml = '';
                     if (data.errors && data.errors.length > 0) {
                         errHtml = `<div style="margin-top:0.5rem; font-size:0.8rem; color:var(--color-text-muted);">⚠️ ${data.errors.length} advertencia(s): ${data.errors.slice(0, 5).join(', ')}</div>`;
                     }
+
                     status.innerHTML = `
                         <div style="padding:1rem; background:rgba(52,168,83,0.1); border:1px solid rgba(52,168,83,0.3); border-radius:var(--radius-sm);">
                             <div style="font-size:0.95rem; font-weight:600; color:#34A853; margin-bottom:0.5rem;">✅ Sincronización completada</div>
-                            <div style="display:flex; gap:1.5rem; font-size:0.85rem; color:var(--color-text);">
+                            <div style="display:flex; gap:1.5rem; font-size:0.85rem; color:var(--color-text); flex-wrap:wrap;">
                                 <span>🆕 <strong>${data.inserted}</strong> nuevos</span>
                                 <span>🔄 <strong>${data.updated}</strong> actualizados</span>
                                 <span>📄 <strong>${data.total}</strong> filas</span>
-                                ${data.covers_assigned > 0 ? '<span>🖼️ <strong>' + data.covers_assigned + '</strong> portadas asignadas</span>' : ''}
+                                ${coverInfo}
                             </div>
-                            ${data.cover_errors ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ Cover sync: ' + data.cover_errors + '</div>' : ''}
+                            ${noCoverTip}
                             ${errHtml}
                         </div>`;
                 }
@@ -229,5 +201,4 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
         }
     </script>
 </body>
-
 </html>

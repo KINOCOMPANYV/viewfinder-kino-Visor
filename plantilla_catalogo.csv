@@ -1,4 +1,4 @@
-sku,name,category,gender,movement,price_suggested,status,description
+sku,name,category,gender,movement,price_suggested,status,description,cover_image_url
 KNM-8845-RG,"Reloj Kino Elegance Rose Gold",Clásico,mujer,Cuarzo,2450.00,active,"Reloj elegante con correa de cuero genuino, caja de acero inoxidable con acabado rose gold. Resistente al agua 50m."
 KNM-7721-BK,"Reloj Kino Sport Carbon Black",Deportivo,hombre,Automático,3200.00,active,"Reloj deportivo con caja de fibra de carbono, correa de caucho natural. Cronógrafo integrado. Resistente al agua 100m."
 KNM-5530-SL,"Reloj Kino Classic Silver",Clásico,hombre,Cuarzo,1850.00,active,"Reloj clásico con esfera plateada, marcadores romanos. Correa de cuero marrón. Cristal de zafiro."

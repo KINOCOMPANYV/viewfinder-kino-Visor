@@ -48,7 +48,7 @@ if (count($lines) < 2) {
 }
 
 // Columnas esperadas
-$expectedColumns = ['sku', 'name', 'category', 'gender', 'movement', 'price_suggested', 'status', 'description'];
+$expectedColumns = ['sku', 'name', 'category', 'gender', 'movement', 'price_suggested', 'status', 'description', 'cover_image_url'];
 
 // Header
 $header = array_map(function ($h) {
