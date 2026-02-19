@@ -1339,40 +1339,128 @@ textarea.form-input {
     box-shadow: none;
 }
 
-/* Search page card checkboxes */
-.search-card-label {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    z-index: 3;
+/* Search page: WhatsApp toolbar + card checkboxes */
+.search-wa-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    flex-wrap: wrap;
+}
+
+.wa-toolbar-select {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.85rem;
+}
+
+.wa-toolbar-select input[type="checkbox"] {
+    accent-color: var(--color-primary);
+    width: 16px;
+    height: 16px;
     cursor: pointer;
 }
 
-.search-card-label .search-card-check {
+.wa-toolbar-count {
+    font-weight: 700;
+    color: var(--color-primary);
+    font-size: 0.85rem;
+    background: rgba(240, 180, 41, 0.15);
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.wa-toolbar-send {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #25D366;
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 24px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: var(--font);
+    white-space: nowrap;
+}
+
+.wa-toolbar-send:hover {
+    background: #1fb855;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+}
+
+.wa-toolbar-send:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Card checkbox footer */
+.search-check-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--color-border);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition);
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.search-check-footer:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.search-check-footer input[type="checkbox"] {
     display: none;
 }
 
-.search-card-label .batch-card-check-mark {
-    position: static;
+.search-check-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: transparent;
+    transition: all var(--transition);
+    flex-shrink: 0;
 }
 
-.search-card-check:checked~.batch-card-check-mark {
+.search-check-footer input:checked~.search-check-icon {
     background: var(--color-primary);
     border-color: var(--color-primary);
     color: #000;
     font-weight: 700;
 }
 
-.search-wa-bar {
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
-    padding: 1rem 1.25rem;
-    background: var(--color-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+.search-check-footer input:checked~.search-check-text {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.search-selectable-card {
+    overflow: hidden;
 }
 
 /* ============================================================
