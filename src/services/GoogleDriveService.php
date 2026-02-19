@@ -173,16 +173,23 @@ class GoogleDriveService
         }
 
         // 2) Fallback: búsqueda recursiva (por si la global falla o no tenga permisos)
-        return $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 3);
+        // Timeout de 10s para evitar bloqueo en estructuras profundas
+        return $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 3, microtime(true));
     }
 
 
     /**
      * Búsqueda recursiva de archivos por SKU en subcarpetas.
+     * Se aborta automáticamente si excede $timeoutSeconds desde $startTime.
      */
-    private function findBySkuRecursive(string $parentId, string $skuEscaped, string $skuOriginal, int $depth, int $maxDepth): array
+    private function findBySkuRecursive(string $parentId, string $skuEscaped, string $skuOriginal, int $depth, int $maxDepth, float $startTime, float $timeoutSeconds = 10.0): array
     {
         if ($depth >= $maxDepth) {
+            return [];
+        }
+
+        // Abortar si superamos el timeout
+        if ((microtime(true) - $startTime) > $timeoutSeconds) {
             return [];
         }
 
@@ -220,8 +227,13 @@ class GoogleDriveService
                 $allFiles = array_merge($allFiles, $found);
             }
 
+            // Abortar si superamos el timeout antes de seguir recursión
+            if ((microtime(true) - $startTime) > $timeoutSeconds) {
+                break;
+            }
+
             // Seguir buscando en subcarpetas más profundas
-            $deepFiles = $this->findBySkuRecursive($sub['id'], $skuEscaped, $skuOriginal, $depth + 1, $maxDepth);
+            $deepFiles = $this->findBySkuRecursive($sub['id'], $skuEscaped, $skuOriginal, $depth + 1, $maxDepth, $startTime, $timeoutSeconds);
             if (!empty($deepFiles)) {
                 $allFiles = array_merge($allFiles, $deepFiles);
             }

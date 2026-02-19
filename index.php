@@ -198,20 +198,47 @@ if ($uri === '/admin/sync-sheets' && $method === 'POST') {
 
 if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     // API para obtener media de un producto por SKU
-    // Soporta búsqueda bidireccional (padre↔hijo)
+    // Soporta búsqueda bidireccional (padre↔hijo) + caché de 5 min
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
     $sku = urldecode($matches[1]);
     $rootSku = extractRootSku($sku);
     $folderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
+    $db = getDB();
+    $freshRequested = !empty($_GET['fresh']);
+
+    // === CACHÉ: verificar si hay respuesta en caché (TTL 5 min) ===
+    if (!$freshRequested) {
+        try {
+            $cacheStmt = $db->prepare(
+                "SELECT files_json, root_sku FROM media_search_cache 
+                 WHERE sku = ? AND cached_at > NOW() - INTERVAL 5 MINUTE"
+            );
+            $cacheStmt->execute([$sku]);
+            $cached = $cacheStmt->fetch();
+            if ($cached) {
+                $files = json_decode($cached['files_json'], true) ?: [];
+                jsonResponse([
+                    'files' => $files,
+                    'sku' => $sku,
+                    'root_sku' => $cached['root_sku'],
+                    'is_variant' => ($sku !== $cached['root_sku']),
+                    'cached' => true,
+                ]);
+            }
+        } catch (Exception $e) {
+            // Si la tabla no existe aún, ignorar y seguir sin caché
+        }
+    }
+
+    // === Búsqueda en Drive API ===
     $drive = new GoogleDriveService();
-    $token = $drive->getValidToken(getDB());
+    $token = $drive->getValidToken($db);
 
     if ($token && $folderId) {
         // 1) Buscar por el SKU raíz (trae padre + todos los hijos)
         $files = $drive->findBySku($folderId, $rootSku);
 
         // 2) Si el input es diferente al root (es un hijo), también buscar específicamente por el input
-        //    para asegurar que aparezca aunque el nombre no empiece por el root
         if ($sku !== $rootSku) {
             $childFiles = $drive->findBySku($folderId, $sku);
             $existingIds = array_column($files, 'id');
@@ -225,11 +252,24 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
         // Hacer públicos todos los archivos en PARALELO (evita bloqueo)
         $drive->makePublicBatch(array_column($files, 'id'));
 
+        // === CACHÉ: guardar resultado para futuras peticiones ===
+        try {
+            $saveStmt = $db->prepare(
+                "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
+                 VALUES (?, ?, ?, NOW())
+                 ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
+            );
+            $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
+        } catch (Exception $e) {
+            // Si la tabla no existe aún, ignorar
+        }
+
         jsonResponse([
             'files' => $files,
             'sku' => $sku,
             'root_sku' => $rootSku,
             'is_variant' => ($sku !== $rootSku),
+            'cached' => false,
         ]);
     } else {
         jsonResponse(['files' => [], 'error' => 'Drive not connected'], 503);
