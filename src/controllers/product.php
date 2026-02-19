@@ -215,137 +215,54 @@ if (empty($serverCover)) {
             margin-top: 0.25rem;
         }
 
-        /* Lightbox */
-        .lightbox {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 9999;
-            flex-direction: column;
-        }
-
-        .lightbox.active {
-            display: flex;
-        }
-
-        .lb-content {
-            flex: 1;
+        /* Main image info bar */
+        .main-image-info {
             display: flex;
             align-items: center;
-            justify-content: center;
-            cursor: zoom-out;
-            overflow: hidden;
-            padding: 1rem;
-        }
-
-        .lightbox img {
-            max-width: 92vw;
-            max-height: 80vh;
-            border-radius: 8px;
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-            object-fit: contain;
-            cursor: default;
-        }
-
-        .lightbox .lb-close {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            color: #fff;
-            font-size: 2rem;
-            cursor: pointer;
-            background: rgba(0, 0, 0, 0.5);
-            border: none;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-            z-index: 10;
-        }
-
-        .lightbox .lb-close:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Lightbox navigation */
-        .lb-nav {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #fff;
-            font-size: 2rem;
-            cursor: pointer;
-            background: rgba(0, 0, 0, 0.5);
-            border: none;
-            border-radius: 50%;
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            z-index: 10;
-        }
-
-        .lb-nav:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-50%) scale(1.1);
-        }
-
-        .lb-prev { left: 15px; }
-        .lb-next { right: 15px; }
-
-        /* Lightbox footer */
-        .lb-footer {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1rem;
-            padding: 0.75rem 1rem;
-            background: rgba(0, 0, 0, 0.7);
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--color-card-bg);
+            border-radius: 0 0 var(--radius) var(--radius);
+            margin-top: -4px;
             flex-wrap: wrap;
         }
 
-        .lb-footer .lb-name {
-            color: #fff;
-            font-size: 0.85rem;
-            opacity: 0.9;
-        }
-
-        .lb-footer .lb-counter {
-            color: var(--color-primary);
+        .main-image-name {
             font-size: 0.8rem;
-            font-weight: 700;
+            color: var(--color-text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
         }
 
-        .lb-download {
-            display: flex;
+        .main-image-download {
+            display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.3rem;
             background: #25D366;
             color: #fff;
             border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
             font-family: var(--font);
+            white-space: nowrap;
         }
 
-        .lb-download:hover {
+        .main-image-download:hover {
             background: #1fb855;
             transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+            box-shadow: 0 3px 10px rgba(37, 211, 102, 0.4);
         }
 
         .main-image img {
-            cursor: zoom-in;
+            cursor: pointer;
             transition: transform 0.2s;
         }
 
@@ -354,7 +271,14 @@ if (empty($serverCover)) {
         }
 
         .gallery-item img {
-            cursor: zoom-in;
+            cursor: pointer;
+        }
+
+        /* Active thumbnail highlight */
+        .gallery-item.gallery-active {
+            outline: 3px solid var(--color-primary);
+            outline-offset: -3px;
+            border-radius: var(--radius);
         }
 
         /* Back to catalog button */
@@ -402,28 +326,6 @@ if (empty($serverCover)) {
 
         /* Mobile responsive for product page */
         @media (max-width: 768px) {
-            .lightbox img {
-                max-width: 96vw;
-                max-height: 70vh;
-            }
-
-            .lightbox .lb-close {
-                top: 10px;
-                right: 10px;
-                width: 36px;
-                height: 36px;
-                font-size: 1.4rem;
-            }
-
-            .lb-nav {
-                width: 36px;
-                height: 36px;
-                font-size: 1.3rem;
-            }
-
-            .lb-prev { left: 8px; }
-            .lb-next { right: 8px; }
-
             .gallery-grid {
                 grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
                 gap: 0.75rem !important;
@@ -458,20 +360,28 @@ if (empty($serverCover)) {
 
             <div class="detail-grid">
                 <!-- Image -->
-                <div class="main-image" id="mainCover" data-sku="<?= e($product['sku']) ?>" <?php if ($serverCover): ?>
-                        data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
-                    <?php if ($serverCover): ?>
-                        <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
-                            decoding="async" onclick="if(allGalleryFiles.length>0){const idx=allGalleryFiles.findIndex(f=>(f.mimeType||'').startsWith('image/'));if(idx>=0)openLightbox(idx);}">
-                    <?php else: ?>
-                        <div class="cover-skeleton"
-                            style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
-                            <div style="text-align:center;color:var(--color-text-muted);">
-                                <div class="spinner" style="display:inline-block;"></div>
-                                <div style="font-size:0.8rem;margin-top:0.5rem;">Cargando imagen…</div>
+                <div>
+                    <div class="main-image" id="mainCover" data-sku="<?= e($product['sku']) ?>" <?php if ($serverCover): ?>
+                            data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
+                        <?php if ($serverCover): ?>
+                            <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
+                                decoding="async" style="cursor:pointer;" onclick="downloadMainImage()">
+                        <?php else: ?>
+                            <div class="cover-skeleton"
+                                style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
+                                <div style="text-align:center;color:var(--color-text-muted);">
+                                    <div class="spinner" style="display:inline-block;"></div>
+                                    <div style="font-size:0.8rem;margin-top:0.5rem;">Cargando imagen…</div>
+                                </div>
                             </div>
-                        </div>
-                    <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                    <div class="main-image-info" id="mainImageInfo">
+                        <span class="main-image-name" id="mainImageName"></span>
+                        <button class="main-image-download" id="mainImageDownload" onclick="downloadMainImage()" style="display:none;">
+                            ⬇️ Descargar imagen
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Info -->
@@ -661,10 +571,7 @@ if (empty($serverCover)) {
             imgEl.alt = PRODUCT_NAME;
             imgEl.style.opacity = '0';
             imgEl.style.transition = 'opacity 0.4s ease';
-            imgEl.onclick = () => {
-                const idx = fileId ? allGalleryFiles.findIndex(f => f.id === fileId) : -1;
-                if (idx >= 0) openLightbox(idx);
-            };
+            imgEl.onclick = () => downloadMainImage();
             imgEl.onload = () => {
                 container.innerHTML = '';
                 container.appendChild(imgEl);
@@ -723,7 +630,7 @@ if (empty($serverCover)) {
                     const thumbUrl = f.thumbnailLink
                         ? f.thumbnailLink.replace(/=s\d+/, '=s400')
                         : `https://lh3.googleusercontent.com/d/${f.id}=s400`;
-                    mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" style="cursor:pointer;" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="openLightbox(${idx})">`;
+                    mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" style="cursor:pointer;" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="showInMain(${idx})">`;
                 } else if (isVideo) {
                     mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
                         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
@@ -873,7 +780,7 @@ if (empty($serverCover)) {
                     currentCover = imageUrl;
                     // Update main image
                     const mainImg = document.querySelector('.main-image');
-                    mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}">`;
+                    mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}" style="cursor:pointer;" onclick="downloadMainImage()">`;
 
                     // Reset all cover buttons
                     document.querySelectorAll('.btn-set-cover').forEach(b => {
@@ -898,54 +805,59 @@ if (empty($serverCover)) {
 
         // Init
         loadMedia();
-        let currentLbFileId = null;
-        let currentLbIdx = 0;
+        let currentMainFileId = null;
+        let currentMainFileName = '';
 
-        function openLightbox(idx) {
+        // Show thumbnail in main image area
+        function showInMain(idx) {
             const f = allGalleryFiles[idx];
             if (!f) return;
             const isImage = (f.mimeType || '').startsWith('image/');
             if (!isImage) return;
 
-            currentLbIdx = idx;
-            currentLbFileId = f.id;
+            currentMainFileId = f.id;
+            currentMainFileName = f.name;
+
             const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
-            const lb = document.getElementById('lightbox');
-            document.getElementById('lb-img').src = fullUrl;
-            document.getElementById('lb-name').textContent = f.name;
-            lb.classList.add('active');
-            document.body.style.overflow = 'hidden';
+            const main = document.getElementById('mainCover');
+            
+            // Swap main image with smooth transition
+            const newImg = document.createElement('img');
+            newImg.alt = f.name;
+            newImg.style.opacity = '0';
+            newImg.style.transition = 'opacity 0.3s ease';
+            newImg.style.cursor = 'pointer';
+            newImg.onclick = () => downloadMainImage();
+            newImg.onload = () => {
+                main.innerHTML = '';
+                main.appendChild(newImg);
+                requestAnimationFrame(() => newImg.style.opacity = '1');
+            };
+            newImg.src = fullUrl;
 
-            // Navegación
-            updateLbNav();
+            // Update filename and download button
+            document.getElementById('mainImageName').textContent = f.name;
+            const dlBtn = document.getElementById('mainImageDownload');
+            dlBtn.style.display = '';
+
+            // Scroll main image into view
+            main.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            // Highlight active thumbnail
+            document.querySelectorAll('.gallery-item').forEach(gi => gi.classList.remove('gallery-active'));
+            const activeItem = document.querySelector(`.gallery-item[data-file-id="${f.id}"]`);
+            if (activeItem) activeItem.classList.add('gallery-active');
         }
 
-        function updateLbNav() {
-            const images = allGalleryFiles.filter(f => (f.mimeType || '').startsWith('image/'));
-            const imgIdx = images.findIndex(f => f.id === currentLbFileId);
-            document.getElementById('lb-prev').style.display = imgIdx > 0 ? '' : 'none';
-            document.getElementById('lb-next').style.display = imgIdx < images.length - 1 ? '' : 'none';
-            document.getElementById('lb-counter').textContent = (imgIdx + 1) + ' / ' + images.length;
-        }
-
-        function lbNav(dir) {
-            const images = allGalleryFiles.filter(f => (f.mimeType || '').startsWith('image/'));
-            const imgIdx = images.findIndex(f => f.id === currentLbFileId);
-            const newIdx = imgIdx + dir;
-            if (newIdx < 0 || newIdx >= images.length) return;
-            const newFile = images[newIdx];
-            const globalIdx = allGalleryFiles.indexOf(newFile);
-            openLightbox(globalIdx);
-        }
-
-        function downloadLbImage() {
-            if (!currentLbFileId) return;
-            const url = `https://lh3.googleusercontent.com/d/${currentLbFileId}=s1200`;
+        // Download the current main image
+        function downloadMainImage() {
+            if (!currentMainFileId) return;
+            const url = `https://lh3.googleusercontent.com/d/${currentMainFileId}=s1200`;
             const a = document.createElement('a');
             a.href = url;
-            a.download = allGalleryFiles[currentLbIdx]?.name || 'image.jpg';
+            a.download = currentMainFileName || 'image.jpg';
             a.target = '_blank';
-            // Try blob download for better mobile support
+            // Blob download for mobile support
             fetch(url, { mode: 'cors' })
                 .then(r => r.blob())
                 .then(blob => {
@@ -962,38 +874,7 @@ if (empty($serverCover)) {
                     document.body.removeChild(a);
                 });
         }
-
-        function closeLightbox() {
-            const lb = document.getElementById('lightbox');
-            lb.classList.remove('active');
-            document.getElementById('lb-img').src = '';
-            document.body.style.overflow = '';
-            currentLbFileId = null;
-        }
-
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') closeLightbox();
-            if (e.key === 'ArrowLeft') lbNav(-1);
-            if (e.key === 'ArrowRight') lbNav(1);
-        });
     </script>
-
-    <!-- Lightbox -->
-    <div class="lightbox" id="lightbox">
-        <button class="lb-close" onclick="closeLightbox()">✕</button>
-        <button class="lb-nav lb-prev" id="lb-prev" onclick="event.stopPropagation(); lbNav(-1)">❮</button>
-        <button class="lb-nav lb-next" id="lb-next" onclick="event.stopPropagation(); lbNav(1)">❯</button>
-        <div class="lb-content" onclick="closeLightbox()">
-            <img id="lb-img" src="" alt="Preview" onclick="event.stopPropagation()">
-        </div>
-        <div class="lb-footer">
-            <span class="lb-name" id="lb-name"></span>
-            <span class="lb-counter" id="lb-counter"></span>
-            <button class="lb-download" onclick="downloadLbImage()">
-                ⬇️ Descargar
-            </button>
-        </div>
-    </div>
 
 </body>
 
