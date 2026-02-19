@@ -550,8 +550,8 @@ if (empty($serverCover)) {
             const img = files.find(f => (f.mimeType || '').startsWith('image/'));
             if (img) {
                 const url = img.thumbnailLink
-                    ? img.thumbnailLink.replace(/=s\d+/, '=s800')
-                    : `https://lh3.googleusercontent.com/d/${img.id}=s800`;
+                    ? img.thumbnailLink.replace(/=s\d+/, '=s600')
+                    : `https://lh3.googleusercontent.com/d/${img.id}=s600`;
                 setCoverImage(main, url, img.id);
                 return;
             }
@@ -628,8 +628,8 @@ if (empty($serverCover)) {
                 let mediaHtml;
                 if (isImage) {
                     const thumbUrl = f.thumbnailLink
-                        ? f.thumbnailLink.replace(/=s\d+/, '=s400')
-                        : `https://lh3.googleusercontent.com/d/${f.id}=s400`;
+                        ? f.thumbnailLink.replace(/=s\d+/, '=s200')
+                        : `https://lh3.googleusercontent.com/d/${f.id}=s200`;
                     mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" style="cursor:pointer;" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="showInMain(${idx})">`;
                 } else if (isVideo) {
                     mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">

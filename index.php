@@ -217,7 +217,7 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
         try {
             $cacheStmt = $db->prepare(
                 "SELECT files_json, root_sku FROM media_search_cache 
-                 WHERE sku = ? AND cached_at > NOW() - INTERVAL 5 MINUTE"
+                 WHERE sku = ? AND cached_at > NOW() - INTERVAL 30 MINUTE"
             );
             $cacheStmt->execute([$sku]);
             $cached = $cacheStmt->fetch();
