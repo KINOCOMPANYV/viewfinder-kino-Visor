@@ -154,6 +154,16 @@ if (!$product) {
             }
         }
 
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .media-count {
             font-size: 0.8rem;
             color: var(--color-text-muted);
@@ -324,13 +334,18 @@ if (!$product) {
 
             <div class="detail-grid">
                 <!-- Image -->
-                <div class="main-image">
-                    <?php if ($product['cover_image_url']): ?>
-                        <img src="<?= e($product['cover_image_url']) ?>" alt="<?= e($product['name']) ?>"
-                            onclick="openLightbox(this.src, '<?= e(addslashes($product['name'])) ?>')">
-                    <?php else: ?>
-                        ⌚
-                    <?php endif; ?>
+                <div class="main-image" id="mainCover"
+                     data-sku="<?= e($product['sku']) ?>"
+                     <?php if ($product['cover_image_url']): ?>
+                        data-cover="<?= e($product['cover_image_url']) ?>"
+                     <?php endif; ?>
+                >
+                    <div class="cover-skeleton" style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
+                        <div style="text-align:center;color:var(--color-text-muted);">
+                            <div class="spinner" style="display:inline-block;"></div>
+                            <div style="font-size:0.8rem;margin-top:0.5rem;">Cargando imagen…</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Info -->
@@ -467,13 +482,67 @@ if (!$product) {
                     }
                 });
 
+                // Cargar imagen principal dinámicamente
+                loadMainCover(files);
+
                 updateButtons();
                 renderGallery(files);
             } catch (e) {
                 console.error('Error cargando media:', e);
                 document.getElementById('btnPhotos').textContent = '📸 Sin conexión';
                 document.getElementById('btnVideos').textContent = '🎥 Sin conexión';
+                // Mostrar placeholder si falla
+                const main = document.getElementById('mainCover');
+                if (main && !main.querySelector('img')) main.innerHTML = '📷';
             }
+        }
+
+        function loadMainCover(files) {
+            const main = document.getElementById('mainCover');
+            if (!main) return;
+
+            // Si ya tiene cover de BD, usarla
+            if (main.dataset.cover) {
+                setCoverImage(main, main.dataset.cover);
+                return;
+            }
+
+            // Buscar primera imagen de Drive
+            const img = files.find(f => (f.mimeType || '').startsWith('image/'));
+            if (img) {
+                const url = img.thumbnailLink
+                    ? img.thumbnailLink.replace(/=s\d+/, '=s800')
+                    : `https://lh3.googleusercontent.com/d/${img.id}=s800`;
+                setCoverImage(main, url, img.id);
+                return;
+            }
+
+            // Fallback: video thumbnail
+            const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
+            if (vid && vid.thumbnailLink) {
+                setCoverImage(main, vid.thumbnailLink.replace(/=s\d+/, '=s800'));
+                return;
+            }
+
+            main.innerHTML = '📷';
+        }
+
+        function setCoverImage(container, url, fileId) {
+            const imgEl = document.createElement('img');
+            imgEl.alt = PRODUCT_NAME;
+            imgEl.style.opacity = '0';
+            imgEl.style.transition = 'opacity 0.4s ease';
+            imgEl.onclick = () => openLightbox(
+                fileId ? `https://lh3.googleusercontent.com/d/${fileId}=s1200` : url,
+                PRODUCT_NAME
+            );
+            imgEl.onload = () => {
+                container.innerHTML = '';
+                container.appendChild(imgEl);
+                requestAnimationFrame(() => imgEl.style.opacity = '1');
+            };
+            imgEl.onerror = () => { container.innerHTML = '📷'; };
+            imgEl.src = url;
         }
 
         function updateButtons() {
@@ -514,46 +583,61 @@ if (!$product) {
             const grid = document.getElementById('galleryGrid');
             gallery.style.display = 'block';
 
-            grid.innerHTML = files.map(f => {
-                const isImage = (f.mimeType || '').startsWith('image/');
-                const isVideo = (f.mimeType || '').startsWith('video/');
-                const thumbUrl = f.thumbnailLink || '';
-                const viewUrl = f.webViewLink || '#';
-                const downloadUrl = f.webContentLink || viewUrl;
+            // Crear skeleton placeholders primero
+            grid.innerHTML = files.map(() => `
+                <div class="gallery-item skeleton-item">
+                    <div style="width:100%;height:150px;background:var(--color-card-bg);border-radius:var(--radius);animation:pulse 1.5s ease-in-out infinite;"></div>
+                </div>
+            `).join('');
 
-                let mediaHtml;
-                if (isImage) {
-                    const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
-                    const displayUrl = thumbUrl || fullUrl;
-                    mediaHtml = `<img src="${displayUrl}" alt="${f.name}" loading="lazy" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
-                } else if (isVideo) {
-                    // Streaming: usar reproductor embebido de Google Drive
-                    mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
-                        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
-                            <span style="font-size:2.5rem;">▶️</span>
-                            <span style="font-size:0.7rem;margin-top:0.3rem;opacity:0.7;">Click para reproducir</span>
+            // Cargar cada archivo progresivamente
+            files.forEach((f, i) => {
+                setTimeout(() => {
+                    const isImage = (f.mimeType || '').startsWith('image/');
+                    const isVideo = (f.mimeType || '').startsWith('video/');
+                    const viewUrl = f.webViewLink || '#';
+                    const downloadUrl = f.webContentLink || viewUrl;
+
+                    let mediaHtml;
+                    if (isImage) {
+                        const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
+                        const thumbUrl = f.thumbnailLink
+                            ? f.thumbnailLink.replace(/=s\d+/, '=s400')
+                            : fullUrl;
+                        mediaHtml = `<img src="${thumbUrl}" alt="${f.name}" loading="lazy" style="opacity:0;transition:opacity 0.3s;" onload="this.style.opacity='1'" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
+                    } else if (isVideo) {
+                        mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
+                            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
+                                <span style="font-size:2.5rem;">▶️</span>
+                                <span style="font-size:0.7rem;margin-top:0.3rem;opacity:0.7;">Click para reproducir</span>
+                            </div>
+                        </div>`;
+                    } else {
+                        mediaHtml = `<div class="video-placeholder">📄</div>`;
+                    }
+
+                    const itemHtml = `
+                        <div class="gallery-item" data-file-id="${f.id}" style="animation:fadeSlideIn 0.3s ease forwards;">
+                            ${mediaHtml}
+                            <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">
+                                ${f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name}
+                            </div>
+                            <div class="item-actions">
+                                <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-secondary">👁️ Ver</a>
+                                <a href="${downloadUrl}" target="_blank" class="btn btn-sm btn-primary">⬇️</a>
+                            </div>
                         </div>
-                    </div>`;
-                } else {
-                    mediaHtml = `<div class="video-placeholder">📄</div>`;
-                }
+                    `;
 
-
-
-                return `
-                    <div class="gallery-item" data-file-id="${f.id}">
-                        ${mediaHtml}
-                        <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">
-                            ${f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name}
-                        </div>
-                        <div class="item-actions">
-                            <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-secondary">👁️ Ver</a>
-                            <a href="${downloadUrl}" target="_blank" class="btn btn-sm btn-primary">⬇️</a>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
+                    // Reemplazar skeleton con item real
+                    const skeletons = grid.querySelectorAll('.skeleton-item');
+                    if (skeletons[i]) {
+                        skeletons[i].outerHTML = itemHtml;
+                    } else {
+                        grid.insertAdjacentHTML('beforeend', itemHtml);
+                    }
+                }, i * 80);
+            });
         }
 
         function downloadMedia(type) {
