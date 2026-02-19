@@ -2,8 +2,9 @@
 /**
  * Admin Sync Covers — Auto-asignar portadas de Drive a productos.
  * POST /admin/media/sync-covers
- * Usa findBySku() por producto para búsqueda precisa con soporte de subcarpetas.
- * Limita a 20 productos por ejecución para evitar timeout.
+ * - Match EXACTO por SKU (nombre de archivo sin extensión = SKU)
+ * - Si no hay imagen, usa thumbnail de video como fallback
+ * - Limita a 20 productos por ejecución
  */
 require_once __DIR__ . '/../services/GoogleDriveService.php';
 
@@ -35,11 +36,21 @@ if (empty($products)) {
     exit;
 }
 
-// Palabras clave para priorizar como portada
-$coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
-$numericPriority = ['01', '_1', '-1', 'f1'];
+/**
+ * Filtra archivos que coinciden EXACTAMENTE con el SKU.
+ * El nombre del archivo sin extensión debe ser igual al SKU (case-insensitive).
+ */
+function exactSkuMatch(array $files, string $sku): array
+{
+    return array_values(array_filter($files, function ($f) use ($sku) {
+        $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
+        return strcasecmp($nameOnly, $sku) === 0;
+    }));
+}
+
 $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 $assigned = 0;
+$assignedVideos = 0;
 $errors = [];
 
 foreach ($products as $prod) {
@@ -47,44 +58,30 @@ foreach ($products as $prod) {
         // Buscar archivos por SKU (global + recursivo en subcarpetas)
         $allFiles = $drive->findBySku($rootFolderId, $prod['sku']);
 
-        // Filtrar solo imágenes
-        $matched = array_filter($allFiles, function ($f) {
-            return str_starts_with($f['mimeType'] ?? '', 'image/');
-        });
+        // Filtrar SOLO archivos con nombre EXACTO del SKU
+        $exactFiles = exactSkuMatch($allFiles, $prod['sku']);
 
-        if (empty($matched))
-            continue;
+        // Separar imágenes y videos
+        $images = array_filter($exactFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+        $videos = array_filter($exactFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
 
-        $matched = array_values($matched);
-
-        // Ordenar por prioridad (keywords de portada primero)
-        usort($matched, function ($a, $b) use ($coverKeywords, $numericPriority) {
-            $nameA = strtolower($a['name'] ?? '');
-            $nameB = strtolower($b['name'] ?? '');
-            $scoreA = $scoreB = 0;
-            foreach ($coverKeywords as $kw) {
-                if (str_contains($nameA, $kw))
-                    $scoreA += 10;
-                if (str_contains($nameB, $kw))
-                    $scoreB += 10;
-            }
-            foreach ($numericPriority as $np) {
-                if (str_contains($nameA, $np))
-                    $scoreA += 5;
-                if (str_contains($nameB, $np))
-                    $scoreB += 5;
-            }
-            return $scoreB - $scoreA;
-        });
-
-        $bestImage = $matched[0];
-
-        // Hacer público el archivo para que la URL lh3 funcione
-        $drive->makePublic($bestImage['id']);
-
-        $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
-        $updateStmt->execute([$coverUrl, $prod['id']]);
-        $assigned++;
+        if (!empty($images)) {
+            // Prioridad: usar imagen
+            $bestImage = array_values($images)[0];
+            $drive->makePublic($bestImage['id']);
+            $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
+            $updateStmt->execute([$coverUrl, $prod['id']]);
+            $assigned++;
+        } elseif (!empty($videos)) {
+            // Fallback: usar thumbnail del video
+            $bestVideo = array_values($videos)[0];
+            $drive->makePublic($bestVideo['id']);
+            // Marcar como video con prefijo [VIDEO] para que el frontend muestre icono
+            $coverUrl = "[VIDEO]https://drive.google.com/thumbnail?id={$bestVideo['id']}&sz=w400";
+            $updateStmt->execute([$coverUrl, $prod['id']]);
+            $assignedVideos++;
+            $assigned++;
+        }
     } catch (Exception $e) {
         $errors[] = "SKU {$prod['sku']}: {$e->getMessage()}";
     }
@@ -95,11 +92,13 @@ $remaining = $totalWithout - $assigned;
 echo json_encode([
     'ok' => true,
     'assigned' => $assigned,
+    'assigned_images' => $assigned - $assignedVideos,
+    'assigned_videos' => $assignedVideos,
     'total' => count($products),
     'remaining' => $remaining,
     'errors' => $errors,
     'message' => $assigned > 0
-        ? "⭐ {$assigned} producto(s) recibieron imagen principal." . ($remaining > 0 ? " Quedan {$remaining} sin portada." : '')
-        : "No se encontraron imágenes para los " . count($products) . " productos procesados."
+        ? "⭐ {$assigned} producto(s) recibieron portada (" . ($assigned - $assignedVideos) . " imagen(es), {$assignedVideos} video(s))." . ($remaining > 0 ? " Quedan {$remaining} sin portada." : '')
+        : "No se encontraron archivos con nombre exacto de SKU para los " . count($products) . " productos procesados."
 ]);
 

@@ -90,13 +90,13 @@ for ($i = 1; $i < count($lines); $i++) {
 
 // ============================================================
 // Auto-asignar portadas a productos SIN cover (después de sincronizar)
-// Usa findBySku() por producto — LIMITADO a 5 productos y 30s para evitar timeout.
+// Match EXACTO por SKU — LIMITADO a 5 productos y 30s para evitar timeout.
 // ============================================================
 $coversAssigned = 0;
 $coverErrors = '';
 try {
     $coverStartTime = time();
-    $coverTimeLimit = 30; // máximo 30 segundos para covers
+    $coverTimeLimit = 30;
     set_time_limit(180);
     require_once __DIR__ . '/../services/GoogleDriveService.php';
     $drive = new GoogleDriveService();
@@ -104,62 +104,40 @@ try {
     $token = $drive->getValidToken($db);
 
     if ($token && $rootFolderId) {
-        // Solo productos sin cover (máximo 5 por ejecución para evitar timeout)
         $noCover = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = '' LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
 
         if (!empty($noCover)) {
-            $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
-            $numericPriority = ['01', '_1', '-1', 'f1'];
             $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 
             foreach ($noCover as $prod) {
-                // Time guard: si ya pasaron 30s, parar
                 if ((time() - $coverStartTime) >= $coverTimeLimit) {
-                    $coverErrors = "Tiempo límite alcanzado, se procesaron " . ($coversAssigned) . " de " . count($noCover);
+                    $coverErrors = "Tiempo límite alcanzado";
                     break;
                 }
 
                 try {
-                    // Buscar archivos por SKU (global + recursivo en subcarpetas)
                     $allFiles = $drive->findBySku($rootFolderId, $prod['sku']);
 
-                    // Filtrar solo imágenes
-                    $matched = array_filter($allFiles, function ($f) {
-                        return str_starts_with($f['mimeType'] ?? '', 'image/');
-                    });
+                    // Filtrar SOLO archivos con nombre EXACTO del SKU
+                    $exactFiles = array_values(array_filter($allFiles, function ($f) use ($prod) {
+                        $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
+                        return strcasecmp($nameOnly, $prod['sku']) === 0;
+                    }));
 
-                    if (empty($matched))
-                        continue;
+                    $images = array_filter($exactFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+                    $videos = array_filter($exactFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
 
-                    $matched = array_values($matched);
-
-                    usort($matched, function ($a, $b) use ($coverKeywords, $numericPriority) {
-                        $nameA = strtolower($a['name'] ?? '');
-                        $nameB = strtolower($b['name'] ?? '');
-                        $scoreA = $scoreB = 0;
-                        foreach ($coverKeywords as $kw) {
-                            if (str_contains($nameA, $kw))
-                                $scoreA += 10;
-                            if (str_contains($nameB, $kw))
-                                $scoreB += 10;
-                        }
-                        foreach ($numericPriority as $np) {
-                            if (str_contains($nameA, $np))
-                                $scoreA += 5;
-                            if (str_contains($nameB, $np))
-                                $scoreB += 5;
-                        }
-                        return $scoreB - $scoreA;
-                    });
-
-                    $bestImage = $matched[0];
-
-                    // Hacer público para que la URL lh3 funcione
-                    $drive->makePublic($bestImage['id']);
-
-                    $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}";
-                    $updateStmt->execute([$coverUrl, $prod['id']]);
-                    $coversAssigned++;
+                    if (!empty($images)) {
+                        $best = array_values($images)[0];
+                        $drive->makePublic($best['id']);
+                        $updateStmt->execute(["https://lh3.googleusercontent.com/d/{$best['id']}", $prod['id']]);
+                        $coversAssigned++;
+                    } elseif (!empty($videos)) {
+                        $best = array_values($videos)[0];
+                        $drive->makePublic($best['id']);
+                        $updateStmt->execute(["[VIDEO]https://drive.google.com/thumbnail?id={$best['id']}&sz=w400", $prod['id']]);
+                        $coversAssigned++;
+                    }
                 } catch (Exception $e) {
                     // Silenciar errores individuales
                 }

@@ -66,8 +66,18 @@
                 <?php foreach ($products as $p): ?>
                     <a href="/producto/<?= e($p['sku']) ?>" class="product-card" style="text-decoration:none; color:inherit;">
                         <div class="card-image">
-                            <?php if ($p['cover_image_url']): ?>
-                                <img src="<?= e($p['cover_image_url']) ?>" alt="<?= e($p['name']) ?>" loading="lazy">
+                            <?php
+                            $coverUrl = $p['cover_image_url'] ?? '';
+                            $isVideo = str_starts_with($coverUrl, '[VIDEO]');
+                            if ($isVideo)
+                                $coverUrl = substr($coverUrl, 7);
+                            ?>
+                            <?php if ($coverUrl): ?>
+                                <img src="<?= e($coverUrl) ?>" alt="<?= e($p['name']) ?>" loading="lazy">
+                                <?php if ($isVideo): ?>
+                                    <span
+                                        style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:2.5rem; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.6); pointer-events:none;">▶</span>
+                                <?php endif; ?>
                             <?php else: ?>
                                 ⌚
                             <?php endif; ?>
