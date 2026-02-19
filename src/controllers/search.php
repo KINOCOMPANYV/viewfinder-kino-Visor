@@ -294,10 +294,12 @@ $totalPages = ceil($total / $perPage);
                     resetBtn();
                 }
 
-                // Fallback: links
+                // Fallback: links con imagen
                 let text = '\uD83D\uDCE6 *Cat\u00E1logo - ' + selected.length + ' productos*\n\n';
                 selected.forEach((item, i) => {
-                    text += (i+1) + '. *' + item.sku + '* - ' + item.name + '\n\uD83D\uDD17 ' + location.origin + '/producto/' + item.sku + '\n\n';
+                    text += (i+1) + '. *' + item.sku + '* - ' + item.name + '\n';
+                    if (item.image) text += '\uD83D\uDDBC\uFE0F ' + item.image + '\n';
+                    text += '\uD83D\uDD17 ' + location.origin + '/producto/' + item.sku + '\n\n';
                 });
                 window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
             });
