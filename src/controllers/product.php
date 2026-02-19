@@ -68,6 +68,10 @@ if (empty($serverCover)) {
         <?= e($product['sku']) ?> —
         <?= e($product['name']) ?> · Viewfinder
     </title>
+    <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+    <?php if ($serverCover): ?>
+        <link rel="preload" as="image" href="<?= e($serverCover) ?>">
+    <?php endif; ?>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .media-gallery {
@@ -378,8 +382,8 @@ if (empty($serverCover)) {
                 <div class="main-image" id="mainCover" data-sku="<?= e($product['sku']) ?>" <?php if ($serverCover): ?>
                         data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
                     <?php if ($serverCover): ?>
-                        <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>"
-                            onclick="openLightbox(this.src, '<?= e(addslashes($product['name'])) ?>')">
+                        <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
+                            decoding="async" onclick="openLightbox(this.src, '<?= e(addslashes($product['name'])) ?>')">
                     <?php else: ?>
                         <div class="cover-skeleton"
                             style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
@@ -638,7 +642,7 @@ if (empty($serverCover)) {
                     const thumbUrl = f.thumbnailLink
                         ? f.thumbnailLink.replace(/=s\d+/, '=s400')
                         : `https://lh3.googleusercontent.com/d/${f.id}=s400`;
-                    mediaHtml = `<img src="${thumbUrl}" alt="${f.name}" loading="lazy" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
+                    mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
                 } else if (isVideo) {
                     mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
                         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
@@ -663,6 +667,25 @@ if (empty($serverCover)) {
                     </div>
                 `;
             }).join('');
+
+            // Intersection Observer para lazy-load de thumbnails de galería
+            const lazyObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        if (img.dataset.src) {
+                            img.src = img.dataset.src;
+                            img.removeAttribute('data-src');
+                            img.onload = () => img.classList.add('loaded');
+                        }
+                        lazyObserver.unobserve(img);
+                    }
+                });
+            }, { rootMargin: '300px' });
+
+            grid.querySelectorAll('img.gallery-lazy[data-src]').forEach(img => {
+                lazyObserver.observe(img);
+            });
         }
 
         function downloadMedia(type) {

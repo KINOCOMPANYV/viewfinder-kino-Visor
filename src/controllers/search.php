@@ -60,6 +60,7 @@ $totalPages = ceil($total / $perPage);
     <title>
         <?= $q ? e($q) . ' — ' : '' ?>Búsqueda · Viewfinder
     </title>
+    <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 
@@ -109,9 +110,14 @@ $totalPages = ceil($total / $perPage);
                                 data-video="<?= $isVideo ? '1' : '0' ?>"
                              <?php endif; ?>
                         >
-                            <div class="cover-loader" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);font-size:1.5rem;">
-                                ⏳
-                            </div>
+                            <?php if ($coverUrl): ?>
+                                <img src="<?= e($coverUrl) ?>" alt="<?= e($p['name']) ?>"
+                                     loading="lazy" class="img-fade-in"
+                                     onload="this.classList.add('loaded')"
+                                     onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
+                            <?php else: ?>
+                                <div class="card-image-skeleton skeleton"></div>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body">
                             <div class="card-sku">
@@ -186,17 +192,16 @@ $totalPages = ceil($total / $perPage);
             window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
         }
 
-        // Cargar portadas dinámicamente desde Drive API
+        // Renderizar cover dinámicamente (solo para cards sin SSR image)
         function renderCover(el, imgUrl, isVideo) {
             el.innerHTML = '';
             const img = document.createElement('img');
             img.src = imgUrl;
             img.alt = el.dataset.sku;
             img.loading = 'lazy';
-            img.style.transition = 'opacity 0.3s';
-            img.style.opacity = '0';
-            img.onload = () => img.style.opacity = '1';
-            img.onerror = () => { el.innerHTML = '📷'; };
+            img.className = 'img-fade-in';
+            img.onload = () => img.classList.add('loaded');
+            img.onerror = () => { el.innerHTML = '<div class="cover-placeholder">📷</div>'; };
             el.appendChild(img);
             if (isVideo) {
                 const play = document.createElement('span');
@@ -207,13 +212,10 @@ $totalPages = ceil($total / $perPage);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const cards = document.querySelectorAll('.card-image[data-sku]');
+            // Solo buscar cards que NO tienen imagen SSR (sin cover en BD)
             const needsFetch = [];
-
-            cards.forEach(el => {
-                if (el.dataset.cover) {
-                    renderCover(el, el.dataset.cover, el.dataset.video === '1');
-                } else {
+            document.querySelectorAll('.card-image[data-sku]').forEach(el => {
+                if (!el.dataset.cover && !el.querySelector('img')) {
                     needsFetch.push(el);
                 }
             });
@@ -229,18 +231,16 @@ $totalPages = ceil($total / $perPage);
             .then(r => r.json())
             .then(data => {
                 const covers = data.covers || {};
-                needsFetch.forEach((el, i) => {
-                    setTimeout(() => {
-                        const cover = covers[el.dataset.sku];
-                        if (cover && cover.url) {
-                            renderCover(el, cover.url, cover.video);
-                        } else {
-                            el.innerHTML = '📷';
-                        }
-                    }, i * 50);
+                needsFetch.forEach(el => {
+                    const cover = covers[el.dataset.sku];
+                    if (cover && cover.url) {
+                        renderCover(el, cover.url, cover.video);
+                    } else {
+                        el.innerHTML = '<div class="cover-placeholder">📷</div>';
+                    }
                 });
             })
-            .catch(() => needsFetch.forEach(el => el.innerHTML = '📷'));
+            .catch(() => needsFetch.forEach(el => el.innerHTML = '<div class="cover-placeholder">📷</div>'));
         });
     </script>
 
