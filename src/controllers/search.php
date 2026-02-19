@@ -99,21 +99,19 @@ $totalPages = ceil($total / $perPage);
             <div class="product-grid">
                 <?php foreach ($products as $p): ?>
                     <a href="/producto/<?= e($p['sku']) ?>" class="product-card" style="text-decoration:none; color:inherit;">
-                        <div class="card-image">
-                            <?php if ($p['cover_image_url']):
-                                $coverUrl = $p['cover_image_url'];
-                                $isVideo = str_starts_with($coverUrl, '[VIDEO]');
-                                if ($isVideo)
-                                    $coverUrl = substr($coverUrl, 7);
-                                ?>
-                                <img src="<?= e($coverUrl) ?>" alt="<?= e($p['name']) ?>" loading="lazy">
-                                <?php if ($isVideo): ?>
-                                    <span
-                                        style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2.5rem;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none;">▶</span>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                ⌚
-                            <?php endif; ?>
+                        <div class="card-image" data-sku="<?= e($p['sku']) ?>"
+                             <?php
+                             $coverUrl = $p['cover_image_url'] ?? '';
+                             $isVideo = str_starts_with($coverUrl, '[VIDEO]');
+                             if ($isVideo) $coverUrl = substr($coverUrl, 7);
+                             if ($coverUrl): ?>
+                                data-cover="<?= e($coverUrl) ?>"
+                                data-video="<?= $isVideo ? '1' : '0' ?>"
+                             <?php endif; ?>
+                        >
+                            <div class="cover-loader" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);font-size:1.5rem;">
+                                ⏳
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="card-sku">
@@ -181,13 +179,68 @@ $totalPages = ceil($total / $perPage);
         </div>
     </footer>
 
-    <!-- WhatsApp Share -->
     <script>
         function shareWhatsApp(sku, name) {
             const url = window.location.origin + '/producto/' + sku;
             const text = `📦 *${name}*\n🔗 SKU: ${sku}\n\n📸 Ver fotos y videos:\n${url}`;
             window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
         }
+
+        // Cargar portadas dinámicamente desde Drive API
+        function renderCover(el, imgUrl, isVideo) {
+            el.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = imgUrl;
+            img.alt = el.dataset.sku;
+            img.loading = 'lazy';
+            img.style.transition = 'opacity 0.3s';
+            img.style.opacity = '0';
+            img.onload = () => img.style.opacity = '1';
+            img.onerror = () => { el.innerHTML = '📷'; };
+            el.appendChild(img);
+            if (isVideo) {
+                const play = document.createElement('span');
+                play.textContent = '▶';
+                play.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2.5rem;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none;';
+                el.appendChild(play);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.card-image[data-sku]');
+            let delay = 0;
+
+            cards.forEach(el => {
+                const sku = el.dataset.sku;
+                if (el.dataset.cover) {
+                    renderCover(el, el.dataset.cover, el.dataset.video === '1');
+                    return;
+                }
+                delay += 100;
+                setTimeout(() => {
+                    fetch('/api/media/' + encodeURIComponent(sku))
+                        .then(r => r.json())
+                        .then(data => {
+                            const files = data.files || [];
+                            const img = files.find(f => (f.mimeType || '').startsWith('image/'));
+                            if (img) {
+                                const url = img.thumbnailLink
+                                    ? img.thumbnailLink.replace(/=s\d+/, '=s400')
+                                    : `https://lh3.googleusercontent.com/d/${img.id}`;
+                                renderCover(el, url, false);
+                                return;
+                            }
+                            const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
+                            if (vid && vid.thumbnailLink) {
+                                renderCover(el, vid.thumbnailLink.replace(/=s\d+/, '=s400'), true);
+                                return;
+                            }
+                            el.innerHTML = '📷';
+                        })
+                        .catch(() => { el.innerHTML = '📷'; });
+                }, delay);
+            });
+        });
     </script>
 
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
