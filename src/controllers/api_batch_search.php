@@ -22,36 +22,40 @@ if (empty($codes)) {
 
 $db = getDB();
 
-// Buscar todos los productos que coincidan
-$placeholders = implode(',', array_fill(0, count($codes), '?'));
-$stmt = $db->prepare(
-    "SELECT sku, name, cover_image_url 
-     FROM products 
-     WHERE status = 'active' AND sku IN ($placeholders)"
-);
-$stmt->execute($codes);
-$products = $stmt->fetchAll();
-
-// Indexar por SKU
-$indexed = [];
-foreach ($products as $p) {
-    $indexed[strtoupper($p['sku'])] = $p;
-}
-
-// Construir resultados manteniendo el orden original
+// Estrategia: para cada código, buscar exacto primero, luego LIKE
 $results = [];
+
 foreach ($codes as $code) {
-    $key = strtoupper($code);
-    if (isset($indexed[$key])) {
-        $p = $indexed[$key];
-        $coverUrl = $p['cover_image_url'] ?? '';
-        // Limpiar prefix [VIDEO] si existe
+    // 1) Búsqueda exacta por SKU
+    $stmt = $db->prepare(
+        "SELECT sku, name, cover_image_url FROM products 
+         WHERE status = 'active' AND sku = ? 
+         LIMIT 1"
+    );
+    $stmt->execute([$code]);
+    $product = $stmt->fetch();
+
+    // 2) Si no encontró exacto, intentar LIKE (el código contenido en el SKU o viceversa)
+    if (!$product) {
+        $stmt = $db->prepare(
+            "SELECT sku, name, cover_image_url FROM products 
+             WHERE status = 'active' AND (sku LIKE ? OR sku LIKE ? OR ? LIKE CONCAT('%', sku, '%'))
+             ORDER BY LENGTH(sku) ASC
+             LIMIT 1"
+        );
+        $like = "%{$code}%";
+        $stmt->execute([$like, $like, $code]);
+        $product = $stmt->fetch();
+    }
+
+    if ($product) {
+        $coverUrl = $product['cover_image_url'] ?? '';
         if (str_starts_with($coverUrl, '[VIDEO]')) {
             $coverUrl = substr($coverUrl, 7);
         }
         $results[$code] = [
-            'sku' => $p['sku'],
-            'name' => $p['name'],
+            'sku' => $product['sku'],
+            'name' => $product['name'],
             'image' => $coverUrl ?: null,
         ];
     } else {
@@ -60,3 +64,4 @@ foreach ($codes as $code) {
 }
 
 echo json_encode(['results' => $results]);
+
