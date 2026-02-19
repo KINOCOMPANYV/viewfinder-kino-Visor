@@ -279,6 +279,115 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     }
 }
 
+// ============================================================
+// BATCH COVERS API — una sola llamada para N portadas
+// POST /api/covers/batch   body: {"skus": ["sku1","sku2",...]}
+// Responde: {"covers": {"sku1": {"url":"...","video":false}, ...}}
+// ============================================================
+
+if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/src/services/GoogleDriveService.php';
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $skus = array_slice(array_unique($input['skus'] ?? []), 0, 50); // max 50
+
+    if (empty($skus)) {
+        jsonResponse(['covers' => new \stdClass()]);
+    }
+
+    $db = getDB();
+    $folderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
+    $covers = [];
+    $uncachedSkus = [];
+
+    // 1) Buscar en caché primero
+    try {
+        $placeholders = implode(',', array_fill(0, count($skus), '?'));
+        $cacheStmt = $db->prepare(
+            "SELECT sku, files_json FROM media_search_cache 
+             WHERE sku IN ($placeholders) AND cached_at > NOW() - INTERVAL 10 MINUTE"
+        );
+        $cacheStmt->execute($skus);
+        $cached = $cacheStmt->fetchAll();
+
+        foreach ($cached as $row) {
+            $files = json_decode($row['files_json'], true) ?: [];
+            $covers[$row['sku']] = extractCoverFromFiles($files);
+        }
+
+        $cachedSkus = array_column($cached, 'sku');
+        $uncachedSkus = array_diff($skus, $cachedSkus);
+    } catch (Exception $e) {
+        $uncachedSkus = $skus;
+    }
+
+    // 2) Para los no cacheados, buscar en Drive (max 10 a la vez para no saturar)
+    if (!empty($uncachedSkus) && $folderId) {
+        $drive = new GoogleDriveService();
+        $token = $drive->getValidToken($db);
+
+        if ($token) {
+            // Limitar a 10 búsquedas de Drive por request para no saturar
+            $toSearch = array_slice(array_values($uncachedSkus), 0, 10);
+
+            foreach ($toSearch as $sku) {
+                $rootSku = extractRootSku($sku);
+                $files = $drive->findBySku($folderId, $rootSku);
+
+                if (!empty($files)) {
+                    $drive->makePublicBatch(array_column($files, 'id'));
+
+                    // Guardar en caché
+                    try {
+                        $saveStmt = $db->prepare(
+                            "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
+                             VALUES (?, ?, ?, NOW())
+                             ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
+                        );
+                        $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
+                    } catch (Exception $e) {
+                    }
+                }
+
+                $covers[$sku] = extractCoverFromFiles($files);
+            }
+        }
+    }
+
+    // 3) SKUs sin resultado → null
+    foreach ($skus as $sku) {
+        if (!isset($covers[$sku])) {
+            $covers[$sku] = null;
+        }
+    }
+
+    jsonResponse(['covers' => $covers]);
+}
+
+/**
+ * Extrae la portada (primer imagen o video) de un array de archivos Drive.
+ */
+function extractCoverFromFiles(array $files): ?array
+{
+    // Buscar primera imagen
+    foreach ($files as $f) {
+        if (str_starts_with($f['mimeType'] ?? '', 'image/')) {
+            $thumb = $f['thumbnailLink'] ?? '';
+            $url = $thumb
+                ? preg_replace('/=s\d+/', '=s400', $thumb)
+                : "https://lh3.googleusercontent.com/d/{$f['id']}=s400";
+            return ['url' => $url, 'video' => false];
+        }
+    }
+    // Fallback: primer video
+    foreach ($files as $f) {
+        if (str_starts_with($f['mimeType'] ?? '', 'video/') && !empty($f['thumbnailLink'])) {
+            return ['url' => preg_replace('/=s\d+/', '=s400', $f['thumbnailLink']), 'video' => true];
+        }
+    }
+    return null;
+}
+
 
 // ============================================================
 // HEALTH CHECK

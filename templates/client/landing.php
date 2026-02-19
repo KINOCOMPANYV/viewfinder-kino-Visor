@@ -152,46 +152,40 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const cards = document.querySelectorAll('.card-image[data-sku]');
-            let delay = 0;
+            const needsFetch = [];
 
             cards.forEach(el => {
-                const sku = el.dataset.sku;
-
-                // Si ya tiene portada en BD, usarla inmediatamente
                 if (el.dataset.cover) {
                     renderCover(el, el.dataset.cover, el.dataset.video === '1');
-                    return;
+                } else {
+                    needsFetch.push(el);
                 }
-
-                // Sin portada en BD → cargar desde Drive API (con delay escalonado)
-                delay += 100;
-                setTimeout(() => {
-                    fetch('/api/media/' + encodeURIComponent(sku))
-                        .then(r => r.json())
-                        .then(data => {
-                            const files = data.files || [];
-                            // Buscar primera imagen
-                            const img = files.find(f => (f.mimeType || '').startsWith('image/'));
-                            if (img) {
-                                // Usar thumbnailLink de Drive (siempre accesible)
-                                const url = img.thumbnailLink
-                                    ? img.thumbnailLink.replace(/=s\d+/, '=s400')
-                                    : `https://lh3.googleusercontent.com/d/${img.id}`;
-                                renderCover(el, url, false);
-                                return;
-                            }
-                            // Fallback: primer video thumbnail
-                            const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
-                            if (vid && vid.thumbnailLink) {
-                                renderCover(el, vid.thumbnailLink.replace(/=s\d+/, '=s400'), true);
-                                return;
-                            }
-                            // Sin archivos
-                            el.innerHTML = '📷';
-                        })
-                        .catch(() => { el.innerHTML = '📷'; });
-                }, delay);
             });
+
+            if (needsFetch.length === 0) return;
+
+            // Una sola llamada batch para TODOS los SKUs sin portada
+            const skus = needsFetch.map(el => el.dataset.sku);
+            fetch('/api/covers/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ skus })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    const covers = data.covers || {};
+                    needsFetch.forEach((el, i) => {
+                        setTimeout(() => {
+                            const cover = covers[el.dataset.sku];
+                            if (cover && cover.url) {
+                                renderCover(el, cover.url, cover.video);
+                            } else {
+                                el.innerHTML = '📷';
+                            }
+                        }, i * 50); // Stagger visual rendering only
+                    });
+                })
+                .catch(() => needsFetch.forEach(el => el.innerHTML = '📷'));
         });
     </script>
 
