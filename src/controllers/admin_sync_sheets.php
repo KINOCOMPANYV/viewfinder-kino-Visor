@@ -88,90 +88,12 @@ for ($i = 1; $i < count($lines); $i++) {
     processRow($db, $data, $rowNum, $inserted, $updated, $errors);
 }
 
-// ============================================================
-// Auto-asignar portadas a productos SIN cover (después de sincronizar)
-// Prefiere match exacto, luego prefijo+separador. LIMITADO a 5 + 30s.
-// ============================================================
-$coversAssigned = 0;
-$coverErrors = '';
-try {
-    $coverStartTime = time();
-    $coverTimeLimit = 30;
-    set_time_limit(180);
-    require_once __DIR__ . '/../services/GoogleDriveService.php';
-    $drive = new GoogleDriveService();
-    $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
-    $token = $drive->getValidToken($db);
-
-    if ($token && $rootFolderId) {
-        $noCover = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = '' LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
-
-        if (!empty($noCover)) {
-            $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
-
-            foreach ($noCover as $prod) {
-                if ((time() - $coverStartTime) >= $coverTimeLimit) {
-                    $coverErrors = "Tiempo límite alcanzado";
-                    break;
-                }
-
-                try {
-                    // Clean SKU: strip file extension (1971-1.JPG → 1971-1)
-                    $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
-                    $allFiles = $drive->findBySku($rootFolderId, $cleanSku);
-
-                    // Clasificar: exactos vs compatibles (prefijo + separador)
-                    $exact = $compatible = [];
-                    foreach ($allFiles as $f) {
-                        $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
-                        if (strcasecmp($nameOnly, $cleanSku) === 0) {
-                            $exact[] = $f;
-                        } elseif (
-                            stripos($nameOnly, $cleanSku) === 0
-                            && strlen($nameOnly) > strlen($cleanSku)
-                            && !ctype_alnum($nameOnly[strlen($cleanSku)])
-                        ) {
-                            $compatible[] = $f;
-                        }
-                    }
-
-                    $candidates = !empty($exact) ? $exact : $compatible;
-                    if (empty($candidates))
-                        continue;
-
-                    $images = array_values(array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/')));
-                    $videos = array_values(array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/')));
-
-                    if (!empty($images)) {
-                        $drive->makePublic($images[0]['id']);
-                        $updateStmt->execute(["https://lh3.googleusercontent.com/d/{$images[0]['id']}", $prod['id']]);
-                        $coversAssigned++;
-                    } elseif (!empty($videos)) {
-                        $drive->makePublic($videos[0]['id']);
-                        $updateStmt->execute(["[VIDEO]https://drive.google.com/thumbnail?id={$videos[0]['id']}&sz=w400", $prod['id']]);
-                        $coversAssigned++;
-                    }
-                } catch (Exception $e) {
-                    // Silenciar errores individuales
-                }
-            }
-        }
-    } else {
-        $coverErrors = $token ? 'GOOGLE_DRIVE_FOLDER_ID no configurado' : 'Sin token de Google Drive';
-    }
-} catch (Exception $e) {
-    $coverErrors = $e->getMessage();
-}
-
-
 jsonResponse([
     'success' => true,
     'inserted' => $inserted,
     'updated' => $updated,
     'errors' => $errors,
     'total' => $rowNum,
-    'covers_assigned' => $coversAssigned,
-    'cover_errors' => $coverErrors,
 ]);
 
 // ============================================================
