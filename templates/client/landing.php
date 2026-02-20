@@ -73,36 +73,35 @@
         $perPage = 20;
         $currentPage = max(1, intval($_GET['page'] ?? 1));
 
-        // Fetch all active products with updated_at for proper family ordering
+        // Fetch all active products ordered by id DESC (last rows in Sheet = newest)
         $allProducts = $db->query(
-            "SELECT sku, name, category, gender, price_suggested, cover_image_url, updated_at 
+            "SELECT id, sku, name, category, gender, price_suggested, cover_image_url 
              FROM products 
              WHERE archived = 0 
-             ORDER BY updated_at DESC"
+             ORDER BY id DESC"
         )->fetchAll();
 
         // Group by family SKU (strip extension + last -digits)
         $grouped = [];
-        $familyLatest = []; // track most recent updated_at per family
+        $familyMaxId = []; // track highest id per family (newest = last in Sheet)
         foreach ($allProducts as $p) {
             $sku = trim($p['sku']);
             $skuClean = preg_replace('/\.\w{2,4}$/i', '', $sku);
             $family = preg_match('/^(.+)-\d+$/', $skuClean, $fm) ? $fm[1] : $skuClean;
             if (!isset($grouped[$family])) {
                 $grouped[$family] = ['parent' => $p, 'children' => []];
-                $familyLatest[$family] = $p['updated_at'];
+                $familyMaxId[$family] = (int)$p['id'];
             } else {
                 $grouped[$family]['children'][] = $p;
-                // Keep the freshest updated_at per family
-                if ($p['updated_at'] > $familyLatest[$family]) {
-                    $familyLatest[$family] = $p['updated_at'];
+                if ((int)$p['id'] > $familyMaxId[$family]) {
+                    $familyMaxId[$family] = (int)$p['id'];
                 }
             }
         }
 
-        // Sort families by most recent updated_at DESC
-        arsort($familyLatest);
-        $parentOrder = array_keys($familyLatest);
+        // Sort families by highest id DESC (last in Sheet = newest = first on page)
+        arsort($familyMaxId);
+        $parentOrder = array_keys($familyMaxId);
 
         $totalParents = count($parentOrder);
         $totalPages = max(1, ceil($totalParents / $perPage));
