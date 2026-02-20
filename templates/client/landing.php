@@ -81,13 +81,15 @@
              ORDER BY updated_at DESC"
         )->fetchAll();
 
-        // Group by family SKU (strip last -digits → 1971-1 becomes 1971)
+        // Group by family SKU (strip extension + last -digits → 1971-1.JPG becomes 1971)
         $grouped = [];
         $parentOrder = [];
         foreach ($allProducts as $p) {
             $sku = trim($p['sku']);
+            // Strip file extension if present (.jpg, .png, .jpeg, etc.)
+            $skuClean = preg_replace('/\.\w{2,4}$/i', '', $sku);
             // Extract family: remove trailing -digits suffix
-            $family = preg_match('/^(.+)-\d+$/', $sku, $fm) ? $fm[1] : $sku;
+            $family = preg_match('/^(.+)-\d+$/', $skuClean, $fm) ? $fm[1] : $skuClean;
             if (!isset($grouped[$family])) {
                 $grouped[$family] = ['parent' => $p, 'children' => []];
                 $parentOrder[] = $family;
