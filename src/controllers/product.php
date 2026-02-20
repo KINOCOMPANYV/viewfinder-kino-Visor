@@ -720,12 +720,12 @@ if (empty($serverCover)) {
                     btnSend.disabled = true;
                     btnSend.textContent = '⏳ Preparando...';
                     try {
-                        const fileObjs = (await Promise.all(sel.map(async f => {
+                        const fileObjs = (await Promise.all(sel.map(async (f, i) => {
                             try {
                                 const imgUrl = `https://lh3.googleusercontent.com/d/${f.id}=s800`;
                                 const r = await fetch(imgUrl, { mode: 'cors' });
                                 const b = await r.blob();
-                                return new File([b], f.name, { type: b.type || 'image/jpeg' });
+                                return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
                             } catch { return null; }
                         }))).filter(Boolean);
                         if (fileObjs.length > 0) {
@@ -742,7 +742,7 @@ if (empty($serverCover)) {
                 text += '📸 *Imágenes seleccionadas:*\n\n';
                 sel.forEach((f, i) => {
                     const imgUrl = `https://drive.google.com/uc?export=view&id=${f.id}`;
-                    text += (i + 1) + '. ' + f.name + '\n' + imgUrl + '\n\n';
+                    text += (i + 1) + '. ' + imgUrl + '\n\n';
                 });
                 window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
             });

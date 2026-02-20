@@ -328,12 +328,12 @@ KV-1003
                     btnWaSend.disabled = true;
                     btnWaSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Preparando...';
                     try {
-                        const filePromises = selected.map(async (item) => {
+                        const filePromises = selected.map(async (item, i) => {
                             try {
                                 const imgUrl = item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`;
                                 const resp = await fetch(imgUrl, { mode: 'cors' });
                                 const blob = await resp.blob();
-                                return new File([blob], item.sku + '.jpg', { type: blob.type || 'image/jpeg' });
+                                return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
                             } catch { return null; }
                         });
                         const files = (await Promise.all(filePromises)).filter(Boolean);
@@ -465,7 +465,7 @@ KV-1003
                                         const cover = covers[sku];
                                         if (cover && cover.url) {
                                             const imgContainer = el.closest('.batch-result-img');
-                                            imgContainer.innerHTML = `<img src="${cover.url}" alt="${sku}" loading="lazy" onerror="this.outerHTML='<div class=\\'batch-no-img\\'>📷</div>'">`; 
+                                            imgContainer.innerHTML = `<img src="${cover.url}" alt="${sku}" loading="lazy" onerror="this.outerHTML='<div class=\\'batch-no-img\\'>📷</div>'">`;
                                             const item = batchFoundItems.find(f => f.sku === sku);
                                             if (item) item.image = cover.url;
                                         } else {

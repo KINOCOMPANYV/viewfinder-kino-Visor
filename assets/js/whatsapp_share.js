@@ -185,8 +185,7 @@
                     try {
                         const resp = await fetch(img.url, { mode: 'cors' });
                         const blob = await resp.blob();
-                        const ext = img.name.split('.').pop() || 'jpg';
-                        return new File([blob], img.name || `imagen_${i + 1}.${ext}`, { type: blob.type || 'image/jpeg' });
+                        return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
                     } catch {
                         return null;
                     }
@@ -222,7 +221,7 @@
         // Fallback: WhatsApp con links de Drive
         const productUrl = window.location.origin + '/producto/' + currentSku;
         let text = `📦 *${currentName}*\n🔗 SKU: ${currentSku}\n\n📸 *${selected.length} imagen(es):*\n`;
-        selected.forEach((img, i) => {
+        selected.forEach((img) => {
             text += `\n🖼️ ${img.driveUrl}`;
         });
         text += `\n\n🔗 Ver ficha completa:\n${productUrl}`;

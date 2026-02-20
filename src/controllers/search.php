@@ -280,11 +280,11 @@ $totalPages = ceil($total / $perPage);
                     btnSend.disabled = true;
                     btnSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Preparando...';
                     try {
-                        const files = (await Promise.all(selected.map(async item => {
+                        const files = (await Promise.all(selected.map(async (item, i) => {
                             try {
                                 const r = await fetch(item.image, { mode: 'cors' });
                                 const b = await r.blob();
-                                return new File([b], item.sku + '.jpg', { type: b.type || 'image/jpeg' });
+                                return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
                             } catch { return null; }
                         }))).filter(Boolean);
                         if (files.length > 0) {
