@@ -70,64 +70,162 @@
     <section class="container">
         <?php
         $db = getDB();
-        $products = $db->query(
+        $perPage = 20;
+        $currentPage = max(1, intval($_GET['page'] ?? 1));
+
+        // Count total non-archived products, grouped by root SKU
+        $allProducts = $db->query(
             "SELECT sku, name, category, gender, price_suggested, cover_image_url 
              FROM products 
              WHERE archived = 0 
-             ORDER BY updated_at DESC 
-             LIMIT 12"
+             ORDER BY updated_at DESC"
         )->fetchAll();
+
+        // Group by root SKU
+        $grouped = [];
+        $parentOrder = [];
+        foreach ($allProducts as $p) {
+            $root = extractRootSku($p['sku']);
+            if (!isset($grouped[$root])) {
+                $grouped[$root] = ['parent' => $p, 'children' => []];
+                $parentOrder[] = $root;
+            } else {
+                // If this product's SKU IS exactly the root, make it the parent
+                if ($p['sku'] === $root) {
+                    // Move current parent to children
+                    $grouped[$root]['children'][] = $grouped[$root]['parent'];
+                    $grouped[$root]['parent'] = $p;
+                } else {
+                    $grouped[$root]['children'][] = $p;
+                }
+            }
+        }
+
+        $totalParents = count($parentOrder);
+        $totalPages = max(1, ceil($totalParents / $perPage));
+        $currentPage = min($currentPage, $totalPages);
+        $offset = ($currentPage - 1) * $perPage;
+        $pageRoots = array_slice($parentOrder, $offset, $perPage);
         ?>
 
-        <?php if (!empty($products)): ?>
-            <h2 style="font-size:1.1rem; color:var(--color-text-muted); margin-bottom:0.5rem;">
-                Productos recientes
-            </h2>
-            <div class="product-grid">
-                <?php foreach ($products as $p): ?>
-                    <a href="/producto/<?= e($p['sku']) ?>" class="product-card" style="text-decoration:none; color:inherit;">
-                        <div class="card-image" id="cover-<?= e($p['sku']) ?>" data-sku="<?= e($p['sku']) ?>" <?php
-                            $coverUrl = $p['cover_image_url'] ?? '';
-                            $isVideo = str_starts_with($coverUrl, '[VIDEO]');
-                            if ($isVideo)
-                                $coverUrl = substr($coverUrl, 7);
-                            if ($coverUrl): ?> data-cover="<?= e($coverUrl) ?>"
-                                data-video="<?= $isVideo ? '1' : '0' ?>" <?php endif; ?>>
-                            <?php if ($coverUrl): ?>
-                                <img src="<?= e($coverUrl) ?>" alt="<?= e($p['name']) ?>" loading="lazy" class="img-fade-in"
-                                    onload="this.classList.add('loaded')"
-                                    onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
-                            <?php else: ?>
-                                <div class="card-image-skeleton skeleton"></div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="card-body">
-                            <div class="card-sku">
-                                <?= e($p['sku']) ?>
-                            </div>
-                            <div class="card-name">
-                                <?= e($p['name']) ?>
-                            </div>
-                            <div class="card-meta">
-                                <?php if ($p['category']): ?>
-                                    <span>
-                                        <?= e($p['category']) ?>
-                                    </span>
+        <?php if (!empty($pageRoots)): ?>
+            <div class="section-header-landing">
+                <h2>Productos recientes</h2>
+                <span class="product-count"><?= $totalParents ?> referencias</span>
+            </div>
+
+            <div class="parent-grid">
+                <?php foreach ($pageRoots as $root):
+                    $group = $grouped[$root];
+                    $parent = $group['parent'];
+                    $children = $group['children'];
+                    $childCount = count($children);
+                    $coverUrl = $parent['cover_image_url'] ?? '';
+                    $isVideo = str_starts_with($coverUrl, '[VIDEO]');
+                    if ($isVideo) $coverUrl = substr($coverUrl, 7);
+                ?>
+                    <div class="parent-card">
+                        <!-- Parent image -->
+                        <a href="/producto/<?= e($parent['sku']) ?>" class="parent-image-link">
+                            <div class="card-image" id="cover-<?= e($parent['sku']) ?>"
+                                data-sku="<?= e($parent['sku']) ?>"
+                                <?php if ($coverUrl): ?>
+                                    data-cover="<?= e($coverUrl) ?>"
+                                    data-video="<?= $isVideo ? '1' : '0' ?>"
+                                <?php endif; ?>>
+                                <?php if ($coverUrl): ?>
+                                    <img src="<?= e($coverUrl) ?>" alt="<?= e($parent['name']) ?>"
+                                        loading="lazy" class="img-fade-in"
+                                        onload="this.classList.add('loaded')"
+                                        onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
+                                <?php else: ?>
+                                    <div class="card-image-skeleton skeleton"></div>
                                 <?php endif; ?>
                             </div>
-                            <button class="btn-whatsapp"
-                                onclick="event.preventDefault(); event.stopPropagation(); openShareModal('<?= e($p['sku']) ?>', '<?= e(addslashes($p['name'])) ?>');"
-                                title="Enviar por WhatsApp">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                    <path
-                                        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                                </svg>
-                                Enviar
-                            </button>
+                        </a>
+
+                        <!-- Card body -->
+                        <div class="card-body">
+                            <div class="card-sku"><?= e($parent['sku']) ?></div>
+                            <div class="card-name"><?= e($parent['name']) ?></div>
+                            <?php if ($parent['category']): ?>
+                                <div class="card-meta"><span><?= e($parent['category']) ?></span></div>
+                            <?php endif; ?>
+
+                            <!-- Children thumbnails -->
+                            <?php if ($childCount > 0): ?>
+                                <div class="children-row">
+                                    <?php
+                                    $showMax = 4;
+                                    $visibleChildren = array_slice($children, 0, $showMax);
+                                    foreach ($visibleChildren as $child):
+                                        $childCover = $child['cover_image_url'] ?? '';
+                                        $childIsVideo = str_starts_with($childCover, '[VIDEO]');
+                                        if ($childIsVideo) $childCover = substr($childCover, 7);
+                                    ?>
+                                        <a href="/producto/<?= e($child['sku']) ?>" class="child-thumb"
+                                            title="<?= e($child['sku']) ?>"
+                                            data-sku="<?= e($child['sku']) ?>"
+                                            <?php if ($childCover): ?>data-cover="<?= e($childCover) ?>"<?php endif; ?>>
+                                            <?php if ($childCover): ?>
+                                                <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>"
+                                                    loading="lazy"
+                                                    onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
+                                            <?php else: ?>
+                                                <span class="child-placeholder" data-sku="<?= e($child['sku']) ?>">📷</span>
+                                            <?php endif; ?>
+                                        </a>
+                                    <?php endforeach; ?>
+                                    <?php if ($childCount > $showMax): ?>
+                                        <a href="/producto/<?= e($parent['sku']) ?>" class="child-more"
+                                            title="Ver todas las variantes">+<?= $childCount - $showMax ?></a>
+                                    <?php endif; ?>
+                                    <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
+                                </div>
+                            <?php endif; ?>
+
+                            <!-- Actions row -->
+                            <div class="card-actions">
+                                <button class="btn-whatsapp"
+                                    onclick="event.preventDefault(); event.stopPropagation(); openShareModal('<?= e($parent['sku']) ?>', '<?= e(addslashes($parent['name'])) ?>');"
+                                    title="Enviar por WhatsApp">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                    </svg>
+                                    Enviar
+                                </button>
+                                <a href="/producto/<?= e($parent['sku']) ?>" class="btn-ver">Ver →</a>
+                            </div>
                         </div>
-                    </a>
+                    </div>
                 <?php endforeach; ?>
             </div>
+
+            <!-- Pagination -->
+            <?php if ($totalPages > 1): ?>
+                <nav class="pagination">
+                    <?php if ($currentPage > 1): ?>
+                        <a href="/?page=<?= $currentPage - 1 ?>" class="page-btn">« Anterior</a>
+                    <?php endif; ?>
+
+                    <?php
+                    $start = max(1, $currentPage - 2);
+                    $end = min($totalPages, $currentPage + 2);
+                    if ($start > 1) echo '<span class="page-dots">…</span>';
+                    for ($i = $start; $i <= $end; $i++): ?>
+                        <a href="/?page=<?= $i ?>"
+                            class="page-btn <?= $i === $currentPage ? 'active' : '' ?>"><?= $i ?></a>
+                    <?php endfor;
+                    if ($end < $totalPages) echo '<span class="page-dots">…</span>';
+                    ?>
+
+                    <?php if ($currentPage < $totalPages): ?>
+                        <a href="/?page=<?= $currentPage + 1 ?>" class="page-btn">Siguiente »</a>
+                    <?php endif; ?>
+                    <span class="page-info">Página <?= $currentPage ?> de <?= $totalPages ?></span>
+                </nav>
+            <?php endif; ?>
+
         <?php else: ?>
             <div class="empty-state fade-in">
                 <div class="empty-icon">📦</div>
@@ -221,7 +319,7 @@ KV-1003
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Solo buscar cards que NO tienen imagen SSR (sin cover en BD)
+            // Parent cards that need cover fetching
             const needsFetch = [];
             document.querySelectorAll('.card-image[data-sku]').forEach(el => {
                 if (!el.dataset.cover && !el.querySelector('img')) {
@@ -229,17 +327,30 @@ KV-1003
                 }
             });
 
-            if (needsFetch.length === 0) return;
+            // Child thumbnails that need cover fetching
+            const childNeedsFetch = [];
+            document.querySelectorAll('.child-thumb[data-sku]').forEach(el => {
+                if (!el.dataset.cover && !el.querySelector('img')) {
+                    childNeedsFetch.push(el);
+                }
+            });
 
-            const skus = needsFetch.map(el => el.dataset.sku);
+            const allSkus = [
+                ...needsFetch.map(el => el.dataset.sku),
+                ...childNeedsFetch.map(el => el.dataset.sku)
+            ];
+
+            if (allSkus.length === 0) return;
+
             fetch('/api/covers/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ skus })
+                body: JSON.stringify({ skus: [...new Set(allSkus)] })
             })
                 .then(r => r.json())
                 .then(data => {
                     const covers = data.covers || {};
+                    // Render parent covers
                     needsFetch.forEach(el => {
                         const cover = covers[el.dataset.sku];
                         if (cover && cover.url) {
@@ -248,8 +359,24 @@ KV-1003
                             el.innerHTML = '<div class="cover-placeholder">📷</div>';
                         }
                     });
+                    // Render child covers
+                    childNeedsFetch.forEach(el => {
+                        const cover = covers[el.dataset.sku];
+                        if (cover && cover.url) {
+                            const placeholder = el.querySelector('.child-placeholder');
+                            if (placeholder) {
+                                const img = document.createElement('img');
+                                img.src = cover.url;
+                                img.alt = el.dataset.sku;
+                                img.loading = 'lazy';
+                                placeholder.replaceWith(img);
+                            }
+                        }
+                    });
                 })
-                .catch(() => needsFetch.forEach(el => el.innerHTML = '<div class="cover-placeholder">📷</div>'));
+                .catch(() => {
+                    needsFetch.forEach(el => el.innerHTML = '<div class="cover-placeholder">📷</div>');
+                });
         });
     </script>
 

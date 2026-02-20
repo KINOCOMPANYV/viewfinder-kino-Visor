@@ -290,6 +290,287 @@ img {
     padding: 2rem 0;
 }
 
+/* === Parent-Child Grid (Landing) === */
+.section-header-landing {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 1rem;
+    gap: 1rem;
+}
+
+.section-header-landing h2 {
+    font-size: 1.15rem;
+    color: var(--color-text-muted);
+    margin: 0;
+}
+
+.product-count {
+    font-size: 0.85rem;
+    color: var(--color-text-dim);
+}
+
+.parent-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    padding: 1.25rem 0 2rem;
+}
+
+.parent-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all var(--transition);
+}
+
+.parent-card:hover {
+    border-color: var(--color-border-hover);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.parent-image-link {
+    display: block;
+    text-decoration: none;
+}
+
+.parent-card .card-image {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--color-surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-dim);
+    font-size: 3rem;
+    overflow: hidden;
+}
+
+.parent-card .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.parent-card .card-body {
+    padding: 1rem 1.1rem 1.1rem;
+}
+
+.parent-card .card-sku {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.2rem;
+}
+
+.parent-card .card-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    line-height: 1.3;
+    color: var(--color-text);
+}
+
+.parent-card .card-meta {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+/* --- Children row --- */
+.children-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.5rem 0 0.6rem;
+    flex-wrap: wrap;
+}
+
+.child-thumb {
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, transform 0.2s;
+    flex-shrink: 0;
+}
+
+.child-thumb:hover {
+    border-color: var(--color-primary);
+    transform: scale(1.1);
+}
+
+.child-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.child-placeholder {
+    font-size: 0.7rem;
+    color: var(--color-text-dim);
+}
+
+.child-more {
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
+    background: var(--color-surface-2);
+    border: 1.5px dashed var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.child-more:hover {
+    background: rgba(201, 168, 76, 0.1);
+}
+
+.children-label {
+    font-size: 0.7rem;
+    color: var(--color-text-dim);
+    margin-left: 0.25rem;
+}
+
+/* --- Card actions --- */
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.card-actions .btn-whatsapp {
+    flex: 1;
+}
+
+.btn-ver {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-decoration: none;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-primary);
+    transition: all 0.2s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.btn-ver:hover {
+    background: var(--color-primary);
+    color: #000;
+}
+
+/* --- Pagination --- */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 1.5rem 0 2rem;
+    flex-wrap: wrap;
+}
+
+.page-btn {
+    padding: 0.45rem 0.85rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    transition: all 0.2s;
+}
+
+.page-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.page-btn.active {
+    background: var(--color-primary);
+    color: #000;
+    border-color: var(--color-primary);
+    font-weight: 700;
+}
+
+.page-dots {
+    color: var(--color-text-dim);
+    padding: 0 0.3rem;
+}
+
+.page-info {
+    font-size: 0.78rem;
+    color: var(--color-text-dim);
+    margin-left: 0.75rem;
+}
+
+/* --- Responsive: Landing parent grid --- */
+@media (max-width: 1024px) {
+    .parent-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .parent-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .parent-card .card-body {
+        padding: 0.85rem;
+    }
+
+    .parent-card .card-name {
+        font-size: 0.88rem;
+    }
+
+    .child-thumb,
+    .child-more {
+        width: 38px;
+        height: 38px;
+    }
+
+    .section-header-landing {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .pagination {
+        gap: 0.3rem;
+    }
+
+    .page-btn {
+        padding: 0.35rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .page-info {
+        width: 100%;
+        text-align: center;
+        margin: 0.5rem 0 0;
+    }
+}
+
 .product-card {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
