@@ -123,6 +123,7 @@
             </div>
 
             <div class="parent-grid">
+                <?php $cardIndex = 0; ?>
                 <?php foreach ($pageRoots as $root):
                     $group = $grouped[$root];
                     $parent = $group['parent'];
@@ -141,13 +142,14 @@
                                     data-cover="<?= e($coverUrl) ?>"
                                     data-video="<?= $isVideo ? '1' : '0' ?>"
                                 <?php endif; ?>>
+                                <?php $loadMode = ($cardIndex < 3 && $currentPage === 1) ? 'eager' : 'lazy'; ?>
                                 <?php if ($coverUrl): ?>
                                     <img src="<?= e($coverUrl) ?>" alt="<?= e($parent['name']) ?>"
-                                        loading="lazy" class="img-fade-in"
+                                        loading="<?= $loadMode ?>" class="img-fade-in"
                                         onload="this.classList.add('loaded')"
                                         onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
                                 <?php else: ?>
-                                    <div class="card-image-skeleton skeleton"></div>
+                                    <div class="cover-placeholder">📷</div>
                                 <?php endif; ?>
                             </div>
                         </a>
@@ -206,6 +208,7 @@
                             </div>
                         </div>
                     </div>
+                <?php $cardIndex++; ?>
                 <?php endforeach; ?>
             </div>
 
@@ -306,86 +309,8 @@ KV-1003
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
     <script>
-
-        // Renderizar cover dinámicamente (solo para cards sin SSR image)
-        function renderCover(el, imgUrl, isVideo) {
-            el.innerHTML = '';
-            const img = document.createElement('img');
-            img.src = imgUrl;
-            img.alt = el.dataset.sku;
-            img.loading = 'lazy';
-            img.className = 'img-fade-in';
-            img.onload = () => img.classList.add('loaded');
-            img.onerror = () => { el.innerHTML = '<div class="cover-placeholder">📷</div>'; };
-            el.appendChild(img);
-            if (isVideo) {
-                const play = document.createElement('span');
-                play.textContent = '▶';
-                play.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2.5rem;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none;';
-                el.appendChild(play);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Parent cards that need cover fetching
-            const needsFetch = [];
-            document.querySelectorAll('.card-image[data-sku]').forEach(el => {
-                if (!el.dataset.cover && !el.querySelector('img')) {
-                    needsFetch.push(el);
-                }
-            });
-
-            // Child thumbnails that need cover fetching
-            const childNeedsFetch = [];
-            document.querySelectorAll('.child-thumb[data-sku]').forEach(el => {
-                if (!el.dataset.cover && !el.querySelector('img')) {
-                    childNeedsFetch.push(el);
-                }
-            });
-
-            const allSkus = [
-                ...needsFetch.map(el => el.dataset.sku),
-                ...childNeedsFetch.map(el => el.dataset.sku)
-            ];
-
-            if (allSkus.length === 0) return;
-
-            fetch('/api/covers/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ skus: [...new Set(allSkus)] })
-            })
-                .then(r => r.json())
-                .then(data => {
-                    const covers = data.covers || {};
-                    // Render parent covers
-                    needsFetch.forEach(el => {
-                        const cover = covers[el.dataset.sku];
-                        if (cover && cover.url) {
-                            renderCover(el, cover.url, cover.video);
-                        } else {
-                            el.innerHTML = '<div class="cover-placeholder">📷</div>';
-                        }
-                    });
-                    // Render child covers
-                    childNeedsFetch.forEach(el => {
-                        const cover = covers[el.dataset.sku];
-                        if (cover && cover.url) {
-                            const placeholder = el.querySelector('.child-placeholder');
-                            if (placeholder) {
-                                const img = document.createElement('img');
-                                img.src = cover.url;
-                                img.alt = el.dataset.sku;
-                                img.loading = 'lazy';
-                                placeholder.replaceWith(img);
-                            }
-                        }
-                    });
-                })
-                .catch(() => {
-                    needsFetch.forEach(el => el.innerHTML = '<div class="cover-placeholder">📷</div>');
-                });
-        });
+        // No Drive API calls on landing — speed is priority
+        // All covers come from DB (cover_image_url) or show placeholder
     </script>
 
     <!-- Batch Search JS -->
