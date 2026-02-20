@@ -285,9 +285,9 @@ function processRowWithCover(PDO $db, array $data, int $rowNum, int &$inserted, 
                 }
             }
 
+            $params[] = $archived;
             $params[] = $sku;
 
-            $params[] = $archived;
             $stmt = $db->prepare(
                 "UPDATE products SET 
                     name = COALESCE(NULLIF(?, ''), name),
