@@ -4,7 +4,7 @@
  */
 $q = trim($_GET['q'] ?? '');
 $page = max(1, intval($_GET['page'] ?? 1));
-$perPage = 24;
+$perPage = 20;
 $offset = ($page - 1) * $perPage;
 
 $db = getDB();
@@ -136,7 +136,7 @@ $totalPages = ceil($total / $perPage);
                                          onload="this.classList.add('loaded')"
                                          onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
                                 <?php else: ?>
-                                    <div class="card-image-skeleton skeleton"></div>
+                                    <div class="cover-placeholder">📷</div>
                                 <?php endif; ?>
                             </div>
                             <div class="card-body">
@@ -202,49 +202,9 @@ $totalPages = ceil($total / $perPage);
     </footer>
 
     <script>
-        // Renderizar cover dinamicamente
-        function renderCover(el, imgUrl, isVideo) {
-            el.innerHTML = '';
-            const img = document.createElement('img');
-            img.src = imgUrl;
-            img.alt = el.dataset.sku;
-            img.loading = 'lazy';
-            img.className = 'img-fade-in';
-            img.onload = () => img.classList.add('loaded');
-            img.onerror = () => { el.innerHTML = '<div class="cover-placeholder">📷</div>'; };
-            el.appendChild(img);
-            if (isVideo) {
-                const play = document.createElement('span');
-                play.textContent = '▶';
-                play.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2.5rem;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none;';
-                el.appendChild(play);
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
-            // Cargar covers faltantes
-            const needsFetch = [];
-            document.querySelectorAll('.card-image[data-sku]').forEach(el => {
-                if (!el.dataset.cover && !el.querySelector('img')) needsFetch.push(el);
-            });
-            if (needsFetch.length > 0) {
-                const skus = needsFetch.map(el => el.dataset.sku);
-                fetch('/api/covers/batch', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({skus})
-                })
-                .then(r => r.json())
-                .then(data => {
-                    const covers = data.covers || {};
-                    needsFetch.forEach(el => {
-                        const cover = covers[el.dataset.sku];
-                        if (cover && cover.url) renderCover(el, cover.url, cover.video);
-                        else el.innerHTML = '<div class="cover-placeholder">📷</div>';
-                    });
-                })
-                .catch(() => needsFetch.forEach(el => el.innerHTML = '<div class="cover-placeholder">📷</div>'));
-            }
+            // No Drive API calls on search — speed is priority
+            // All covers come from DB (cover_image_url) or show placeholder
 
             // --- WhatsApp search checkboxes ---
             const waBar = document.getElementById('searchWaBar');
