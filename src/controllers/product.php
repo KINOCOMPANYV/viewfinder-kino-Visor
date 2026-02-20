@@ -747,10 +747,28 @@ if (empty($serverCover)) {
                 return;
             }
 
-            // Fallback: video thumbnail
+            // Fallback: video preview with play overlay
             const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
-            if (vid && vid.thumbnailLink) {
-                setCoverImage(main, vid.thumbnailLink.replace(/=s\d+/, '=s800'));
+            if (vid) {
+                const thumbUrl = vid.thumbnailLink
+                    ? vid.thumbnailLink.replace(/=s\d+/, '=s800')
+                    : '';
+                const thumbImg = thumbUrl
+                    ? `<img src="${thumbUrl}" alt="${vid.name}" style="width:100%;height:100%;object-fit:cover;">`
+                    : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
+                main.innerHTML = `
+                    <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModal('${vid.id}', '${vid.name.replace(/'/g, '')}')">
+                        ${thumbImg}
+                        <div class="video-play-overlay">
+                            <div class="video-play-btn" style="width:64px;height:64px;">
+                                <svg viewBox="0 0 24 24" style="width:28px;height:28px;"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                            <span class="video-play-label" style="font-size:0.85rem;">Reproducir video</span>
+                        </div>
+                        <span class="video-badge" style="font-size:0.75rem;padding:0.25rem 0.6rem;">VIDEO</span>
+                    </div>`;
+                // Update info bar
+                document.getElementById('mainImageName').textContent = vid.name;
                 return;
             }
 
