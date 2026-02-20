@@ -70,6 +70,9 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
         $status = 'active';
     }
 
+    // Map status to archived flag
+    $archived = ($status === 'discontinued') ? 1 : 0;
+
     // Sanitizar price
     $price = floatval(str_replace([',', '$', ' '], ['', '', ''], $data['price_suggested'] ?? '0'));
 
@@ -91,6 +94,7 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                     movement = COALESCE(NULLIF(?, ''), movement),
                     price_suggested = IF(? > 0, ?, price_suggested),
                     status = ?,
+                    archived = ?,
                     description = COALESCE(NULLIF(?, ''), description),
                     cover_image_url = COALESCE(NULLIF(?, ''), cover_image_url),
                     updated_at = NOW()
@@ -104,6 +108,7 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                 $price,
                 $price,
                 $status,
+                $archived,
                 $data['description'] ?? '',
                 $coverUrl,
                 $sku,
@@ -112,8 +117,8 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
         } else {
             // INSERT
             $stmt = $db->prepare(
-                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, description, cover_image_url) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $stmt->execute([
                 $sku,
@@ -123,6 +128,7 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                 $data['movement'] ?? '',
                 $price,
                 $status,
+                $archived,
                 $data['description'] ?? '',
                 $coverUrl ?: null,
             ]);

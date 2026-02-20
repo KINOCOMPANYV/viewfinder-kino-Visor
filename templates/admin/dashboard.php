@@ -1,8 +1,8 @@
 <?php
 $db = getDB();
 $totalProducts = $db->query("SELECT COUNT(*) FROM products")->fetchColumn();
-$activeProducts = $db->query("SELECT COUNT(*) FROM products WHERE status='active'")->fetchColumn();
-$discontinued = $totalProducts - $activeProducts;
+$activeProducts = $db->query("SELECT COUNT(*) FROM products WHERE archived = 0")->fetchColumn();
+$archivedProducts = $totalProducts - $activeProducts;
 $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn();
 ?>
 <!DOCTYPE html>
@@ -60,9 +60,9 @@ $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn(
             </div>
             <div class="stat-card">
                 <div class="stat-value" style="color:var(--color-danger);">
-                    <?= number_format($discontinued) ?>
+                    <?= number_format($archivedProducts) ?>
                 </div>
-                <div class="stat-label">Descontinuados</div>
+                <div class="stat-label">Archivados</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" style="font-size:1rem; color:var(--color-text-muted);">

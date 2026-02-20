@@ -89,7 +89,8 @@ $rowNum = 0;
 
 for ($i = 1; $i < count($lines); $i++) {
     $row = $lines[$i];
-    if (empty(array_filter($row))) continue; // omitir filas vacías
+    if (empty(array_filter($row)))
+        continue; // omitir filas vacías
 
     $rowNum++;
     $data = [];
@@ -179,11 +180,16 @@ jsonResponse([
 function buildMessage(int $inserted, int $updated, int $coversSheets, int $coversDrive, bool $hasCoverCol): string
 {
     $parts = [];
-    if ($inserted > 0) $parts[] = "🆕 {$inserted} nuevos";
-    if ($updated > 0) $parts[] = "🔄 {$updated} actualizados";
-    if ($coversSheets > 0) $parts[] = "🖼️ {$coversSheets} portadas desde Sheets";
-    if ($coversDrive > 0) $parts[] = "🖼️ {$coversDrive} portadas desde Drive";
-    if (!$hasCoverCol) $parts[] = "💡 Tip: Agrega columna 'cover_image_url' en tu Sheets para sincronizar portadas automáticamente";
+    if ($inserted > 0)
+        $parts[] = "🆕 {$inserted} nuevos";
+    if ($updated > 0)
+        $parts[] = "🔄 {$updated} actualizados";
+    if ($coversSheets > 0)
+        $parts[] = "🖼️ {$coversSheets} portadas desde Sheets";
+    if ($coversDrive > 0)
+        $parts[] = "🖼️ {$coversDrive} portadas desde Drive";
+    if (!$hasCoverCol)
+        $parts[] = "💡 Tip: Agrega columna 'cover_image_url' en tu Sheets para sincronizar portadas automáticamente";
     return implode(' · ', $parts) ?: 'Sin cambios';
 }
 
@@ -201,7 +207,8 @@ function buildMessage(int $inserted, int $updated, int $coversSheets, int $cover
 function normalizeDriveUrl(string $url): string
 {
     $url = trim($url);
-    if (empty($url)) return '';
+    if (empty($url))
+        return '';
 
     // Ya está en formato correcto
     if (str_starts_with($url, 'https://lh3.googleusercontent.com/')) {
@@ -240,10 +247,13 @@ function processRowWithCover(PDO $db, array $data, int $rowNum, int &$inserted, 
     }
 
     $gender = strtolower($data['gender'] ?? 'unisex');
-    if (!in_array($gender, ['hombre', 'mujer', 'unisex'])) $gender = 'unisex';
+    if (!in_array($gender, ['hombre', 'mujer', 'unisex']))
+        $gender = 'unisex';
 
     $status = strtolower($data['status'] ?? 'active');
-    if (!in_array($status, ['active', 'discontinued'])) $status = 'active';
+    if (!in_array($status, ['active', 'discontinued']))
+        $status = 'active';
+    $archived = ($status === 'discontinued') ? 1 : 0;
 
     $price = floatval(str_replace([',', '$', ' '], ['', '', ''], $data['price_suggested'] ?? '0'));
     $coverUrl = $data['cover_image_url'] ?? '';
@@ -277,6 +287,7 @@ function processRowWithCover(PDO $db, array $data, int $rowNum, int &$inserted, 
 
             $params[] = $sku;
 
+            $params[] = $archived;
             $stmt = $db->prepare(
                 "UPDATE products SET 
                     name = COALESCE(NULLIF(?, ''), name),
@@ -287,6 +298,7 @@ function processRowWithCover(PDO $db, array $data, int $rowNum, int &$inserted, 
                     status = ?,
                     description = COALESCE(NULLIF(?, ''), description)
                     {$coverSql},
+                    archived = ?,
                     updated_at = NOW()
                  WHERE sku = ?"
             );
@@ -295,8 +307,8 @@ function processRowWithCover(PDO $db, array $data, int $rowNum, int &$inserted, 
         } else {
             // INSERT
             $stmt = $db->prepare(
-                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, description, cover_image_url) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $stmt->execute([
                 $sku,
@@ -306,11 +318,13 @@ function processRowWithCover(PDO $db, array $data, int $rowNum, int &$inserted, 
                 $data['movement'] ?? '',
                 $price,
                 $status,
+                $archived,
                 $data['description'] ?? '',
                 $coverUrl,
             ]);
             $inserted++;
-            if (!empty($coverUrl)) $coversUpdated++;
+            if (!empty($coverUrl))
+                $coversUpdated++;
         }
     } catch (\Exception $e) {
         $errors[] = "Fila {$rowNum} (SKU: {$sku}): " . $e->getMessage();

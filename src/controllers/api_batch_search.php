@@ -29,7 +29,7 @@ foreach ($codes as $code) {
     // 1) Búsqueda exacta por SKU
     $stmt = $db->prepare(
         "SELECT sku, name, cover_image_url FROM products 
-         WHERE status = 'active' AND sku = ? 
+         WHERE archived = 0 AND sku = ? 
          LIMIT 1"
     );
     $stmt->execute([$code]);
@@ -39,7 +39,7 @@ foreach ($codes as $code) {
     if (!$product) {
         $stmt = $db->prepare(
             "SELECT sku, name, cover_image_url FROM products 
-             WHERE status = 'active' AND (sku LIKE ? OR sku LIKE ? OR ? LIKE CONCAT('%', sku, '%'))
+             WHERE archived = 0 AND (sku LIKE ? OR sku LIKE ? OR ? LIKE CONCAT('%', sku, '%'))
              ORDER BY LENGTH(sku) ASC
              LIMIT 1"
         );

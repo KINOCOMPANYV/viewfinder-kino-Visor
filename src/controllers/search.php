@@ -11,12 +11,12 @@ $db = getDB();
 
 if ($q === '') {
     // Sin query: mostrar todos los activos paginados
-    $countStmt = $db->query("SELECT COUNT(*) FROM products WHERE status = 'active'");
+    $countStmt = $db->query("SELECT COUNT(*) FROM products WHERE archived = 0");
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
         "SELECT sku, name, category, gender, price_suggested, cover_image_url 
-         FROM products WHERE status = 'active' 
+         FROM products WHERE archived = 0 
          ORDER BY name ASC 
          LIMIT ? OFFSET ?"
     );
@@ -27,7 +27,7 @@ if ($q === '') {
     $like = "%{$q}%";
     $countStmt = $db->prepare(
         "SELECT COUNT(*) FROM products 
-         WHERE status = 'active' AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)"
+         WHERE archived = 0 AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)"
     );
     $countStmt->execute([$like, $like, $like]);
     $total = $countStmt->fetchColumn();
@@ -35,7 +35,7 @@ if ($q === '') {
     $stmt = $db->prepare(
         "SELECT sku, name, category, gender, price_suggested, cover_image_url 
          FROM products 
-         WHERE status = 'active' AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)
+         WHERE archived = 0 AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)
          ORDER BY 
            CASE WHEN sku = ? THEN 0
                 WHEN sku LIKE ? THEN 1

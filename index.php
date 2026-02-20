@@ -190,6 +190,12 @@ if ($uri === '/admin/media/sync-covers' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/media/visibility' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_media_visibility.php';
+    exit;
+}
+
 if ($uri === '/admin/product/update' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_product_update.php';
@@ -212,6 +218,27 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     $db = getDB();
     $freshRequested = !empty($_GET['fresh']);
 
+    // Helper: filter out files hidden via drive_cache.visible_publico
+    function filterHiddenFiles(PDO $db, array $files): array
+    {
+        if (empty($files))
+            return $files;
+        $ids = array_column($files, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        try {
+            $stmt = $db->prepare("SELECT file_id FROM drive_cache WHERE file_id IN ({$placeholders}) AND visible_publico = 0");
+            $stmt->execute($ids);
+            $hiddenIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            if (!empty($hiddenIds)) {
+                $hiddenSet = array_flip($hiddenIds);
+                $files = array_values(array_filter($files, fn($f) => !isset($hiddenSet[$f['id']])));
+            }
+        } catch (Exception $e) {
+            // drive_cache table might not exist yet, skip filtering
+        }
+        return $files;
+    }
+
     // === CACHÉ: verificar si hay respuesta en caché (TTL 5 min) ===
     if (!$freshRequested) {
         try {
@@ -223,6 +250,7 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
             $cached = $cacheStmt->fetch();
             if ($cached) {
                 $files = json_decode($cached['files_json'], true) ?: [];
+                $files = filterHiddenFiles($db, $files);
                 jsonResponse([
                     'files' => $files,
                     'sku' => $sku,
@@ -272,6 +300,9 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
                 // Si la tabla no existe aún, ignorar
             }
         }
+
+        // Filter hidden files before returning
+        $files = filterHiddenFiles($db, $files);
 
         jsonResponse([
             'files' => $files,

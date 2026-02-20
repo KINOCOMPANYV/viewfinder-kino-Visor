@@ -15,7 +15,7 @@ if ($q !== '') {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT id, sku, name, category, gender, status, price_suggested, updated_at 
+        "SELECT id, sku, name, category, gender, status, archived, price_suggested, updated_at 
          FROM products WHERE sku LIKE ? OR name LIKE ?
          ORDER BY sku ASC LIMIT ? OFFSET ?"
     );
@@ -23,7 +23,7 @@ if ($q !== '') {
 } else {
     $total = $db->query("SELECT COUNT(*) FROM products")->fetchColumn();
     $stmt = $db->prepare(
-        "SELECT id, sku, name, category, gender, status, price_suggested, updated_at 
+        "SELECT id, sku, name, category, gender, status, archived, price_suggested, updated_at 
          FROM products ORDER BY updated_at DESC LIMIT ? OFFSET ?"
     );
     $stmt->execute([$perPage, $offset]);
@@ -33,3 +33,4 @@ $products = $stmt->fetchAll();
 $totalPages = ceil($total / $perPage);
 
 include __DIR__ . '/../../templates/admin/products.php';
+
