@@ -195,8 +195,6 @@
 
                 if (files.length > 0) {
                     const shareData = {
-                        title: `${currentSku} - ${currentName}`,
-                        text: `📦 ${currentName}\n🔗 SKU: ${currentSku}`,
                         files: files
                     };
 

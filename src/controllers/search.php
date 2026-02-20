@@ -288,7 +288,7 @@ $totalPages = ceil($total / $perPage);
                             } catch { return null; }
                         }))).filter(Boolean);
                         if (files.length > 0) {
-                            const sd = { title: 'Cat\u00E1logo', text: selected.map(s => s.sku + ' - ' + s.name).join('\n'), files };
+                            const sd = { files };
                             if (navigator.canShare(sd)) { await navigator.share(sd); resetBtn(); return; }
                         }
                     } catch (e) { if (e.name === 'AbortError') { resetBtn(); return; } }

@@ -339,8 +339,6 @@ KV-1003
                         const files = (await Promise.all(filePromises)).filter(Boolean);
                         if (files.length > 0) {
                             const shareData = {
-                                title: 'Catálogo - ' + selected.length + ' productos',
-                                text: selected.map(s => s.sku + ' - ' + s.name).join('\n'),
                                 files: files
                             };
                             if (navigator.canShare(shareData)) {

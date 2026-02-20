@@ -729,7 +729,7 @@ if (empty($serverCover)) {
                             } catch { return null; }
                         }))).filter(Boolean);
                         if (fileObjs.length > 0) {
-                            const sd = { title: SKU + ' - ' + PRODUCT_NAME, text: SKU + ' - ' + PRODUCT_NAME, files: fileObjs };
+                            const sd = { files: fileObjs };
                             if (navigator.canShare(sd)) { await navigator.share(sd); resetGalleryBtn(); return; }
                         }
                     } catch (e) { if (e.name === 'AbortError') { resetGalleryBtn(); return; } }
