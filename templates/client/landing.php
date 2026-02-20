@@ -73,36 +73,47 @@
         $perPage = 20;
         $currentPage = max(1, intval($_GET['page'] ?? 1));
 
-        // Count total non-archived products, grouped by root SKU
+        // Fetch all active products with updated_at for proper family ordering
         $allProducts = $db->query(
-            "SELECT sku, name, category, gender, price_suggested, cover_image_url 
+            "SELECT sku, name, category, gender, price_suggested, cover_image_url, updated_at 
              FROM products 
              WHERE archived = 0 
              ORDER BY updated_at DESC"
         )->fetchAll();
 
-        // Group by family SKU (strip extension + last -digits → 1971-1.JPG becomes 1971)
+        // Group by family SKU (strip extension + last -digits)
         $grouped = [];
-        $parentOrder = [];
+        $familyLatest = []; // track most recent updated_at per family
         foreach ($allProducts as $p) {
             $sku = trim($p['sku']);
-            // Strip file extension if present (.jpg, .png, .jpeg, etc.)
             $skuClean = preg_replace('/\.\w{2,4}$/i', '', $sku);
-            // Extract family: remove trailing -digits suffix
             $family = preg_match('/^(.+)-\d+$/', $skuClean, $fm) ? $fm[1] : $skuClean;
             if (!isset($grouped[$family])) {
                 $grouped[$family] = ['parent' => $p, 'children' => []];
-                $parentOrder[] = $family;
+                $familyLatest[$family] = $p['updated_at'];
             } else {
                 $grouped[$family]['children'][] = $p;
+                // Keep the freshest updated_at per family
+                if ($p['updated_at'] > $familyLatest[$family]) {
+                    $familyLatest[$family] = $p['updated_at'];
+                }
             }
         }
+
+        // Sort families by most recent updated_at DESC
+        arsort($familyLatest);
+        $parentOrder = array_keys($familyLatest);
 
         $totalParents = count($parentOrder);
         $totalPages = max(1, ceil($totalParents / $perPage));
         $currentPage = min($currentPage, $totalPages);
         $offset = ($currentPage - 1) * $perPage;
         $pageRoots = array_slice($parentOrder, $offset, $perPage);
+
+        // Helper: clean SKU for display (remove file extensions)
+        function cleanSkuDisplay(string $sku): string {
+            return preg_replace('/\.\w{2,4}$/i', '', $sku);
+        }
         ?>
 
         <?php if (!empty($pageRoots)): ?>
@@ -143,7 +154,7 @@
 
                         <!-- Card body -->
                         <div class="card-body">
-                            <div class="card-sku"><?= e($parent['sku']) ?></div>
+                            <div class="card-sku"><?= e(cleanSkuDisplay($parent['sku'])) ?></div>
                             <div class="card-name"><?= e($parent['name']) ?></div>
                             <?php if ($parent['category']): ?>
                                 <div class="card-meta"><span><?= e($parent['category']) ?></span></div>
@@ -161,7 +172,7 @@
                                         if ($childIsVideo) $childCover = substr($childCover, 7);
                                     ?>
                                         <a href="/producto/<?= e($child['sku']) ?>" class="child-thumb"
-                                            title="<?= e($child['sku']) ?>"
+                                            title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
                                             data-sku="<?= e($child['sku']) ?>"
                                             <?php if ($childCover): ?>data-cover="<?= e($childCover) ?>"<?php endif; ?>>
                                             <?php if ($childCover): ?>
