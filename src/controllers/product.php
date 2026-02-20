@@ -122,6 +122,165 @@ if (empty($serverCover)) {
             font-size: 3rem;
         }
 
+        /* Video thumbnail with real preview */
+        .video-thumb-wrap {
+            position: relative;
+            width: 100%;
+            height: 150px;
+            overflow: hidden;
+            background: #000;
+            cursor: pointer;
+        }
+
+        .video-thumb-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease, filter 0.3s ease;
+        }
+
+        .video-thumb-wrap:hover img {
+            transform: scale(1.05);
+            filter: brightness(0.7);
+        }
+
+        .video-play-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.35);
+            transition: background 0.3s ease;
+        }
+
+        .video-thumb-wrap:hover .video-play-overlay {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .video-play-btn {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .video-thumb-wrap:hover .video-play-btn {
+            transform: scale(1.15);
+            box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .video-play-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: #000;
+            margin-left: 3px;
+        }
+
+        .video-play-label {
+            font-size: 0.68rem;
+            color: rgba(255, 255, 255, 0.85);
+            margin-top: 0.4rem;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Video badge on gallery item */
+        .video-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(248, 113, 113, 0.9);
+            color: #fff;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Video modal / lightbox */
+        .video-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .video-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .video-modal-content {
+            position: relative;
+            width: 90vw;
+            max-width: 900px;
+            aspect-ratio: 16 / 9;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .video-modal-overlay.active .video-modal-content {
+            transform: scale(1);
+        }
+
+        .video-modal-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .video-modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+
+        .video-modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .video-modal-title {
+            position: absolute;
+            bottom: -36px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+        }
+
         .gallery-item .item-actions {
             padding: 0.5rem;
             display: flex;
@@ -338,6 +497,25 @@ if (empty($serverCover)) {
             .media-gallery h2 {
                 font-size: 1rem;
             }
+
+            .video-modal-content {
+                width: 95vw;
+            }
+
+            .video-modal-close {
+                top: -36px;
+                right: 4px;
+            }
+
+            .video-play-btn {
+                width: 40px;
+                height: 40px;
+            }
+
+            .video-play-btn svg {
+                width: 18px;
+                height: 18px;
+            }
         }
     </style>
 </head>
@@ -463,6 +641,15 @@ if (empty($serverCover)) {
                     </button>
                 </div>
                 <div class="gallery-grid" id="galleryGrid"></div>
+            </div>
+        </div>
+
+        <!-- Video Modal -->
+        <div class="video-modal-overlay" id="videoModal" onclick="closeVideoModal(event)">
+            <div class="video-modal-content">
+                <button class="video-modal-close" onclick="closeVideoModal(event, true)">✕</button>
+                <div id="videoModalPlayer"></div>
+                <div class="video-modal-title" id="videoModalTitle"></div>
             </div>
         </div>
     </section>
@@ -636,11 +823,21 @@ if (empty($serverCover)) {
                         : `https://lh3.googleusercontent.com/d/${f.id}=s200`;
                     mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" style="cursor:pointer;" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="showInMain(${idx})">`;
                 } else if (isVideo) {
-                    mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
-                        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
-                            <span style="font-size:2.5rem;">▶️</span>
-                            <span style="font-size:0.7rem;margin-top:0.3rem;opacity:0.7;">Click para reproducir</span>
+                    const videoThumb = f.thumbnailLink
+                        ? f.thumbnailLink.replace(/=s\d+/, '=s300')
+                        : '';
+                    const thumbContent = videoThumb
+                        ? `<img src="${videoThumb}" alt="${f.name}" loading="lazy">`
+                        : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:2.5rem;opacity:0.3'>🎬</span></div>`;
+                    mediaHtml = `<div class="video-thumb-wrap" onclick="openVideoModal('${f.id}', '${f.name.replace(/'/g, '')}')">
+                        ${thumbContent}
+                        <div class="video-play-overlay">
+                            <div class="video-play-btn">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                            <span class="video-play-label">Reproducir</span>
                         </div>
+                        <span class="video-badge">VIDEO</span>
                     </div>`;
                 } else {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
@@ -820,6 +1017,12 @@ if (empty($serverCover)) {
             const f = allGalleryFiles[idx];
             if (!f) return;
             const isImage = (f.mimeType || '').startsWith('image/');
+            const isVideo = (f.mimeType || '').startsWith('video/');
+
+            if (isVideo) {
+                openVideoModal(f.id, f.name);
+                return;
+            }
             if (!isImage) return;
 
             currentMainFileId = f.id;
@@ -855,6 +1058,33 @@ if (empty($serverCover)) {
             const activeItem = document.querySelector(`.gallery-item[data-file-id="${f.id}"]`);
             if (activeItem) activeItem.classList.add('gallery-active');
         }
+
+        // Video modal player
+        function openVideoModal(fileId, fileName) {
+            const modal = document.getElementById('videoModal');
+            const player = document.getElementById('videoModalPlayer');
+            const title = document.getElementById('videoModalTitle');
+
+            player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+            title.textContent = fileName;
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeVideoModal(event, force) {
+            if (!force && event.target !== event.currentTarget) return;
+            const modal = document.getElementById('videoModal');
+            const player = document.getElementById('videoModalPlayer');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            // Stop video after transition
+            setTimeout(() => { player.innerHTML = ''; }, 300);
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeVideoModal(e, true);
+        });
 
         // Download the current main image
         function downloadMainImage() {

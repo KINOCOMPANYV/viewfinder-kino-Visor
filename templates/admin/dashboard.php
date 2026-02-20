@@ -4,6 +4,36 @@ $totalProducts = $db->query("SELECT COUNT(*) FROM products")->fetchColumn();
 $activeProducts = $db->query("SELECT COUNT(*) FROM products WHERE archived = 0")->fetchColumn();
 $archivedProducts = $totalProducts - $activeProducts;
 $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn();
+
+// Cache stats
+$mediaSearchCount = 0;
+$driveCacheCount = 0;
+$zipCacheCount = 0;
+$zipCacheSize = 0;
+
+try {
+    $mediaSearchCount = (int) $db->query("SELECT COUNT(*) FROM media_search_cache")->fetchColumn();
+} catch (Exception $e) {
+}
+try {
+    $driveCacheCount = (int) $db->query("SELECT COUNT(*) FROM drive_cache")->fetchColumn();
+} catch (Exception $e) {
+}
+
+$zipDir = BASE_DIR . '/storage/zip_cache';
+if (is_dir($zipDir)) {
+    $zipFiles = glob($zipDir . '/*');
+    foreach ($zipFiles as $f) {
+        if (is_file($f) && basename($f) !== '.gitkeep') {
+            $zipCacheCount++;
+            $zipCacheSize += filesize($f);
+        }
+    }
+}
+
+// Flash message
+$cacheFlash = $_SESSION['cache_flash'] ?? null;
+unset($_SESSION['cache_flash']);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -80,6 +110,85 @@ $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn(
             <a href="/admin/media" class="btn btn-secondary">🖼️ Google Drive Media</a>
             <a href="/" target="_blank" class="btn btn-secondary">🌐 Abrir Portal</a>
         </div>
+
+        <!-- Cache Management -->
+        <h2 style="font-size:1.1rem; color:var(--color-text-muted); margin:2rem 0 1rem;">🗄️ Gestión de Caché</h2>
+
+        <?php if ($cacheFlash): ?>
+            <div class="cache-flash cache-flash--<?= $cacheFlash['type'] ?>">
+                <?= e($cacheFlash['msg']) ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="cache-grid">
+            <!-- Media Search Cache -->
+            <div class="cache-card">
+                <div class="cache-card__icon">🔍</div>
+                <div class="cache-card__info">
+                    <div class="cache-card__name">Media Search</div>
+                    <div class="cache-card__desc">Resultados de búsqueda Drive por SKU</div>
+                    <div class="cache-card__stat">
+                        <span class="cache-card__count"><?= number_format($mediaSearchCount) ?></span> registros
+                    </div>
+                </div>
+                <form method="POST" action="/admin/cache/clear" class="cache-card__action">
+                    <input type="hidden" name="cache_type" value="media_search">
+                    <button type="submit" class="btn btn-sm btn-danger" <?= $mediaSearchCount === 0 ? 'disabled' : '' ?>
+                        onclick="return confirm('¿Limpiar caché Media Search?')">
+                        🧹 Limpiar
+                    </button>
+                </form>
+            </div>
+
+            <!-- Drive Cache -->
+            <div class="cache-card">
+                <div class="cache-card__icon">☁️</div>
+                <div class="cache-card__info">
+                    <div class="cache-card__name">Drive Cache</div>
+                    <div class="cache-card__desc">Estructura de carpetas Google Drive</div>
+                    <div class="cache-card__stat">
+                        <span class="cache-card__count"><?= number_format($driveCacheCount) ?></span> registros
+                    </div>
+                </div>
+                <form method="POST" action="/admin/cache/clear" class="cache-card__action">
+                    <input type="hidden" name="cache_type" value="drive_cache">
+                    <button type="submit" class="btn btn-sm btn-danger" <?= $driveCacheCount === 0 ? 'disabled' : '' ?>
+                        onclick="return confirm('¿Limpiar caché Drive?')">
+                        🧹 Limpiar
+                    </button>
+                </form>
+            </div>
+
+            <!-- ZIP Files Cache -->
+            <div class="cache-card">
+                <div class="cache-card__icon">📦</div>
+                <div class="cache-card__info">
+                    <div class="cache-card__name">ZIP Downloads</div>
+                    <div class="cache-card__desc">Archivos ZIP temporales de descargas</div>
+                    <div class="cache-card__stat">
+                        <span class="cache-card__count"><?= $zipCacheCount ?></span> archivos
+                        <?php if ($zipCacheSize > 0): ?>
+                            <span class="cache-card__size">(<?= round($zipCacheSize / 1048576, 1) ?> MB)</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <form method="POST" action="/admin/cache/clear" class="cache-card__action">
+                    <input type="hidden" name="cache_type" value="zip_files">
+                    <button type="submit" class="btn btn-sm btn-danger" <?= $zipCacheCount === 0 ? 'disabled' : '' ?>
+                        onclick="return confirm('¿Eliminar archivos ZIP temporales?')">
+                        🧹 Limpiar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Limpiar todo -->
+        <form method="POST" action="/admin/cache/clear" style="margin-top:1rem;">
+            <input type="hidden" name="cache_type" value="all">
+            <button type="submit" class="btn btn-danger" <?= ($mediaSearchCount + $driveCacheCount + $zipCacheCount) === 0 ? 'disabled' : '' ?> onclick="return confirm('¿Limpiar TODAS las cachés del sistema?')">
+                🗑️ Limpiar Todo
+            </button>
+        </form>
     </main>
 
     <footer class="footer">

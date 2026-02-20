@@ -202,6 +202,12 @@ if ($uri === '/admin/product/update' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/cache/clear' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_cache_clear.php';
+    exit;
+}
+
 if ($uri === '/admin/sync-sheets' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_sync_sheets.php';
