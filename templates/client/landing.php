@@ -81,23 +81,18 @@
              ORDER BY updated_at DESC"
         )->fetchAll();
 
-        // Group by root SKU
+        // Group by family SKU (strip last -digits → 1971-1 becomes 1971)
         $grouped = [];
         $parentOrder = [];
         foreach ($allProducts as $p) {
-            $root = extractRootSku($p['sku']);
-            if (!isset($grouped[$root])) {
-                $grouped[$root] = ['parent' => $p, 'children' => []];
-                $parentOrder[] = $root;
+            $sku = trim($p['sku']);
+            // Extract family: remove trailing -digits suffix
+            $family = preg_match('/^(.+)-\d+$/', $sku, $fm) ? $fm[1] : $sku;
+            if (!isset($grouped[$family])) {
+                $grouped[$family] = ['parent' => $p, 'children' => []];
+                $parentOrder[] = $family;
             } else {
-                // If this product's SKU IS exactly the root, make it the parent
-                if ($p['sku'] === $root) {
-                    // Move current parent to children
-                    $grouped[$root]['children'][] = $grouped[$root]['parent'];
-                    $grouped[$root]['parent'] = $p;
-                } else {
-                    $grouped[$root]['children'][] = $p;
-                }
+                $grouped[$family]['children'][] = $p;
             }
         }
 
@@ -186,7 +181,7 @@
 
                             <!-- Actions row -->
                             <div class="card-actions">
-                                <button class="btn-whatsapp"
+                                <button class="btn-whatsapp" style="width:100%"
                                     onclick="event.preventDefault(); event.stopPropagation(); openShareModal('<?= e($parent['sku']) ?>', '<?= e(addslashes($parent['name'])) ?>');"
                                     title="Enviar por WhatsApp">
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
@@ -194,7 +189,7 @@
                                     </svg>
                                     Enviar
                                 </button>
-                                <a href="/producto/<?= e($parent['sku']) ?>" class="btn-ver">Ver →</a>
+
                             </div>
                         </div>
                     </div>
