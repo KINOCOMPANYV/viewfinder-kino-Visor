@@ -368,7 +368,9 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $toSearch = array_slice(array_values($uncachedSkus), 0, 10);
 
             foreach ($toSearch as $sku) {
-                $rootSku = extractRootSku($sku);
+                // Strip file extension from SKU for Drive search
+                $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $sku);
+                $rootSku = extractRootSku($cleanSku);
                 $files = $drive->findBySku($folderId, $rootSku);
 
                 if (!empty($files)) {

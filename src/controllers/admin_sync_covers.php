@@ -105,8 +105,10 @@ foreach ($products as $prod) {
     $diag = ['sku' => $prod['sku'], 'status' => 'no_files'];
 
     try {
-        // Buscar archivos por SKU (global + recursivo en subcarpetas)
-        $allFiles = $drive->findBySku($rootFolderId, $prod['sku']);
+        // Clean SKU: strip file extension for matching (1971-1.JPG → 1971-1)
+        $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
+        // Buscar archivos por SKU limpio (global + recursivo en subcarpetas)
+        $allFiles = $drive->findBySku($rootFolderId, $cleanSku);
         $diag['files_found'] = count($allFiles);
         $diag['file_names'] = array_map(fn($f) => $f['name'] ?? '?', array_slice($allFiles, 0, 10));
 
@@ -116,8 +118,8 @@ foreach ($products as $prod) {
             continue;
         }
 
-        // Clasificar matches
-        $classes = classifyMatches($allFiles, $prod['sku']);
+        // Clasificar matches usando SKU limpio
+        $classes = classifyMatches($allFiles, $cleanSku);
         $diag['exact_count'] = count($classes['exact']);
         $diag['compatible_count'] = count($classes['compatible']);
 

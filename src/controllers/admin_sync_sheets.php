@@ -116,18 +116,20 @@ try {
                 }
 
                 try {
-                    $allFiles = $drive->findBySku($rootFolderId, $prod['sku']);
+                    // Clean SKU: strip file extension (1971-1.JPG → 1971-1)
+                    $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
+                    $allFiles = $drive->findBySku($rootFolderId, $cleanSku);
 
                     // Clasificar: exactos vs compatibles (prefijo + separador)
                     $exact = $compatible = [];
                     foreach ($allFiles as $f) {
                         $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
-                        if (strcasecmp($nameOnly, $prod['sku']) === 0) {
+                        if (strcasecmp($nameOnly, $cleanSku) === 0) {
                             $exact[] = $f;
                         } elseif (
-                            stripos($nameOnly, $prod['sku']) === 0
-                            && strlen($nameOnly) > strlen($prod['sku'])
-                            && !ctype_alnum($nameOnly[strlen($prod['sku'])])
+                            stripos($nameOnly, $cleanSku) === 0
+                            && strlen($nameOnly) > strlen($cleanSku)
+                            && !ctype_alnum($nameOnly[strlen($cleanSku)])
                         ) {
                             $compatible[] = $f;
                         }
