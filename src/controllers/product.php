@@ -712,7 +712,7 @@ if (empty($serverCover)) {
                 <div id="videoModalPlayer"></div>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.25rem;">
                     <div class="video-modal-title" id="videoModalTitle"></div>
-                    <a id="videoModalDownload" href="#" target="_blank" rel="noopener" style="color:var(--color-primary);font-size:0.85rem;text-decoration:none;white-space:nowrap;padding:0.3rem 0.6rem;border:1px solid var(--color-primary);border-radius:6px;">⬇️ Descargar</a>
+                    <button id="videoModalDownload" onclick="downloadFile(this.dataset.fileId, this.dataset.fileName)" style="color:var(--color-primary);font-size:0.85rem;background:none;border:1px solid var(--color-primary);border-radius:6px;padding:0.3rem 0.6rem;cursor:pointer;white-space:nowrap;">⬇️ Descargar</button>
                 </div>
             </div>
         </div>
@@ -958,7 +958,8 @@ if (empty($serverCover)) {
 
             player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>`;
             title.textContent = fileName;
-            dlBtn.href = `/api/download/${fileId}`;
+            dlBtn.dataset.fileId = fileId;
+            dlBtn.dataset.fileName = fileName;
 
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -977,6 +978,29 @@ if (empty($serverCover)) {
                 player.innerHTML = '';
                 document.body.style.overflow = '';
             }, 200);
+        }
+
+        // Download file via proxy — fetches blob and triggers browser save
+        async function downloadFile(fileId, fileName) {
+            try {
+                const btn = event ? event.target : null;
+                if (btn) { btn.textContent = '⏳ Descargando...'; btn.disabled = true; }
+                const resp = await fetch(`/api/download/${fileId}`);
+                if (!resp.ok) throw new Error('Download failed');
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName || 'video.mp4';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                if (btn) { btn.textContent = '✅ Descargado'; btn.disabled = false; setTimeout(() => btn.textContent = '⬇️ Descargar video', 2000); }
+            } catch (e) {
+                // Fallback: open proxy url directly
+                window.location.href = `/api/download/${fileId}`;
+            }
         }
 
         function renderGallery(files) {
@@ -1035,7 +1059,7 @@ if (empty($serverCover)) {
                         </div>
                         <span class="video-badge">VIDEO</span>
                     </div>
-                    <a href="/api/download/${f.id}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);text-decoration:none;">⬇️ Descargar video</a>`;
+                    <button onclick="event.stopPropagation();downloadFile('${f.id}','${f.name.replace(/'/g,'')}')" style="display:block;width:100%;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);background:none;border:none;cursor:pointer;">⬇️ Descargar video</button>`;
                 } else {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
@@ -1113,23 +1137,32 @@ if (empty($serverCover)) {
                     return;
                 }
 
-                // Separate images and videos
                 const selImages = sel.filter(f => (f.mimeType || '').startsWith('image/'));
                 const selVideos = sel.filter(f => (f.mimeType || '').startsWith('video/'));
 
                 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-                if (isMobile && navigator.canShare && navigator.share && selImages.length > 0 && selVideos.length === 0) {
-                    // Mobile share with blobs (images only)
+                if (isMobile && navigator.canShare && navigator.share) {
+                    // Mobile: share files as blobs (images + videos)
                     btnSend.disabled = true;
-                    btnSend.textContent = '⏳ Preparando...';
+                    btnSend.textContent = '⏳ Preparando archivos...';
                     try {
-                        const fileObjs = (await Promise.all(selImages.map(async (f, i) => {
+                        const fileObjs = (await Promise.all(sel.map(async (f, i) => {
                             try {
-                                const imgUrl = `https://lh3.googleusercontent.com/d/${f.id}=s800`;
-                                const r = await fetch(imgUrl, { mode: 'cors' });
-                                const b = await r.blob();
-                                return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
+                                const isImg = (f.mimeType || '').startsWith('image/');
+                                const isVid = (f.mimeType || '').startsWith('video/');
+                                if (isImg) {
+                                    const imgUrl = `https://lh3.googleusercontent.com/d/${f.id}=s800`;
+                                    const r = await fetch(imgUrl, { mode: 'cors' });
+                                    const b = await r.blob();
+                                    const ext = (f.name.match(/\.[^.]+$/) || ['.jpg'])[0];
+                                    return new File([b], f.name || `imagen_${i+1}${ext}`, { type: b.type || 'image/jpeg' });
+                                } else if (isVid) {
+                                    const r = await fetch(`/api/download/${f.id}`);
+                                    const b = await r.blob();
+                                    return new File([b], f.name || `video_${i+1}.mp4`, { type: b.type || 'video/mp4' });
+                                }
                             } catch { return null; }
+                            return null;
                         }))).filter(Boolean);
                         if (fileObjs.length > 0) {
                             const sd = { files: fileObjs };
@@ -1139,21 +1172,19 @@ if (empty($serverCover)) {
                     resetGalleryBtn();
                 }
 
-                // Fallback: links con URLs directas
+                // Fallback (desktop): open links text
                 let text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n';
                 text += '🔗 Ver producto: ' + location.href + '\n\n';
                 if (selImages.length > 0) {
                     text += '📸 *Imágenes (' + selImages.length + '):*\n\n';
                     selImages.forEach((f, i) => {
-                        const imgUrl = `https://drive.google.com/uc?export=view&id=${f.id}`;
-                        text += (i + 1) + '. ' + imgUrl + '\n\n';
+                        text += (i + 1) + '. https://drive.google.com/uc?export=view&id=' + f.id + '\n\n';
                     });
                 }
                 if (selVideos.length > 0) {
                     text += '🎬 *Videos (' + selVideos.length + '):*\n\n';
                     selVideos.forEach((f, i) => {
-                        const vidUrl = location.origin + `/api/download/${f.id}`;
-                        text += (i + 1) + '. ' + f.name + '\n' + vidUrl + '\n\n';
+                        text += (i + 1) + '. ' + f.name + '\n' + location.origin + '/api/download/' + f.id + '\n\n';
                     });
                 }
                 window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
