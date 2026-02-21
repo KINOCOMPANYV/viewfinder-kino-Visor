@@ -1306,74 +1306,7 @@ if (empty($serverCover)) {
         let currentMainFileId = null;
         let currentMainFileName = '';
 
-        // Show thumbnail in main image area
-        function showInMain(idx) {
-            const f = allGalleryFiles[idx];
-            if (!f) return;
-            const isImage = (f.mimeType || '').startsWith('image/');
-            const isVideo = (f.mimeType || '').startsWith('video/');
-
-            if (isVideo) {
-                openVideoModal(f.id, f.name);
-                return;
-            }
-            if (!isImage) return;
-
-            currentMainFileId = f.id;
-            currentMainFileName = f.name;
-
-            const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
-            const main = document.getElementById('mainCover');
-            
-            // Swap main image with smooth transition
-            const newImg = document.createElement('img');
-            newImg.alt = f.name;
-            newImg.style.opacity = '0';
-            newImg.style.transition = 'opacity 0.3s ease';
-            newImg.style.cursor = 'pointer';
-            newImg.onclick = () => downloadMainImage();
-            newImg.onload = () => {
-                main.innerHTML = '';
-                main.appendChild(newImg);
-                requestAnimationFrame(() => newImg.style.opacity = '1');
-            };
-            newImg.src = fullUrl;
-
-            // Update filename and download button
-            document.getElementById('mainImageName').textContent = f.name;
-            const dlBtn = document.getElementById('mainImageDownload');
-            dlBtn.style.display = '';
-
-            // Scroll main image into view
-            main.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-            // Highlight active thumbnail
-            document.querySelectorAll('.gallery-item').forEach(gi => gi.classList.remove('gallery-active'));
-            const activeItem = document.querySelector(`.gallery-item[data-file-id="${f.id}"]`);
-            if (activeItem) activeItem.classList.add('gallery-active');
-        }
-
-        // Video modal player
-        function openVideoModal(fileId, fileName) {
-            const modal = document.getElementById('videoModal');
-            const player = document.getElementById('videoModalPlayer');
-            const title = document.getElementById('videoModalTitle');
-
-            player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
-            title.textContent = fileName;
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeVideoModal(event, force) {
-            if (!force && event.target !== event.currentTarget) return;
-            const modal = document.getElementById('videoModal');
-            const player = document.getElementById('videoModalPlayer');
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-            // Stop video after transition
-            setTimeout(() => { player.innerHTML = ''; }, 300);
-        }
+        // Note: showInMain, openVideoModal, closeVideoModal are defined above (lines ~909-1009)
 
         // Close modal on Escape key
         document.addEventListener('keydown', (e) => {
