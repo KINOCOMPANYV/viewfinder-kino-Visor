@@ -73,12 +73,26 @@
         $perPage = 20;
         $currentPage = max(1, intval($_GET['page'] ?? 1));
 
-        // Fetch all active products ordered by sheet_row DESC (last rows in Sheet = newest)
+        // Check if sheet_row column exists (migration may not have run yet)
+        $hasSheetRow = false;
+        try {
+            $db->query("SELECT sheet_row FROM products LIMIT 1");
+            $hasSheetRow = true;
+        } catch (\PDOException $e) {
+            // column doesn't exist yet
+        }
+
+        $orderCol = $hasSheetRow ? 'sheet_row' : 'id';
+        $selectCols = $hasSheetRow
+            ? 'id, sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
+            : 'id, sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
+
+        // Fetch all active products ordered by sheet position (last rows in Sheet = newest)
         $allProducts = $db->query(
-            "SELECT id, sku, name, category, gender, price_suggested, cover_image_url, sheet_row 
+            "SELECT {$selectCols} 
              FROM products 
              WHERE archived = 0 
-             ORDER BY sheet_row DESC"
+             ORDER BY {$orderCol} DESC"
         )->fetchAll();
 
         // Group by family SKU (strip extension + last -digits)
