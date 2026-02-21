@@ -731,51 +731,57 @@ if (empty($serverCover)) {
             const main = document.getElementById('mainCover');
             if (!main) return;
 
-            // Si ya tiene cover de BD, usarla
-            if (main.dataset.cover) {
-                setCoverImage(main, main.dataset.cover);
-                return;
-            }
-
-            // Buscar primera imagen de Drive
-            const img = files.find(f => (f.mimeType || '').startsWith('image/'));
-            if (img) {
-                const url = img.thumbnailLink
-                    ? img.thumbnailLink.replace(/=s\d+/, '=s600')
-                    : `https://lh3.googleusercontent.com/d/${img.id}=s600`;
-                setCoverImage(main, url, img.id);
-                return;
-            }
-
-            // Fallback: video preview with play overlay
-            const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
-            if (vid) {
-                const thumbUrl = vid.thumbnailLink
-                    ? vid.thumbnailLink.replace(/=s\d+/, '=s800')
-                    : '';
-                const thumbImg = thumbUrl
-                    ? `<img src="${thumbUrl}" alt="${vid.name}" style="width:100%;height:100%;object-fit:cover;">`
-                    : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
-                main.innerHTML = `
-                    <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModal('${vid.id}', '${vid.name.replace(/'/g, '')}')">
-                        ${thumbImg}
-                        <div class="video-play-overlay">
-                            <div class="video-play-btn" style="width:64px;height:64px;">
-                                <svg viewBox="0 0 24 24" style="width:28px;height:28px;"><path d="M8 5v14l11-7z"/></svg>
+            // Helper: show video as main cover with play overlay
+            function showVideoCover() {
+                const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
+                if (vid) {
+                    const thumbUrl = vid.thumbnailLink
+                        ? vid.thumbnailLink.replace(/=s\d+/, '=s800')
+                        : '';
+                    const thumbImg = thumbUrl
+                        ? `<img src="${thumbUrl}" alt="${vid.name}" style="width:100%;height:100%;object-fit:cover;">`
+                        : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
+                    main.innerHTML = `
+                        <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModal('${vid.id}', '${vid.name.replace(/'/g, '')}')">
+                            ${thumbImg}
+                            <div class="video-play-overlay">
+                                <div class="video-play-btn" style="width:64px;height:64px;">
+                                    <svg viewBox="0 0 24 24" style="width:28px;height:28px;"><path d="M8 5v14l11-7z"/></svg>
+                                </div>
+                                <span class="video-play-label" style="font-size:0.85rem;">Reproducir video</span>
                             </div>
-                            <span class="video-play-label" style="font-size:0.85rem;">Reproducir video</span>
-                        </div>
-                        <span class="video-badge" style="font-size:0.75rem;padding:0.25rem 0.6rem;">VIDEO</span>
-                    </div>`;
-                // Update info bar
-                document.getElementById('mainImageName').textContent = vid.name;
+                            <span class="video-badge" style="font-size:0.75rem;padding:0.25rem 0.6rem;">VIDEO</span>
+                        </div>`;
+                    document.getElementById('mainImageName').textContent = vid.name;
+                    return;
+                }
+                main.innerHTML = '📷';
+            }
+
+            // Helper: try Drive images, fallback to video
+            function tryDriveImages() {
+                const img = files.find(f => (f.mimeType || '').startsWith('image/'));
+                if (img) {
+                    const url = img.thumbnailLink
+                        ? img.thumbnailLink.replace(/=s\d+/, '=s600')
+                        : `https://lh3.googleusercontent.com/d/${img.id}=s600`;
+                    setCoverImage(main, url, img.id, img.name, showVideoCover);
+                    return;
+                }
+                showVideoCover();
+            }
+
+            // 1) Si ya tiene cover de BD, usarla (con fallback a Drive si falla)
+            if (main.dataset.cover) {
+                setCoverImage(main, main.dataset.cover, null, null, tryDriveImages);
                 return;
             }
 
-            main.innerHTML = '📷';
+            // 2) Buscar primera imagen de Drive (con fallback a video)
+            tryDriveImages();
         }
 
-        function setCoverImage(container, url, fileId) {
+        function setCoverImage(container, url, fileId, fileName, onErrorFallback) {
             const imgEl = document.createElement('img');
             imgEl.alt = PRODUCT_NAME;
             imgEl.style.opacity = '0';
@@ -785,8 +791,21 @@ if (empty($serverCover)) {
                 container.innerHTML = '';
                 container.appendChild(imgEl);
                 requestAnimationFrame(() => imgEl.style.opacity = '1');
+                // Update tracking vars and info bar
+                if (fileId) {
+                    currentMainFileId = fileId;
+                    currentMainFileName = fileName || '';
+                    document.getElementById('mainImageName').textContent = fileName || '';
+                    document.getElementById('mainImageDownload').style.display = '';
+                }
             };
-            imgEl.onerror = () => { container.innerHTML = '📷'; };
+            imgEl.onerror = () => {
+                if (typeof onErrorFallback === 'function') {
+                    onErrorFallback();
+                } else {
+                    container.innerHTML = '📷';
+                }
+            };
             imgEl.src = url;
         }
 
