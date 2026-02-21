@@ -712,7 +712,7 @@ if (empty($serverCover)) {
                 <div id="videoModalPlayer"></div>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.25rem;">
                     <div class="video-modal-title" id="videoModalTitle"></div>
-                    <button id="videoModalDownload" onclick="downloadFile(this.dataset.fileId, this.dataset.fileName)" style="color:var(--color-primary);font-size:0.85rem;background:none;border:1px solid var(--color-primary);border-radius:6px;padding:0.3rem 0.6rem;cursor:pointer;white-space:nowrap;">⬇️ Descargar</button>
+                    <button id="videoModalDownload" onclick="downloadModalVideo(event)" style="color:var(--color-primary);font-size:0.85rem;background:none;border:1px solid var(--color-primary);border-radius:6px;padding:0.3rem 0.6rem;cursor:pointer;white-space:nowrap;">⬇️ Descargar</button>
                 </div>
             </div>
         </div>
@@ -949,17 +949,19 @@ if (empty($serverCover)) {
             });
         }
 
+        // Current modal video info (global for download button)
+        let _currentModalVideo = { id: null, name: '' };
+
         // Video modal functions
         function openVideoModal(fileId, fileName) {
             const modal = document.getElementById('videoModal');
             const player = document.getElementById('videoModalPlayer');
             const title = document.getElementById('videoModalTitle');
-            const dlBtn = document.getElementById('videoModalDownload');
+
+            _currentModalVideo = { id: fileId, name: fileName };
 
             player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>`;
             title.textContent = fileName;
-            dlBtn.dataset.fileId = fileId;
-            dlBtn.dataset.fileName = fileName;
 
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -980,13 +982,25 @@ if (empty($serverCover)) {
             }, 200);
         }
 
+        function downloadModalVideo(e) {
+            if (_currentModalVideo.id) {
+                downloadFile(_currentModalVideo.id, _currentModalVideo.name, e);
+            } else {
+                alert('No hay video cargado');
+            }
+        }
+
         // Download file via proxy — fetches blob and triggers browser save
-        async function downloadFile(fileId, fileName) {
+        async function downloadFile(fileId, fileName, evt) {
+            if (!fileId || fileId === 'undefined') {
+                alert('Error: ID de archivo no disponible');
+                return;
+            }
+            const btn = evt && evt.target ? evt.target : null;
             try {
-                const btn = event ? event.target : null;
                 if (btn) { btn.textContent = '⏳ Descargando...'; btn.disabled = true; }
-                const resp = await fetch(`/api/download/${fileId}`);
-                if (!resp.ok) throw new Error('Download failed');
+                const resp = await fetch('/api/download/' + fileId);
+                if (!resp.ok) throw new Error('Download failed: ' + resp.status);
                 const blob = await resp.blob();
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -997,9 +1011,11 @@ if (empty($serverCover)) {
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(url), 5000);
                 if (btn) { btn.textContent = '✅ Descargado'; btn.disabled = false; setTimeout(() => btn.textContent = '⬇️ Descargar video', 2000); }
-            } catch (e) {
-                // Fallback: open proxy url directly
-                window.location.href = `/api/download/${fileId}`;
+            } catch (err) {
+                console.error('Download error:', err);
+                if (btn) { btn.textContent = '⬇️ Descargar video'; btn.disabled = false; }
+                // Fallback: navigate to proxy
+                window.location.href = '/api/download/' + fileId;
             }
         }
 
@@ -1059,7 +1075,7 @@ if (empty($serverCover)) {
                         </div>
                         <span class="video-badge">VIDEO</span>
                     </div>
-                    <button onclick="event.stopPropagation();downloadFile('${f.id}','${f.name.replace(/'/g,'')}')" style="display:block;width:100%;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);background:none;border:none;cursor:pointer;">⬇️ Descargar video</button>`;
+                    <button onclick="event.stopPropagation();downloadFile('${f.id}','${f.name.replace(/'/g,'')}',event)" style="display:block;width:100%;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);background:none;border:none;cursor:pointer;">⬇️ Descargar video</button>`;
                 } else {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
