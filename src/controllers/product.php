@@ -983,15 +983,16 @@ if (empty($serverCover)) {
                             <span class="video-play-label">Reproducir</span>
                         </div>
                         <span class="video-badge">VIDEO</span>
-                    </div>`;
+                    </div>
+                    <a href="https://drive.google.com/uc?export=download&id=${f.id}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);text-decoration:none;">⬇️ Descargar video</a>`;
                 } else {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
 
-                // Checkbox for images only
-                const checkHtml = isImage ? `
+                // Checkbox for images AND videos (selectable media)
+                const checkHtml = (isImage || isVideo) ? `
                     <label class="search-check-footer">
-                        <input type="checkbox" class="gallery-check" data-index="${idx}" data-file-id="${f.id}" data-name="${f.name.replace(/"/g, '')}">
+                        <input type="checkbox" class="gallery-check" data-index="${idx}" data-file-id="${f.id}" data-name="${f.name.replace(/"/g, '')}" data-type="${isVideo ? 'video' : 'image'}">
                         <span class="search-check-icon">✓</span>
                         <span class="search-check-text">Seleccionar</span>
                     </label>` : '';
@@ -1057,16 +1058,21 @@ if (empty($serverCover)) {
                 });
                 if (sel.length === 0) return;
                 if (sel.length > 10) {
-                    alert('⚠️ Solo se pueden enviar 10 imágenes a la vez.\n\nPor favor deselecciona algunas.');
+                    alert('⚠️ Solo se pueden enviar 10 archivos a la vez.\n\nPor favor deselecciona algunos.');
                     return;
                 }
 
+                // Separate images and videos
+                const selImages = sel.filter(f => (f.mimeType || '').startsWith('image/'));
+                const selVideos = sel.filter(f => (f.mimeType || '').startsWith('video/'));
+
                 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-                if (isMobile && navigator.canShare && navigator.share) {
+                if (isMobile && navigator.canShare && navigator.share && selImages.length > 0 && selVideos.length === 0) {
+                    // Mobile share with blobs (images only)
                     btnSend.disabled = true;
                     btnSend.textContent = '⏳ Preparando...';
                     try {
-                        const fileObjs = (await Promise.all(sel.map(async (f, i) => {
+                        const fileObjs = (await Promise.all(selImages.map(async (f, i) => {
                             try {
                                 const imgUrl = `https://lh3.googleusercontent.com/d/${f.id}=s800`;
                                 const r = await fetch(imgUrl, { mode: 'cors' });
@@ -1082,14 +1088,23 @@ if (empty($serverCover)) {
                     resetGalleryBtn();
                 }
 
-                // Fallback: links con URLs directas a las imágenes
+                // Fallback: links con URLs directas
                 let text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n';
                 text += '🔗 Ver producto: ' + location.href + '\n\n';
-                text += '📸 *Imágenes seleccionadas:*\n\n';
-                sel.forEach((f, i) => {
-                    const imgUrl = `https://drive.google.com/uc?export=view&id=${f.id}`;
-                    text += (i + 1) + '. ' + imgUrl + '\n\n';
-                });
+                if (selImages.length > 0) {
+                    text += '📸 *Imágenes (' + selImages.length + '):*\n\n';
+                    selImages.forEach((f, i) => {
+                        const imgUrl = `https://drive.google.com/uc?export=view&id=${f.id}`;
+                        text += (i + 1) + '. ' + imgUrl + '\n\n';
+                    });
+                }
+                if (selVideos.length > 0) {
+                    text += '🎬 *Videos (' + selVideos.length + '):*\n\n';
+                    selVideos.forEach((f, i) => {
+                        const vidUrl = `https://drive.google.com/file/d/${f.id}/view`;
+                        text += (i + 1) + '. ' + f.name + '\n' + vidUrl + '\n\n';
+                    });
+                }
                 window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
             });
 
