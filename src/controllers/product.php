@@ -799,6 +799,7 @@ if (empty($serverCover)) {
             function showVideoCover() {
                 const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
                 if (vid) {
+                    const idx = files.indexOf(vid);
                     const thumbUrl = vid.thumbnailLink
                         ? vid.thumbnailLink.replace(/=s\d+/, '=s800')
                         : '';
@@ -806,7 +807,7 @@ if (empty($serverCover)) {
                         ? `<img src="${thumbUrl}" alt="${vid.name}" style="width:100%;height:100%;object-fit:cover;">`
                         : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
                     main.innerHTML = `
-                        <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModalDirect('${vid.id}', '${vid.name.replace(/'/g, "\\'")}')">
+                        <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
                             ${thumbImg}
                             <div class="video-play-overlay">
                                 <div class="video-play-btn" style="width:64px;height:64px;">
@@ -949,8 +950,8 @@ if (empty($serverCover)) {
             });
         }
 
-        // Global state for video modal
-        window._currentModalVideo = { id: null, name: '' };
+        // Global state for video modal (redundant storage)
+        window.KINO_VIDEO_STATE = { id: '', name: '' };
 
         function openVideoModal(idx) {
             const f = allGalleryFiles[idx];
@@ -959,7 +960,7 @@ if (empty($serverCover)) {
         }
 
         function openVideoModalDirect(fileId, fileName) {
-            console.log('Abriendo modal video:', { fileId, fileName });
+            console.log('--- OPEN VIDEO MODAL ---', { fileId, fileName });
             if (!fileId) {
                 console.error('Error: openVideoModalDirect llamado sin fileId');
                 return;
@@ -970,9 +971,20 @@ if (empty($serverCover)) {
             const title = document.getElementById('videoModalTitle');
             const dlBtn = document.getElementById('videoModalDownload');
 
-            // Set state directly on the button for maximum reliability
-            dlBtn.setAttribute('data-file-id', fileId);
-            dlBtn.setAttribute('data-file-name', fileName || '');
+            // 1. Store in global object
+            window.KINO_VIDEO_STATE = { id: fileId, name: fileName || '' };
+
+            // 2. Store in sessionStorage (cache backup)
+            try {
+                sessionStorage.setItem('last_video_id', fileId);
+                sessionStorage.setItem('last_video_name', fileName || '');
+            } catch(e) {}
+
+            // 3. Store in button attributes
+            if (dlBtn) {
+                dlBtn.setAttribute('data-file-id', fileId);
+                dlBtn.setAttribute('data-file-name', fileName || '');
+            }
 
             player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>`;
             title.textContent = fileName || '';
@@ -998,16 +1010,28 @@ if (empty($serverCover)) {
 
         function downloadModalVideo(e) {
             const dlBtn = document.getElementById('videoModalDownload');
-            const fid = dlBtn.getAttribute('data-file-id');
-            const fname = dlBtn.getAttribute('data-file-name');
 
-            console.log('Intentando descarga desde modal:', { fid, fname });
+            // Try reading from 3 sources
+            let fid = window.KINO_VIDEO_STATE.id;
+            let fname = window.KINO_VIDEO_STATE.name;
 
-            if (fid && fid !== 'undefined' && fid !== 'null') {
+            if (!fid) {
+                fid = dlBtn ? dlBtn.getAttribute('data-file-id') : null;
+                fname = dlBtn ? dlBtn.getAttribute('data-file-name') : '';
+            }
+
+            if (!fid) {
+                fid = sessionStorage.getItem('last_video_id');
+                fname = sessionStorage.getItem('last_video_name');
+            }
+
+            console.log('--- ATTEMPT DOWNLOAD ---', { fid, fname, global: window.KINO_VIDEO_STATE.id, attr: dlBtn.getAttribute('data-file-id') });
+
+            if (fid && fid !== 'undefined' && fid !== 'null' && fid !== '') {
                 downloadFile(fid, fname, e);
             } else {
-                console.error('Error de descarga: ID de video no encontrado en el botón', { fid, fname });
-                alert('Error: No se ha detectado el ID del video. Por favor cierra y abre el video de nuevo.');
+                console.error('CRITICAL: No video ID found in any storage!');
+                alert('Error: No se ha detectado el ID del video.\n\nPor favor intenta esto:\n1. Cierra el video.\n2. Presiona Ctrl+F5 (o recarga la página).\n3. Abre el video de nuevo.');
             }
         }
 
