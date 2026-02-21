@@ -7,7 +7,7 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Viewfinder — Centro de Contenido</title>
     <meta name="description"
-        content="Centro de contenido exclusivo para distribuidores. Busca por SKU y descarga fotos y videos — Viewfinder Kino Visor.">
+        content="Centro de contenido exclusivo para distribuidores. Busca por SKU y descarga fotos y videos — Viewfinder Visor.">
     <style>
         body {
             background: #0a0a0f;
@@ -248,8 +248,8 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>Solo para distribuidores autorizados · Viewfinder Kino Visor ©
-                <?= date('Y') ?>
+            <p>Esta es una app desarrollada por <strong>K GENIUS</strong> · Más información
+                <a href="https://wa.me/573146116450" target="_blank" rel="noopener" style="color:var(--color-gold);text-decoration:underline;">escríbanos</a>
             </p>
         </div>
     </footer>

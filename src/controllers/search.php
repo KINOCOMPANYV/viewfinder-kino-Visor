@@ -195,8 +195,8 @@ $totalPages = ceil($total / $perPage);
 
     <footer class="footer">
         <div class="container">
-            <p>Solo para distribuidores autorizados · Viewfinder Kino Visor ©
-                <?= date('Y') ?>
+            <p>Esta es una app desarrollada por <strong>K GENIUS</strong> · Más información
+                <a href="https://wa.me/573146116450" target="_blank" rel="noopener" style="color:var(--color-gold);text-decoration:underline;">escríbanos</a>
             </p>
         </div>
     </footer>
