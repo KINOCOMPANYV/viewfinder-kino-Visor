@@ -79,6 +79,9 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
     // Normalizar cover_image_url (si viene del Sheets)
     $coverUrl = normalizeDriveUrl($data['cover_image_url'] ?? '');
 
+    // Posición en la hoja de cálculo
+    $sheetRow = intval($data['_sheet_row'] ?? 0);
+
     try {
         // Verificar si existe
         $exists = $db->prepare("SELECT id FROM products WHERE sku = ?");
@@ -97,6 +100,7 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                     archived = ?,
                     description = COALESCE(NULLIF(?, ''), description),
                     cover_image_url = COALESCE(NULLIF(?, ''), cover_image_url),
+                    sheet_row = ?,
                     updated_at = NOW()
                  WHERE sku = ?"
             );
@@ -111,14 +115,15 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                 $archived,
                 $data['description'] ?? '',
                 $coverUrl,
+                $sheetRow,
                 $sku,
             ]);
             $updated++;
         } else {
             // INSERT
             $stmt = $db->prepare(
-                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url, sheet_row) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $stmt->execute([
                 $sku,
@@ -131,6 +136,7 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                 $archived,
                 $data['description'] ?? '',
                 $coverUrl ?: null,
+                $sheetRow,
             ]);
             $inserted++;
         }

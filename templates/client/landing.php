@@ -73,35 +73,35 @@
         $perPage = 20;
         $currentPage = max(1, intval($_GET['page'] ?? 1));
 
-        // Fetch all active products ordered by id DESC (last rows in Sheet = newest)
+        // Fetch all active products ordered by sheet_row DESC (last rows in Sheet = newest)
         $allProducts = $db->query(
-            "SELECT id, sku, name, category, gender, price_suggested, cover_image_url 
+            "SELECT id, sku, name, category, gender, price_suggested, cover_image_url, sheet_row 
              FROM products 
              WHERE archived = 0 
-             ORDER BY id DESC"
+             ORDER BY sheet_row DESC"
         )->fetchAll();
 
         // Group by family SKU (strip extension + last -digits)
         $grouped = [];
-        $familyMaxId = []; // track highest id per family (newest = last in Sheet)
+        $familyMaxRow = []; // track highest sheet_row per family (last in Sheet = newest)
         foreach ($allProducts as $p) {
             $sku = trim($p['sku']);
             $skuClean = preg_replace('/\.\w{2,4}$/i', '', $sku);
             $family = preg_match('/^(.+)-\d+$/', $skuClean, $fm) ? $fm[1] : $skuClean;
             if (!isset($grouped[$family])) {
                 $grouped[$family] = ['parent' => $p, 'children' => []];
-                $familyMaxId[$family] = (int)$p['id'];
+                $familyMaxRow[$family] = (int)$p['sheet_row'];
             } else {
                 $grouped[$family]['children'][] = $p;
-                if ((int)$p['id'] > $familyMaxId[$family]) {
-                    $familyMaxId[$family] = (int)$p['id'];
+                if ((int)$p['sheet_row'] > $familyMaxRow[$family]) {
+                    $familyMaxRow[$family] = (int)$p['sheet_row'];
                 }
             }
         }
 
-        // Sort families by highest id DESC (last in Sheet = newest = first on page)
-        arsort($familyMaxId);
-        $parentOrder = array_keys($familyMaxId);
+        // Sort families by highest sheet_row DESC (last in Sheet = newest = first on page)
+        arsort($familyMaxRow);
+        $parentOrder = array_keys($familyMaxRow);
 
         $totalParents = count($parentOrder);
         $totalPages = max(1, ceil($totalParents / $perPage));

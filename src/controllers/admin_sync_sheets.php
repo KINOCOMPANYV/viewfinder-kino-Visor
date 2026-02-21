@@ -85,6 +85,7 @@ for ($i = 1; $i < count($lines); $i++) {
     foreach ($colMap as $col => $idx) {
         $data[$col] = isset($row[$idx]) ? trim($row[$idx]) : '';
     }
+    $data['_sheet_row'] = $i; // posición real en la hoja
     processRow($db, $data, $rowNum, $inserted, $updated, $errors);
 }
 
