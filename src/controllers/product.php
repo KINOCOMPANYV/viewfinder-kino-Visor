@@ -806,7 +806,7 @@ if (empty($serverCover)) {
                         ? `<img src="${thumbUrl}" alt="${vid.name}" style="width:100%;height:100%;object-fit:cover;">`
                         : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
                     main.innerHTML = `
-                        <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModal('${vid.id}', '${vid.name.replace(/'/g, '')}')">
+                        <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" data-vid-id="${vid.id}" data-vid-name="${vid.name.replace(/"/g,'&quot;')}" onclick="openVideoModalDirect(this.dataset.vidId, this.dataset.vidName)">
                             ${thumbImg}
                             <div class="video-play-overlay">
                                 <div class="video-play-btn" style="width:64px;height:64px;">
@@ -921,7 +921,7 @@ if (empty($serverCover)) {
                     ? `<img src="${videoThumb}" alt="${f.name}" style="width:100%;height:100%;object-fit:contain;">`
                     : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style="font-size:4rem;opacity:0.3">🎬</span></div>`;
                 main.innerHTML = `
-                    <div style="position:relative;width:100%;height:100%;cursor:pointer;" onclick="openVideoModal('${f.id}', '${f.name.replace(/'/g, '')}')">
+                    <div style="position:relative;width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
                         ${thumbImg}
                         <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);">
                             <div style="width:64px;height:64px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);">
@@ -949,16 +949,21 @@ if (empty($serverCover)) {
             });
         }
 
-        // Current modal video info (global for download button)
-        let _currentModalVideo = { id: null, name: '' };
+        // Global state for video modal
+        window._currentModalVideo = { id: null, name: '' };
 
-        // Video modal functions
-        function openVideoModal(fileId, fileName) {
+        function openVideoModal(idx) {
+            const f = allGalleryFiles[idx];
+            if (!f) return;
+            openVideoModalDirect(f.id, f.name);
+        }
+
+        function openVideoModalDirect(fileId, fileName) {
             const modal = document.getElementById('videoModal');
             const player = document.getElementById('videoModalPlayer');
             const title = document.getElementById('videoModalTitle');
 
-            _currentModalVideo = { id: fileId, name: fileName };
+            window._currentModalVideo = { id: fileId, name: fileName };
 
             player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>`;
             title.textContent = fileName;
@@ -983,10 +988,11 @@ if (empty($serverCover)) {
         }
 
         function downloadModalVideo(e) {
-            if (_currentModalVideo.id) {
-                downloadFile(_currentModalVideo.id, _currentModalVideo.name, e);
+            if (window._currentModalVideo && window._currentModalVideo.id) {
+                downloadFile(window._currentModalVideo.id, window._currentModalVideo.name, e);
             } else {
-                alert('No hay video cargado');
+                console.error('Download attempt failed: window._currentModalVideo is', window._currentModalVideo);
+                alert('Error: No se ha detectado el ID del video. Por favor cierra y abre el video de nuevo.');
             }
         }
 
@@ -1056,7 +1062,7 @@ if (empty($serverCover)) {
                     const thumbContent = videoThumb
                         ? `<img src="${videoThumb}" alt="${f.name}" loading="lazy">`
                         : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:2.5rem;opacity:0.3'>🎬</span></div>`;
-                    mediaHtml = `<div class="video-thumb-wrap" onclick="openVideoModal('${f.id}', '${f.name.replace(/'/g, '')}')">
+                    mediaHtml = `<div class="video-thumb-wrap" onclick="openVideoModal(${idx})">
                         ${thumbContent}
                         <div class="video-play-overlay">
                             <div class="video-play-btn">
