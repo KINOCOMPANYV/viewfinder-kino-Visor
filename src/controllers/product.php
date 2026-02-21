@@ -710,7 +710,10 @@ if (empty($serverCover)) {
             <div class="video-modal-content">
                 <button class="video-modal-close" onclick="closeVideoModal(event, true)">✕</button>
                 <div id="videoModalPlayer"></div>
-                <div class="video-modal-title" id="videoModalTitle"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.25rem;">
+                    <div class="video-modal-title" id="videoModalTitle"></div>
+                    <a id="videoModalDownload" href="#" target="_blank" rel="noopener" style="color:var(--color-primary);font-size:0.85rem;text-decoration:none;white-space:nowrap;padding:0.3rem 0.6rem;border:1px solid var(--color-primary);border-radius:6px;">⬇️ Descargar</a>
+                </div>
             </div>
         </div>
     </section>
@@ -907,17 +910,35 @@ if (empty($serverCover)) {
             if (!f) return;
             const isVideo = (f.mimeType || '').startsWith('video/');
 
-            if (isVideo) {
-                openVideoModal(f.id, f.name.replace(/'/g, ''));
-                return;
-            }
-
             const main = document.getElementById('mainCover');
-            const url = f.thumbnailLink
-                ? f.thumbnailLink.replace(/=s\d+/, '=s600')
-                : `https://lh3.googleusercontent.com/d/${f.id}=s600`;
 
-            setCoverImage(main, url, f.id, f.name, () => { main.innerHTML = '📷'; });
+            if (isVideo) {
+                // Show video preview thumbnail in main area with play overlay
+                const videoThumb = f.thumbnailLink
+                    ? f.thumbnailLink.replace(/=s\d+/, '=s600')
+                    : '';
+                const thumbImg = videoThumb
+                    ? `<img src="${videoThumb}" alt="${f.name}" style="width:100%;height:100%;object-fit:contain;">`
+                    : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style="font-size:4rem;opacity:0.3">🎬</span></div>`;
+                main.innerHTML = `
+                    <div style="position:relative;width:100%;height:100%;cursor:pointer;" onclick="openVideoModal('${f.id}', '${f.name.replace(/'/g, '')}')">
+                        ${thumbImg}
+                        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);">
+                            <div style="width:64px;height:64px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+                                <svg viewBox="0 0 24 24" width="28" height="28" fill="#000"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                            <span style="font-size:0.8rem;color:rgba(255,255,255,0.85);margin-top:0.5rem;text-shadow:0 1px 4px rgba(0,0,0,0.7);">Reproducir video</span>
+                        </div>
+                    </div>`;
+                // Update info bar
+                document.getElementById('mainImageName').textContent = f.name;
+                document.getElementById('mainImageDownload').style.display = 'none';
+            } else {
+                const url = f.thumbnailLink
+                    ? f.thumbnailLink.replace(/=s\d+/, '=s600')
+                    : `https://lh3.googleusercontent.com/d/${f.id}=s600`;
+                setCoverImage(main, url, f.id, f.name, () => { main.innerHTML = '📷'; });
+            }
 
             // Highlight active thumbnail
             document.querySelectorAll('.thumb-strip-item').forEach((el, i) => {
@@ -926,6 +947,36 @@ if (empty($serverCover)) {
             document.querySelectorAll('.gallery-item').forEach((el, i) => {
                 el.classList.toggle('gallery-active', i === idx);
             });
+        }
+
+        // Video modal functions
+        function openVideoModal(fileId, fileName) {
+            const modal = document.getElementById('videoModal');
+            const player = document.getElementById('videoModalPlayer');
+            const title = document.getElementById('videoModalTitle');
+            const dlBtn = document.getElementById('videoModalDownload');
+
+            player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>`;
+            title.textContent = fileName;
+            dlBtn.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                modal.querySelector('.video-modal-content').style.transform = 'scale(1)';
+            }, 10);
+        }
+
+        function closeVideoModal(e, force) {
+            if (!force && e.target !== e.currentTarget) return;
+            const modal = document.getElementById('videoModal');
+            const player = document.getElementById('videoModalPlayer');
+            modal.querySelector('.video-modal-content').style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                modal.classList.remove('active');
+                player.innerHTML = '';
+                document.body.style.overflow = '';
+            }, 200);
         }
 
         function renderGallery(files) {
