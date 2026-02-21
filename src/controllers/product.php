@@ -452,6 +452,57 @@ if (empty($serverCover)) {
             border-radius: var(--radius);
         }
 
+        /* Thumbnail strip under main image */
+        .thumb-strip {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            overflow-x: auto;
+            padding-bottom: 0.4rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--color-border) transparent;
+        }
+        .thumb-strip::-webkit-scrollbar { height: 4px; }
+        .thumb-strip::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+
+        .thumb-strip-item {
+            flex-shrink: 0;
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid var(--color-border);
+            background: var(--color-surface-2);
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.2s;
+            position: relative;
+        }
+        .thumb-strip-item:hover {
+            border-color: var(--color-primary);
+            transform: scale(1.08);
+        }
+        .thumb-strip-item.active {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px var(--color-primary-glow);
+        }
+        .thumb-strip-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .thumb-strip-item .thumb-video-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: rgba(248,113,113,0.9);
+            color: #fff;
+            font-size: 0.45rem;
+            font-weight: 700;
+            padding: 1px 3px;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+
         /* Back to catalog button */
         .btn-back-catalog {
             display: inline-flex;
@@ -572,6 +623,8 @@ if (empty($serverCover)) {
                             ⬇️ Descargar imagen
                         </button>
                     </div>
+                    <!-- Thumbnail strip -->
+                    <div class="thumb-strip" id="thumbStrip"></div>
                 </div>
 
                 <!-- Info -->
@@ -848,6 +901,33 @@ if (empty($serverCover)) {
             count.textContent = `${imgCount} foto(s) · ${vidCount} video(s) en Drive`;
         }
 
+        // Show file in main image area when clicking a thumbnail
+        function showInMain(idx) {
+            const f = allGalleryFiles[idx];
+            if (!f) return;
+            const isVideo = (f.mimeType || '').startsWith('video/');
+
+            if (isVideo) {
+                openVideoModal(f.id, f.name.replace(/'/g, ''));
+                return;
+            }
+
+            const main = document.getElementById('mainCover');
+            const url = f.thumbnailLink
+                ? f.thumbnailLink.replace(/=s\d+/, '=s600')
+                : `https://lh3.googleusercontent.com/d/${f.id}=s600`;
+
+            setCoverImage(main, url, f.id, f.name, () => { main.innerHTML = '📷'; });
+
+            // Highlight active thumbnail
+            document.querySelectorAll('.thumb-strip-item').forEach((el, i) => {
+                el.classList.toggle('active', i === idx);
+            });
+            document.querySelectorAll('.gallery-item').forEach((el, i) => {
+                el.classList.toggle('gallery-active', i === idx);
+            });
+        }
+
         function renderGallery(files) {
             if (files.length === 0) return;
 
@@ -855,6 +935,26 @@ if (empty($serverCover)) {
             const grid = document.getElementById('galleryGrid');
             gallery.style.display = 'block';
             allGalleryFiles = files;
+
+            // Build thumbnail strip
+            const strip = document.getElementById('thumbStrip');
+            strip.innerHTML = files.map((f, idx) => {
+                const isImage = (f.mimeType || '').startsWith('image/');
+                const isVideo = (f.mimeType || '').startsWith('video/');
+                let thumbSrc = '';
+                if (isImage) {
+                    thumbSrc = f.thumbnailLink
+                        ? f.thumbnailLink.replace(/=s\d+/, '=s120')
+                        : `https://lh3.googleusercontent.com/d/${f.id}=s120`;
+                } else if (isVideo && f.thumbnailLink) {
+                    thumbSrc = f.thumbnailLink.replace(/=s\d+/, '=s120');
+                }
+                const imgTag = thumbSrc
+                    ? `<img src="${thumbSrc}" alt="${f.name}" loading="lazy">`
+                    : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.5rem;">📄</div>`;
+                const badge = isVideo ? '<span class="thumb-video-badge">▶</span>' : '';
+                return `<div class="thumb-strip-item" onclick="showInMain(${idx})" title="${f.name}">${imgTag}${badge}</div>`;
+            }).join('');
 
             grid.innerHTML = files.map((f, idx) => {
                 const isImage = (f.mimeType || '').startsWith('image/');
