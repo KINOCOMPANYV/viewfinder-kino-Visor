@@ -229,8 +229,7 @@ if (empty($serverCover)) {
         .video-modal-content {
             position: relative;
             width: 90vw;
-            max-width: 900px;
-            aspect-ratio: 16 / 9;
+            max-width: 960px;
             border-radius: var(--radius-lg);
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
@@ -242,7 +241,16 @@ if (empty($serverCover)) {
             transform: scale(1);
         }
 
+        #videoModalPlayer {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 ratio */
+        }
+
         .video-modal-content iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             border: none;
