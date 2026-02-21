@@ -806,7 +806,7 @@ if (empty($serverCover)) {
                         ? `<img src="${thumbUrl}" alt="${vid.name}" style="width:100%;height:100%;object-fit:cover;">`
                         : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
                     main.innerHTML = `
-                        <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" data-vid-id="${vid.id}" data-vid-name="${vid.name.replace(/"/g,'&quot;')}" onclick="openVideoModalDirect(this.dataset.vidId, this.dataset.vidName)">
+                        <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModalDirect('${vid.id}', '${vid.name.replace(/'/g, "\\'")}')">
                             ${thumbImg}
                             <div class="video-play-overlay">
                                 <div class="video-play-btn" style="width:64px;height:64px;">
@@ -959,14 +959,23 @@ if (empty($serverCover)) {
         }
 
         function openVideoModalDirect(fileId, fileName) {
+            console.log('Abriendo modal video:', { fileId, fileName });
+            if (!fileId) {
+                console.error('Error: openVideoModalDirect llamado sin fileId');
+                return;
+            }
+
             const modal = document.getElementById('videoModal');
             const player = document.getElementById('videoModalPlayer');
             const title = document.getElementById('videoModalTitle');
+            const dlBtn = document.getElementById('videoModalDownload');
 
-            window._currentModalVideo = { id: fileId, name: fileName };
+            // Set state directly on the button for maximum reliability
+            dlBtn.setAttribute('data-file-id', fileId);
+            dlBtn.setAttribute('data-file-name', fileName || '');
 
             player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>`;
-            title.textContent = fileName;
+            title.textContent = fileName || '';
 
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -988,10 +997,16 @@ if (empty($serverCover)) {
         }
 
         function downloadModalVideo(e) {
-            if (window._currentModalVideo && window._currentModalVideo.id) {
-                downloadFile(window._currentModalVideo.id, window._currentModalVideo.name, e);
+            const dlBtn = document.getElementById('videoModalDownload');
+            const fid = dlBtn.getAttribute('data-file-id');
+            const fname = dlBtn.getAttribute('data-file-name');
+
+            console.log('Intentando descarga desde modal:', { fid, fname });
+
+            if (fid && fid !== 'undefined' && fid !== 'null') {
+                downloadFile(fid, fname, e);
             } else {
-                console.error('Download attempt failed: window._currentModalVideo is', window._currentModalVideo);
+                console.error('Error de descarga: ID de video no encontrado en el botón', { fid, fname });
                 alert('Error: No se ha detectado el ID del video. Por favor cierra y abre el video de nuevo.');
             }
         }
