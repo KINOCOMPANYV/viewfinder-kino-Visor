@@ -990,33 +990,24 @@ if (empty($serverCover)) {
             }
         }
 
-        // Download file via proxy — fetches blob and triggers browser save
-        async function downloadFile(fileId, fileName, evt) {
+        // Download file via proxy — simple way for browser to handle large files
+        function downloadFile(fileId, fileName, evt) {
             if (!fileId || fileId === 'undefined') {
                 alert('Error: ID de archivo no disponible');
                 return;
             }
             const btn = evt && evt.target ? evt.target : null;
-            try {
-                if (btn) { btn.textContent = '⏳ Descargando...'; btn.disabled = true; }
-                const resp = await fetch('/api/download/' + fileId);
-                if (!resp.ok) throw new Error('Download failed: ' + resp.status);
-                const blob = await resp.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName || 'video.mp4';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(url), 5000);
-                if (btn) { btn.textContent = '✅ Descargado'; btn.disabled = false; setTimeout(() => btn.textContent = '⬇️ Descargar video', 2000); }
-            } catch (err) {
-                console.error('Download error:', err);
-                if (btn) { btn.textContent = '⬇️ Descargar video'; btn.disabled = false; }
-                // Fallback: navigate to proxy
-                window.location.href = '/api/download/' + fileId;
+            if (btn) {
+                const originalText = btn.textContent;
+                btn.textContent = '⏳ Iniciando descarga...';
+                btn.disabled = true;
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }, 2000);
             }
+            // Navegar directamente al proxy — el navegador gestiona el stream a disco
+            window.location.assign('/api/download/' + fileId);
         }
 
         function renderGallery(files) {

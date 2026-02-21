@@ -367,12 +367,19 @@ if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
     // 2) Stream file content via Drive API alt=media
     $downloadUrl = "https://www.googleapis.com/drive/v3/files/{$fileId}?alt=media";
 
+    // Optimizar para archivos grandes: sin límite de tiempo y sin buffering
+    set_time_limit(0);
+    ignore_user_abort(true);
+    while (ob_get_level() > 0)
+        ob_end_flush();
+
     header('Content-Type: ' . $mimeType);
     header('Content-Disposition: attachment; filename="' . addslashes($fileName) . '"');
     if ($fileSize) {
         header('Content-Length: ' . $fileSize);
     }
-    header('Cache-Control: no-cache');
+    header('Cache-Control: private, max-age=0, no-cache');
+    header('Pragma: no-cache');
 
     $ch = curl_init($downloadUrl);
     curl_setopt_array($ch, [
