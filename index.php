@@ -323,6 +323,73 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
 }
 
 // ============================================================
+// DOWNLOAD PROXY — descarga directa de archivos de Drive
+// GET /api/download/{fileId}
+// Hace proxy autenticado con Drive API para que el usuario
+// reciba el archivo sin pasar por la página de confirmación.
+// ============================================================
+
+if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
+    require_once __DIR__ . '/src/services/GoogleDriveService.php';
+
+    $fileId = $matches[1];
+    $db = getDB();
+    $drive = new GoogleDriveService();
+    $token = $drive->getValidToken($db);
+
+    if (!$token) {
+        http_response_code(503);
+        echo 'Drive not connected';
+        exit;
+    }
+
+    // 1) Get file metadata (name + mimeType)
+    $metaUrl = "https://www.googleapis.com/drive/v3/files/{$fileId}?fields=name,mimeType,size";
+    $ch = curl_init($metaUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
+    ]);
+    $metaJson = curl_exec($ch);
+    curl_close($ch);
+    $meta = json_decode($metaJson, true);
+
+    if (empty($meta['name'])) {
+        http_response_code(404);
+        echo 'File not found';
+        exit;
+    }
+
+    $fileName = $meta['name'];
+    $mimeType = $meta['mimeType'] ?? 'application/octet-stream';
+    $fileSize = $meta['size'] ?? 0;
+
+    // 2) Stream file content via Drive API alt=media
+    $downloadUrl = "https://www.googleapis.com/drive/v3/files/{$fileId}?alt=media";
+
+    header('Content-Type: ' . $mimeType);
+    header('Content-Disposition: attachment; filename="' . addslashes($fileName) . '"');
+    if ($fileSize) {
+        header('Content-Length: ' . $fileSize);
+    }
+    header('Cache-Control: no-cache');
+
+    $ch = curl_init($downloadUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_WRITEFUNCTION => function ($ch, $data) {
+            echo $data;
+            flush();
+            return strlen($data);
+        },
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
+    exit;
+}
+
+// ============================================================
 // BATCH COVERS API — una sola llamada para N portadas
 // POST /api/covers/batch   body: {"skus": ["sku1","sku2",...]}
 // Responde: {"covers": {"sku1": {"url":"...","video":false}, ...}}

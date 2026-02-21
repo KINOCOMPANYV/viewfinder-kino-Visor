@@ -958,7 +958,7 @@ if (empty($serverCover)) {
 
             player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>`;
             title.textContent = fileName;
-            dlBtn.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+            dlBtn.href = `/api/download/${fileId}`;
 
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -1035,7 +1035,7 @@ if (empty($serverCover)) {
                         </div>
                         <span class="video-badge">VIDEO</span>
                     </div>
-                    <a href="https://drive.google.com/uc?export=download&id=${f.id}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);text-decoration:none;">⬇️ Descargar video</a>`;
+                    <a href="/api/download/${f.id}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);text-decoration:none;">⬇️ Descargar video</a>`;
                 } else {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
@@ -1152,7 +1152,7 @@ if (empty($serverCover)) {
                 if (selVideos.length > 0) {
                     text += '🎬 *Videos (' + selVideos.length + '):*\n\n';
                     selVideos.forEach((f, i) => {
-                        const vidUrl = `https://drive.google.com/file/d/${f.id}/view`;
+                        const vidUrl = location.origin + `/api/download/${f.id}`;
                         text += (i + 1) + '. ' + f.name + '\n' + vidUrl + '\n\n';
                     });
                 }
