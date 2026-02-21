@@ -46,11 +46,32 @@ function normalizeDriveUrl(string $url): string
 }
 
 /**
+ * Ensures the sheet_row column exists in the products table.
+ * Auto-creates it if missing (self-healing migration).
+ */
+function ensureSheetRowColumn(PDO $db): void
+{
+    static $checked = false;
+    if ($checked)
+        return;
+    $checked = true;
+
+    try {
+        $db->query("SELECT sheet_row FROM products LIMIT 1");
+    } catch (\PDOException $e) {
+        $db->exec("ALTER TABLE products ADD COLUMN sheet_row INT DEFAULT 0");
+        $db->exec("CREATE INDEX idx_sheet_row ON products (sheet_row)");
+    }
+}
+
+/**
  * Procesa una fila de datos CSV/Sheets y hace UPSERT por SKU.
  * Soporta columna opcional 'cover_image_url' que normaliza automáticamente.
  */
 function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$updated, array &$errors): void
 {
+    ensureSheetRowColumn($db);
+
     $sku = $data['sku'] ?? '';
 
     if (empty($sku)) {
