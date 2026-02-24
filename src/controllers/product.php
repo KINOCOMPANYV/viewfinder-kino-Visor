@@ -56,6 +56,15 @@ if (empty($serverCover)) {
         // tabla no existe aún, ignorar
     }
 }
+
+// ── Cache: ETag + Cache-Control para páginas de producto ──
+$productEtag = '"p-' . md5($product['sku'] . ($product['updated_at'] ?? '') . APP_VERSION) . '"';
+header("ETag: {$productEtag}");
+header('Cache-Control: private, max-age=60');
+if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $productEtag) {
+    http_response_code(304);
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">

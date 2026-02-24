@@ -37,8 +37,8 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROT
     $_SERVER['HTTPS'] = 'on';
 }
 
-// Cache buster
-define('APP_VERSION', substr(md5_file(__FILE__), 0, 8));
+// Cache buster — basado en timestamp de deploy (se regenera cada build)
+define('APP_VERSION', substr(md5(filemtime(__FILE__) . filemtime(BASE_DIR . '/assets/css/style.css')), 0, 8));
 
 // App info
 define('APP_BUILD', '2026-02-17');

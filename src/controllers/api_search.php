@@ -5,7 +5,7 @@
 $q = trim($_GET['q'] ?? '');
 
 if (strlen($q) < 2) {
-    jsonResponse([]);
+    jsonCachedResponse([], 30);
 }
 
 $db = getDB();
@@ -47,4 +47,4 @@ foreach ($results as $r) {
     }
 }
 
-jsonResponse(array_slice($unique, 0, 10));
+jsonCachedResponse(array_slice($unique, 0, 10), 30);

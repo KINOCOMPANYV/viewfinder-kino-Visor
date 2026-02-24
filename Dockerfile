@@ -18,7 +18,7 @@ RUN echo "upload_max_filesize = 500M" >> /usr/local/etc/php/conf.d/uploads.ini \
     && echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini
 
 # Habilitar mod_rewrite
-RUN a2dismod mpm_event && a2enmod mpm_prefork && a2enmod rewrite
+RUN a2dismod mpm_event && a2enmod mpm_prefork && a2enmod rewrite headers expires
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

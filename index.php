@@ -421,7 +421,7 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $skus = array_slice(array_unique($input['skus'] ?? []), 0, 50); // max 50
 
     if (empty($skus)) {
-        jsonResponse(['covers' => new \stdClass()]);
+        jsonCachedResponse(['covers' => new \stdClass()], 300);
     }
 
     $db = getDB();
@@ -492,7 +492,7 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    jsonResponse(['covers' => $covers]);
+    jsonCachedResponse(['covers' => $covers], 300);
 }
 
 /**
@@ -527,7 +527,7 @@ function extractCoverFromFiles(array $files): ?array
 if ($uri === '/health') {
     try {
         $db->query("SELECT 1");
-        jsonResponse(['status' => 'ok', 'db' => 'connected']);
+        jsonCachedResponse(['status' => 'ok', 'db' => 'connected'], 10);
     } catch (\Exception $e) {
         jsonResponse(['status' => 'error', 'db' => $e->getMessage()], 500);
     }

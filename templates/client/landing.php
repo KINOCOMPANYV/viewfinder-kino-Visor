@@ -1,3 +1,4 @@
+<?php header('Cache-Control: public, max-age=60'); ?>
 <!DOCTYPE html>
 <html lang="es">
 

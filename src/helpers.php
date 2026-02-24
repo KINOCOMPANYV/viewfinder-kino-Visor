@@ -15,6 +15,32 @@ function jsonResponse(array $data, int $code = 200): void
 }
 
 /**
+ * Devuelve JSON con cache headers y termina la ejecución.
+ * @param int $ttl Segundos de cache (max-age). 0 = sin cache.
+ */
+function jsonCachedResponse(array $data, int $ttl = 60, int $code = 200): void
+{
+    http_response_code($code);
+    header('Content-Type: application/json; charset=utf-8');
+    if ($ttl > 0) {
+        header("Cache-Control: public, max-age={$ttl}");
+    }
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+/**
+ * Cache-busting: devuelve ruta de asset con ?v=filemtime.
+ * Ejemplo: assetVersion('/assets/css/style.css') → '/assets/css/style.css?v=1708732800'
+ */
+function assetVersion(string $path): string
+{
+    $fullPath = __DIR__ . '/../' . ltrim($path, '/');
+    $mtime = @filemtime($fullPath);
+    return $path . ($mtime ? '?v=' . $mtime : '');
+}
+
+/**
  * Redirige a una URL.
  */
 function redirect(string $url): void

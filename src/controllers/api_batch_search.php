@@ -6,7 +6,8 @@
  * Response: {"results": {"CODE1": {...}, "CODE2": null, ...}}
  */
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: public, max-age=60');
 
 $input = json_decode(file_get_contents('php://input'), true);
 $codes = $input['codes'] ?? [];
@@ -16,8 +17,7 @@ $codes = array_values(array_unique(array_filter(array_map('trim', $codes))));
 $codes = array_slice($codes, 0, 100); // max 100 códigos
 
 if (empty($codes)) {
-    echo json_encode(['results' => new \stdClass()]);
-    exit;
+    jsonCachedResponse(['results' => new \stdClass()], 60);
 }
 
 $db = getDB();
@@ -63,5 +63,5 @@ foreach ($codes as $code) {
     }
 }
 
-echo json_encode(['results' => $results]);
+jsonCachedResponse(['results' => $results], 60);
 
