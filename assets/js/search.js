@@ -1,5 +1,8 @@
 /**
- * VISOR KINO — Search Autocomplete
+ * VISOR KINO — Search Autocomplete + Multi-code support
+ * - Autocomplete funciona solo para búsqueda de un solo código
+ * - Si detecta comas o saltos de línea, desactiva autocomplete y hace submit
+ * - Textarea auto-resize para pegar columnas de códigos
  */
 (function() {
     const input = document.getElementById('searchInput');
@@ -10,9 +13,35 @@
 
     if (!input || !dropdown) return;
 
+    // === Auto-resize textarea ===
+    function autoResize() {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 192) + 'px'; // max ~12rem
+        input.style.overflow = input.scrollHeight > 192 ? 'auto' : 'hidden';
+    }
+
+    // Detectar si hay múltiples códigos (comas o saltos de línea)
+    function isMultiCode(text) {
+        return text.includes(',') || text.includes('\n') || text.includes('\r');
+    }
+
+    // Auto-resize al cargar si ya tiene contenido
+    if (input.value.trim()) {
+        autoResize();
+    }
+
     input.addEventListener('input', function() {
         clearTimeout(debounceTimer);
+        autoResize();
+
         const q = this.value.trim();
+
+        // Si es multi-código, NO mostrar autocomplete
+        if (isMultiCode(q)) {
+            dropdown.classList.remove('active');
+            dropdown.innerHTML = '';
+            return;
+        }
 
         if (q.length < 2) {
             dropdown.classList.remove('active');
@@ -52,6 +81,29 @@
 
     // Keyboard navigation
     input.addEventListener('keydown', function(e) {
+        const q = this.value.trim();
+
+        // En multi-código: Enter hace submit del form
+        if (e.key === 'Enter' && isMultiCode(q)) {
+            e.preventDefault();
+            form.submit();
+            return;
+        }
+
+        // En single-code: Enter sin Shift hace submit o navega
+        if (e.key === 'Enter' && !e.shiftKey && !isMultiCode(q)) {
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+            if (activeIndex >= 0 && items[activeIndex]) {
+                e.preventDefault();
+                window.location.href = '/producto/' + items[activeIndex].dataset.sku;
+                return;
+            }
+            // Si no hay item seleccionado, submit normal
+            e.preventDefault();
+            form.submit();
+            return;
+        }
+
         const items = dropdown.querySelectorAll('.autocomplete-item');
         if (!items.length) return;
 
@@ -63,12 +115,21 @@
             e.preventDefault();
             activeIndex = Math.max(activeIndex - 1, -1);
             highlightItem(items);
-        } else if (e.key === 'Enter' && activeIndex >= 0) {
-            e.preventDefault();
-            window.location.href = '/producto/' + items[activeIndex].dataset.sku;
         } else if (e.key === 'Escape') {
             dropdown.classList.remove('active');
         }
+    });
+
+    // Manejar paste: auto-resize después del paste
+    input.addEventListener('paste', function() {
+        setTimeout(() => {
+            autoResize();
+            // Si se pegaron múltiples códigos, cerrar autocomplete
+            if (isMultiCode(this.value)) {
+                dropdown.classList.remove('active');
+                dropdown.innerHTML = '';
+            }
+        }, 50);
     });
 
     function highlightItem(items) {

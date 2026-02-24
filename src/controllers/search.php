@@ -1,6 +1,7 @@
 <?php
 /**
  * Búsqueda con resultados — muestra grid de productos.
+ * Soporta búsqueda múltiple: SKUs separados por comas o saltos de línea.
  */
 $q = trim($_GET['q'] ?? '');
 $page = max(1, intval($_GET['page'] ?? 1));
@@ -9,7 +10,28 @@ $offset = ($page - 1) * $perPage;
 
 $db = getDB();
 
-if ($q === '') {
+// Detectar si es búsqueda multi-código (comas o saltos de línea)
+$isMultiCode = (strpos($q, ',') !== false || strpos($q, "\n") !== false || strpos($q, "\r") !== false);
+$multiCodes = [];
+
+if ($isMultiCode && $q !== '') {
+    // Parsear: separar por comas, saltos de línea, o ambos
+    $raw = preg_split('/[\r\n,]+/', $q);
+    foreach ($raw as $code) {
+        $code = trim($code);
+        if ($code !== '') {
+            $multiCodes[] = $code;
+        }
+    }
+    $multiCodes = array_unique($multiCodes);
+    // Si después del parse solo queda 1, tratar como búsqueda normal
+    if (count($multiCodes) <= 1) {
+        $isMultiCode = false;
+        $q = !empty($multiCodes) ? $multiCodes[0] : $q;
+    }
+}
+
+if ($q === '' && !$isMultiCode) {
     // Sin query: mostrar todos los activos paginados
     $countStmt = $db->query("SELECT COUNT(*) FROM products WHERE status = 'active'");
     $total = $countStmt->fetchColumn();
@@ -22,8 +44,32 @@ if ($q === '') {
     );
     $stmt->execute([$perPage, $offset]);
     $products = $stmt->fetchAll();
+} elseif ($isMultiCode) {
+    // BÚSQUEDA MULTI-CÓDIGO: buscar todos los SKUs exactos con IN(...)
+    $placeholders = implode(',', array_fill(0, count($multiCodes), '?'));
+    
+    $countStmt = $db->prepare(
+        "SELECT COUNT(*) FROM products 
+         WHERE status = 'active' AND sku IN ($placeholders)"
+    );
+    $countStmt->execute($multiCodes);
+    $total = $countStmt->fetchColumn();
+
+    // Sin paginación — mostrar todos los resultados multi-código
+    $stmt = $db->prepare(
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url 
+         FROM products 
+         WHERE status = 'active' AND sku IN ($placeholders)
+         ORDER BY FIELD(sku, $placeholders)"
+    );
+    // Pasar los códigos dos veces: una para IN y otra para FIELD
+    $stmt->execute(array_merge($multiCodes, $multiCodes));
+    $products = $stmt->fetchAll();
+    
+    // Sin paginación para multi-código
+    $perPage = max($total, 1);
 } else {
-    // Con query: buscar
+    // Con query simple: buscar por LIKE (comportamiento original)
     $like = "%{$q}%";
     $countStmt = $db->prepare(
         "SELECT COUNT(*) FROM products 
@@ -76,8 +122,10 @@ $totalPages = ceil($total / $perPage);
         <div class="search-box" style="max-width:100%; margin-bottom:1.5rem;">
             <span class="search-icon">🔍</span>
             <form action="/buscar" method="GET" id="searchForm">
-                <input type="text" name="q" id="searchInput" value="<?= e($q) ?>"
-                    placeholder="Buscar por SKU o nombre..." autocomplete="off">
+                <textarea name="q" id="searchInput" rows="1"
+                    placeholder="Buscar por SKU o nombre...  (pega varios códigos separados por comas o en columna)"
+                    autocomplete="off"
+                    style="resize:none; overflow:hidden; min-height:2.4rem; max-height:12rem; width:100%; font:inherit; padding:inherit; border:none; background:transparent; outline:none; line-height:1.6;"><?= e($q) ?></textarea>
                 <button type="submit" class="search-btn">Buscar</button>
             </form>
             <div class="autocomplete-dropdown" id="autocomplete"></div>
@@ -85,7 +133,14 @@ $totalPages = ceil($total / $perPage);
 
         <!-- Results count -->
         <p style="color:var(--color-text-muted); font-size:0.9rem; margin-bottom:1rem;">
-            <?php if ($q): ?>
+            <?php if ($isMultiCode): ?>
+                <?= $total ?> de <?= count($multiCodes) ?> código<?= count($multiCodes) !== 1 ? 's' : '' ?> encontrado<?= $total !== 1 ? 's' : '' ?>
+                <?php
+                    $notFound = array_diff($multiCodes, array_column($products, 'sku'));
+                    if (!empty($notFound)): ?>
+                    <br><span style="color:var(--color-danger, #e74c3c); font-size:0.85rem;">⚠️ No encontrados: <?= e(implode(', ', $notFound)) ?></span>
+                <?php endif; ?>
+            <?php elseif ($q): ?>
                 <?= $total ?> resultado
                 <?= $total !== 1 ? 's' : '' ?> para "<strong style="color:var(--color-text)">
                     <?= e($q) ?>
