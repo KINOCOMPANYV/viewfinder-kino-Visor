@@ -45,25 +45,31 @@ if ($q === '' && !$isMultiCode) {
     $stmt->execute([$perPage, $offset]);
     $products = $stmt->fetchAll();
 } elseif ($isMultiCode) {
-    // BÚSQUEDA MULTI-CÓDIGO: buscar todos los SKUs exactos con IN(...)
-    $placeholders = implode(',', array_fill(0, count($multiCodes), '?'));
+    // BÚSQUEDA MULTI-CÓDIGO: buscar cada SKU con LIKE para mayor flexibilidad
+    // Esto permite encontrar "1971-1" aunque en la BD esté como "1971-1.JPG"
+    $conditions = [];
+    $params = [];
+    foreach ($multiCodes as $code) {
+        $conditions[] = "sku LIKE ?";
+        $params[] = $code . '%';
+    }
+    $whereOr = implode(' OR ', $conditions);
     
     $countStmt = $db->prepare(
         "SELECT COUNT(*) FROM products 
-         WHERE status = 'active' AND sku IN ($placeholders)"
+         WHERE status = 'active' AND ($whereOr)"
     );
-    $countStmt->execute($multiCodes);
+    $countStmt->execute($params);
     $total = $countStmt->fetchColumn();
 
     // Sin paginación — mostrar todos los resultados multi-código
     $stmt = $db->prepare(
         "SELECT sku, name, category, gender, price_suggested, cover_image_url 
          FROM products 
-         WHERE status = 'active' AND sku IN ($placeholders)
-         ORDER BY FIELD(sku, $placeholders)"
+         WHERE status = 'active' AND ($whereOr)
+         ORDER BY sku ASC"
     );
-    // Pasar los códigos dos veces: una para IN y otra para FIELD
-    $stmt->execute(array_merge($multiCodes, $multiCodes));
+    $stmt->execute($params);
     $products = $stmt->fetchAll();
     
     // Sin paginación para multi-código
@@ -128,8 +134,7 @@ $totalPages = ceil($total / $perPage);
             <form action="/buscar" method="GET" id="searchForm">
                 <textarea name="q" id="searchInput" rows="1"
                     placeholder="Buscar por SKU o nombre...  (pega varios códigos separados por comas o en columna)"
-                    autocomplete="off"
-                    style="resize:none; overflow:hidden; min-height:2.4rem; max-height:12rem; width:100%; font:inherit; padding:inherit; border:none; background:transparent; outline:none; line-height:1.6;"><?= e($q) ?></textarea>
+                    autocomplete="off"><?= e($q) ?></textarea>
                 <button type="submit" class="search-btn">Buscar</button>
             </form>
             <div class="autocomplete-dropdown" id="autocomplete"></div>

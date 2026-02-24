@@ -55,8 +55,7 @@
                 <form action="/buscar" method="GET" id="searchForm">
                     <textarea name="q" id="searchInput" rows="1"
                         placeholder="Buscar por SKU o nombre...  (pega varios códigos separados por comas o en columna)"
-                        autocomplete="off" autofocus
-                        style="resize:none; overflow:hidden; min-height:2.4rem; max-height:12rem; width:100%; font:inherit; padding:inherit; border:none; background:transparent; outline:none; line-height:1.6;"></textarea>
+                        autocomplete="off" autofocus></textarea>
                     <button type="submit" class="search-btn">Buscar</button>
                 </form>
                 <div class="autocomplete-dropdown" id="autocomplete"></div>
