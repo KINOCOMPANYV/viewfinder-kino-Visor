@@ -3,17 +3,17 @@
  * Admin Sync Covers — Auto-asignar portadas de Drive a productos.
  * POST /admin/media/sync-covers
  *
- * Estrategia de matching:
- *   1) Primero busca archivos con nombre EXACTO = SKU (ej: "834-4.jpg")
- *   2) Si no hay exacto, acepta prefijo SKU + separador (ej: "834-4 front.jpg", "834-4_portada.jpg")
- *      PERO rechaza hijos/variantes donde el SKU va seguido de letra+dígito (ej: "834-4F1.jpg")
- *   3) Prioriza imágenes sobre videos. Si solo hay video, usa thumbnail con icono ▶
- *   4) Limitado a 20 productos por ejecución
+ * Estrategia optimizada:
+ *   1) Pre-indexa TODOS los archivos de Drive en memoria (un solo listFiles)
+ *   2) Para cada producto sin cover, busca match por SKU en el índice local
+ *   3) Prioriza imágenes sobre videos, usa keywords para mejor cover
+ *   4) makePublicBatch para hacer públicos todos a la vez
+ *   5) Procesa hasta 200 productos por ejecución
  */
 require_once __DIR__ . '/../services/GoogleDriveService.php';
 
 header('Content-Type: application/json');
-set_time_limit(120);
+set_time_limit(300); // 5 minutos
 
 $db = getDB();
 $drive = new GoogleDriveService();
@@ -30,8 +30,8 @@ if (empty($rootFolderId)) {
     exit;
 }
 
-// Cargar productos sin cover (máximo 20 por ejecución)
-$products = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = '' LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+// Cargar productos sin cover (hasta 200)
+$products = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = '' LIMIT 200")->fetchAll(PDO::FETCH_ASSOC);
 
 $totalWithout = $db->query("SELECT COUNT(*) FROM products WHERE cover_image_url IS NULL OR cover_image_url = ''")->fetchColumn();
 
@@ -42,10 +42,6 @@ if (empty($products)) {
 
 /**
  * Clasificar archivos en: exactos, compatibles (prefijo) y rechazados.
- * - Exacto: filename sin extensión = SKU (case insensitive)
- * - Compatible: filename empieza con SKU y el siguiente char NO es alfanumérico
- *   (acepta espacio, guión bajo, guión, paréntesis, etc.)
- * - Rechazado: filename empieza con SKU pero seguido de letra o dígito (variante/hijo)
  */
 function classifyMatches(array $files, string $sku): array
 {
@@ -55,18 +51,13 @@ function classifyMatches(array $files, string $sku): array
     foreach ($files as $f) {
         $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
 
-        // ¿Match exacto?
         if (strcasecmp($nameOnly, $sku) === 0) {
             $exact[] = $f;
             continue;
         }
 
-        // ¿Empieza con el SKU?
         if (stripos($nameOnly, $sku) === 0 && strlen($nameOnly) > strlen($sku)) {
             $nextChar = $nameOnly[strlen($sku)];
-            // Aceptar si el siguiente char NO es letra ni dígito (es separador)
-            // Esto permite: "834-4 front.jpg", "834-4_portada.jpg", "834-4 (2).jpg"
-            // Rechaza: "834-4F1.jpg", "834-4V2.jpg", "834-410.jpg"
             if (!ctype_alnum($nextChar)) {
                 $compatible[] = $f;
             }
@@ -95,20 +86,35 @@ function scoreCover(array $file, array $coverKeywords, array $numericPriority): 
     return $score;
 }
 
+// ============================================================
+// Pre-index: listar TODOS los archivos de Drive de una vez
+// ============================================================
+$allDriveFiles = $drive->listAllMediaFiles();
+$driveFileIndex = $allDriveFiles['files'] ?? [];
+
 $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 $assigned = 0;
 $assignedVideos = 0;
 $errors = [];
 $diagnostics = [];
+$fileIdsToPublish = [];
+$updatesQueue = [];
 
 foreach ($products as $prod) {
     $diag = ['sku' => $prod['sku'], 'status' => 'no_files'];
 
     try {
-        // Clean SKU: strip file extension for matching (1971-1.JPG → 1971-1)
+        // Clean SKU: strip file extension for matching
         $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
-        // Buscar archivos por SKU limpio (global + recursivo en subcarpetas)
-        $allFiles = $drive->findBySku($rootFolderId, $cleanSku);
+
+        // Buscar en índice pre-cargado usando skuMatchesFilename helper
+        $allFiles = [];
+        foreach ($driveFileIndex as $file) {
+            if (skuMatchesFilename($cleanSku, $file['name'])) {
+                $allFiles[] = $file;
+            }
+        }
+
         $diag['files_found'] = count($allFiles);
         $diag['file_names'] = array_map(fn($f) => $f['name'] ?? '?', array_slice($allFiles, 0, 10));
 
@@ -137,7 +143,6 @@ foreach ($products as $prod) {
         $videos = array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
 
         if (!empty($images)) {
-            // Ordenar por keywords de portada
             $images = array_values($images);
             usort($images, function ($a, $b) use ($coverKeywords, $numericPriority) {
                 return scoreCover($b, $coverKeywords, $numericPriority)
@@ -145,17 +150,17 @@ foreach ($products as $prod) {
             });
 
             $best = $images[0];
-            $drive->makePublic($best['id']);
+            $fileIdsToPublish[] = $best['id'];
             $coverUrl = "https://lh3.googleusercontent.com/d/{$best['id']}";
-            $updateStmt->execute([$coverUrl, $prod['id']]);
+            $updatesQueue[] = ['url' => $coverUrl, 'id' => $prod['id']];
             $assigned++;
             $diag['status'] = 'image_assigned';
             $diag['assigned_file'] = $best['name'];
         } elseif (!empty($videos)) {
             $best = array_values($videos)[0];
-            $drive->makePublic($best['id']);
+            $fileIdsToPublish[] = $best['id'];
             $coverUrl = "[VIDEO]https://drive.google.com/thumbnail?id={$best['id']}&sz=w400";
-            $updateStmt->execute([$coverUrl, $prod['id']]);
+            $updatesQueue[] = ['url' => $coverUrl, 'id' => $prod['id']];
             $assignedVideos++;
             $assigned++;
             $diag['status'] = 'video_assigned';
@@ -170,6 +175,16 @@ foreach ($products as $prod) {
     }
 
     $diagnostics[] = $diag;
+}
+
+// Hacer públicos en batch (curl_multi — mucho más rápido)
+if (!empty($fileIdsToPublish)) {
+    $drive->makePublicBatch($fileIdsToPublish);
+}
+
+// Actualizar DB
+foreach ($updatesQueue as $upd) {
+    $updateStmt->execute([$upd['url'], $upd['id']]);
 }
 
 $remaining = $totalWithout - $assigned;

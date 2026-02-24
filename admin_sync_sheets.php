@@ -79,74 +79,226 @@ if (!isset($colMap['sku'])) {
 
 $hasCoverColumn = isset($colMap['cover_image_url']);
 
-// Procesar filas
+// ============================================================
+// Procesar filas — recoger datos en memoria para batch SQL
+// ============================================================
 $db = getDB();
-$inserted = 0;
-$updated = 0;
-$coversUpdated = 0;
 $errors = [];
-$rowNum = 0;
+$batchRows = [];
 
 for ($i = 1; $i < count($lines); $i++) {
     $row = $lines[$i];
     if (empty(array_filter($row)))
-        continue; // omitir filas vacías
+        continue;
 
-    $rowNum++;
     $data = [];
     foreach ($colMap as $col => $idx) {
         $data[$col] = isset($row[$idx]) ? trim($row[$idx]) : '';
     }
 
-    // Normalizar cover_image_url si viene del Sheets
-    if (!empty($data['cover_image_url'])) {
-        $data['cover_image_url'] = normalizeDriveUrl($data['cover_image_url']);
+    $sku = $data['sku'] ?? '';
+    if (empty($sku)) {
+        $errors[] = "Fila " . ($i + 1) . ": SKU vacío, se omitió.";
+        continue;
     }
 
-    processRowWithCover($db, $data, $rowNum, $inserted, $updated, $coversUpdated, $errors);
+    // Sanitizar
+    $gender = strtolower($data['gender'] ?? 'unisex');
+    if (!in_array($gender, ['hombre', 'mujer', 'unisex']))
+        $gender = 'unisex';
+
+    $status = strtolower($data['status'] ?? 'active');
+    if (!in_array($status, ['active', 'discontinued']))
+        $status = 'active';
+
+    $price = floatval(str_replace([',', '$', ' '], ['', '', ''], $data['price_suggested'] ?? '0'));
+
+    // Normalizar cover_image_url
+    $coverUrl = '';
+    if (!empty($data['cover_image_url'])) {
+        $coverUrl = normalizeDriveUrl($data['cover_image_url']);
+    }
+
+    $batchRows[] = [
+        'sku' => $sku,
+        'name' => $data['name'] ?? $sku,
+        'category' => $data['category'] ?? '',
+        'gender' => $gender,
+        'movement' => $data['movement'] ?? '',
+        'price' => $price,
+        'status' => $status,
+        'archived' => ($status === 'discontinued') ? 1 : 0,
+        'description' => $data['description'] ?? '',
+        'cover_image_url' => $coverUrl,
+    ];
 }
 
 // ============================================================
-// Auto-asignar portadas a productos SIN cover (después de sincronizar)
+// Batch INSERT ... ON DUPLICATE KEY UPDATE (chunks de 500)
+// ============================================================
+$inserted = 0;
+$updated = 0;
+$coversUpdated = 0;
+$totalRows = count($batchRows);
+$chunkSize = 500;
+
+$db->beginTransaction();
+try {
+    // Obtener SKUs existentes de un solo golpe
+    $allSkus = array_column($batchRows, 'sku');
+    $existingSkus = [];
+    if (!empty($allSkus)) {
+        foreach (array_chunk($allSkus, 500) as $skuChunk) {
+            $ph = implode(',', array_fill(0, count($skuChunk), '?'));
+            $stmt = $db->prepare("SELECT sku, cover_image_url FROM products WHERE sku IN ($ph)");
+            $stmt->execute($skuChunk);
+            foreach ($stmt->fetchAll() as $r) {
+                $existingSkus[$r['sku']] = $r['cover_image_url'] ?? '';
+            }
+        }
+    }
+
+    // Batch upsert en chunks
+    foreach (array_chunk($batchRows, $chunkSize) as $chunk) {
+        $placeholders = [];
+        $params = [];
+        foreach ($chunk as $row) {
+            $placeholders[] = '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+            $params[] = $row['sku'];
+            $params[] = $row['name'];
+            $params[] = $row['category'];
+            $params[] = $row['gender'];
+            $params[] = $row['movement'];
+            $params[] = $row['price'];
+            $params[] = $row['status'];
+            $params[] = $row['archived'];
+            $params[] = $row['description'];
+            $params[] = $row['cover_image_url'] ?: null;
+
+            // Contar inserts vs updates
+            if (isset($existingSkus[$row['sku']])) {
+                $updated++;
+                if (!empty($row['cover_image_url']) && $existingSkus[$row['sku']] !== $row['cover_image_url']) {
+                    $coversUpdated++;
+                }
+            } else {
+                $inserted++;
+                if (!empty($row['cover_image_url']))
+                    $coversUpdated++;
+            }
+        }
+
+        $sql = "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url) 
+                VALUES " . implode(', ', $placeholders) . "
+                ON DUPLICATE KEY UPDATE 
+                    name = COALESCE(NULLIF(VALUES(name), ''), name),
+                    category = COALESCE(NULLIF(VALUES(category), ''), category),
+                    gender = VALUES(gender),
+                    movement = COALESCE(NULLIF(VALUES(movement), ''), movement),
+                    price_suggested = IF(VALUES(price_suggested) > 0, VALUES(price_suggested), price_suggested),
+                    status = VALUES(status),
+                    archived = VALUES(archived),
+                    description = COALESCE(NULLIF(VALUES(description), ''), description),
+                    cover_image_url = COALESCE(VALUES(cover_image_url), cover_image_url),
+                    updated_at = NOW()";
+        $db->prepare($sql)->execute($params);
+    }
+    $db->commit();
+} catch (\Exception $e) {
+    $db->rollBack();
+    $errors[] = "Error en batch insert: " . $e->getMessage();
+}
+
+// ============================================================
+// Auto-asignar portadas desde Drive (pre-index completo)
 // Solo si NO hay columna cover_image_url en el sheet
 // ============================================================
 $coversDriveAssigned = 0;
 $coverErrors = '';
 
 if (!$hasCoverColumn) {
-    // Solo intentar Drive si no hay columna en Sheets
     try {
-        set_time_limit(180);
+        set_time_limit(300); // 5 minutos para procesar covers
         require_once __DIR__ . '/../services/GoogleDriveService.php';
         $drive = new GoogleDriveService();
         $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
         $token = $drive->getValidToken($db);
 
         if ($token && $rootFolderId) {
+            // 1) Productos sin cover (hasta 200)
             $noCover = $db->query(
-                "SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = '' LIMIT 5"
+                "SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') LIMIT 200"
             )->fetchAll(PDO::FETCH_ASSOC);
 
             if (!empty($noCover)) {
+                // 2) Pre-index: listar TODOS los archivos de imagen/video en Drive
+                $allDriveFiles = $drive->listAllMediaFiles();
+                $driveFiles = $allDriveFiles['files'] ?? [];
+
+                // 3) Construir mapa de SKU → archivos
+                $skuFileMap = [];
+                foreach ($driveFiles as $file) {
+                    $fileName = pathinfo($file['name'], PATHINFO_FILENAME);
+                    // El nombre de archivo ES el SKU o comienza con el SKU
+                    $skuFileMap[] = $file;
+                }
+
+                // 4) Para cada producto sin cover, buscar match
                 $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
-                $coverStartTime = time();
+                $fileIdsToPublish = [];
+                $updatesQueue = [];
 
                 foreach ($noCover as $prod) {
-                    if ((time() - $coverStartTime) >= 25) {
-                        $coverErrors = "Tiempo límite alcanzado";
-                        break;
-                    }
-                    try {
-                        $allFiles = $drive->findBySku($rootFolderId, $prod['sku']);
-                        $images = array_values(array_filter($allFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/')));
-                        if (!empty($images)) {
-                            $drive->makePublic($images[0]['id']);
-                            $updateStmt->execute(["https://lh3.googleusercontent.com/d/{$images[0]['id']}", $prod['id']]);
-                            $coversDriveAssigned++;
+                    $rootSku = extractRootSku($prod['sku']);
+                    // Buscar en archivos pre-indexados
+                    $matched = [];
+                    foreach ($skuFileMap as $file) {
+                        $fName = pathinfo($file['name'], PATHINFO_FILENAME);
+                        if (skuMatchesFilename($rootSku, $file['name'])) {
+                            $matched[] = $file;
                         }
-                    } catch (Exception $e) {
-                        // Silenciar errores individuales
                     }
+
+                    if (empty($matched))
+                        continue;
+
+                    // Buscar primera imagen
+                    $coverFile = null;
+                    foreach ($matched as $f) {
+                        if (str_starts_with($f['mimeType'] ?? '', 'image/')) {
+                            $coverFile = $f;
+                            break;
+                        }
+                    }
+                    // Fallback: video
+                    if (!$coverFile) {
+                        foreach ($matched as $f) {
+                            if (str_starts_with($f['mimeType'] ?? '', 'video/')) {
+                                $coverFile = $f;
+                                break;
+                            }
+                        }
+                    }
+
+                    if ($coverFile) {
+                        $fileIdsToPublish[] = $coverFile['id'];
+                        $isVideo = str_starts_with($coverFile['mimeType'] ?? '', 'video/');
+                        $coverUrl = "https://lh3.googleusercontent.com/d/{$coverFile['id']}";
+                        if ($isVideo)
+                            $coverUrl = "[VIDEO]{$coverUrl}";
+                        $updatesQueue[] = ['url' => $coverUrl, 'id' => $prod['id']];
+                    }
+                }
+
+                // 5) Hacer públicos en batch (curl_multi)
+                if (!empty($fileIdsToPublish)) {
+                    $drive->makePublicBatch($fileIdsToPublish);
+                }
+
+                // 6) Actualizar DB en batch
+                foreach ($updatesQueue as $upd) {
+                    $updateStmt->execute([$upd['url'], $upd['id']]);
+                    $coversDriveAssigned++;
                 }
             }
         } else {
@@ -165,7 +317,7 @@ jsonResponse([
     'covers_from_drive' => $coversDriveAssigned,
     'has_cover_column' => $hasCoverColumn,
     'errors' => $errors,
-    'total' => $rowNum,
+    'total' => $totalRows,
     'cover_errors' => $coverErrors,
     'message' => buildMessage($inserted, $updated, $coversUpdated, $coversDriveAssigned, $hasCoverColumn),
 ]);

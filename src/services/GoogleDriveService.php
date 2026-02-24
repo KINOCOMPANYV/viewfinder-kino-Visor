@@ -140,6 +140,38 @@ class GoogleDriveService
     }
 
     /**
+     * Lista TODOS los archivos de imagen y video en Drive (búsqueda global, no restringida a carpeta).
+     * Usa paginación automática para recuperar todos los resultados.
+     * Ideal para pre-indexar 3000+ archivos con ~30 API calls en vez de búsquedas individuales.
+     */
+    public function listAllMediaFiles(): array
+    {
+        $allFiles = [];
+        $token = '';
+
+        do {
+            $query = "trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')";
+            $params = [
+                'q' => $query,
+                'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink)',
+                'pageSize' => 1000, // máximo permitido por Drive API
+            ];
+            if ($token)
+                $params['pageToken'] = $token;
+
+            $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
+            $response = $this->httpGet($url);
+            $data = json_decode($response, true) ?: [];
+
+            $files = $data['files'] ?? [];
+            $allFiles = array_merge($allFiles, $files);
+            $token = $data['nextPageToken'] ?? '';
+        } while (!empty($token));
+
+        return ['files' => $allFiles];
+    }
+
+    /**
      * Busca archivos cuyo nombre contenga el SKU.
      * Estrategia optimizada:
      *   1) Búsqueda GLOBAL en todo Drive (un solo API call, sin restricción de carpeta)
