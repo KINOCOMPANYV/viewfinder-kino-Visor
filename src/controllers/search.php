@@ -143,11 +143,23 @@ $totalPages = ceil($total / $perPage);
         <!-- Results count -->
         <p style="color:var(--color-text-muted); font-size:0.9rem; margin-bottom:1rem;">
             <?php if ($isMultiCode): ?>
-                <?= $total ?> de <?= count($multiCodes) ?> código<?= count($multiCodes) !== 1 ? 's' : '' ?> encontrado<?= $total !== 1 ? 's' : '' ?>
+                <?= $total ?> resultado<?= $total !== 1 ? 's' : '' ?> para <?= count($multiCodes) ?> código<?= count($multiCodes) !== 1 ? 's' : '' ?>
                 <?php
-                    $notFound = array_diff($multiCodes, array_column($products, 'sku'));
-                    if (!empty($notFound)): ?>
-                    <br><span style="color:var(--color-danger, #e74c3c); font-size:0.85rem;">⚠️ No encontrados: <?= e(implode(', ', $notFound)) ?></span>
+                    // Verificar cuáles códigos no tuvieron ningún resultado (ni exacto ni hijo)
+                    $allSkus = array_column($products, 'sku');
+                    $sinResultado = [];
+                    foreach ($multiCodes as $code) {
+                        $found = false;
+                        foreach ($allSkus as $sku) {
+                            if (stripos($sku, $code) === 0) {
+                                $found = true;
+                                break;
+                            }
+                        }
+                        if (!$found) $sinResultado[] = $code;
+                    }
+                    if (!empty($sinResultado)): ?>
+                    <br><span style="color:var(--color-warning, #fbbf24); font-size:0.85rem;">Sin resultados para: <?= e(implode(', ', $sinResultado)) ?></span>
                 <?php endif; ?>
             <?php elseif ($q): ?>
                 <?= $total ?> resultado
