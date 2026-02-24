@@ -173,8 +173,8 @@ class GoogleDriveService
         }
 
         // 2) Fallback: búsqueda recursiva (por si la global falla o no tenga permisos)
-        // Timeout de 10s para evitar bloqueo en estructuras profundas
-        return $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 3, microtime(true));
+        // Timeout de 20s, profundidad máx 5 niveles
+        return $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 5, microtime(true), 20.0);
     }
 
 

@@ -68,7 +68,11 @@ if (empty($serverCover)) {
         <?= e($product['sku']) ?> —
         <?= e($product['name']) ?> · Viewfinder
     </title>
+    <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
     <?php if ($serverCover): ?>
         <link rel="preload" as="image" href="<?= e($serverCover) ?>">
     <?php endif; ?>
@@ -116,6 +120,173 @@ if (empty($serverCover)) {
             justify-content: center;
             background: var(--color-bg);
             font-size: 3rem;
+        }
+
+        /* Video thumbnail with real preview */
+        .video-thumb-wrap {
+            position: relative;
+            width: 100%;
+            height: 150px;
+            overflow: hidden;
+            background: #000;
+            cursor: pointer;
+        }
+
+        .video-thumb-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease, filter 0.3s ease;
+        }
+
+        .video-thumb-wrap:hover img {
+            transform: scale(1.05);
+            filter: brightness(0.7);
+        }
+
+        .video-play-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.35);
+            transition: background 0.3s ease;
+        }
+
+        .video-thumb-wrap:hover .video-play-overlay {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .video-play-btn {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .video-thumb-wrap:hover .video-play-btn {
+            transform: scale(1.15);
+            box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .video-play-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: #000;
+            margin-left: 3px;
+        }
+
+        .video-play-label {
+            font-size: 0.68rem;
+            color: rgba(255, 255, 255, 0.85);
+            margin-top: 0.4rem;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Video badge on gallery item */
+        .video-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(248, 113, 113, 0.9);
+            color: #fff;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Video modal / lightbox */
+        .video-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .video-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .video-modal-content {
+            position: relative;
+            width: 90vw;
+            max-width: 960px;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .video-modal-overlay.active .video-modal-content {
+            transform: scale(1);
+        }
+
+        #videoModalPlayer {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 ratio */
+        }
+
+        .video-modal-content iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .video-modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+
+        .video-modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .video-modal-title {
+            position: absolute;
+            bottom: -36px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
         }
 
         .gallery-item .item-actions {
@@ -215,67 +386,54 @@ if (empty($serverCover)) {
             margin-top: 0.25rem;
         }
 
-        /* Lightbox */
-        .lightbox {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.92);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            cursor: zoom-out;
-        }
-
-        .lightbox.active {
+        /* Main image info bar */
+        .main-image-info {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--color-card-bg);
+            border-radius: 0 0 var(--radius) var(--radius);
+            margin-top: -4px;
+            flex-wrap: wrap;
         }
 
-        .lightbox img {
-            max-width: 92vw;
-            max-height: 90vh;
-            border-radius: 8px;
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-            object-fit: contain;
+        .main-image-name {
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
         }
 
-        .lightbox .lb-close {
-            position: absolute;
-            top: 15px;
-            right: 20px;
+        .main-image-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: #25D366;
             color: #fff;
-            font-size: 2rem;
-            cursor: pointer;
-            background: rgba(0, 0, 0, 0.5);
             border: none;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
+            padding: 0.4rem 0.8rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font);
+            white-space: nowrap;
         }
 
-        .lightbox .lb-close:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .lightbox .lb-name {
-            position: absolute;
-            bottom: 20px;
-            color: #fff;
-            font-size: 0.85rem;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 0.5rem 1.5rem;
-            border-radius: 20px;
+        .main-image-download:hover {
+            background: #1fb855;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(37, 211, 102, 0.4);
         }
 
         .main-image img {
-            cursor: zoom-in;
+            cursor: pointer;
             transition: transform 0.2s;
         }
 
@@ -284,7 +442,65 @@ if (empty($serverCover)) {
         }
 
         .gallery-item img {
-            cursor: zoom-in;
+            cursor: pointer;
+        }
+
+        /* Active thumbnail highlight */
+        .gallery-item.gallery-active {
+            outline: 3px solid var(--color-primary);
+            outline-offset: -3px;
+            border-radius: var(--radius);
+        }
+
+        /* Thumbnail strip under main image */
+        .thumb-strip {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            overflow-x: auto;
+            padding-bottom: 0.4rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--color-border) transparent;
+        }
+        .thumb-strip::-webkit-scrollbar { height: 4px; }
+        .thumb-strip::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+
+        .thumb-strip-item {
+            flex-shrink: 0;
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid var(--color-border);
+            background: var(--color-surface-2);
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.2s;
+            position: relative;
+        }
+        .thumb-strip-item:hover {
+            border-color: var(--color-primary);
+            transform: scale(1.08);
+        }
+        .thumb-strip-item.active {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px var(--color-primary-glow);
+        }
+        .thumb-strip-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .thumb-strip-item .thumb-video-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: rgba(248,113,113,0.9);
+            color: #fff;
+            font-size: 0.45rem;
+            font-weight: 700;
+            padding: 1px 3px;
+            border-radius: 3px;
+            text-transform: uppercase;
         }
 
         /* Back to catalog button */
@@ -332,19 +548,6 @@ if (empty($serverCover)) {
 
         /* Mobile responsive for product page */
         @media (max-width: 768px) {
-            .lightbox img {
-                max-width: 96vw;
-                max-height: 80vh;
-            }
-
-            .lightbox .lb-close {
-                top: 10px;
-                right: 10px;
-                width: 36px;
-                height: 36px;
-                font-size: 1.4rem;
-            }
-
             .gallery-grid {
                 grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
                 gap: 0.75rem !important;
@@ -352,6 +555,25 @@ if (empty($serverCover)) {
 
             .media-gallery h2 {
                 font-size: 1rem;
+            }
+
+            .video-modal-content {
+                width: 95vw;
+            }
+
+            .video-modal-close {
+                top: -36px;
+                right: 4px;
+            }
+
+            .video-play-btn {
+                width: 40px;
+                height: 40px;
+            }
+
+            .video-play-btn svg {
+                width: 18px;
+                height: 18px;
             }
         }
     </style>
@@ -379,20 +601,30 @@ if (empty($serverCover)) {
 
             <div class="detail-grid">
                 <!-- Image -->
-                <div class="main-image" id="mainCover" data-sku="<?= e($product['sku']) ?>" <?php if ($serverCover): ?>
-                        data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
-                    <?php if ($serverCover): ?>
-                        <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
-                            decoding="async" onclick="openLightbox(this.src, '<?= e(addslashes($product['name'])) ?>')">
-                    <?php else: ?>
-                        <div class="cover-skeleton"
-                            style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
-                            <div style="text-align:center;color:var(--color-text-muted);">
-                                <div class="spinner" style="display:inline-block;"></div>
-                                <div style="font-size:0.8rem;margin-top:0.5rem;">Cargando imagen…</div>
+                <div>
+                    <div class="main-image" id="mainCover" data-sku="<?= e($product['sku']) ?>" <?php if ($serverCover): ?>
+                            data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
+                        <?php if ($serverCover): ?>
+                            <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
+                                decoding="async" style="cursor:pointer;" onclick="downloadMainImage()">
+                        <?php else: ?>
+                            <div class="cover-skeleton"
+                                style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
+                                <div style="text-align:center;color:var(--color-text-muted);">
+                                    <div class="spinner" style="display:inline-block;"></div>
+                                    <div style="font-size:0.8rem;margin-top:0.5rem;">Cargando imagen…</div>
+                                </div>
                             </div>
-                        </div>
-                    <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                    <div class="main-image-info" id="mainImageInfo">
+                        <span class="main-image-name" id="mainImageName"></span>
+                        <button class="main-image-download" id="mainImageDownload" onclick="downloadMainImage()" style="display:none;">
+                            ⬇️ Descargar imagen
+                        </button>
+                    </div>
+                    <!-- Thumbnail strip -->
+                    <div class="thumb-strip" id="thumbStrip"></div>
                 </div>
 
                 <!-- Info -->
@@ -447,13 +679,6 @@ if (empty($serverCover)) {
                             🎥 Cargando videos...
                         </button>
                     </div>
-                    <button class="btn-whatsapp" style="margin-top:0.75rem;" onclick="shareWhatsApp()">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                            <path
-                                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                        </svg>
-                        Enviar por WhatsApp
-                    </button>
                     <div class="media-count" id="mediaCount"></div>
                 </div>
             </div>
@@ -461,15 +686,42 @@ if (empty($serverCover)) {
             <!-- Media Gallery -->
             <div class="media-gallery" id="mediaGallery" style="display:none;">
                 <h2>📂 Archivos multimedia</h2>
+                <!-- WhatsApp toolbar for gallery -->
+                <div class="search-wa-toolbar" id="galleryWaBar" style="display:none; margin-bottom:1rem;">
+                    <label class="wa-toolbar-select">
+                        <input type="checkbox" id="gallerySelectAll">
+                        <span>Seleccionar todas</span>
+                    </label>
+                    <span id="gallerySelectedCount" class="wa-toolbar-count">0</span>
+                    <button class="wa-toolbar-send" id="btnGalleryWaSend" disabled>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path
+                                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                        </svg>
+                        Enviar por WhatsApp
+                    </button>
+                </div>
                 <div class="gallery-grid" id="galleryGrid"></div>
+            </div>
+        </div>
+
+        <!-- Video Modal -->
+        <div class="video-modal-overlay" id="videoModal" onclick="closeVideoModal(event)">
+            <div class="video-modal-content">
+                <button class="video-modal-close" onclick="closeVideoModal(event, true)">✕</button>
+                <div id="videoModalPlayer"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.25rem;">
+                    <div class="video-modal-title" id="videoModalTitle"></div>
+                    <button id="videoModalDownload" onclick="downloadModalVideo(event)" style="color:var(--color-primary);font-size:0.85rem;background:none;border:1px solid var(--color-primary);border-radius:6px;padding:0.3rem 0.6rem;cursor:pointer;white-space:nowrap;">⬇️ Descargar</button>
+                </div>
             </div>
         </div>
     </section>
 
     <footer class="footer">
         <div class="container">
-            <p>Solo para distribuidores autorizados · Viewfinder Kino Visor ©
-                <?= date('Y') ?>
+            <p>Esta es una app desarrollada por <strong>K GENIUS</strong> · Más información
+                <a href="https://wa.me/573146116450" target="_blank" rel="noopener" style="color:var(--color-gold);text-decoration:underline;">escríbanos</a>
             </p>
         </div>
     </footer>
@@ -483,12 +735,7 @@ if (empty($serverCover)) {
         const IS_VARIANT = <?= $isVariant ? 'true' : 'false' ?>;
         let currentCover = '<?= e($product['cover_image_url']) ?>';
         let mediaFiles = { images: [], videos: [] };
-
-        function shareWhatsApp() {
-            const url = window.location.href;
-            const text = `📦 *${PRODUCT_NAME}*\n🔗 SKU: ${SKU}\n\n📸 Ver fotos y videos:\n${url}`;
-            window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
-        }
+        let allGalleryFiles = [];
 
         function copyDescription() {
             const text = document.getElementById('descriptionText').innerText;
@@ -548,47 +795,82 @@ if (empty($serverCover)) {
             const main = document.getElementById('mainCover');
             if (!main) return;
 
-            // Si ya tiene cover de BD, usarla
+            // Helper: show video as main cover with play overlay
+            function showVideoCover() {
+                const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
+                if (vid) {
+                    const idx = files.indexOf(vid);
+                    const thumbUrl = vid.thumbnailLink
+                        ? vid.thumbnailLink.replace(/=s\d+/, '=s800')
+                        : '';
+                    const thumbImg = thumbUrl
+                        ? `<img src="${thumbUrl}" alt="${vid.name}" style="width:100%;height:100%;object-fit:cover;">`
+                        : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
+                    main.innerHTML = `
+                        <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
+                            ${thumbImg}
+                            <div class="video-play-overlay">
+                                <div class="video-play-btn" style="width:64px;height:64px;">
+                                    <svg viewBox="0 0 24 24" style="width:28px;height:28px;"><path d="M8 5v14l11-7z"/></svg>
+                                </div>
+                                <span class="video-play-label" style="font-size:0.85rem;">Reproducir video</span>
+                            </div>
+                            <span class="video-badge" style="font-size:0.75rem;padding:0.25rem 0.6rem;">VIDEO</span>
+                        </div>`;
+                    document.getElementById('mainImageName').textContent = vid.name;
+                    return;
+                }
+                main.innerHTML = '📷';
+            }
+
+            // Helper: try Drive images, fallback to video
+            function tryDriveImages() {
+                const img = files.find(f => (f.mimeType || '').startsWith('image/'));
+                if (img) {
+                    const url = img.thumbnailLink
+                        ? img.thumbnailLink.replace(/=s\d+/, '=s600')
+                        : `https://lh3.googleusercontent.com/d/${img.id}=s600`;
+                    setCoverImage(main, url, img.id, img.name, showVideoCover);
+                    return;
+                }
+                showVideoCover();
+            }
+
+            // 1) Si ya tiene cover de BD, usarla (con fallback a Drive si falla)
             if (main.dataset.cover) {
-                setCoverImage(main, main.dataset.cover);
+                setCoverImage(main, main.dataset.cover, null, null, tryDriveImages);
                 return;
             }
 
-            // Buscar primera imagen de Drive
-            const img = files.find(f => (f.mimeType || '').startsWith('image/'));
-            if (img) {
-                const url = img.thumbnailLink
-                    ? img.thumbnailLink.replace(/=s\d+/, '=s800')
-                    : `https://lh3.googleusercontent.com/d/${img.id}=s800`;
-                setCoverImage(main, url, img.id);
-                return;
-            }
-
-            // Fallback: video thumbnail
-            const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
-            if (vid && vid.thumbnailLink) {
-                setCoverImage(main, vid.thumbnailLink.replace(/=s\d+/, '=s800'));
-                return;
-            }
-
-            main.innerHTML = '📷';
+            // 2) Buscar primera imagen de Drive (con fallback a video)
+            tryDriveImages();
         }
 
-        function setCoverImage(container, url, fileId) {
+        function setCoverImage(container, url, fileId, fileName, onErrorFallback) {
             const imgEl = document.createElement('img');
             imgEl.alt = PRODUCT_NAME;
             imgEl.style.opacity = '0';
             imgEl.style.transition = 'opacity 0.4s ease';
-            imgEl.onclick = () => openLightbox(
-                fileId ? `https://lh3.googleusercontent.com/d/${fileId}=s1200` : url,
-                PRODUCT_NAME
-            );
+            imgEl.onclick = () => downloadMainImage();
             imgEl.onload = () => {
                 container.innerHTML = '';
                 container.appendChild(imgEl);
                 requestAnimationFrame(() => imgEl.style.opacity = '1');
+                // Update tracking vars and info bar
+                if (fileId) {
+                    currentMainFileId = fileId;
+                    currentMainFileName = fileName || '';
+                    document.getElementById('mainImageName').textContent = fileName || '';
+                    document.getElementById('mainImageDownload').style.display = '';
+                }
             };
-            imgEl.onerror = () => { container.innerHTML = '📷'; };
+            imgEl.onerror = () => {
+                if (typeof onErrorFallback === 'function') {
+                    onErrorFallback();
+                } else {
+                    container.innerHTML = '📷';
+                }
+            };
             imgEl.src = url;
         }
 
@@ -623,36 +905,224 @@ if (empty($serverCover)) {
             count.textContent = `${imgCount} foto(s) · ${vidCount} video(s) en Drive`;
         }
 
+        // Show file in main image area when clicking a thumbnail
+        function showInMain(idx) {
+            const f = allGalleryFiles[idx];
+            if (!f) return;
+            const isVideo = (f.mimeType || '').startsWith('video/');
+
+            const main = document.getElementById('mainCover');
+
+            if (isVideo) {
+                // Show video preview thumbnail in main area with play overlay
+                const videoThumb = f.thumbnailLink
+                    ? f.thumbnailLink.replace(/=s\d+/, '=s600')
+                    : '';
+                const thumbImg = videoThumb
+                    ? `<img src="${videoThumb}" alt="${f.name}" style="width:100%;height:100%;object-fit:contain;">`
+                    : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style="font-size:4rem;opacity:0.3">🎬</span></div>`;
+                main.innerHTML = `
+                    <div style="position:relative;width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
+                        ${thumbImg}
+                        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);">
+                            <div style="width:64px;height:64px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+                                <svg viewBox="0 0 24 24" width="28" height="28" fill="#000"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                            <span style="font-size:0.8rem;color:rgba(255,255,255,0.85);margin-top:0.5rem;text-shadow:0 1px 4px rgba(0,0,0,0.7);">Reproducir video</span>
+                        </div>
+                    </div>`;
+                // Update info bar
+                document.getElementById('mainImageName').textContent = f.name;
+                document.getElementById('mainImageDownload').style.display = 'none';
+            } else {
+                const url = f.thumbnailLink
+                    ? f.thumbnailLink.replace(/=s\d+/, '=s600')
+                    : `https://lh3.googleusercontent.com/d/${f.id}=s600`;
+                setCoverImage(main, url, f.id, f.name, () => { main.innerHTML = '📷'; });
+            }
+
+            // Highlight active thumbnail
+            document.querySelectorAll('.thumb-strip-item').forEach((el, i) => {
+                el.classList.toggle('active', i === idx);
+            });
+            document.querySelectorAll('.gallery-item').forEach((el, i) => {
+                el.classList.toggle('gallery-active', i === idx);
+            });
+        }
+
+        // Global state for video modal (redundant storage)
+        window.KINO_VIDEO_STATE = { id: '', name: '' };
+
+        function openVideoModal(idx) {
+            const f = allGalleryFiles[idx];
+            if (!f) return;
+            openVideoModalDirect(f.id, f.name);
+        }
+
+        function openVideoModalDirect(fileId, fileName) {
+            console.log('--- OPEN VIDEO MODAL ---', { fileId, fileName });
+            if (!fileId) {
+                console.error('Error: openVideoModalDirect llamado sin fileId');
+                return;
+            }
+
+            const modal = document.getElementById('videoModal');
+            const player = document.getElementById('videoModalPlayer');
+            const title = document.getElementById('videoModalTitle');
+            const dlBtn = document.getElementById('videoModalDownload');
+
+            // 1. Store in global object
+            window.KINO_VIDEO_STATE = { id: fileId, name: fileName || '' };
+
+            // 2. Store in sessionStorage (cache backup)
+            try {
+                sessionStorage.setItem('last_video_id', fileId);
+                sessionStorage.setItem('last_video_name', fileName || '');
+            } catch(e) {}
+
+            // 3. Store in button attributes
+            if (dlBtn) {
+                dlBtn.setAttribute('data-file-id', fileId);
+                dlBtn.setAttribute('data-file-name', fileName || '');
+            }
+
+            player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>`;
+            title.textContent = fileName || '';
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                modal.querySelector('.video-modal-content').style.transform = 'scale(1)';
+            }, 10);
+        }
+
+        function closeVideoModal(e, force) {
+            if (!force && e.target !== e.currentTarget) return;
+            const modal = document.getElementById('videoModal');
+            const player = document.getElementById('videoModalPlayer');
+            modal.querySelector('.video-modal-content').style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                modal.classList.remove('active');
+                player.innerHTML = '';
+                document.body.style.overflow = '';
+            }, 200);
+        }
+
+        function downloadModalVideo(e) {
+            const dlBtn = document.getElementById('videoModalDownload');
+
+            // Try reading from 3 sources
+            let fid = window.KINO_VIDEO_STATE.id;
+            let fname = window.KINO_VIDEO_STATE.name;
+
+            if (!fid) {
+                fid = dlBtn ? dlBtn.getAttribute('data-file-id') : null;
+                fname = dlBtn ? dlBtn.getAttribute('data-file-name') : '';
+            }
+
+            if (!fid) {
+                fid = sessionStorage.getItem('last_video_id');
+                fname = sessionStorage.getItem('last_video_name');
+            }
+
+            console.log('--- ATTEMPT DOWNLOAD ---', { fid, fname, global: window.KINO_VIDEO_STATE.id, attr: dlBtn.getAttribute('data-file-id') });
+
+            if (fid && fid !== 'undefined' && fid !== 'null' && fid !== '') {
+                downloadFile(fid, fname, e);
+            } else {
+                console.error('CRITICAL: No video ID found in any storage!');
+                alert('Error: No se ha detectado el ID del video.\n\nPor favor intenta esto:\n1. Cierra el video.\n2. Presiona Ctrl+F5 (o recarga la página).\n3. Abre el video de nuevo.');
+            }
+        }
+
+        // Download file via proxy — simple way for browser to handle large files
+        function downloadFile(fileId, fileName, evt) {
+            if (!fileId || fileId === 'undefined') {
+                alert('Error: ID de archivo no disponible');
+                return;
+            }
+            const btn = evt && evt.target ? evt.target : null;
+            if (btn) {
+                const originalText = btn.textContent;
+                btn.textContent = '⏳ Iniciando descarga...';
+                btn.disabled = true;
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            }
+            // Navegar directamente al proxy — el navegador gestiona el stream a disco
+            window.location.assign('/api/download/' + fileId);
+        }
+
         function renderGallery(files) {
             if (files.length === 0) return;
 
             const gallery = document.getElementById('mediaGallery');
             const grid = document.getElementById('galleryGrid');
             gallery.style.display = 'block';
+            allGalleryFiles = files;
 
-            grid.innerHTML = files.map(f => {
+            // Build thumbnail strip
+            const strip = document.getElementById('thumbStrip');
+            strip.innerHTML = files.map((f, idx) => {
                 const isImage = (f.mimeType || '').startsWith('image/');
                 const isVideo = (f.mimeType || '').startsWith('video/');
-                const viewUrl = f.webViewLink || '#';
-                const downloadUrl = f.webContentLink || viewUrl;
+                let thumbSrc = '';
+                if (isImage) {
+                    thumbSrc = f.thumbnailLink
+                        ? f.thumbnailLink.replace(/=s\d+/, '=s120')
+                        : `https://lh3.googleusercontent.com/d/${f.id}=s120`;
+                } else if (isVideo && f.thumbnailLink) {
+                    thumbSrc = f.thumbnailLink.replace(/=s\d+/, '=s120');
+                }
+                const imgTag = thumbSrc
+                    ? `<img src="${thumbSrc}" alt="${f.name}" loading="lazy">`
+                    : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.5rem;">📄</div>`;
+                const badge = isVideo ? '<span class="thumb-video-badge">▶</span>' : '';
+                return `<div class="thumb-strip-item" onclick="showInMain(${idx})" title="${f.name}">${imgTag}${badge}</div>`;
+            }).join('');
+
+            grid.innerHTML = files.map((f, idx) => {
+                const isImage = (f.mimeType || '').startsWith('image/');
+                const isVideo = (f.mimeType || '').startsWith('video/');
+                const downloadUrl = f.webContentLink || f.webViewLink || '#';
 
                 let mediaHtml;
                 if (isImage) {
-                    const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
                     const thumbUrl = f.thumbnailLink
-                        ? f.thumbnailLink.replace(/=s\d+/, '=s400')
-                        : `https://lh3.googleusercontent.com/d/${f.id}=s400`;
-                    mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="openLightbox('${fullUrl}', '${f.name.replace(/'/g, '')}')">`;
+                        ? f.thumbnailLink.replace(/=s\d+/, '=s200')
+                        : `https://lh3.googleusercontent.com/d/${f.id}=s200`;
+                    mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" style="cursor:pointer;" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="showInMain(${idx})">`;
                 } else if (isVideo) {
-                    mediaHtml = `<div class="video-embed" style="width:100%;height:150px;position:relative;background:#000;cursor:pointer;" onclick="this.innerHTML='<iframe src=\\'https://drive.google.com/file/d/${f.id}/preview\\' width=\\'100%\\' height=\\'150\\' frameborder=\\'0\\' allow=\\'autoplay\\' allowfullscreen></iframe>'">
-                        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;">
-                            <span style="font-size:2.5rem;">▶️</span>
-                            <span style="font-size:0.7rem;margin-top:0.3rem;opacity:0.7;">Click para reproducir</span>
+                    const videoThumb = f.thumbnailLink
+                        ? f.thumbnailLink.replace(/=s\d+/, '=s300')
+                        : '';
+                    const thumbContent = videoThumb
+                        ? `<img src="${videoThumb}" alt="${f.name}" loading="lazy">`
+                        : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:2.5rem;opacity:0.3'>🎬</span></div>`;
+                    mediaHtml = `<div class="video-thumb-wrap" onclick="openVideoModal(${idx})">
+                        ${thumbContent}
+                        <div class="video-play-overlay">
+                            <div class="video-play-btn">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                            <span class="video-play-label">Reproducir</span>
                         </div>
-                    </div>`;
+                        <span class="video-badge">VIDEO</span>
+                    </div>
+                    <button onclick="event.stopPropagation();downloadFile('${f.id}','${f.name.replace(/'/g,'')}',event)" style="display:block;width:100%;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);background:none;border:none;cursor:pointer;">⬇️ Descargar video</button>`;
                 } else {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
+
+                // Checkbox for images AND videos (selectable media)
+                const checkHtml = (isImage || isVideo) ? `
+                    <label class="search-check-footer">
+                        <input type="checkbox" class="gallery-check" data-index="${idx}" data-file-id="${f.id}" data-name="${f.name.replace(/"/g, '')}" data-type="${isVideo ? 'video' : 'image'}">
+                        <span class="search-check-icon">✓</span>
+                        <span class="search-check-text">Seleccionar</span>
+                    </label>` : '';
 
                 return `
                     <div class="gallery-item" data-file-id="${f.id}">
@@ -660,15 +1130,12 @@ if (empty($serverCover)) {
                         <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">
                             ${f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name}
                         </div>
-                        <div class="item-actions">
-                            <a href="${viewUrl}" target="_blank" class="btn btn-sm btn-secondary">👁️ Ver</a>
-                            <a href="${downloadUrl}" target="_blank" class="btn btn-sm btn-primary">⬇️</a>
-                        </div>
+                        ${checkHtml}
                     </div>
                 `;
             }).join('');
 
-            // Intersection Observer para lazy-load de thumbnails de galería
+            // Lazy-load thumbnails
             const lazyObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
@@ -686,6 +1153,99 @@ if (empty($serverCover)) {
             grid.querySelectorAll('img.gallery-lazy[data-src]').forEach(img => {
                 lazyObserver.observe(img);
             });
+
+            // --- Gallery WhatsApp selection ---
+            const waBar = document.getElementById('galleryWaBar');
+            const selectAllCb = document.getElementById('gallerySelectAll');
+            const countEl = document.getElementById('gallerySelectedCount');
+            const btnSend = document.getElementById('btnGalleryWaSend');
+            const checks = grid.querySelectorAll('.gallery-check');
+
+            if (checks.length > 0) waBar.style.display = '';
+
+            function updateGalleryCount() {
+                const sel = grid.querySelectorAll('.gallery-check:checked').length;
+                countEl.textContent = sel;
+                btnSend.disabled = sel === 0;
+                selectAllCb.checked = sel === checks.length && checks.length > 0;
+                selectAllCb.indeterminate = sel > 0 && sel < checks.length;
+            }
+
+            checks.forEach(cb => cb.addEventListener('change', updateGalleryCount));
+            selectAllCb.addEventListener('change', () => {
+                checks.forEach(cb => cb.checked = selectAllCb.checked);
+                updateGalleryCount();
+            });
+
+            btnSend.addEventListener('click', async () => {
+                const sel = [];
+                grid.querySelectorAll('.gallery-check:checked').forEach(cb => {
+                    const f = allGalleryFiles[parseInt(cb.dataset.index)];
+                    if (f) sel.push(f);
+                });
+                if (sel.length === 0) return;
+                if (sel.length > 10) {
+                    alert('⚠️ Solo se pueden enviar 10 archivos a la vez.\n\nPor favor deselecciona algunos.');
+                    return;
+                }
+
+                const selImages = sel.filter(f => (f.mimeType || '').startsWith('image/'));
+                const selVideos = sel.filter(f => (f.mimeType || '').startsWith('video/'));
+
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile && navigator.canShare && navigator.share) {
+                    // Mobile: share files as blobs (images + videos)
+                    btnSend.disabled = true;
+                    btnSend.textContent = '⏳ Preparando archivos...';
+                    try {
+                        const fileObjs = (await Promise.all(sel.map(async (f, i) => {
+                            try {
+                                const isImg = (f.mimeType || '').startsWith('image/');
+                                const isVid = (f.mimeType || '').startsWith('video/');
+                                if (isImg) {
+                                    const imgUrl = `https://lh3.googleusercontent.com/d/${f.id}=s800`;
+                                    const r = await fetch(imgUrl, { mode: 'cors' });
+                                    const b = await r.blob();
+                                    const ext = (f.name.match(/\.[^.]+$/) || ['.jpg'])[0];
+                                    return new File([b], f.name || `imagen_${i+1}${ext}`, { type: b.type || 'image/jpeg' });
+                                } else if (isVid) {
+                                    const r = await fetch(`/api/download/${f.id}`);
+                                    const b = await r.blob();
+                                    return new File([b], f.name || `video_${i+1}.mp4`, { type: b.type || 'video/mp4' });
+                                }
+                            } catch { return null; }
+                            return null;
+                        }))).filter(Boolean);
+                        if (fileObjs.length > 0) {
+                            const sd = { files: fileObjs };
+                            if (navigator.canShare(sd)) { await navigator.share(sd); resetGalleryBtn(); return; }
+                        }
+                    } catch (e) { if (e.name === 'AbortError') { resetGalleryBtn(); return; } }
+                    resetGalleryBtn();
+                }
+
+                // Fallback (desktop): open links text
+                let text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n';
+                text += '🔗 Ver producto: ' + location.href + '\n\n';
+                if (selImages.length > 0) {
+                    text += '📸 *Imágenes (' + selImages.length + '):*\n\n';
+                    selImages.forEach((f, i) => {
+                        text += (i + 1) + '. https://drive.google.com/uc?export=view&id=' + f.id + '\n\n';
+                    });
+                }
+                if (selVideos.length > 0) {
+                    text += '🎬 *Videos (' + selVideos.length + '):*\n\n';
+                    selVideos.forEach((f, i) => {
+                        text += (i + 1) + '. ' + f.name + '\n' + location.origin + '/api/download/' + f.id + '\n\n';
+                    });
+                }
+                window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+            });
+
+            function resetGalleryBtn() {
+                btnSend.disabled = false;
+                btnSend.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Enviar por WhatsApp';
+            }
         }
 
         function downloadMedia(type) {
@@ -718,7 +1278,7 @@ if (empty($serverCover)) {
                     currentCover = imageUrl;
                     // Update main image
                     const mainImg = document.querySelector('.main-image');
-                    mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}">`;
+                    mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}" style="cursor:pointer;" onclick="downloadMainImage()">`;
 
                     // Reset all cover buttons
                     document.querySelectorAll('.btn-set-cover').forEach(b => {
@@ -743,28 +1303,42 @@ if (empty($serverCover)) {
 
         // Init
         loadMedia();
-        function openLightbox(url, name) {
-            const lb = document.getElementById('lightbox');
-            document.getElementById('lb-img').src = url;
-            document.getElementById('lb-name').textContent = name;
-            lb.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-        function closeLightbox() {
-            const lb = document.getElementById('lightbox');
-            lb.classList.remove('active');
-            document.getElementById('lb-img').src = '';
-            document.body.style.overflow = '';
-        }
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
-    </script>
+        let currentMainFileId = null;
+        let currentMainFileName = '';
 
-    <!-- Lightbox -->
-    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-        <button class="lb-close" onclick="closeLightbox()">✕</button>
-        <img id="lb-img" src="" alt="Preview">
-        <div class="lb-name" id="lb-name"></div>
-    </div>
+        // Note: showInMain, openVideoModal, closeVideoModal are defined above (lines ~909-1009)
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeVideoModal(e, true);
+        });
+
+        // Download the current main image
+        function downloadMainImage() {
+            if (!currentMainFileId) return;
+            const url = `https://lh3.googleusercontent.com/d/${currentMainFileId}=s1200`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentMainFileName || 'image.jpg';
+            a.target = '_blank';
+            // Blob download for mobile support
+            fetch(url, { mode: 'cors' })
+                .then(r => r.blob())
+                .then(blob => {
+                    const blobUrl = URL.createObjectURL(blob);
+                    a.href = blobUrl;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                })
+                .catch(() => {
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+        }
+    </script>
 
 </body>
 

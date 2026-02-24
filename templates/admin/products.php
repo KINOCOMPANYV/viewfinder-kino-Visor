@@ -5,9 +5,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Productos · Viewfinder Admin</title>
+    <style>
+        body {
+            background: #0a0a0f;
+            color: #e8e8f0
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print"
+        onload="this.media='all'">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         /* Inline edit */
+        /* Toggle switch */
+        .toggle-switch { position:relative; display:inline-block; width:36px; height:20px; cursor:pointer; }
+        .toggle-switch input { opacity:0; width:0; height:0; }
+        .toggle-slider { position:absolute; inset:0; background:#444; border-radius:20px; transition:0.3s; }
+        .toggle-slider::before { content:''; position:absolute; height:14px; width:14px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.3s; }
+        .toggle-switch input:checked + .toggle-slider { background:var(--color-success, #22c55e); }
+        .toggle-switch input:checked + .toggle-slider::before { transform:translateX(16px); }
         .editable {
             cursor: pointer;
             padding: 0.25rem 0.4rem;
@@ -188,7 +206,7 @@
                             <th>Categoría</th>
                             <th>Género</th>
                             <th>Precio</th>
-                            <th>Estado</th>
+                            <th>Activo</th>
                             <th>Actualizado</th>
                             <th>Acciones</th>
                         </tr>
@@ -224,15 +242,13 @@
                                         <?= $p['price_suggested'] > 0 ? formatPrice($p['price_suggested']) : '—' ?>
                                     </span>
                                 </td>
-                                <td>
-                                    <span class="editable" data-field="status" data-value="<?= e($p['status']) ?>"
-                                        data-type="select" data-options="active,discontinued" onclick="startEdit(this)">
-                                        <?php if ($p['status'] === 'active'): ?>
-                                            <span class="badge badge-active">Activo</span>
-                                        <?php else: ?>
-                                            <span class="badge badge-discontinued">Descont.</span>
-                                        <?php endif; ?>
-                                    </span>
+                                <td style="text-align:center;">
+                                    <label class="toggle-switch"
+                                        title="<?= $p['archived'] ? 'Archivado (oculto)' : 'Activo (visible)' ?>">
+                                        <input type="checkbox" <?= $p['archived'] ? '' : 'checked' ?>
+                                            onchange="toggleArchived(this, <?= $p['id'] ?>)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
                                 </td>
                                 <td style="color:var(--color-text-dim); font-size:0.8rem;">
                                     <?= date('d/m/y', strtotime($p['updated_at'])) ?>
@@ -424,10 +440,9 @@
                     el.dataset.value = newValue;
 
                     // Render display value
-                    if (field === 'status') {
-                        el.innerHTML = newValue === 'active'
-                            ? '<span class="badge badge-active">Activo</span>'
-                            : '<span class="badge badge-discontinued">Descont.</span>';
+                    if (field === 'archived') {
+                        // Toggle is handled separately
+                        void (0);
                     } else if (field === 'price_suggested') {
                         const num = parseFloat(newValue);
                         el.textContent = num > 0 ? '$' + num.toLocaleString() : '—';
@@ -455,6 +470,36 @@
 
             el.classList.remove('saving');
             el.setAttribute('onclick', 'startEdit(this)');
+        }
+        async function toggleArchived(checkbox, productId) {
+            const archived = checkbox.checked ? 0 : 1;
+            const label = checkbox.closest('.toggle-switch');
+            label.style.opacity = '0.5';
+
+            const form = new FormData();
+            form.append('id', productId);
+            form.append('field', 'archived');
+            form.append('value', archived);
+
+            try {
+                const resp = await fetch('/admin/product/update', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': CSRF },
+                    body: form
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    label.title = archived ? 'Archivado (oculto)' : 'Activo (visible)';
+                    showToast(archived ? '📦 Producto archivado' : '✅ Producto activo');
+                } else {
+                    checkbox.checked = !checkbox.checked;
+                    showToast(data.error || 'Error al guardar', 'error');
+                }
+            } catch (e) {
+                checkbox.checked = !checkbox.checked;
+                showToast('Error de conexión', 'error');
+            }
+            label.style.opacity = '1';
         }
     </script>
 </body>

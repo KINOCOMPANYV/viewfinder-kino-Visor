@@ -16,7 +16,7 @@ $results = [];
 // 1) Match exacto de SKU
 $stmt = $db->prepare(
     "SELECT sku, name, category, cover_image_url FROM products 
-     WHERE status = 'active' AND sku = ? 
+     WHERE archived = 0 AND sku = ? 
      LIMIT 1"
 );
 $stmt->execute([$q]);
@@ -25,7 +25,7 @@ $exact = $stmt->fetchAll();
 // 2) LIKE parcial (SKU o nombre)
 $stmt = $db->prepare(
     "SELECT sku, name, category, cover_image_url FROM products 
-     WHERE status = 'active' 
+     WHERE archived = 0 
        AND (sku LIKE ? OR name LIKE ?)
        AND sku != ?
      ORDER BY sku ASC 

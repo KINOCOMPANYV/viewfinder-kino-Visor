@@ -10,6 +10,18 @@ require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/src/helpers.php';
 
+// ============================================================
+// CORS — permitir llamadas desde apps externas (ej. Poedagar SPA)
+// ============================================================
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 // Obtener la ruta antes de auto-migrar
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
@@ -87,6 +99,12 @@ if (preg_match('#^/producto/([^/]+)$#', $uri, $matches)) {
 if ($uri === '/api/search') {
     // API de búsqueda (para autocomplete AJAX)
     include __DIR__ . '/src/controllers/api_search.php';
+    exit;
+}
+
+if ($uri === '/api/batch-search' && $method === 'POST') {
+    // API de búsqueda por lote
+    include __DIR__ . '/src/controllers/api_batch_search.php';
     exit;
 }
 
@@ -184,9 +202,21 @@ if ($uri === '/admin/media/sync-covers' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/media/visibility' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_media_visibility.php';
+    exit;
+}
+
 if ($uri === '/admin/product/update' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_product_update.php';
+    exit;
+}
+
+if ($uri === '/admin/cache/clear' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_cache_clear.php';
     exit;
 }
 
@@ -206,17 +236,39 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     $db = getDB();
     $freshRequested = !empty($_GET['fresh']);
 
+    // Helper: filter out files hidden via drive_cache.visible_publico
+    function filterHiddenFiles(PDO $db, array $files): array
+    {
+        if (empty($files))
+            return $files;
+        $ids = array_column($files, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        try {
+            $stmt = $db->prepare("SELECT file_id FROM drive_cache WHERE file_id IN ({$placeholders}) AND visible_publico = 0");
+            $stmt->execute($ids);
+            $hiddenIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            if (!empty($hiddenIds)) {
+                $hiddenSet = array_flip($hiddenIds);
+                $files = array_values(array_filter($files, fn($f) => !isset($hiddenSet[$f['id']])));
+            }
+        } catch (Exception $e) {
+            // drive_cache table might not exist yet, skip filtering
+        }
+        return $files;
+    }
+
     // === CACHÉ: verificar si hay respuesta en caché (TTL 5 min) ===
     if (!$freshRequested) {
         try {
             $cacheStmt = $db->prepare(
                 "SELECT files_json, root_sku FROM media_search_cache 
-                 WHERE sku = ? AND cached_at > NOW() - INTERVAL 5 MINUTE"
+                 WHERE sku = ? AND cached_at > NOW() - INTERVAL 30 MINUTE"
             );
             $cacheStmt->execute([$sku]);
             $cached = $cacheStmt->fetch();
             if ($cached) {
                 $files = json_decode($cached['files_json'], true) ?: [];
+                $files = filterHiddenFiles($db, $files);
                 jsonResponse([
                     'files' => $files,
                     'sku' => $sku,
@@ -267,6 +319,9 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
             }
         }
 
+        // Filter hidden files before returning
+        $files = filterHiddenFiles($db, $files);
+
         jsonResponse([
             'files' => $files,
             'sku' => $sku,
@@ -277,6 +332,80 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     } else {
         jsonResponse(['files' => [], 'error' => 'Drive not connected'], 503);
     }
+}
+
+// ============================================================
+// DOWNLOAD PROXY — descarga directa de archivos de Drive
+// GET /api/download/{fileId}
+// Hace proxy autenticado con Drive API para que el usuario
+// reciba el archivo sin pasar por la página de confirmación.
+// ============================================================
+
+if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
+    require_once __DIR__ . '/src/services/GoogleDriveService.php';
+
+    $fileId = $matches[1];
+    $db = getDB();
+    $drive = new GoogleDriveService();
+    $token = $drive->getValidToken($db);
+
+    if (!$token) {
+        http_response_code(503);
+        echo 'Drive not connected';
+        exit;
+    }
+
+    // 1) Get file metadata (name + mimeType)
+    $metaUrl = "https://www.googleapis.com/drive/v3/files/{$fileId}?fields=name,mimeType,size";
+    $ch = curl_init($metaUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
+    ]);
+    $metaJson = curl_exec($ch);
+    curl_close($ch);
+    $meta = json_decode($metaJson, true);
+
+    if (empty($meta['name'])) {
+        http_response_code(404);
+        echo 'File not found';
+        exit;
+    }
+
+    $fileName = $meta['name'];
+    $mimeType = $meta['mimeType'] ?? 'application/octet-stream';
+    $fileSize = $meta['size'] ?? 0;
+
+    // 2) Stream file content via Drive API alt=media
+    $downloadUrl = "https://www.googleapis.com/drive/v3/files/{$fileId}?alt=media";
+
+    // Optimizar para archivos grandes: sin límite de tiempo y sin buffering
+    set_time_limit(0);
+    ignore_user_abort(true);
+    while (ob_get_level() > 0)
+        ob_end_flush();
+
+    header('Content-Type: ' . $mimeType);
+    header('Content-Disposition: attachment; filename="' . addslashes($fileName) . '"');
+    if ($fileSize) {
+        header('Content-Length: ' . $fileSize);
+    }
+    header('Cache-Control: private, max-age=0, no-cache');
+    header('Pragma: no-cache');
+
+    $ch = curl_init($downloadUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_WRITEFUNCTION => function ($ch, $data) {
+            echo $data;
+            flush();
+            return strlen($data);
+        },
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
+    exit;
 }
 
 // ============================================================
@@ -331,7 +460,9 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $toSearch = array_slice(array_values($uncachedSkus), 0, 10);
 
             foreach ($toSearch as $sku) {
-                $rootSku = extractRootSku($sku);
+                // Strip file extension from SKU for Drive search
+                $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $sku);
+                $rootSku = extractRootSku($cleanSku);
                 $files = $drive->findBySku($folderId, $rootSku);
 
                 if (!empty($files)) {

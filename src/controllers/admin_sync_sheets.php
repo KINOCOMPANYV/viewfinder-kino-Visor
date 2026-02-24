@@ -85,68 +85,67 @@ for ($i = 1; $i < count($lines); $i++) {
     foreach ($colMap as $col => $idx) {
         $data[$col] = isset($row[$idx]) ? trim($row[$idx]) : '';
     }
+    $data['_sheet_row'] = $i; // posición real en la hoja
     processRow($db, $data, $rowNum, $inserted, $updated, $errors);
 }
 
 // ============================================================
-// Auto-asignar portadas a productos SIN cover (después de sincronizar)
-// Prefiere match exacto, luego prefijo+separador. LIMITADO a 5 + 30s.
+// Auto-vincular portadas: SOLO match exacto por nombre de archivo.
+// El nombre del archivo en Drive (sin extensión) debe ser EXACTO al SKU.
+// Ejemplo: archivo "839-5.jpg" → SKU "839-5" ✅
+//          archivo "839-5F1.jpg" → SKU "839-5" ❌ (no es match exacto)
 // ============================================================
 $coversAssigned = 0;
 $coverErrors = '';
 try {
-    $coverStartTime = time();
-    $coverTimeLimit = 30;
-    set_time_limit(180);
+    set_time_limit(300);
     require_once __DIR__ . '/../services/GoogleDriveService.php';
     $drive = new GoogleDriveService();
     $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
     $token = $drive->getValidToken($db);
 
     if ($token && $rootFolderId) {
-        $noCover = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = '' LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
+        $noCover = $db->query(
+            "SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0"
+        )->fetchAll(PDO::FETCH_ASSOC);
 
         if (!empty($noCover)) {
             $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 
             foreach ($noCover as $prod) {
-                if ((time() - $coverStartTime) >= $coverTimeLimit) {
-                    $coverErrors = "Tiempo límite alcanzado";
-                    break;
-                }
+                $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
 
                 try {
-                    $allFiles = $drive->findBySku($rootFolderId, $prod['sku']);
+                    $allFiles = $drive->findBySku($rootFolderId, $cleanSku);
 
-                    // Clasificar: exactos vs compatibles (prefijo + separador)
-                    $exact = $compatible = [];
+                    // SOLO match exacto: nombre sin extensión === SKU limpio
+                    $exactImages = [];
+                    $exactVideos = [];
                     foreach ($allFiles as $f) {
                         $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
-                        if (strcasecmp($nameOnly, $prod['sku']) === 0) {
-                            $exact[] = $f;
-                        } elseif (
-                            stripos($nameOnly, $prod['sku']) === 0
-                            && strlen($nameOnly) > strlen($prod['sku'])
-                            && !ctype_alnum($nameOnly[strlen($prod['sku'])])
-                        ) {
-                            $compatible[] = $f;
-                        }
+                        if (strcasecmp($nameOnly, $cleanSku) !== 0)
+                            continue; // skip non-exact
+
+                        $mime = $f['mimeType'] ?? '';
+                        if (str_starts_with($mime, 'image/'))
+                            $exactImages[] = $f;
+                        elseif (str_starts_with($mime, 'video/'))
+                            $exactVideos[] = $f;
                     }
 
-                    $candidates = !empty($exact) ? $exact : $compatible;
-                    if (empty($candidates))
-                        continue;
-
-                    $images = array_values(array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/')));
-                    $videos = array_values(array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/')));
-
-                    if (!empty($images)) {
-                        $drive->makePublic($images[0]['id']);
-                        $updateStmt->execute(["https://lh3.googleusercontent.com/d/{$images[0]['id']}", $prod['id']]);
+                    if (!empty($exactImages)) {
+                        $drive->makePublic($exactImages[0]['id']);
+                        $updateStmt->execute([
+                            "https://lh3.googleusercontent.com/d/{$exactImages[0]['id']}",
+                            $prod['id']
+                        ]);
                         $coversAssigned++;
-                    } elseif (!empty($videos)) {
-                        $drive->makePublic($videos[0]['id']);
-                        $updateStmt->execute(["[VIDEO]https://drive.google.com/thumbnail?id={$videos[0]['id']}&sz=w400", $prod['id']]);
+                    } elseif (!empty($exactVideos)) {
+                        $drive->makePublic($exactVideos[0]['id']);
+                        $updateStmt->execute([
+                            "[VIDEO]https://drive.google.com/thumbnail?id={$exactVideos[0]['id']}&sz=w400",
+                            $prod['id']
+                        ]);
                         $coversAssigned++;
                     }
                 } catch (Exception $e) {
@@ -160,7 +159,6 @@ try {
 } catch (Exception $e) {
     $coverErrors = $e->getMessage();
 }
-
 
 jsonResponse([
     'success' => true,

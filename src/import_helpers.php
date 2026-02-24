@@ -46,11 +46,32 @@ function normalizeDriveUrl(string $url): string
 }
 
 /**
+ * Ensures the sheet_row column exists in the products table.
+ * Auto-creates it if missing (self-healing migration).
+ */
+function ensureSheetRowColumn(PDO $db): void
+{
+    static $checked = false;
+    if ($checked)
+        return;
+    $checked = true;
+
+    try {
+        $db->query("SELECT sheet_row FROM products LIMIT 1");
+    } catch (\PDOException $e) {
+        $db->exec("ALTER TABLE products ADD COLUMN sheet_row INT DEFAULT 0");
+        $db->exec("CREATE INDEX idx_sheet_row ON products (sheet_row)");
+    }
+}
+
+/**
  * Procesa una fila de datos CSV/Sheets y hace UPSERT por SKU.
  * Soporta columna opcional 'cover_image_url' que normaliza automáticamente.
  */
 function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$updated, array &$errors): void
 {
+    ensureSheetRowColumn($db);
+
     $sku = $data['sku'] ?? '';
 
     if (empty($sku)) {
@@ -70,11 +91,17 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
         $status = 'active';
     }
 
+    // Map status to archived flag
+    $archived = ($status === 'discontinued') ? 1 : 0;
+
     // Sanitizar price
     $price = floatval(str_replace([',', '$', ' '], ['', '', ''], $data['price_suggested'] ?? '0'));
 
     // Normalizar cover_image_url (si viene del Sheets)
     $coverUrl = normalizeDriveUrl($data['cover_image_url'] ?? '');
+
+    // Posición en la hoja de cálculo
+    $sheetRow = intval($data['_sheet_row'] ?? 0);
 
     try {
         // Verificar si existe
@@ -91,8 +118,10 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                     movement = COALESCE(NULLIF(?, ''), movement),
                     price_suggested = IF(? > 0, ?, price_suggested),
                     status = ?,
+                    archived = ?,
                     description = COALESCE(NULLIF(?, ''), description),
                     cover_image_url = COALESCE(NULLIF(?, ''), cover_image_url),
+                    sheet_row = ?,
                     updated_at = NOW()
                  WHERE sku = ?"
             );
@@ -104,16 +133,18 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                 $price,
                 $price,
                 $status,
+                $archived,
                 $data['description'] ?? '',
                 $coverUrl,
+                $sheetRow,
                 $sku,
             ]);
             $updated++;
         } else {
             // INSERT
             $stmt = $db->prepare(
-                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, description, cover_image_url) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url, sheet_row) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $stmt->execute([
                 $sku,
@@ -123,8 +154,10 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                 $data['movement'] ?? '',
                 $price,
                 $status,
+                $archived,
                 $data['description'] ?? '',
                 $coverUrl ?: null,
+                $sheetRow,
             ]);
             $inserted++;
         }

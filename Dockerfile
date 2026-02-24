@@ -44,7 +44,9 @@ RUN echo '#!/bin/bash\n\
     sed -i "s/80/${PORT:-8080}/g" /etc/apache2/sites-available/000-default.conf\n\
     sed -i "s/Listen 80/Listen ${PORT:-8080}/g" /etc/apache2/ports.conf\n\
     # Pasar TODAS las env vars a Apache para que PHP las vea\n\
-    env | grep -E "^(DB_|MYSQL|ADMIN_|PORT|APP_)" | sed "s/=.*//" | while read var; do echo "PassEnv $var"; done > /etc/apache2/conf-enabled/passenv.conf\n\
+    env | grep -E "^(DB_|MYSQL|ADMIN_|PORT|APP_|GOOGLE_)" | sed "s/=.*//" | while read var; do echo "PassEnv $var"; done > /etc/apache2/conf-enabled/passenv.conf\n\
+    # Ejecutar migraciones pendientes antes de iniciar\n\
+    php /var/www/html/migrate.php || true\n\
     apache2-foreground' > /start.sh && chmod +x /start.sh
 
 # Asegurar que PHP lee $_ENV

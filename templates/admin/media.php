@@ -5,6 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Media · Viewfinder Admin</title>
+    <style>
+        body {
+            background: #0a0a0f;
+            color: #e8e8f0
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print"
+        onload="this.media='all'">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .drive-status {
@@ -365,6 +376,91 @@
             cursor: zoom-in;
         }
 
+        /* Toggle switch for visibility */
+        .vis-toggle {
+            position: relative;
+            display: inline-block;
+            width: 32px;
+            height: 18px;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        .vis-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .vis-toggle .slider {
+            position: absolute;
+            inset: 0;
+            background: #444;
+            border-radius: 18px;
+            transition: 0.3s;
+        }
+
+        .vis-toggle .slider::before {
+            content: '';
+            position: absolute;
+            height: 12px;
+            width: 12px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .vis-toggle input:checked+.slider {
+            background: var(--color-success, #22c55e);
+        }
+
+        .vis-toggle input:checked+.slider::before {
+            transform: translateX(14px);
+        }
+
+        /* Search + filter bar */
+        .media-toolbar {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+        }
+
+        .media-toolbar input[type=text] {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.5rem 0.8rem;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            color: var(--color-text);
+            font-size: 0.85rem;
+        }
+
+        .media-toolbar select {
+            padding: 0.5rem 0.8rem;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            color: var(--color-text);
+            font-size: 0.85rem;
+        }
+
+        .file-card.hidden-by-filter {
+            display: none;
+        }
+
+        .file-card.vis-off {
+            opacity: 0.5;
+        }
+
         /* Toast */
         .toast-container {
             position: fixed;
@@ -624,6 +720,28 @@
                 <h2>📂 Archivos (<?= count($driveFiles) ?>)</h2>
             </div>
 
+            <!-- Search + Filter Toolbar -->
+            <?php if (!empty($driveFiles)): ?>
+                <div class="media-toolbar">
+                    <input type="text" id="mediaSearch" placeholder="🔍 Buscar por nombre, código…" oninput="filterMedia()">
+                    <select id="mediaTypeFilter" onchange="filterMedia()">
+                        <option value="all">Todos</option>
+                        <option value="image">📷 Imágenes</option>
+                        <option value="video">🎬 Videos</option>
+                        <option value="pdf">📄 PDF</option>
+                    </select>
+                    <select id="mediaVisFilter" onchange="filterMedia()">
+                        <option value="all">Visibilidad: Todos</option>
+                        <option value="visible">👁️ Visibles</option>
+                        <option value="hidden">🚫 Ocultos</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary" onclick="bulkVisibility(1)" title="Mostrar todos">👁️ Todos
+                        visibles</button>
+                    <button class="btn btn-sm btn-secondary" onclick="bulkVisibility(0)" title="Ocultar todos">🚫 Ocultar
+                        todos</button>
+                </div>
+            <?php endif; ?>
+
             <?php if (empty($driveFiles) && empty($subfolders)): ?>
                 <div style="text-align:center; padding:3rem; color:var(--color-text-muted);">
                     <div style="font-size:4rem; margin-bottom:1rem;">📭</div>
@@ -660,7 +778,10 @@
                         $driveImageUrl = "https://lh3.googleusercontent.com/d/{$file['id']}";
                         $isCover = ($isImage && $skuMatch && $matchedCover === $driveImageUrl);
                         ?>
-                        <div class="file-card">
+                        <div class="file-card <?= $file['visible_publico'] ? '' : 'vis-off' ?>"
+                            data-name="<?= e(strtolower($file['name'])) ?>" data-sku="<?= e(strtolower($skuMatch)) ?>"
+                            data-type="<?= $isImage ? 'image' : ($isVideo ? 'video' : 'pdf') ?>"
+                            data-visible="<?= $file['visible_publico'] ?>" data-file-id="<?= e($file['id']) ?>">
                             <?php if ($isImage && $thumbUrl): ?>
                                 <img src="<?= e($thumbUrl) ?>" alt="<?= e($file['name']) ?>" class="thumbnail" loading="lazy"
                                     onclick="openLightbox('https://lh3.googleusercontent.com/d/<?= e($file['id']) ?>=s1200', '<?= e(addslashes($file['name'])) ?>')">
@@ -682,6 +803,15 @@
                                         <?= e($skuMatch) ?>
                                     </div>
                                 <?php endif; ?>
+                                <div
+                                    style="margin-top:0.35rem; display:flex; align-items:center; gap:0.4rem; font-size:0.7rem; color:var(--color-text-muted);">
+                                    <label class="vis-toggle" title="<?= $file['visible_publico'] ? 'Visible' : 'Oculto' ?>">
+                                        <input type="checkbox" <?= $file['visible_publico'] ? 'checked' : '' ?>
+                                            onchange="toggleVisibility(this, '<?= e($file['id']) ?>', '<?= e(addslashes($file['name'])) ?>', '<?= e($file['mimeType'] ?? '') ?>', '<?= e($currentFolderId) ?>')">
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span class="vis-label"><?= $file['visible_publico'] ? 'Público' : 'Oculto' ?></span>
+                                </div>
                             </div>
 
                             <div class="actions">
@@ -945,6 +1075,104 @@
             t.textContent = msg;
             container.appendChild(t);
             setTimeout(() => t.remove(), 4000);
+        }
+
+        // Media search + filter
+        function filterMedia() {
+            const q = (document.getElementById('mediaSearch')?.value || '').toLowerCase();
+            const type = document.getElementById('mediaTypeFilter')?.value || 'all';
+            const vis = document.getElementById('mediaVisFilter')?.value || 'all';
+            document.querySelectorAll('.file-card').forEach(card => {
+                const name = card.dataset.name || '';
+                const sku = card.dataset.sku || '';
+                const cardType = card.dataset.type || '';
+                const cardVis = card.dataset.visible;
+                let show = true;
+                if (q && !name.includes(q) && !sku.includes(q)) show = false;
+                if (type !== 'all' && cardType !== type) show = false;
+                if (vis === 'visible' && cardVis === '0') show = false;
+                if (vis === 'hidden' && cardVis === '1') show = false;
+                card.classList.toggle('hidden-by-filter', !show);
+            });
+        }
+
+        // Toggle single file visibility
+        const CSRF = '<?= csrfToken() ?>';
+        async function toggleVisibility(checkbox, fileId, fileName, mimeType, parentId) {
+            const visible = checkbox.checked ? 1 : 0;
+            const card = checkbox.closest('.file-card');
+            const label = card.querySelector('.vis-label');
+            card.style.opacity = '0.5';
+
+            const form = new FormData();
+            form.append('file_id', fileId);
+            form.append('visible', visible);
+            form.append('file_name', fileName);
+            form.append('mime_type', mimeType);
+            form.append('parent_id', parentId);
+
+            try {
+                const resp = await fetch('/admin/media/visibility', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': CSRF },
+                    body: form
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    card.dataset.visible = String(visible);
+                    card.classList.toggle('vis-off', !visible);
+                    if (label) label.textContent = visible ? 'Público' : 'Oculto';
+                    showToast(visible ? '👁️ Visible públicamente' : '🚫 Oculto del público');
+                } else {
+                    checkbox.checked = !checkbox.checked;
+                    showToast(data.error || 'Error', 'error');
+                }
+            } catch (e) {
+                checkbox.checked = !checkbox.checked;
+                showToast('Error de conexión', 'error');
+            }
+            card.style.opacity = '';
+        }
+
+        // Bulk visibility
+        async function bulkVisibility(visible) {
+            const cards = document.querySelectorAll('.file-card:not(.hidden-by-filter)');
+            if (!cards.length) return;
+            if (!confirm(visible ? '¿Hacer todos los archivos visibles?' : '¿Ocultar todos los archivos?')) return;
+
+            let done = 0;
+            for (const card of cards) {
+                const fileId = card.dataset.fileId;
+                if (!fileId) continue;
+                const cb = card.querySelector('.vis-toggle input');
+                if (!cb) continue;
+                if ((visible && cb.checked) || (!visible && !cb.checked)) { done++; continue; }
+
+                const form = new FormData();
+                form.append('file_id', fileId);
+                form.append('visible', visible);
+                form.append('file_name', card.dataset.name || '');
+                form.append('mime_type', '');
+                form.append('parent_id', '');
+
+                try {
+                    const resp = await fetch('/admin/media/visibility', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': CSRF },
+                        body: form
+                    });
+                    const data = await resp.json();
+                    if (data.ok) {
+                        cb.checked = !!visible;
+                        card.dataset.visible = String(visible);
+                        card.classList.toggle('vis-off', !visible);
+                        const label = card.querySelector('.vis-label');
+                        if (label) label.textContent = visible ? 'Público' : 'Oculto';
+                        done++;
+                    }
+                } catch (e) { /* skip */ }
+            }
+            showToast(`${done} archivos actualizados`);
         }
     </script>
 

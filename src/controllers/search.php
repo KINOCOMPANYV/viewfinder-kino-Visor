@@ -5,7 +5,7 @@
  */
 $q = trim($_GET['q'] ?? '');
 $page = max(1, intval($_GET['page'] ?? 1));
-$perPage = 24;
+$perPage = 20;
 $offset = ($page - 1) * $perPage;
 
 $db = getDB();
@@ -33,12 +33,12 @@ if ($isMultiCode && $q !== '') {
 
 if ($q === '' && !$isMultiCode) {
     // Sin query: mostrar todos los activos paginados
-    $countStmt = $db->query("SELECT COUNT(*) FROM products WHERE status = 'active'");
+    $countStmt = $db->query("SELECT COUNT(*) FROM products WHERE archived = 0");
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
         "SELECT sku, name, category, gender, price_suggested, cover_image_url 
-         FROM products WHERE status = 'active' 
+         FROM products WHERE archived = 0 
          ORDER BY name ASC 
          LIMIT ? OFFSET ?"
     );
@@ -73,7 +73,7 @@ if ($q === '' && !$isMultiCode) {
     $like = "%{$q}%";
     $countStmt = $db->prepare(
         "SELECT COUNT(*) FROM products 
-         WHERE status = 'active' AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)"
+         WHERE archived = 0 AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)"
     );
     $countStmt->execute([$like, $like, $like]);
     $total = $countStmt->fetchColumn();
@@ -81,7 +81,7 @@ if ($q === '' && !$isMultiCode) {
     $stmt = $db->prepare(
         "SELECT sku, name, category, gender, price_suggested, cover_image_url 
          FROM products 
-         WHERE status = 'active' AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)
+         WHERE archived = 0 AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)
          ORDER BY 
            CASE WHEN sku = ? THEN 0
                 WHEN sku LIKE ? THEN 1
@@ -106,7 +106,11 @@ $totalPages = ceil($total / $perPage);
     <title>
         <?= $q ? e($q) . ' — ' : '' ?>Búsqueda · Viewfinder
     </title>
+    <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 
@@ -152,53 +156,65 @@ $totalPages = ceil($total / $perPage);
         </p>
 
         <?php if (!empty($products)): ?>
+            <!-- WhatsApp toolbar -->
+            <div class="search-wa-toolbar" id="searchWaBar">
+                <label class="wa-toolbar-select">
+                    <input type="checkbox" id="searchSelectAll"> 
+                    <span>Seleccionar todas</span>
+                </label>
+                <span id="searchSelectedCount" class="wa-toolbar-count">0</span>
+                <button class="wa-toolbar-send" id="btnSearchWaSend" disabled>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    Enviar por WhatsApp
+                </button>
+            </div>
+
             <div class="product-grid">
-                <?php foreach ($products as $p): ?>
-                    <a href="/producto/<?= e($p['sku']) ?>" class="product-card" style="text-decoration:none; color:inherit;">
-                        <div class="card-image" data-sku="<?= e($p['sku']) ?>"
-                             <?php
-                             $coverUrl = $p['cover_image_url'] ?? '';
-                             $isVideo = str_starts_with($coverUrl, '[VIDEO]');
-                             if ($isVideo) $coverUrl = substr($coverUrl, 7);
-                             if ($coverUrl): ?>
-                                data-cover="<?= e($coverUrl) ?>"
-                                data-video="<?= $isVideo ? '1' : '0' ?>"
-                             <?php endif; ?>
-                        >
-                            <?php if ($coverUrl): ?>
-                                <img src="<?= e($coverUrl) ?>" alt="<?= e($p['name']) ?>"
-                                     loading="lazy" class="img-fade-in"
-                                     onload="this.classList.add('loaded')"
-                                     onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
-                            <?php else: ?>
-                                <div class="card-image-skeleton skeleton"></div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="card-body">
-                            <div class="card-sku">
-                                <?= e($p['sku']) ?>
-                            </div>
-                            <div class="card-name">
-                                <?= e($p['name']) ?>
-                            </div>
-                            <div class="card-meta">
-                                <?php if ($p['category']): ?>
-                                    <span>
-                                        <?= e($p['category']) ?>
-                                    </span>
+                <?php foreach ($products as $idx => $p): ?>
+                    <div class="product-card search-selectable-card">
+                        <a href="/producto/<?= e($p['sku']) ?>" style="text-decoration:none; color:inherit; display:block;">
+                            <div class="card-image" data-sku="<?= e($p['sku']) ?>"
+                                 <?php
+                                 $coverUrl = $p['cover_image_url'] ?? '';
+                                 $isVideo = str_starts_with($coverUrl, '[VIDEO]');
+                                 if ($isVideo) $coverUrl = substr($coverUrl, 7);
+                                 if ($coverUrl): ?>
+                                    data-cover="<?= e($coverUrl) ?>"
+                                    data-video="<?= $isVideo ? '1' : '0' ?>"
+                                 <?php endif; ?>
+                            >
+                                <?php if ($coverUrl): ?>
+                                    <img src="<?= e($coverUrl) ?>" alt="<?= e($p['name']) ?>"
+                                         loading="lazy" class="img-fade-in"
+                                         onload="this.classList.add('loaded')"
+                                         onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
+                                <?php else: ?>
+                                    <div class="cover-placeholder">📷</div>
                                 <?php endif; ?>
                             </div>
-                            <button class="btn-whatsapp"
-                                onclick="event.preventDefault(); event.stopPropagation(); shareWhatsApp('<?= e($p['sku']) ?>', '<?= e(addslashes($p['name'])) ?>');"
-                                title="Enviar por WhatsApp">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                    <path
-                                        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                                </svg>
-                                Enviar
-                            </button>
-                        </div>
-                    </a>
+                            <div class="card-body">
+                                <div class="card-sku"><?= e($p['sku']) ?></div>
+                                <div class="card-name"><?= e($p['name']) ?></div>
+                                <div class="card-meta">
+                                    <?php if ($p['category']): ?>
+                                        <span><?= e($p['category']) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </a>
+                        <!-- Checkbox FUERA de la imagen -->
+                        <label class="search-check-footer">
+                            <input type="checkbox" class="search-card-check" 
+                                   data-index="<?= $idx ?>" 
+                                   data-sku="<?= e($p['sku']) ?>"
+                                   data-name="<?= e(addslashes($p['name'])) ?>"
+                                   data-image="<?= e($p['cover_image_url'] ?? '') ?>">
+                            <span class="search-check-icon">✓</span>
+                            <span class="search-check-text">Seleccionar</span>
+                        </label>
+                    </div>
                 <?php endforeach; ?>
             </div>
 
@@ -234,68 +250,84 @@ $totalPages = ceil($total / $perPage);
 
     <footer class="footer">
         <div class="container">
-            <p>Solo para distribuidores autorizados · Viewfinder Kino Visor ©
-                <?= date('Y') ?>
+            <p>Esta es una app desarrollada por <strong>K GENIUS</strong> · Más información
+                <a href="https://wa.me/573146116450" target="_blank" rel="noopener" style="color:var(--color-gold);text-decoration:underline;">escríbanos</a>
             </p>
         </div>
     </footer>
 
     <script>
-        function shareWhatsApp(sku, name) {
-            const url = window.location.origin + '/producto/' + sku;
-            const text = `📦 *${name}*\n🔗 SKU: ${sku}\n\n📸 Ver fotos y videos:\n${url}`;
-            window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
-        }
-
-        // Renderizar cover dinámicamente (solo para cards sin SSR image)
-        function renderCover(el, imgUrl, isVideo) {
-            el.innerHTML = '';
-            const img = document.createElement('img');
-            img.src = imgUrl;
-            img.alt = el.dataset.sku;
-            img.loading = 'lazy';
-            img.className = 'img-fade-in';
-            img.onload = () => img.classList.add('loaded');
-            img.onerror = () => { el.innerHTML = '<div class="cover-placeholder">📷</div>'; };
-            el.appendChild(img);
-            if (isVideo) {
-                const play = document.createElement('span');
-                play.textContent = '▶';
-                play.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2.5rem;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none;';
-                el.appendChild(play);
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
-            // Solo buscar cards que NO tienen imagen SSR (sin cover en BD)
-            const needsFetch = [];
-            document.querySelectorAll('.card-image[data-sku]').forEach(el => {
-                if (!el.dataset.cover && !el.querySelector('img')) {
-                    needsFetch.push(el);
-                }
+            // No Drive API calls on search — speed is priority
+            // All covers come from DB (cover_image_url) or show placeholder
+
+            // --- WhatsApp search checkboxes ---
+            const waBar = document.getElementById('searchWaBar');
+            const selectAllCb = document.getElementById('searchSelectAll');
+            const selectedCountEl = document.getElementById('searchSelectedCount');
+            const btnSend = document.getElementById('btnSearchWaSend');
+            const checks = document.querySelectorAll('.search-card-check');
+
+            function updateCount() {
+                const selected = document.querySelectorAll('.search-card-check:checked').length;
+                selectedCountEl.textContent = selected;
+                btnSend.disabled = selected === 0;
+                selectAllCb.checked = selected === checks.length && checks.length > 0;
+                selectAllCb.indeterminate = selected > 0 && selected < checks.length;
+            }
+
+            checks.forEach(cb => cb.addEventListener('change', updateCount));
+            selectAllCb.addEventListener('change', () => {
+                checks.forEach(cb => cb.checked = selectAllCb.checked);
+                updateCount();
             });
 
-            if (needsFetch.length === 0) return;
-
-            const skus = needsFetch.map(el => el.dataset.sku);
-            fetch('/api/covers/batch', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({skus})
-            })
-            .then(r => r.json())
-            .then(data => {
-                const covers = data.covers || {};
-                needsFetch.forEach(el => {
-                    const cover = covers[el.dataset.sku];
-                    if (cover && cover.url) {
-                        renderCover(el, cover.url, cover.video);
-                    } else {
-                        el.innerHTML = '<div class="cover-placeholder">📷</div>';
-                    }
+            btnSend.addEventListener('click', async () => {
+                const selected = [];
+                document.querySelectorAll('.search-card-check:checked').forEach(cb => {
+                    selected.push({ sku: cb.dataset.sku, name: cb.dataset.name, image: cb.dataset.image });
                 });
-            })
-            .catch(() => needsFetch.forEach(el => el.innerHTML = '<div class="cover-placeholder">📷</div>'));
+                if (selected.length === 0) return;
+                if (selected.length > 10) {
+                    alert('\u26A0\uFE0F Solo se pueden enviar 10 im\u00E1genes a la vez.\n\nPor favor deselecciona algunas y haz otro env\u00EDo despu\u00E9s.');
+                    return;
+                }
+
+                // Intentar Web Share API solo en mobile (desktop no tiene WhatsApp en share nativo)
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile && navigator.canShare && navigator.share) {
+                    btnSend.disabled = true;
+                    btnSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Preparando...';
+                    try {
+                        const files = (await Promise.all(selected.map(async (item, i) => {
+                            try {
+                                const r = await fetch(item.image, { mode: 'cors' });
+                                const b = await r.blob();
+                                return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
+                            } catch { return null; }
+                        }))).filter(Boolean);
+                        if (files.length > 0) {
+                            const sd = { files };
+                            if (navigator.canShare(sd)) { await navigator.share(sd); resetBtn(); return; }
+                        }
+                    } catch (e) { if (e.name === 'AbortError') { resetBtn(); return; } }
+                    resetBtn();
+                }
+
+                // Fallback: links con imagen
+                let text = '\uD83D\uDCE6 *Cat\u00E1logo - ' + selected.length + ' productos*\n\n';
+                selected.forEach((item, i) => {
+                    text += (i+1) + '. *' + item.sku + '* - ' + item.name + '\n';
+                    if (item.image) text += '\uD83D\uDDBC\uFE0F ' + item.image + '\n';
+                    text += '\uD83D\uDD17 ' + location.origin + '/producto/' + item.sku + '\n\n';
+                });
+                window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+            });
+
+            function resetBtn() {
+                btnSend.disabled = false;
+                btnSend.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Enviar por WhatsApp';
+            }
         });
     </script>
 

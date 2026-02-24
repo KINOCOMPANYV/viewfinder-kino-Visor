@@ -3,7 +3,7 @@
    Mobile-first, dark mode premium aesthetic
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Font Inter loaded via <link> in HTML for non-blocking render */
 
 /* === CSS Variables === */
 :root {
@@ -187,11 +187,16 @@ img {
     pointer-events: none;
 }
 
-.search-box .search-btn {
+.search-box .search-buttons {
     position: absolute;
     right: 0.5rem;
     top: 50%;
     transform: translateY(-50%);
+    display: flex;
+    gap: 0.35rem;
+}
+
+.search-box .search-btn {
     padding: 0.6rem 1.25rem;
     background: var(--color-primary);
     color: #000;
@@ -205,7 +210,21 @@ img {
 
 .search-box .search-btn:hover {
     background: var(--color-primary-hover);
-    transform: translateY(-50%) scale(1.02);
+    transform: scale(1.02);
+}
+
+.search-box .batch-btn {
+    background: var(--color-surface-3);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    font-size: 0.82rem;
+    padding: 0.6rem 0.9rem;
+}
+
+.search-box .batch-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(201, 168, 76, 0.1);
 }
 
 /* === Autocomplete Dropdown === */
@@ -269,6 +288,287 @@ img {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.5rem;
     padding: 2rem 0;
+}
+
+/* === Parent-Child Grid (Landing) === */
+.section-header-landing {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 1rem;
+    gap: 1rem;
+}
+
+.section-header-landing h2 {
+    font-size: 1.15rem;
+    color: var(--color-text-muted);
+    margin: 0;
+}
+
+.product-count {
+    font-size: 0.85rem;
+    color: var(--color-text-dim);
+}
+
+.parent-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    padding: 1.25rem 0 2rem;
+}
+
+.parent-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all var(--transition);
+}
+
+.parent-card:hover {
+    border-color: var(--color-border-hover);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.parent-image-link {
+    display: block;
+    text-decoration: none;
+}
+
+.parent-card .card-image {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--color-surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-dim);
+    font-size: 3rem;
+    overflow: hidden;
+}
+
+.parent-card .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.parent-card .card-body {
+    padding: 1rem 1.1rem 1.1rem;
+}
+
+.parent-card .card-sku {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.2rem;
+}
+
+.parent-card .card-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    line-height: 1.3;
+    color: var(--color-text);
+}
+
+.parent-card .card-meta {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+/* --- Children row --- */
+.children-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.5rem 0 0.6rem;
+    flex-wrap: wrap;
+}
+
+.child-thumb {
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, transform 0.2s;
+    flex-shrink: 0;
+}
+
+.child-thumb:hover {
+    border-color: var(--color-primary);
+    transform: scale(1.1);
+}
+
+.child-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.child-placeholder {
+    font-size: 0.7rem;
+    color: var(--color-text-dim);
+}
+
+.child-more {
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
+    background: var(--color-surface-2);
+    border: 1.5px dashed var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.child-more:hover {
+    background: rgba(201, 168, 76, 0.1);
+}
+
+.children-label {
+    font-size: 0.7rem;
+    color: var(--color-text-dim);
+    margin-left: 0.25rem;
+}
+
+/* --- Card actions --- */
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.card-actions .btn-whatsapp {
+    flex: 1;
+}
+
+.btn-ver {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-decoration: none;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-primary);
+    transition: all 0.2s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.btn-ver:hover {
+    background: var(--color-primary);
+    color: #000;
+}
+
+/* --- Pagination --- */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 1.5rem 0 2rem;
+    flex-wrap: wrap;
+}
+
+.page-btn {
+    padding: 0.45rem 0.85rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    transition: all 0.2s;
+}
+
+.page-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.page-btn.active {
+    background: var(--color-primary);
+    color: #000;
+    border-color: var(--color-primary);
+    font-weight: 700;
+}
+
+.page-dots {
+    color: var(--color-text-dim);
+    padding: 0 0.3rem;
+}
+
+.page-info {
+    font-size: 0.78rem;
+    color: var(--color-text-dim);
+    margin-left: 0.75rem;
+}
+
+/* --- Responsive: Landing parent grid --- */
+@media (max-width: 1024px) {
+    .parent-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .parent-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .parent-card .card-body {
+        padding: 0.85rem;
+    }
+
+    .parent-card .card-name {
+        font-size: 0.88rem;
+    }
+
+    .child-thumb,
+    .child-more {
+        width: 38px;
+        height: 38px;
+    }
+
+    .section-header-landing {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .pagination {
+        gap: 0.3rem;
+    }
+
+    .page-btn {
+        padding: 0.35rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .page-info {
+        width: 100%;
+        text-align: center;
+        margin: 0.5rem 0 0;
+    }
 }
 
 .product-card {
@@ -989,4 +1289,839 @@ textarea.form-input {
 
 .btn-whatsapp svg {
     flex-shrink: 0;
+}
+
+/* === Batch Search Modal === */
+.batch-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.batch-modal-overlay.active {
+    display: flex;
+    animation: fadeIn 0.2s ease;
+}
+
+.batch-modal {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 700px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    animation: slideDown 0.25s ease;
+}
+
+.batch-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.batch-modal-header h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.batch-modal-close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    line-height: 1;
+    transition: color var(--transition);
+}
+
+.batch-modal-close:hover {
+    color: var(--color-danger);
+}
+
+.batch-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.batch-modal-body label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.batch-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1rem;
+    gap: 1rem;
+}
+
+.batch-count {
+    font-size: 0.85rem;
+    color: var(--color-text-dim);
+    font-weight: 500;
+}
+
+/* Spinner */
+.batch-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 2rem auto;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Results */
+.batch-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+}
+
+.batch-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+
+.batch-result-card {
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: all var(--transition);
+}
+
+.batch-result-card.found:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.batch-result-card.not-found {
+    opacity: 0.55;
+    border-color: rgba(248, 113, 113, 0.25);
+}
+
+.batch-result-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.batch-result-img {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--color-surface-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.batch-result-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.batch-no-img {
+    font-size: 2rem;
+    color: var(--color-text-dim);
+}
+
+.batch-result-info {
+    padding: 0.6rem 0.75rem;
+}
+
+.batch-result-sku {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.batch-result-name {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    line-height: 1.3;
+    margin-top: 0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.batch-result-status {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--color-danger);
+    font-weight: 500;
+    margin-top: 0.15rem;
+}
+
+@media (max-width: 640px) {
+    .search-box .search-buttons {
+        position: static;
+        transform: none;
+        margin-top: 0.5rem;
+        justify-content: center;
+    }
+
+    .search-box input {
+        padding-right: 1.25rem;
+    }
+
+    .batch-modal {
+        max-height: 95vh;
+    }
+
+    .batch-results-grid {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    }
+}
+
+/* --- Batch: Checkboxes & WhatsApp Footer --- */
+.batch-card-label {
+    display: block;
+    position: relative;
+    cursor: pointer;
+}
+
+.batch-card-label .batch-card-check {
+    display: none;
+}
+
+.batch-card-check-mark {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: transparent;
+    z-index: 2;
+    transition: all var(--transition);
+}
+
+.batch-card-check:checked~.batch-card-check-mark {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #000;
+    font-weight: 700;
+}
+
+.batch-card-check:checked~.batch-result-link .batch-result-img {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+}
+
+.batch-wa-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+}
+
+.batch-wa-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+}
+
+.batch-select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.batch-select-all-label input[type="checkbox"] {
+    accent-color: var(--color-primary);
+    width: 16px;
+    height: 16px;
+}
+
+.batch-selected-count {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.batch-wa-send {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: #25D366;
+    color: #fff;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 24px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: var(--font);
+    width: 100%;
+}
+
+.batch-wa-send:hover {
+    background: #1fb855;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+}
+
+.batch-wa-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Search page: WhatsApp toolbar + card checkboxes */
+.search-wa-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    flex-wrap: wrap;
+}
+
+.wa-toolbar-select {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.85rem;
+}
+
+.wa-toolbar-select input[type="checkbox"] {
+    accent-color: var(--color-primary);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.wa-toolbar-count {
+    font-weight: 700;
+    color: var(--color-primary);
+    font-size: 0.85rem;
+    background: rgba(240, 180, 41, 0.15);
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.wa-toolbar-send {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #25D366;
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 24px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: var(--font);
+    white-space: nowrap;
+}
+
+.wa-toolbar-send:hover {
+    background: #1fb855;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+}
+
+.wa-toolbar-send:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Card checkbox footer */
+.search-check-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--color-border);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition);
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.search-check-footer:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.search-check-footer input[type="checkbox"] {
+    display: none;
+}
+
+.search-check-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: transparent;
+    transition: all var(--transition);
+    flex-shrink: 0;
+}
+
+.search-check-footer input:checked~.search-check-icon {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #000;
+    font-weight: 700;
+}
+
+.search-check-footer input:checked~.search-check-text {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.search-selectable-card {
+    overflow: hidden;
+}
+
+/* ============================================================
+   WhatsApp Share Modal
+   ============================================================ */
+.wa-share-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.wa-share-overlay.active {
+    display: flex;
+}
+
+.wa-share-modal {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    animation: fadeSlideIn 0.25s ease;
+}
+
+.wa-share-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.wa-share-header h3 {
+    font-size: 1.05rem;
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+.wa-share-close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+}
+
+.wa-share-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text);
+}
+
+.wa-share-product {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.wa-share-product strong {
+    color: var(--color-primary);
+}
+
+.wa-share-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2.5rem;
+    color: var(--color-text-muted);
+}
+
+.wa-share-body {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.wa-share-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.82rem;
+}
+
+.wa-select-all {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.wa-select-all input[type="checkbox"] {
+    accent-color: var(--color-primary);
+    width: 16px;
+    height: 16px;
+}
+
+.wa-selected-count {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.wa-share-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.wa-share-item {
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+}
+
+.wa-share-item .wa-img-check {
+    display: none;
+}
+
+.wa-share-thumb {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: all var(--transition);
+}
+
+.wa-share-item .wa-img-check:checked~.wa-share-thumb {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 12px var(--color-primary-glow);
+}
+
+.wa-share-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.wa-thumb-error {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface-2);
+    font-size: 1.5rem;
+}
+
+.wa-check-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: transparent;
+    transition: all var(--transition);
+}
+
+.wa-share-item .wa-img-check:checked~.wa-share-thumb .wa-check-indicator {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #000;
+    font-weight: 700;
+}
+
+.wa-share-filename {
+    font-size: 0.65rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.wa-share-empty {
+    padding: 2.5rem;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.wa-share-footer {
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.wa-share-send {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #25D366;
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: var(--font);
+}
+
+.wa-share-send:hover {
+    background: #1fb855;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+}
+
+.wa-share-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+@media (max-width: 640px) {
+    .wa-share-modal {
+        max-height: 92vh;
+    }
+
+    .wa-share-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+/* ============================================================
+   Cache Management — Admin Dashboard
+   ============================================================ */
+
+.cache-flash {
+    padding: 0.85rem 1.25rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 1.25rem;
+    animation: slideDown 0.3s ease;
+}
+
+.cache-flash--success {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    color: var(--color-success);
+}
+
+.cache-flash--error {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    color: var(--color-danger);
+}
+
+.cache-flash--warning {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    color: var(--color-warning);
+}
+
+.cache-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.cache-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    transition: border-color var(--transition);
+}
+
+.cache-card:hover {
+    border-color: var(--color-border-hover);
+}
+
+.cache-card__icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface-2);
+    border-radius: var(--radius-sm);
+}
+
+.cache-card__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cache-card__name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.cache-card__desc {
+    font-size: 0.78rem;
+    color: var(--color-text-dim);
+    margin-top: 0.15rem;
+}
+
+.cache-card__stat {
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    margin-top: 0.35rem;
+}
+
+.cache-card__count {
+    font-weight: 700;
+    color: var(--color-accent);
+    font-size: 0.95rem;
+}
+
+.cache-card__size {
+    color: var(--color-text-dim);
+    font-size: 0.78rem;
+}
+
+.cache-card__action {
+    flex-shrink: 0;
+}
+
+.cache-card__action .btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+    .cache-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cache-card {
+        padding: 1rem;
+    }
 }

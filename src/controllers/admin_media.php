@@ -46,6 +46,27 @@ if ($isConnected && !empty($currentFolderId)) {
             $driveFiles[] = $item;
         }
     }
+
+    // Cross-reference with drive_cache for visibility state
+    if (!empty($driveFiles)) {
+        $visibilityMap = [];
+        try {
+            $fileIds = array_map(fn($f) => $f['id'], $driveFiles);
+            $placeholders = implode(',', array_fill(0, count($fileIds), '?'));
+            $visStmt = $db->prepare("SELECT file_id, visible_publico FROM drive_cache WHERE file_id IN ({$placeholders})");
+            $visStmt->execute($fileIds);
+            while ($row = $visStmt->fetch(PDO::FETCH_ASSOC)) {
+                $visibilityMap[$row['file_id']] = (int) $row['visible_publico'];
+            }
+        } catch (Exception $e) {
+            // Migration 009 might not have run yet — ignore
+        }
+        // Attach visibility to each file (default = 1 if not in cache)
+        foreach ($driveFiles as &$file) {
+            $file['visible_publico'] = $visibilityMap[$file['id']] ?? 1;
+        }
+        unset($file);
+    }
 }
 
 // Contar productos para info

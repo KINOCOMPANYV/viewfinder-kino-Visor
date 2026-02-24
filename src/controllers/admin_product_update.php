@@ -21,7 +21,7 @@ if ($id <= 0) {
 }
 
 // Campos editables
-$allowedFields = ['name', 'category', 'gender', 'movement', 'price_suggested', 'status', 'description'];
+$allowedFields = ['name', 'category', 'gender', 'movement', 'price_suggested', 'status', 'archived', 'description'];
 $field = $_POST['field'] ?? '';
 $value = trim($_POST['value'] ?? '');
 
