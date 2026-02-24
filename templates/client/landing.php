@@ -408,6 +408,12 @@ KV-1003
                     if (batchFoundItems[idx]) selected.push(batchFoundItems[idx]);
                 });
 
+                // Helper: extract Drive file ID from lh3 URL
+                function extractDriveId(url) {
+                    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                    return m ? m[1] : null;
+                }
+
                 // Intentar Web Share API (mobile)
                 const canShareFiles = navigator.canShare && navigator.share;
                 if (canShareFiles) {
@@ -416,11 +422,15 @@ KV-1003
                     try {
                         const filePromises = selected.map(async (item, i) => {
                             try {
-                                const url = item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`;
-                                const resp = await fetch(url, { mode: 'cors' });
+                                let fetchUrl = item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`;
+                                if (item.isVideo) {
+                                    const fid = extractDriveId(fetchUrl);
+                                    if (fid) fetchUrl = '/api/download/' + fid;
+                                }
+                                const resp = await fetch(fetchUrl, { mode: 'cors' });
                                 const blob = await resp.blob();
                                 if (item.isVideo) {
-                                    const ext = url.split('.').pop()?.split('?')[0] || 'mp4';
+                                    const ext = (item.image || '').split('.').pop()?.split('?')[0] || 'mp4';
                                     return new File([blob], `video_${i + 1}.${ext}`, { type: blob.type || 'video/mp4' });
                                 } else {
                                     return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });

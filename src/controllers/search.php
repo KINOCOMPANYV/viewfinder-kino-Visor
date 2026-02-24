@@ -318,13 +318,25 @@ $totalPages = ceil($total / $perPage);
 
                 // Intentar Web Share API solo en mobile
                 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+                // Helper: extract Drive file ID from lh3 URL
+                function extractDriveId(url) {
+                    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                    return m ? m[1] : null;
+                }
+
                 if (isMobile && navigator.canShare && navigator.share) {
                     btnSend.disabled = true;
                     btnSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Preparando...';
                     try {
                         const files = (await Promise.all(selected.map(async (item, i) => {
                             try {
-                                const r = await fetch(item.image, { mode: 'cors' });
+                                let fetchUrl = item.image;
+                                if (item.isVideo) {
+                                    const fid = extractDriveId(item.image);
+                                    if (fid) fetchUrl = '/api/download/' + fid;
+                                }
+                                const r = await fetch(fetchUrl, { mode: 'cors' });
                                 const b = await r.blob();
                                 if (item.isVideo) {
                                     const ext = item.image.split('.').pop()?.split('?')[0] || 'mp4';
