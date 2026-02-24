@@ -305,22 +305,6 @@ $totalPages = ceil($total / $perPage);
                 updateCount();
             });
 
-            // Helper: extract Drive file ID from lh3 URL
-            function extractDriveId(url) {
-                const m = (url || '').match(/\/d\/([a-zA-Z0-9_-]+)/);
-                return m ? m[1] : null;
-            }
-
-            // Helper: share files via Web Share API
-            async function shareFiles(fileArray) {
-                const sd = { files: fileArray };
-                if (navigator.canShare && navigator.canShare(sd)) {
-                    await navigator.share(sd);
-                    return true;
-                }
-                return false;
-            }
-
             btnSend.addEventListener('click', async () => {
                 const selected = [];
                 document.querySelectorAll('.search-card-check:checked').forEach(cb => {
@@ -335,64 +319,46 @@ $totalPages = ceil($total / $perPage);
                 const images = selected.filter(s => !s.isVideo);
                 const videos = selected.filter(s => s.isVideo);
 
+                // Avisar si hay videos
+                if (videos.length > 0) {
+                    const videoSkus = videos.map(v => v.sku).join(', ');
+                    if (images.length > 0) {
+                        alert('\uD83C\uDFAC Los siguientes productos son videos:\n' + videoSkus + '\n\nLos videos no se pueden enviar directamente por WhatsApp.\nDescargalos primero a tu dispositivo desde la p\u00E1gina del producto y comp\u00E1rtelos manualmente.\n\nSe enviar\u00E1n solo las ' + images.length + ' im\u00E1gen(es).');
+                    } else {
+                        alert('\uD83C\uDFAC Los productos seleccionados son videos:\n' + videoSkus + '\n\nLos videos no se pueden enviar directamente por WhatsApp.\nDescargalos primero a tu dispositivo desde la p\u00E1gina del producto y comp\u00E1rtelos manualmente.');
+                        return;
+                    }
+                }
+
+                if (images.length === 0) return;
+
+                // Web Share API (mobile)
                 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
                 if (isMobile && navigator.canShare && navigator.share) {
                     btnSend.disabled = true;
-
-                    // --- Paso 1: Enviar imágenes ---
-                    if (images.length > 0) {
-                        if (videos.length > 0) {
-                            alert('\uD83D\uDCF8 Primero se enviar\u00E1n las ' + images.length + ' im\u00E1gen(es).\nDespu\u00E9s se enviar\u00E1n los ' + videos.length + ' video(s) por separado.');
+                    btnSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Preparando im\u00E1genes...';
+                    try {
+                        const files = (await Promise.all(images.map(async (item, i) => {
+                            try {
+                                const r = await fetch(item.image, { mode: 'cors' });
+                                const b = await r.blob();
+                                return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
+                            } catch { return null; }
+                        }))).filter(Boolean);
+                        if (files.length > 0 && navigator.canShare({ files })) {
+                            await navigator.share({ files });
+                            resetBtn();
+                            return;
                         }
-                        btnSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Descargando im\u00E1genes...';
-                        try {
-                            const imgFiles = (await Promise.all(images.map(async (item, i) => {
-                                try {
-                                    const r = await fetch(item.image, { mode: 'cors' });
-                                    const b = await r.blob();
-                                    return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
-                                } catch { return null; }
-                            }))).filter(Boolean);
-                            if (imgFiles.length > 0) {
-                                try { await shareFiles(imgFiles); } catch(e) {
-                                    if (e.name === 'AbortError') { resetBtn(); return; }
-                                }
-                            }
-                        } catch { /* continuar */ }
-                    }
-
-                    // --- Paso 2: Enviar videos ---
-                    if (videos.length > 0) {
-                        btnSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Descargando video(s)...';
-                        try {
-                            const vidFiles = (await Promise.all(videos.map(async (item, i) => {
-                                try {
-                                    const fid = extractDriveId(item.image);
-                                    const url = fid ? '/api/download/' + fid : item.image;
-                                    const r = await fetch(url);
-                                    const b = await r.blob();
-                                    return new File([b], `video_${i + 1}.mp4`, { type: b.type || 'video/mp4' });
-                                } catch { return null; }
-                            }))).filter(Boolean);
-                            if (vidFiles.length > 0) {
-                                try { await shareFiles(vidFiles); } catch(e) {
-                                    if (e.name === 'AbortError') { resetBtn(); return; }
-                                }
-                            }
-                        } catch { /* continuar */ }
-                    }
-
+                    } catch (e) { if (e.name === 'AbortError') { resetBtn(); return; } }
                     resetBtn();
-                    return;
                 }
 
                 // Fallback desktop: links
-                let text = '\uD83D\uDCE6 *Cat\u00E1logo - ' + selected.length + ' productos*\n\n';
-                selected.forEach((item, i) => {
+                let text = '\uD83D\uDCE6 *Cat\u00E1logo - ' + images.length + ' producto(s)*\n\n';
+                images.forEach((item, i) => {
                     text += (i+1) + '. *' + item.sku + '* - ' + item.name + '\n';
-                    if (item.image) {
-                        text += (item.isVideo ? '\uD83C\uDFAC ' : '\uD83D\uDDBC\uFE0F ') + item.image + '\n';
-                    }
+                    if (item.image) text += '\uD83D\uDDBC\uFE0F ' + item.image + '\n';
                     text += '\uD83D\uDD17 ' + location.origin + '/producto/' + item.sku + '\n\n';
                 });
                 window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
