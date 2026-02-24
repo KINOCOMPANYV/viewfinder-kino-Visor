@@ -223,11 +223,17 @@ $totalPages = ceil($total / $perPage);
                         </a>
                         <!-- Checkbox FUERA de la imagen -->
                         <label class="search-check-footer">
+                            <?php
+                                $rawUrl = $p['cover_image_url'] ?? '';
+                                $isVid = str_starts_with($rawUrl, '[VIDEO]');
+                                $cleanUrl = $isVid ? substr($rawUrl, 7) : $rawUrl;
+                            ?>
                             <input type="checkbox" class="search-card-check" 
                                    data-index="<?= $idx ?>" 
                                    data-sku="<?= e($p['sku']) ?>"
                                    data-name="<?= e(addslashes($p['name'])) ?>"
-                                   data-image="<?= e($p['cover_image_url'] ?? '') ?>">
+                                   data-image="<?= e($cleanUrl) ?>"
+                                   data-is-video="<?= $isVid ? '1' : '0' ?>">
                             <span class="search-check-icon">✓</span>
                             <span class="search-check-text">Seleccionar</span>
                         </label>
@@ -302,15 +308,15 @@ $totalPages = ceil($total / $perPage);
             btnSend.addEventListener('click', async () => {
                 const selected = [];
                 document.querySelectorAll('.search-card-check:checked').forEach(cb => {
-                    selected.push({ sku: cb.dataset.sku, name: cb.dataset.name, image: cb.dataset.image });
+                    selected.push({ sku: cb.dataset.sku, name: cb.dataset.name, image: cb.dataset.image, isVideo: cb.dataset.isVideo === '1' });
                 });
                 if (selected.length === 0) return;
                 if (selected.length > 10) {
-                    alert('\u26A0\uFE0F Solo se pueden enviar 10 im\u00E1genes a la vez.\n\nPor favor deselecciona algunas y haz otro env\u00EDo despu\u00E9s.');
+                    alert('\u26A0\uFE0F Solo se pueden enviar 10 archivos a la vez.\n\nPor favor deselecciona algunos y haz otro env\u00EDo despu\u00E9s.');
                     return;
                 }
 
-                // Intentar Web Share API solo en mobile (desktop no tiene WhatsApp en share nativo)
+                // Intentar Web Share API solo en mobile
                 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
                 if (isMobile && navigator.canShare && navigator.share) {
                     btnSend.disabled = true;
@@ -320,7 +326,12 @@ $totalPages = ceil($total / $perPage);
                             try {
                                 const r = await fetch(item.image, { mode: 'cors' });
                                 const b = await r.blob();
-                                return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
+                                if (item.isVideo) {
+                                    const ext = item.image.split('.').pop()?.split('?')[0] || 'mp4';
+                                    return new File([b], `video_${i + 1}.${ext}`, { type: b.type || 'video/mp4' });
+                                } else {
+                                    return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
+                                }
                             } catch { return null; }
                         }))).filter(Boolean);
                         if (files.length > 0) {
@@ -331,11 +342,13 @@ $totalPages = ceil($total / $perPage);
                     resetBtn();
                 }
 
-                // Fallback: links con imagen
+                // Fallback: links
                 let text = '\uD83D\uDCE6 *Cat\u00E1logo - ' + selected.length + ' productos*\n\n';
                 selected.forEach((item, i) => {
                     text += (i+1) + '. *' + item.sku + '* - ' + item.name + '\n';
-                    if (item.image) text += '\uD83D\uDDBC\uFE0F ' + item.image + '\n';
+                    if (item.image) {
+                        text += (item.isVideo ? '\uD83C\uDFAC ' : '\uD83D\uDDBC\uFE0F ') + item.image + '\n';
+                    }
                     text += '\uD83D\uDD17 ' + location.origin + '/producto/' + item.sku + '\n\n';
                 });
                 window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
