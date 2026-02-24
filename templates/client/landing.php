@@ -398,7 +398,7 @@ KV-1003
                 const checks = resultsGrid.querySelectorAll('.batch-card-check:checked');
                 if (checks.length === 0) return;
                 if (checks.length > 10) {
-                    alert('⚠️ Solo se pueden enviar 10 imágenes a la vez.\n\nPor favor deselecciona algunas y haz otro envío después.');
+                    alert('⚠️ Solo se pueden enviar 10 archivos a la vez.\n\nPor favor deselecciona algunos y haz otro envío después.');
                     return;
                 }
 
@@ -416,10 +416,15 @@ KV-1003
                     try {
                         const filePromises = selected.map(async (item, i) => {
                             try {
-                                const imgUrl = item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`;
-                                const resp = await fetch(imgUrl, { mode: 'cors' });
+                                const url = item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`;
+                                const resp = await fetch(url, { mode: 'cors' });
                                 const blob = await resp.blob();
-                                return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
+                                if (item.isVideo) {
+                                    const ext = url.split('.').pop()?.split('?')[0] || 'mp4';
+                                    return new File([blob], `video_${i + 1}.${ext}`, { type: blob.type || 'video/mp4' });
+                                } else {
+                                    return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
+                                }
                             } catch { return null; }
                         });
                         const files = (await Promise.all(filePromises)).filter(Boolean);
@@ -443,7 +448,11 @@ KV-1003
                 let text = '📦 *Catálogo - ' + selected.length + ' productos*\n\n';
                 selected.forEach((item, i) => {
                     const productUrl = window.location.origin + '/producto/' + item.sku;
-                    text += (i + 1) + '. *' + item.sku + '* - ' + item.name + '\n🔗 ' + productUrl + '\n\n';
+                    text += (i + 1) + '. *' + item.sku + '* - ' + item.name + '\n';
+                    if (item.image) {
+                        text += (item.isVideo ? '🎬 ' : '🖼️ ') + item.image + '\n';
+                    }
+                    text += '🔗 ' + productUrl + '\n\n';
                 });
                 window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
             });
@@ -487,7 +496,8 @@ KV-1003
                                 batchFoundItems.push({
                                     sku: item.sku,
                                     name: item.name || '',
-                                    image: item.image || null
+                                    image: (item.image || '').replace(/^\[VIDEO\]/, ''),
+                                    isVideo: (item.image || '').startsWith('[VIDEO]')
                                 });
                                 found++;
                                 card.className = 'batch-result-card found';
