@@ -312,38 +312,37 @@ $totalPages = ceil($total / $perPage);
                 });
                 if (selected.length === 0) return;
                 if (selected.length > 10) {
-                    alert('\u26A0\uFE0F Solo se pueden enviar 10 archivos a la vez.\n\nPor favor deselecciona algunos y haz otro env\u00EDo despu\u00E9s.');
+                    alert('\u26A0\uFE0F M\u00E1ximo 10 productos a la vez.\n\nDeselecciona algunos y haz otro env\u00EDo.');
                     return;
                 }
 
-                // Intentar Web Share API solo en mobile
-                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                // Separar imágenes de videos
+                const images = selected.filter(s => !s.isVideo);
+                const videos = selected.filter(s => s.isVideo);
 
-                // Helper: extract Drive file ID from lh3 URL
-                function extractDriveId(url) {
-                    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                    return m ? m[1] : null;
+                // Avisar si hay videos mezclados
+                if (videos.length > 0 && images.length > 0) {
+                    alert('\uD83C\uDFAC Seleccionaste ' + videos.length + ' video(s).\n\nLos videos son muy pesados para enviar junto con im\u00E1genes.\nSe enviar\u00E1n solo las im\u00E1genes (' + images.length + ').\n\nPara enviar el video, entra al producto y desc\u00E1rgalo.');
+                } else if (videos.length > 0 && images.length === 0) {
+                    alert('\uD83C\uDFAC Solo seleccionaste videos.\n\nLos videos son muy pesados para compartir por WhatsApp.\nEntra al producto para descargar el video directamente.');
+                    return;
                 }
 
+                // Solo compartir imágenes
+                const toShare = images;
+                if (toShare.length === 0) return;
+
+                // Web Share API (mobile)
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
                 if (isMobile && navigator.canShare && navigator.share) {
                     btnSend.disabled = true;
                     btnSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Preparando...';
                     try {
-                        const files = (await Promise.all(selected.map(async (item, i) => {
+                        const files = (await Promise.all(toShare.map(async (item, i) => {
                             try {
-                                let fetchUrl = item.image;
-                                if (item.isVideo) {
-                                    const fid = extractDriveId(item.image);
-                                    if (fid) fetchUrl = '/api/download/' + fid;
-                                }
-                                const r = await fetch(fetchUrl, { mode: 'cors' });
+                                const r = await fetch(item.image, { mode: 'cors' });
                                 const b = await r.blob();
-                                if (item.isVideo) {
-                                    const ext = item.image.split('.').pop()?.split('?')[0] || 'mp4';
-                                    return new File([b], `video_${i + 1}.${ext}`, { type: b.type || 'video/mp4' });
-                                } else {
-                                    return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
-                                }
+                                return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
                             } catch { return null; }
                         }))).filter(Boolean);
                         if (files.length > 0) {

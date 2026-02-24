@@ -398,7 +398,7 @@ KV-1003
                 const checks = resultsGrid.querySelectorAll('.batch-card-check:checked');
                 if (checks.length === 0) return;
                 if (checks.length > 10) {
-                    alert('⚠️ Solo se pueden enviar 10 archivos a la vez.\n\nPor favor deselecciona algunos y haz otro envío después.');
+                    alert('⚠️ Máximo 10 productos a la vez.\n\nDeselecciona algunos y haz otro envío.');
                     return;
                 }
 
@@ -408,40 +408,38 @@ KV-1003
                     if (batchFoundItems[idx]) selected.push(batchFoundItems[idx]);
                 });
 
-                // Helper: extract Drive file ID from lh3 URL
-                function extractDriveId(url) {
-                    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                    return m ? m[1] : null;
+                // Separar imágenes de videos
+                const images = selected.filter(s => !s.isVideo);
+                const videos = selected.filter(s => s.isVideo);
+
+                // Avisar si hay videos mezclados
+                if (videos.length > 0 && images.length > 0) {
+                    alert('🎬 Seleccionaste ' + videos.length + ' video(s).\n\nLos videos son muy pesados para enviar junto con imágenes.\nSe enviarán solo las imágenes (' + images.length + ').\n\nPara enviar el video, entra al producto y descárgalo.');
+                } else if (videos.length > 0 && images.length === 0) {
+                    alert('🎬 Solo seleccionaste videos.\n\nLos videos son muy pesados para compartir por WhatsApp.\nEntra al producto para descargar el video directamente.');
+                    return;
                 }
 
+                // Solo compartir imágenes
+                const toShare = images;
+                if (toShare.length === 0) return;
+
                 // Intentar Web Share API (mobile)
-                const canShareFiles = navigator.canShare && navigator.share;
-                if (canShareFiles) {
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile && navigator.canShare && navigator.share) {
                     btnWaSend.disabled = true;
                     btnWaSend.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Preparando...';
                     try {
-                        const filePromises = selected.map(async (item, i) => {
+                        const filePromises = toShare.map(async (item, i) => {
                             try {
-                                let fetchUrl = item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`;
-                                if (item.isVideo) {
-                                    const fid = extractDriveId(fetchUrl);
-                                    if (fid) fetchUrl = '/api/download/' + fid;
-                                }
-                                const resp = await fetch(fetchUrl, { mode: 'cors' });
+                                const resp = await fetch(item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`, { mode: 'cors' });
                                 const blob = await resp.blob();
-                                if (item.isVideo) {
-                                    const ext = (item.image || '').split('.').pop()?.split('?')[0] || 'mp4';
-                                    return new File([blob], `video_${i + 1}.${ext}`, { type: blob.type || 'video/mp4' });
-                                } else {
-                                    return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
-                                }
+                                return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
                             } catch { return null; }
                         });
                         const files = (await Promise.all(filePromises)).filter(Boolean);
                         if (files.length > 0) {
-                            const shareData = {
-                                files: files
-                            };
+                            const shareData = { files };
                             if (navigator.canShare(shareData)) {
                                 await navigator.share(shareData);
                                 resetWaBtn();
