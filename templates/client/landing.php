@@ -54,7 +54,7 @@
                 <span class="search-icon">🔍</span>
                 <form action="/buscar" method="GET" id="searchForm">
                     <textarea name="q" id="searchInput" rows="1"
-                        placeholder="Buscar por SKU o nombre...  (pega varios códigos separados por comas o en columna)"
+                        placeholder="Buscar por SKU o nombre..."
                         autocomplete="off" autofocus></textarea>
                     <button type="submit" class="search-btn">Buscar</button>
                 </form>
