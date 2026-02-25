@@ -64,6 +64,36 @@
         </div>
     </section>
 
+    <!-- Albums (Colecciones) -->
+    <section class="container" style="margin-bottom: 3rem;">
+        <?php
+        $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC")->fetchAll();
+        if (!empty($albums)):
+        ?>
+            <div class="section-header-landing">
+                <h2>Explorar Colecciones</h2>
+                <span class="product-count"><?= count($albums) ?> álbumes</span>
+            </div>
+            <div class="album-grid">
+                <?php foreach ($albums as $album): 
+                    $icon = $album['icon_url'] ?: '';
+                    // Si no tiene icono, podríamos buscar la primera portada de un producto en este álbum
+                ?>
+                    <a href="/buscar?album=<?= urlencode($album['drive_id']) ?>" class="album-card">
+                        <div class="album-icon-wrapper">
+                            <?php if ($icon): ?>
+                                <img src="<?= e($icon) ?>" alt="<?= e($album['name']) ?>" loading="lazy">
+                            <?php else: ?>
+                                <div class="album-placeholder">📁</div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="album-name"><?= e($album['name']) ?></div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </section>
+
     <!-- Recent / Featured Products -->
     <section class="container">
         <?php

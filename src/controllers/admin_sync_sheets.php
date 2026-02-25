@@ -1,7 +1,15 @@
 <?php
 /**
- * Admin — Sincronizar catálogo desde Google Sheets.
- * Lee la hoja pública como CSV y hace UPSERT por SKU.
+ * Admin — Sincronización INTELIGENTE desde Google Sheets.
+ * 
+ * Mejoras sobre la versión anterior:
+ *   - Filtrado de duplicados: si un SKU aparece más de una vez, se usa la última fila
+ *   - Detección de cambios por hash: solo se actualizan las filas que realmente cambiaron
+ *   - Detección de eliminados: productos en DB pero no en Sheet → se archivan
+ *   - Batch SQL: INSERT ON DUPLICATE KEY UPDATE en chunks de 500
+ * 
+ * COLUMNAS SOPORTADAS (en cualquier orden):
+ *   sku, name, category, gender, movement, price_suggested, status, description, cover_image_url
  */
 
 // Verificar CSRF via header (AJAX)
@@ -20,7 +28,7 @@ if (empty($sheetId)) {
 // URL pública para exportar como CSV
 $url = "https://docs.google.com/spreadsheets/d/{$sheetId}/export?format=csv";
 
-// Descargar CSV con cURL (más robusto que file_get_contents)
+// Descargar CSV con cURL
 $ch = curl_init($url);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
@@ -47,12 +55,12 @@ if (count($lines) < 2) {
     jsonResponse(['error' => 'La hoja está vacía o solo tiene encabezados.'], 400);
 }
 
-// Columnas esperadas
+// Columnas soportadas
 $expectedColumns = ['sku', 'name', 'category', 'gender', 'movement', 'price_suggested', 'status', 'description', 'cover_image_url'];
 
-// Header
+// Header — normalizar eliminando BOM y espacios
 $header = array_map(function ($h) {
-    return strtolower(trim(str_replace(["\xEF\xBB\xBF", '"', "'"], '', $h)));
+    return strtolower(trim(str_replace(["\xEF\xBB\xBF", '"', "'", "\r", "\n"], '', $h)));
 }, $lines[0]);
 
 // Mapear columnas
@@ -68,118 +76,372 @@ if (!isset($colMap['sku'])) {
     jsonResponse(['error' => 'No se encontró la columna "sku" en la hoja. Columnas encontradas: ' . implode(', ', $header)], 400);
 }
 
-// Procesar filas
+$hasCoverColumn = isset($colMap['cover_image_url']);
+
+// ============================================================
+// PASO 1: Recoger filas + filtrar duplicados (último gana)
+// ============================================================
 $db = getDB();
-$inserted = 0;
-$updated = 0;
+
+// Asegurar que la columna sheet_hash exista (self-healing)
+try {
+    $db->query("SELECT sheet_hash FROM products LIMIT 1");
+} catch (\PDOException $e) {
+    $db->exec("ALTER TABLE products ADD COLUMN sheet_hash VARCHAR(32) DEFAULT NULL");
+}
+
 $errors = [];
-$rowNum = 0;
+$rawRows = [];
+$duplicateSkus = [];
 
 for ($i = 1; $i < count($lines); $i++) {
     $row = $lines[$i];
     if (empty(array_filter($row)))
-        continue; // omitir filas vacías
+        continue;
 
-    $rowNum++;
     $data = [];
     foreach ($colMap as $col => $idx) {
         $data[$col] = isset($row[$idx]) ? trim($row[$idx]) : '';
     }
-    $data['_sheet_row'] = $i; // posición real en la hoja
-    processRow($db, $data, $rowNum, $inserted, $updated, $errors);
+
+    $sku = $data['sku'] ?? '';
+    if (empty($sku)) {
+        $errors[] = "Fila " . ($i + 1) . ": SKU vacío, se omitió.";
+        continue;
+    }
+
+    // Sanitizar
+    $gender = strtolower($data['gender'] ?? 'unisex');
+    if (!in_array($gender, ['hombre', 'mujer', 'unisex']))
+        $gender = 'unisex';
+
+    $status = strtolower($data['status'] ?? 'active');
+    if (!in_array($status, ['active', 'discontinued']))
+        $status = 'active';
+
+    $price = floatval(str_replace([',', '$', ' '], ['', '', ''], $data['price_suggested'] ?? '0'));
+
+    $coverUrl = '';
+    if (!empty($data['cover_image_url'])) {
+        $coverUrl = normalizeDriveUrl($data['cover_image_url']);
+    }
+
+    $rowData = [
+        'sku' => $sku,
+        'name' => $data['name'] ?? $sku,
+        'category' => $data['category'] ?? '',
+        'gender' => $gender,
+        'movement' => $data['movement'] ?? '',
+        'price' => $price,
+        'status' => $status,
+        'archived' => ($status === 'discontinued') ? 1 : 0,
+        'description' => $data['description'] ?? '',
+        'cover_image_url' => $coverUrl,
+        'sheet_row' => $i,
+    ];
+
+    // Hash de la fila para detectar cambios
+    $hashData = $rowData;
+    unset($hashData['sheet_row']); // la posición no cuenta como cambio
+    if (!$hasCoverColumn)
+        unset($hashData['cover_image_url']);
+    $rowData['_hash'] = md5(json_encode($hashData));
+
+    // Filtrar duplicados: si el SKU ya existe, se marca y se sobreescribe
+    if (isset($rawRows[$sku])) {
+        $duplicateSkus[$sku] = ($duplicateSkus[$sku] ?? 1) + 1;
+    }
+    $rawRows[$sku] = $rowData; // último gana
 }
 
+$batchRows = array_values($rawRows);
+$sheetSkus = array_keys($rawRows);
+$totalDuplicates = count($duplicateSkus);
+
 // ============================================================
-// Auto-vincular portadas: SOLO match exacto por nombre de archivo.
-// El nombre del archivo en Drive (sin extensión) debe ser EXACTO al SKU.
-// Ejemplo: archivo "839-5.jpg" → SKU "839-5" ✅
-//          archivo "839-5F1.jpg" → SKU "839-5" ❌ (no es match exacto)
+// PASO 2: Comparar hashes — separar cambios de sin-cambios
 // ============================================================
-$coversAssigned = 0;
-$coverErrors = '';
-try {
-    set_time_limit(300);
-    require_once __DIR__ . '/../services/GoogleDriveService.php';
-    $drive = new GoogleDriveService();
-    $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
-    $token = $drive->getValidToken($db);
+$inserted = 0;
+$updated = 0;
+$unchanged = 0;
+$coversUpdated = 0;
+$totalRows = count($batchRows);
+$chunkSize = 500;
 
-    if ($token && $rootFolderId) {
-        $noCover = $db->query(
-            "SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0"
-        )->fetchAll(PDO::FETCH_ASSOC);
+// Obtener productos existentes con su hash y cover
+$existingProducts = [];
+if (!empty($sheetSkus)) {
+    foreach (array_chunk($sheetSkus, 500) as $skuChunk) {
+        $ph = implode(',', array_fill(0, count($skuChunk), '?'));
+        $stmt = $db->prepare("SELECT sku, sheet_hash, cover_image_url FROM products WHERE sku IN ($ph)");
+        $stmt->execute($skuChunk);
+        foreach ($stmt->fetchAll() as $r) {
+            $existingProducts[$r['sku']] = [
+                'hash' => $r['sheet_hash'] ?? '',
+                'cover' => $r['cover_image_url'] ?? '',
+            ];
+        }
+    }
+}
 
-        if (!empty($noCover)) {
-            $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
+// Separar filas que realmente cambiaron
+$rowsToUpsert = [];
+foreach ($batchRows as $row) {
+    $sku = $row['sku'];
+    $newHash = $row['_hash'];
 
-            foreach ($noCover as $prod) {
-                $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
-
-                try {
-                    $allFiles = $drive->findBySku($rootFolderId, $cleanSku);
-
-                    // SOLO match exacto: nombre sin extensión === SKU limpio
-                    $exactImages = [];
-                    $exactVideos = [];
-                    foreach ($allFiles as $f) {
-                        $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
-                        if (strcasecmp($nameOnly, $cleanSku) !== 0)
-                            continue; // skip non-exact
-
-                        $mime = $f['mimeType'] ?? '';
-                        if (str_starts_with($mime, 'image/'))
-                            $exactImages[] = $f;
-                        elseif (str_starts_with($mime, 'video/'))
-                            $exactVideos[] = $f;
-                    }
-
-                    if (!empty($exactImages)) {
-                        $drive->makePublic($exactImages[0]['id']);
-                        $updateStmt->execute([
-                            "https://lh3.googleusercontent.com/d/{$exactImages[0]['id']}",
-                            $prod['id']
-                        ]);
-                        $coversAssigned++;
-                    } elseif (!empty($exactVideos)) {
-                        $drive->makePublic($exactVideos[0]['id']);
-                        $updateStmt->execute([
-                            "[VIDEO]https://drive.google.com/thumbnail?id={$exactVideos[0]['id']}&sz=w400",
-                            $prod['id']
-                        ]);
-                        $coversAssigned++;
-                    }
-                } catch (Exception $e) {
-                    // Silenciar errores individuales
-                }
-            }
+    if (isset($existingProducts[$sku])) {
+        if ($existingProducts[$sku]['hash'] === $newHash) {
+            $unchanged++;
+            continue; // Sin cambios → omitir
+        }
+        $updated++;
+        if (!empty($row['cover_image_url']) && $existingProducts[$sku]['cover'] !== $row['cover_image_url']) {
+            $coversUpdated++;
         }
     } else {
-        $coverErrors = $token ? 'GOOGLE_DRIVE_FOLDER_ID no configurado' : 'Sin token de Google Drive';
+        $inserted++;
+        if (!empty($row['cover_image_url']))
+            $coversUpdated++;
     }
-} catch (Exception $e) {
-    $coverErrors = $e->getMessage();
+    $rowsToUpsert[] = $row;
 }
 
+// ============================================================
+// PASO 3: Batch UPSERT solo las filas que cambiaron
+// ============================================================
+if (!empty($rowsToUpsert)) {
+    $db->beginTransaction();
+    try {
+        foreach (array_chunk($rowsToUpsert, $chunkSize) as $chunk) {
+            $placeholders = [];
+            $params = [];
+            foreach ($chunk as $row) {
+                $placeholders[] = '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                $params[] = $row['sku'];
+                $params[] = $row['name'];
+                $params[] = $row['category'];
+                $params[] = $row['gender'];
+                $params[] = $row['movement'];
+                $params[] = $row['price'];
+                $params[] = $row['status'];
+                $params[] = $row['archived'];
+                $params[] = $row['description'];
+                $params[] = $row['cover_image_url'] ?: null;
+                $params[] = $row['sheet_row'];
+                $params[] = $row['_hash'];
+            }
+
+            $sql = "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url, sheet_row, sheet_hash) 
+                    VALUES " . implode(', ', $placeholders) . "
+                    ON DUPLICATE KEY UPDATE 
+                        name = COALESCE(NULLIF(VALUES(name), ''), name),
+                        category = COALESCE(NULLIF(VALUES(category), ''), category),
+                        gender = VALUES(gender),
+                        movement = COALESCE(NULLIF(VALUES(movement), ''), movement),
+                        price_suggested = IF(VALUES(price_suggested) > 0, VALUES(price_suggested), price_suggested),
+                        status = VALUES(status),
+                        archived = VALUES(archived),
+                        description = COALESCE(NULLIF(VALUES(description), ''), description),
+                        cover_image_url = COALESCE(VALUES(cover_image_url), cover_image_url),
+                        sheet_row = VALUES(sheet_row),
+                        sheet_hash = VALUES(sheet_hash),
+                        updated_at = NOW()";
+            $db->prepare($sql)->execute($params);
+        }
+        $db->commit();
+    } catch (\Exception $e) {
+        $db->rollBack();
+        $errors[] = "Error en batch insert: " . $e->getMessage();
+    }
+}
+
+// ============================================================
+// PASO 4: Detectar eliminados — SKUs en DB que NO están en Sheet → archivar
+// ============================================================
+$archivedFromSheet = 0;
+if (!empty($sheetSkus)) {
+    $allDbSkus = $db->query("SELECT sku FROM products WHERE archived = 0")->fetchAll(PDO::FETCH_COLUMN);
+    $removedSkus = array_diff($allDbSkus, $sheetSkus);
+
+    if (!empty($removedSkus)) {
+        foreach (array_chunk($removedSkus, 500) as $chunk) {
+            $ph = implode(',', array_fill(0, count($chunk), '?'));
+            $db->prepare("UPDATE products SET archived = 1, updated_at = NOW() WHERE sku IN ($ph) AND archived = 0")
+                ->execute($chunk);
+            $archivedFromSheet += count($chunk);
+        }
+    }
+}
+
+// ============================================================
+// PASO 5: Auto-asignar portadas desde Drive (pre-index completo)
+// ============================================================
+$coversDriveAssigned = 0;
+$coverErrors = '';
+
+if (!$hasCoverColumn) {
+    try {
+        set_time_limit(300);
+        require_once __DIR__ . '/../services/GoogleDriveService.php';
+        $drive = new GoogleDriveService();
+        $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
+        $token = $drive->getValidToken($db);
+
+        if ($token && $rootFolderId) {
+            $noCover = $db->query(
+                "SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') LIMIT 200"
+            )->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($noCover)) {
+                $allDriveFiles = $drive->listAllMediaFiles();
+                $driveFiles = $allDriveFiles['files'] ?? [];
+
+                $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
+                $fileIdsToPublish = [];
+                $updatesQueue = [];
+
+                foreach ($noCover as $prod) {
+                    $rootSku = extractRootSku($prod['sku']);
+                    $matched = [];
+                    foreach ($driveFiles as $file) {
+                        if (skuMatchesFilename($rootSku, $file['name'])) {
+                            $matched[] = $file;
+                        }
+                    }
+
+                    if (empty($matched))
+                        continue;
+
+                    $coverFile = null;
+                    foreach ($matched as $f) {
+                        if (str_starts_with($f['mimeType'] ?? '', 'image/')) {
+                            $coverFile = $f;
+                            break;
+                        }
+                    }
+                    if (!$coverFile) {
+                        foreach ($matched as $f) {
+                            if (str_starts_with($f['mimeType'] ?? '', 'video/')) {
+                                $coverFile = $f;
+                                break;
+                            }
+                        }
+                    }
+
+                    if ($coverFile) {
+                        $fileIdsToPublish[] = $coverFile['id'];
+                        $isVideo = str_starts_with($coverFile['mimeType'] ?? '', 'video/');
+                        $coverUrl = "https://lh3.googleusercontent.com/d/{$coverFile['id']}";
+                        if ($isVideo)
+                            $coverUrl = "[VIDEO]{$coverUrl}";
+                        $updatesQueue[] = ['url' => $coverUrl, 'id' => $prod['id']];
+                    }
+                }
+
+                if (!empty($fileIdsToPublish)) {
+                    $drive->makePublicBatch($fileIdsToPublish);
+                }
+
+                foreach ($updatesQueue as $upd) {
+                    $updateStmt->execute([$upd['url'], $upd['id']]);
+                    $coversDriveAssigned++;
+                }
+            }
+        } else {
+            $coverErrors = $token ? 'GOOGLE_DRIVE_FOLDER_ID no configurado' : 'Sin token de Google Drive';
+        }
+    } catch (Exception $e) {
+        $coverErrors = $e->getMessage();
+    }
+}
+
+// ============================================================
+// Respuesta con estadísticas completas
+// ============================================================
 jsonResponse([
     'success' => true,
     'inserted' => $inserted,
     'updated' => $updated,
+    'unchanged' => $unchanged,
+    'archived_from_sheet' => $archivedFromSheet,
+    'duplicates_in_sheet' => $totalDuplicates,
+    'covers_from_sheets' => $coversUpdated,
+    'covers_from_drive' => $coversDriveAssigned,
+    'has_cover_column' => $hasCoverColumn,
     'errors' => $errors,
-    'total' => $rowNum,
-    'covers_assigned' => $coversAssigned,
+    'total' => $totalRows,
     'cover_errors' => $coverErrors,
+    'duplicate_skus' => array_keys($duplicateSkus),
+    'message' => buildMessage($inserted, $updated, $unchanged, $archivedFromSheet, $totalDuplicates, $coversUpdated, $coversDriveAssigned, $hasCoverColumn),
 ]);
 
 // ============================================================
-// Helper: parsear CSV string a array de arrays
+// Helpers
 // ============================================================
+
+/**
+ * Construye mensaje de resumen para el frontend.
+ */
+function buildMessage(int $inserted, int $updated, int $unchanged, int $archived, int $duplicates, int $coversSheets, int $coversDrive, bool $hasCoverCol): string
+{
+    $parts = [];
+    if ($inserted > 0)
+        $parts[] = "🆕 {$inserted} nuevos";
+    if ($updated > 0)
+        $parts[] = "🔄 {$updated} actualizados";
+    if ($unchanged > 0)
+        $parts[] = "✅ {$unchanged} sin cambios";
+    if ($archived > 0)
+        $parts[] = "📦 {$archived} archivados (eliminados del Sheet)";
+    if ($duplicates > 0)
+        $parts[] = "⚠️ {$duplicates} SKUs duplicados en Sheet (se usó última fila)";
+    if ($coversSheets > 0)
+        $parts[] = "🖼️ {$coversSheets} portadas desde Sheets";
+    if ($coversDrive > 0)
+        $parts[] = "🖼️ {$coversDrive} portadas desde Drive";
+    if (!$hasCoverCol)
+        $parts[] = "💡 Tip: Agrega columna 'cover_image_url' en tu Sheets para sincronizar portadas automáticamente";
+    return implode(' · ', $parts) ?: 'Sin cambios';
+}
+
+/**
+ * Normaliza una URL/ID de Drive o cualquier URL de imagen a formato lh3.googleusercontent.com
+ */
+function normalizeDriveUrl(string $url): string
+{
+    $url = trim($url);
+    if (empty($url))
+        return '';
+
+    if (str_starts_with($url, 'https://lh3.googleusercontent.com/')) {
+        return $url;
+    }
+
+    if (preg_match('#drive\.google\.com/file/d/([a-zA-Z0-9_-]{20,})#', $url, $m)) {
+        return "https://lh3.googleusercontent.com/d/{$m[1]}";
+    }
+
+    if (preg_match('#[?&]id=([a-zA-Z0-9_-]{20,})#', $url, $m)) {
+        return "https://lh3.googleusercontent.com/d/{$m[1]}";
+    }
+
+    if (preg_match('/^[a-zA-Z0-9_-]{20,44}$/', $url)) {
+        return "https://lh3.googleusercontent.com/d/{$url}";
+    }
+
+    return $url;
+}
+
+/**
+ * Parsear CSV string a array de arrays.
+ */
 function str_getcsv_multiline(string $csv): array
 {
     $rows = [];
     $handle = fopen('php://temp', 'r+');
     fwrite($handle, $csv);
     rewind($handle);
-
     while (($row = fgetcsv($handle)) !== false) {
         $rows[] = $row;
     }

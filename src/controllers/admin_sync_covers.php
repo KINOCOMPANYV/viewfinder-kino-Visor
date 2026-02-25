@@ -92,13 +92,14 @@ function scoreCover(array $file, array $coverKeywords, array $numericPriority): 
 $allDriveFiles = $drive->listAllMediaFiles();
 $driveFileIndex = $allDriveFiles['files'] ?? [];
 
-$updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
+$updateStmt = $db->prepare("UPDATE products SET cover_image_url = ?, album_id = ? WHERE id = ?");
 $assigned = 0;
 $assignedVideos = 0;
 $errors = [];
 $diagnostics = [];
 $fileIdsToPublish = [];
 $updatesQueue = [];
+$albumsToCreate = []; // [drive_id => name]
 
 foreach ($products as $prod) {
     $diag = ['sku' => $prod['sku'], 'status' => 'no_files'];
@@ -138,6 +139,10 @@ foreach ($products as $prod) {
             continue;
         }
 
+        // Identificar el Álbum (carpeta de primer nivel bajo la raíz)
+        $bestMedia = null;
+        $albumId = null;
+
         // Separar imágenes y videos
         $images = array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
         $videos = array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
@@ -148,23 +153,40 @@ foreach ($products as $prod) {
                 return scoreCover($b, $coverKeywords, $numericPriority)
                     - scoreCover($a, $coverKeywords, $numericPriority);
             });
-
-            $best = $images[0];
-            $fileIdsToPublish[] = $best['id'];
-            $coverUrl = "https://lh3.googleusercontent.com/d/{$best['id']}";
-            $updatesQueue[] = ['url' => $coverUrl, 'id' => $prod['id']];
-            $assigned++;
-            $diag['status'] = 'image_assigned';
-            $diag['assigned_file'] = $best['name'];
+            $bestMedia = $images[0];
+            $isVideo = false;
         } elseif (!empty($videos)) {
-            $best = array_values($videos)[0];
-            $fileIdsToPublish[] = $best['id'];
-            $coverUrl = "[VIDEO]https://drive.google.com/thumbnail?id={$best['id']}&sz=w400";
-            $updatesQueue[] = ['url' => $coverUrl, 'id' => $prod['id']];
-            $assignedVideos++;
+            $bestMedia = array_values($videos)[0];
+            $isVideo = true;
+        }
+
+        if ($bestMedia) {
+            $albumId = $drive->getAlbumIdForFile($bestMedia, $rootFolderId);
+
+            // Si encontramos un álbum, registrarlo para asegurarnos que exista en la tabla albums
+            if ($albumId) {
+                // El nombre del álbum es más difícil de obtener sin otra llamada, 
+                // pero findTopLevelParent podría ser mejorado o simplemente dejar que se cree luego.
+                // Para ahora, asumimos que findTopLevelParent hace el trabajo.
+            }
+
+            $fileIdsToPublish[] = $bestMedia['id'];
+            $coverUrl = $isVideo
+                ? "[VIDEO]https://drive.google.com/thumbnail?id={$bestMedia['id']}&sz=w400"
+                : "https://lh3.googleusercontent.com/d/{$bestMedia['id']}";
+
+            $updatesQueue[] = [
+                'url' => $coverUrl,
+                'album_id' => $albumId,
+                'id' => $prod['id']
+            ];
+
             $assigned++;
-            $diag['status'] = 'video_assigned';
-            $diag['assigned_file'] = $best['name'];
+            if ($isVideo)
+                $assignedVideos++;
+            $diag['status'] = ($isVideo ? 'video' : 'image') . '_assigned';
+            $diag['assigned_file'] = $bestMedia['name'];
+            $diag['album_id'] = $albumId;
         } else {
             $diag['status'] = 'no_media_files';
         }
@@ -177,14 +199,37 @@ foreach ($products as $prod) {
     $diagnostics[] = $diag;
 }
 
-// Hacer públicos en batch (curl_multi — mucho más rápido)
+// Hacer públicos en batch
 if (!empty($fileIdsToPublish)) {
     $drive->makePublicBatch($fileIdsToPublish);
 }
 
-// Actualizar DB
+// Actualizar DB e identificar álbumes detectados
+$detectedAlbumIds = [];
 foreach ($updatesQueue as $upd) {
-    $updateStmt->execute([$upd['url'], $upd['id']]);
+    $updateStmt->execute([$upd['url'], $upd['album_id'], $upd['id']]);
+    if ($upd['album_id']) {
+        $detectedAlbumIds[] = $upd['album_id'];
+    }
+}
+
+// Auto-crear álbumes nuevos en la tabla 'albums' si no existen
+if (!empty($detectedAlbumIds)) {
+    $detectedAlbumIds = array_unique($detectedAlbumIds);
+    foreach ($detectedAlbumIds as $aid) {
+        $check = $db->prepare("SELECT drive_id FROM albums WHERE drive_id = ?");
+        $check->execute([$aid]);
+        if (!$check->fetch()) {
+            // Obtener el nombre de la carpeta desde Drive
+            $url = "https://www.googleapis.com/drive/v3/files/{$aid}?fields=name";
+            $response = $drive->httpGet($url);
+            $folderMeta = json_decode($response, true);
+            $name = $folderMeta['name'] ?? 'Álbum Desconocido';
+
+            $ins = $db->prepare("INSERT INTO albums (drive_id, name) VALUES (?, ?)");
+            $ins->execute([$aid, $name]);
+        }
+    }
 }
 
 $remaining = $totalWithout - $assigned;

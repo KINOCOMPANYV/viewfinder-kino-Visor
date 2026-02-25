@@ -100,6 +100,7 @@ unset($_SESSION['cache_flash']);
             <a href="/admin" class="active">📊 Dashboard</a>
             <a href="/admin/products">📦 Productos</a>
             <a href="/admin/import">📥 Importar Excel</a>
+            <a href="/admin/albums">🗂️ Álbumes</a>
             <a href="/admin/media">🖼️ Media</a>
             <a href="/" target="_blank">🌐 Ver Portal</a>
         </nav>
@@ -165,41 +166,52 @@ unset($_SESSION['cache_flash']);
         <!-- Desglose por Categoría y Género -->
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-top:1.5rem;">
             <?php if (!empty($topCategories)): ?>
-            <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:1.25rem;">
-                <h3 style="font-size:0.9rem; color:var(--color-text-muted); margin-bottom:0.75rem;">📊 Top Categorías (activos)</h3>
-                <?php foreach ($topCategories as $cat): ?>
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--color-border);">
-                        <span style="font-size:0.85rem; color:var(--color-text);"><?= e($cat['category']) ?></span>
-                        <span style="font-size:0.8rem; font-weight:700; color:var(--color-primary); background:rgba(201,168,76,0.1); padding:0.15rem 0.5rem; border-radius:4px;">
-                            <?= number_format($cat['cnt']) ?>
-                        </span>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+                <div
+                    style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:1.25rem;">
+                    <h3 style="font-size:0.9rem; color:var(--color-text-muted); margin-bottom:0.75rem;">📊 Top Categorías
+                        (activos)</h3>
+                    <?php foreach ($topCategories as $cat): ?>
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--color-border);">
+                            <span style="font-size:0.85rem; color:var(--color-text);"><?= e($cat['category']) ?></span>
+                            <span
+                                style="font-size:0.8rem; font-weight:700; color:var(--color-primary); background:rgba(201,168,76,0.1); padding:0.15rem 0.5rem; border-radius:4px;">
+                                <?= number_format($cat['cnt']) ?>
+                            </span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             <?php endif; ?>
 
             <?php if (!empty($genderStats)): ?>
-            <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:1.25rem;">
-                <h3 style="font-size:0.9rem; color:var(--color-text-muted); margin-bottom:0.75rem;">👥 Por Género (activos)</h3>
-                <?php 
-                $genderLabels = ['hombre' => '♂️ Hombre', 'mujer' => '♀️ Mujer', 'unisex' => '⚧️ Unisex'];
-                $genderColors = ['hombre' => '#60a5fa', 'mujer' => '#f472b6', 'unisex' => '#a78bfa'];
-                foreach ($genderStats as $gs): 
-                    $label = $genderLabels[$gs['gender']] ?? ucfirst($gs['gender']);
-                    $color = $genderColors[$gs['gender']] ?? 'var(--color-text)';
-                    $pct = $activeProducts > 0 ? round(($gs['cnt'] / $activeProducts) * 100, 1) : 0;
-                ?>
-                    <div style="margin-bottom:0.6rem;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                            <span style="font-size:0.85rem; color:var(--color-text);"><?= $label ?></span>
-                            <span style="font-size:0.8rem; font-weight:600; color:<?= $color ?>;"><?= number_format($gs['cnt']) ?> (<?= $pct ?>%)</span>
+                <div
+                    style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:1.25rem;">
+                    <h3 style="font-size:0.9rem; color:var(--color-text-muted); margin-bottom:0.75rem;">👥 Por Género
+                        (activos)</h3>
+                    <?php
+                    $genderLabels = ['hombre' => '♂️ Hombre', 'mujer' => '♀️ Mujer', 'unisex' => '⚧️ Unisex'];
+                    $genderColors = ['hombre' => '#60a5fa', 'mujer' => '#f472b6', 'unisex' => '#a78bfa'];
+                    foreach ($genderStats as $gs):
+                        $label = $genderLabels[$gs['gender']] ?? ucfirst($gs['gender']);
+                        $color = $genderColors[$gs['gender']] ?? 'var(--color-text)';
+                        $pct = $activeProducts > 0 ? round(($gs['cnt'] / $activeProducts) * 100, 1) : 0;
+                        ?>
+                        <div style="margin-bottom:0.6rem;">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                                <span style="font-size:0.85rem; color:var(--color-text);"><?= $label ?></span>
+                                <span
+                                    style="font-size:0.8rem; font-weight:600; color:<?= $color ?>;"><?= number_format($gs['cnt']) ?>
+                                    (<?= $pct ?>%)</span>
+                            </div>
+                            <div style="height:6px; background:var(--color-surface-2); border-radius:3px; overflow:hidden;">
+                                <div
+                                    style="height:100%; width:<?= $pct ?>%; background:<?= $color ?>; border-radius:3px; transition:width 0.5s ease;">
+                                </div>
+                            </div>
                         </div>
-                        <div style="height:6px; background:var(--color-surface-2); border-radius:3px; overflow:hidden;">
-                            <div style="height:100%; width:<?= $pct ?>%; background:<?= $color ?>; border-radius:3px; transition:width 0.5s ease;"></div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+                    <?php endforeach; ?>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -208,6 +220,7 @@ unset($_SESSION['cache_flash']);
         <div class="btn-group">
             <a href="/admin/import" class="btn btn-primary">📥 Importar Excel</a>
             <a href="/admin/products" class="btn btn-secondary">📦 Ver Productos</a>
+            <a href="/admin/albums" class="btn btn-secondary">🗂️ Álbumes</a>
             <a href="/admin/media" class="btn btn-secondary">🖼️ Google Drive Media</a>
             <a href="/" target="_blank" class="btn btn-secondary">🌐 Abrir Portal</a>
         </div>

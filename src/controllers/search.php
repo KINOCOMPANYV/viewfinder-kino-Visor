@@ -4,6 +4,7 @@
  * Soporta búsqueda múltiple: SKUs separados por comas o saltos de línea.
  */
 $q = trim($_GET['q'] ?? '');
+$albumId = trim($_GET['album'] ?? '');
 $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 20;
 $offset = ($page - 1) * $perPage;
@@ -33,16 +34,26 @@ if ($isMultiCode && $q !== '') {
 
 if ($q === '' && !$isMultiCode) {
     // Sin query: mostrar todos los activos paginados
-    $countStmt = $db->query("SELECT COUNT(*) FROM products WHERE archived = 0");
+    $where = "archived = 0";
+    $params = [];
+    if ($albumId) {
+        $where .= " AND album_id = ?";
+        $params[] = $albumId;
+    }
+    
+    $countStmt = $db->prepare("SELECT COUNT(*) FROM products WHERE $where");
+    $countStmt->execute($params);
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url 
-         FROM products WHERE archived = 0 
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url, album_id 
+         FROM products WHERE $where 
          ORDER BY name ASC 
          LIMIT ? OFFSET ?"
     );
-    $stmt->execute([$perPage, $offset]);
+    $params[] = $perPage;
+    $params[] = $offset;
+    $stmt->execute($params);
     $products = $stmt->fetchAll();
 } elseif ($isMultiCode) {
     // BÚSQUEDA MULTI-CÓDIGO: buscar cada SKU con LIKE para mayor flexibilidad
@@ -77,26 +88,32 @@ if ($q === '' && !$isMultiCode) {
 } else {
     // Con query simple: buscar por LIKE (comportamiento original)
     $like = "%{$q}%";
-    $countStmt = $db->prepare(
-        "SELECT COUNT(*) FROM products 
-         WHERE archived = 0 AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)"
-    );
-    $countStmt->execute([$like, $like, $like]);
+    $whereSimple = "archived = 0 AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)";
+    $paramsBase = [$like, $like, $like];
+    
+    if ($albumId) {
+        $whereSimple .= " AND album_id = ?";
+        $paramsBase[] = $albumId;
+    }
+
+    $countStmt = $db->prepare("SELECT COUNT(*) FROM products WHERE $whereSimple");
+    $countStmt->execute($paramsBase);
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url 
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url, album_id 
          FROM products 
-         WHERE archived = 0 AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)
+         WHERE $whereSimple
          ORDER BY 
-           CASE WHEN sku = ? THEN 0
-                WHEN sku LIKE ? THEN 1
-                ELSE 2 END,
-           name ASC
+            CASE WHEN sku = ? THEN 0
+                 WHEN sku LIKE ? THEN 1
+                 ELSE 2 END,
+            name ASC
          LIMIT ? OFFSET ?"
     );
     $startsWith = "{$q}%";
-    $stmt->execute([$like, $like, $like, $q, $startsWith, $perPage, $offset]);
+    $finalParams = array_merge($paramsBase, [$q, $startsWith, $perPage, $offset]);
+    $stmt->execute($finalParams);
     $products = $stmt->fetchAll();
 }
 
@@ -126,6 +143,19 @@ $totalPages = ceil($total / $perPage);
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
         </div>
     </header>
+
+    <?php if ($albumId): 
+        $albumName = $db->prepare("SELECT name FROM albums WHERE drive_id = ?");
+        $albumName->execute([$albumId]);
+        $albumTitle = $albumName->fetchColumn() ?: 'Álbum';
+    ?>
+    <div style="background:var(--color-surface); border-bottom:1px solid var(--color-border); padding: 1.5rem 0;">
+        <div class="container">
+            <h1 style="font-size:1.5rem; margin:0;">📂 <?= e($albumTitle) ?></h1>
+            <p style="color:var(--color-text-muted); font-size:0.9rem; margin-top:0.25rem;">Mostrando productos de esta colección</p>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <section class="container" style="padding-top:2rem;">
         <!-- Search bar inline -->
@@ -247,6 +277,7 @@ $totalPages = ceil($total / $perPage);
                     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                         <?php
                         $params = ['q' => $q, 'page' => $i];
+                        if ($albumId) $params['album'] = $albumId;
                         $url = '/buscar?' . http_build_query($params);
                         ?>
                         <?php if ($i === $page): ?>

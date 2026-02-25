@@ -4,10 +4,16 @@
  * - Si detecta comas o saltos de línea, desactiva autocomplete y hace submit
  * - Textarea auto-resize para pegar columnas de códigos
  */
-(function() {
+(function () {
     const input = document.getElementById('searchInput');
     const dropdown = document.getElementById('autocomplete');
     const form = document.getElementById('searchForm');
+    // Soporte para filtrar por álbum si viene en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const albumFilter = urlParams.get('album');
+    if (albumFilter) {
+        // Lógica opcional para mostrar qué álbum se está filtrando
+    }
     let debounceTimer;
     let activeIndex = -1;
 
@@ -30,7 +36,7 @@
         autoResize();
     }
 
-    input.addEventListener('input', function() {
+    input.addEventListener('input', function () {
         clearTimeout(debounceTimer);
         autoResize();
 
@@ -80,7 +86,7 @@
     });
 
     // Keyboard navigation
-    input.addEventListener('keydown', function(e) {
+    input.addEventListener('keydown', function (e) {
         const q = this.value.trim();
 
         // En multi-código: Enter hace submit del form
@@ -121,7 +127,7 @@
     });
 
     // Manejar paste: auto-resize después del paste
-    input.addEventListener('paste', function() {
+    input.addEventListener('paste', function () {
         setTimeout(() => {
             autoResize();
             // Si se pegaron múltiples códigos, cerrar autocomplete
@@ -141,7 +147,7 @@
     }
 
     // Close on outside click
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!input.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.remove('active');
         }

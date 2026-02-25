@@ -1,16 +1,15 @@
 <?php
 /**
- * Admin — Sincronizar catálogo desde Google Sheets.
- * Lee la hoja pública como CSV y hace UPSERT por SKU.
+ * Admin — Sincronización INTELIGENTE desde Google Sheets.
+ * 
+ * Mejoras sobre la versión anterior:
+ *   - Filtrado de duplicados: si un SKU aparece más de una vez, se usa la última fila
+ *   - Detección de cambios por hash: solo se actualizan las filas que realmente cambiaron
+ *   - Detección de eliminados: productos en DB pero no en Sheet → se archivan
+ *   - Batch SQL: INSERT ON DUPLICATE KEY UPDATE en chunks de 500
  * 
  * COLUMNAS SOPORTADAS (en cualquier orden):
  *   sku, name, category, gender, movement, price_suggested, status, description, cover_image_url
- * 
- * La columna cover_image_url puede contener:
- *   - URL directa de imagen (Google Drive lh3.googleusercontent.com, Drive uc?export=view, cualquier URL pública)
- *   - ID de archivo de Drive (solo el ID, se convierte automáticamente a URL de imagen)
- *   - URL de carpeta de Drive compartida (se extrae el primer archivo de imagen)
- *   - Vacío (no se modifica el cover existente)
  */
 
 // Verificar CSRF via header (AJAX)
@@ -19,7 +18,7 @@ if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
     jsonResponse(['error' => 'Token CSRF inválido.'], 403);
 }
 
-require_once __DIR__ . '/../import_helpers.php';
+require_once __DIR__ . '/src/import_helpers.php';
 
 $sheetId = env('GOOGLE_SHEET_ID', '');
 if (empty($sheetId)) {
@@ -56,7 +55,7 @@ if (count($lines) < 2) {
     jsonResponse(['error' => 'La hoja está vacía o solo tiene encabezados.'], 400);
 }
 
-// Columnas soportadas (ahora incluye cover_image_url)
+// Columnas soportadas
 $expectedColumns = ['sku', 'name', 'category', 'gender', 'movement', 'price_suggested', 'status', 'description', 'cover_image_url'];
 
 // Header — normalizar eliminando BOM y espacios
@@ -80,11 +79,20 @@ if (!isset($colMap['sku'])) {
 $hasCoverColumn = isset($colMap['cover_image_url']);
 
 // ============================================================
-// Procesar filas — recoger datos en memoria para batch SQL
+// PASO 1: Recoger filas + filtrar duplicados (último gana)
 // ============================================================
 $db = getDB();
+
+// Asegurar que la columna sheet_hash exista (self-healing)
+try {
+    $db->query("SELECT sheet_hash FROM products LIMIT 1");
+} catch (\PDOException $e) {
+    $db->exec("ALTER TABLE products ADD COLUMN sheet_hash VARCHAR(32) DEFAULT NULL");
+}
+
 $errors = [];
-$batchRows = [];
+$rawRows = [];
+$duplicateSkus = [];
 
 for ($i = 1; $i < count($lines); $i++) {
     $row = $lines[$i];
@@ -113,13 +121,12 @@ for ($i = 1; $i < count($lines); $i++) {
 
     $price = floatval(str_replace([',', '$', ' '], ['', '', ''], $data['price_suggested'] ?? '0'));
 
-    // Normalizar cover_image_url
     $coverUrl = '';
     if (!empty($data['cover_image_url'])) {
         $coverUrl = normalizeDriveUrl($data['cover_image_url']);
     }
 
-    $batchRows[] = [
+    $rowData = [
         'sku' => $sku,
         'name' => $data['name'] ?? $sku,
         'category' => $data['category'] ?? '',
@@ -130,130 +137,174 @@ for ($i = 1; $i < count($lines); $i++) {
         'archived' => ($status === 'discontinued') ? 1 : 0,
         'description' => $data['description'] ?? '',
         'cover_image_url' => $coverUrl,
+        'sheet_row' => $i,
     ];
+
+    // Hash de la fila para detectar cambios
+    $hashData = $rowData;
+    unset($hashData['sheet_row']); // la posición no cuenta como cambio
+    if (!$hasCoverColumn)
+        unset($hashData['cover_image_url']);
+    $rowData['_hash'] = md5(json_encode($hashData));
+
+    // Filtrar duplicados: si el SKU ya existe, se marca y se sobreescribe
+    if (isset($rawRows[$sku])) {
+        $duplicateSkus[$sku] = ($duplicateSkus[$sku] ?? 1) + 1;
+    }
+    $rawRows[$sku] = $rowData; // último gana
 }
 
+$batchRows = array_values($rawRows);
+$sheetSkus = array_keys($rawRows);
+$totalDuplicates = count($duplicateSkus);
+
 // ============================================================
-// Batch INSERT ... ON DUPLICATE KEY UPDATE (chunks de 500)
+// PASO 2: Comparar hashes — separar cambios de sin-cambios
 // ============================================================
 $inserted = 0;
 $updated = 0;
+$unchanged = 0;
 $coversUpdated = 0;
 $totalRows = count($batchRows);
 $chunkSize = 500;
 
-$db->beginTransaction();
-try {
-    // Obtener SKUs existentes de un solo golpe
-    $allSkus = array_column($batchRows, 'sku');
-    $existingSkus = [];
-    if (!empty($allSkus)) {
-        foreach (array_chunk($allSkus, 500) as $skuChunk) {
-            $ph = implode(',', array_fill(0, count($skuChunk), '?'));
-            $stmt = $db->prepare("SELECT sku, cover_image_url FROM products WHERE sku IN ($ph)");
-            $stmt->execute($skuChunk);
-            foreach ($stmt->fetchAll() as $r) {
-                $existingSkus[$r['sku']] = $r['cover_image_url'] ?? '';
-            }
+// Obtener productos existentes con su hash y cover
+$existingProducts = [];
+if (!empty($sheetSkus)) {
+    foreach (array_chunk($sheetSkus, 500) as $skuChunk) {
+        $ph = implode(',', array_fill(0, count($skuChunk), '?'));
+        $stmt = $db->prepare("SELECT sku, sheet_hash, cover_image_url FROM products WHERE sku IN ($ph)");
+        $stmt->execute($skuChunk);
+        foreach ($stmt->fetchAll() as $r) {
+            $existingProducts[$r['sku']] = [
+                'hash' => $r['sheet_hash'] ?? '',
+                'cover' => $r['cover_image_url'] ?? '',
+            ];
         }
     }
+}
 
-    // Batch upsert en chunks
-    foreach (array_chunk($batchRows, $chunkSize) as $chunk) {
-        $placeholders = [];
-        $params = [];
-        foreach ($chunk as $row) {
-            $placeholders[] = '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-            $params[] = $row['sku'];
-            $params[] = $row['name'];
-            $params[] = $row['category'];
-            $params[] = $row['gender'];
-            $params[] = $row['movement'];
-            $params[] = $row['price'];
-            $params[] = $row['status'];
-            $params[] = $row['archived'];
-            $params[] = $row['description'];
-            $params[] = $row['cover_image_url'] ?: null;
+// Separar filas que realmente cambiaron
+$rowsToUpsert = [];
+foreach ($batchRows as $row) {
+    $sku = $row['sku'];
+    $newHash = $row['_hash'];
 
-            // Contar inserts vs updates
-            if (isset($existingSkus[$row['sku']])) {
-                $updated++;
-                if (!empty($row['cover_image_url']) && $existingSkus[$row['sku']] !== $row['cover_image_url']) {
-                    $coversUpdated++;
-                }
-            } else {
-                $inserted++;
-                if (!empty($row['cover_image_url']))
-                    $coversUpdated++;
-            }
+    if (isset($existingProducts[$sku])) {
+        if ($existingProducts[$sku]['hash'] === $newHash) {
+            $unchanged++;
+            continue; // Sin cambios → omitir
         }
-
-        $sql = "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url) 
-                VALUES " . implode(', ', $placeholders) . "
-                ON DUPLICATE KEY UPDATE 
-                    name = COALESCE(NULLIF(VALUES(name), ''), name),
-                    category = COALESCE(NULLIF(VALUES(category), ''), category),
-                    gender = VALUES(gender),
-                    movement = COALESCE(NULLIF(VALUES(movement), ''), movement),
-                    price_suggested = IF(VALUES(price_suggested) > 0, VALUES(price_suggested), price_suggested),
-                    status = VALUES(status),
-                    archived = VALUES(archived),
-                    description = COALESCE(NULLIF(VALUES(description), ''), description),
-                    cover_image_url = COALESCE(VALUES(cover_image_url), cover_image_url),
-                    updated_at = NOW()";
-        $db->prepare($sql)->execute($params);
+        $updated++;
+        if (!empty($row['cover_image_url']) && $existingProducts[$sku]['cover'] !== $row['cover_image_url']) {
+            $coversUpdated++;
+        }
+    } else {
+        $inserted++;
+        if (!empty($row['cover_image_url']))
+            $coversUpdated++;
     }
-    $db->commit();
-} catch (\Exception $e) {
-    $db->rollBack();
-    $errors[] = "Error en batch insert: " . $e->getMessage();
+    $rowsToUpsert[] = $row;
 }
 
 // ============================================================
-// Auto-asignar portadas desde Drive (pre-index completo)
-// Solo si NO hay columna cover_image_url en el sheet
+// PASO 3: Batch UPSERT solo las filas que cambiaron
+// ============================================================
+if (!empty($rowsToUpsert)) {
+    $db->beginTransaction();
+    try {
+        foreach (array_chunk($rowsToUpsert, $chunkSize) as $chunk) {
+            $placeholders = [];
+            $params = [];
+            foreach ($chunk as $row) {
+                $placeholders[] = '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                $params[] = $row['sku'];
+                $params[] = $row['name'];
+                $params[] = $row['category'];
+                $params[] = $row['gender'];
+                $params[] = $row['movement'];
+                $params[] = $row['price'];
+                $params[] = $row['status'];
+                $params[] = $row['archived'];
+                $params[] = $row['description'];
+                $params[] = $row['cover_image_url'] ?: null;
+                $params[] = $row['sheet_row'];
+                $params[] = $row['_hash'];
+            }
+
+            $sql = "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url, sheet_row, sheet_hash) 
+                    VALUES " . implode(', ', $placeholders) . "
+                    ON DUPLICATE KEY UPDATE 
+                        name = COALESCE(NULLIF(VALUES(name), ''), name),
+                        category = COALESCE(NULLIF(VALUES(category), ''), category),
+                        gender = VALUES(gender),
+                        movement = COALESCE(NULLIF(VALUES(movement), ''), movement),
+                        price_suggested = IF(VALUES(price_suggested) > 0, VALUES(price_suggested), price_suggested),
+                        status = VALUES(status),
+                        archived = VALUES(archived),
+                        description = COALESCE(NULLIF(VALUES(description), ''), description),
+                        cover_image_url = COALESCE(VALUES(cover_image_url), cover_image_url),
+                        sheet_row = VALUES(sheet_row),
+                        sheet_hash = VALUES(sheet_hash),
+                        updated_at = NOW()";
+            $db->prepare($sql)->execute($params);
+        }
+        $db->commit();
+    } catch (\Exception $e) {
+        $db->rollBack();
+        $errors[] = "Error en batch insert: " . $e->getMessage();
+    }
+}
+
+// ============================================================
+// PASO 4: Detectar eliminados — SKUs en DB que NO están en Sheet → archivar
+// ============================================================
+$archivedFromSheet = 0;
+if (!empty($sheetSkus)) {
+    $allDbSkus = $db->query("SELECT sku FROM products WHERE archived = 0")->fetchAll(PDO::FETCH_COLUMN);
+    $removedSkus = array_diff($allDbSkus, $sheetSkus);
+
+    if (!empty($removedSkus)) {
+        foreach (array_chunk($removedSkus, 500) as $chunk) {
+            $ph = implode(',', array_fill(0, count($chunk), '?'));
+            $db->prepare("UPDATE products SET archived = 1, updated_at = NOW() WHERE sku IN ($ph) AND archived = 0")
+                ->execute($chunk);
+            $archivedFromSheet += count($chunk);
+        }
+    }
+}
+
+// ============================================================
+// PASO 5: Auto-asignar portadas desde Drive (pre-index completo)
 // ============================================================
 $coversDriveAssigned = 0;
 $coverErrors = '';
 
 if (!$hasCoverColumn) {
     try {
-        set_time_limit(300); // 5 minutos para procesar covers
-        require_once __DIR__ . '/../services/GoogleDriveService.php';
+        set_time_limit(300);
+        require_once __DIR__ . '/src/services/GoogleDriveService.php';
         $drive = new GoogleDriveService();
         $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
         $token = $drive->getValidToken($db);
 
         if ($token && $rootFolderId) {
-            // 1) Productos sin cover (hasta 200)
             $noCover = $db->query(
                 "SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') LIMIT 200"
             )->fetchAll(PDO::FETCH_ASSOC);
 
             if (!empty($noCover)) {
-                // 2) Pre-index: listar TODOS los archivos de imagen/video en Drive
                 $allDriveFiles = $drive->listAllMediaFiles();
                 $driveFiles = $allDriveFiles['files'] ?? [];
 
-                // 3) Construir mapa de SKU → archivos
-                $skuFileMap = [];
-                foreach ($driveFiles as $file) {
-                    $fileName = pathinfo($file['name'], PATHINFO_FILENAME);
-                    // El nombre de archivo ES el SKU o comienza con el SKU
-                    $skuFileMap[] = $file;
-                }
-
-                // 4) Para cada producto sin cover, buscar match
                 $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
                 $fileIdsToPublish = [];
                 $updatesQueue = [];
 
                 foreach ($noCover as $prod) {
                     $rootSku = extractRootSku($prod['sku']);
-                    // Buscar en archivos pre-indexados
                     $matched = [];
-                    foreach ($skuFileMap as $file) {
-                        $fName = pathinfo($file['name'], PATHINFO_FILENAME);
+                    foreach ($driveFiles as $file) {
                         if (skuMatchesFilename($rootSku, $file['name'])) {
                             $matched[] = $file;
                         }
@@ -262,7 +313,6 @@ if (!$hasCoverColumn) {
                     if (empty($matched))
                         continue;
 
-                    // Buscar primera imagen
                     $coverFile = null;
                     foreach ($matched as $f) {
                         if (str_starts_with($f['mimeType'] ?? '', 'image/')) {
@@ -270,7 +320,6 @@ if (!$hasCoverColumn) {
                             break;
                         }
                     }
-                    // Fallback: video
                     if (!$coverFile) {
                         foreach ($matched as $f) {
                             if (str_starts_with($f['mimeType'] ?? '', 'video/')) {
@@ -290,12 +339,10 @@ if (!$hasCoverColumn) {
                     }
                 }
 
-                // 5) Hacer públicos en batch (curl_multi)
                 if (!empty($fileIdsToPublish)) {
                     $drive->makePublicBatch($fileIdsToPublish);
                 }
 
-                // 6) Actualizar DB en batch
                 foreach ($updatesQueue as $upd) {
                     $updateStmt->execute([$upd['url'], $upd['id']]);
                     $coversDriveAssigned++;
@@ -309,17 +356,24 @@ if (!$hasCoverColumn) {
     }
 }
 
+// ============================================================
+// Respuesta con estadísticas completas
+// ============================================================
 jsonResponse([
     'success' => true,
     'inserted' => $inserted,
     'updated' => $updated,
+    'unchanged' => $unchanged,
+    'archived_from_sheet' => $archivedFromSheet,
+    'duplicates_in_sheet' => $totalDuplicates,
     'covers_from_sheets' => $coversUpdated,
     'covers_from_drive' => $coversDriveAssigned,
     'has_cover_column' => $hasCoverColumn,
     'errors' => $errors,
     'total' => $totalRows,
     'cover_errors' => $coverErrors,
-    'message' => buildMessage($inserted, $updated, $coversUpdated, $coversDriveAssigned, $hasCoverColumn),
+    'duplicate_skus' => array_keys($duplicateSkus),
+    'message' => buildMessage($inserted, $updated, $unchanged, $archivedFromSheet, $totalDuplicates, $coversUpdated, $coversDriveAssigned, $hasCoverColumn),
 ]);
 
 // ============================================================
@@ -329,13 +383,19 @@ jsonResponse([
 /**
  * Construye mensaje de resumen para el frontend.
  */
-function buildMessage(int $inserted, int $updated, int $coversSheets, int $coversDrive, bool $hasCoverCol): string
+function buildMessage(int $inserted, int $updated, int $unchanged, int $archived, int $duplicates, int $coversSheets, int $coversDrive, bool $hasCoverCol): string
 {
     $parts = [];
     if ($inserted > 0)
         $parts[] = "🆕 {$inserted} nuevos";
     if ($updated > 0)
         $parts[] = "🔄 {$updated} actualizados";
+    if ($unchanged > 0)
+        $parts[] = "✅ {$unchanged} sin cambios";
+    if ($archived > 0)
+        $parts[] = "📦 {$archived} archivados (eliminados del Sheet)";
+    if ($duplicates > 0)
+        $parts[] = "⚠️ {$duplicates} SKUs duplicados en Sheet (se usó última fila)";
     if ($coversSheets > 0)
         $parts[] = "🖼️ {$coversSheets} portadas desde Sheets";
     if ($coversDrive > 0)
@@ -347,14 +407,6 @@ function buildMessage(int $inserted, int $updated, int $coversSheets, int $cover
 
 /**
  * Normaliza una URL/ID de Drive o cualquier URL de imagen a formato lh3.googleusercontent.com
- * 
- * Acepta:
- *   - https://drive.google.com/file/d/FILE_ID/view → lh3.googleusercontent.com/d/FILE_ID
- *   - https://drive.google.com/open?id=FILE_ID    → lh3.googleusercontent.com/d/FILE_ID
- *   - https://drive.google.com/uc?id=FILE_ID      → lh3.googleusercontent.com/d/FILE_ID
- *   - https://lh3.googleusercontent.com/d/FILE_ID → sin cambios
- *   - FILE_ID (solo el ID de 28-33 chars alfanuméricos)  → lh3.googleusercontent.com/d/FILE_ID
- *   - Cualquier otra URL pública → sin cambios
  */
 function normalizeDriveUrl(string $url): string
 {
@@ -362,125 +414,23 @@ function normalizeDriveUrl(string $url): string
     if (empty($url))
         return '';
 
-    // Ya está en formato correcto
     if (str_starts_with($url, 'https://lh3.googleusercontent.com/')) {
         return $url;
     }
 
-    // drive.google.com/file/d/FILE_ID/view o /preview
     if (preg_match('#drive\.google\.com/file/d/([a-zA-Z0-9_-]{20,})#', $url, $m)) {
         return "https://lh3.googleusercontent.com/d/{$m[1]}";
     }
 
-    // drive.google.com/uc?id=FILE_ID o open?id=FILE_ID o ?export=view&id=FILE_ID
     if (preg_match('#[?&]id=([a-zA-Z0-9_-]{20,})#', $url, $m)) {
         return "https://lh3.googleusercontent.com/d/{$m[1]}";
     }
 
-    // Solo un ID de Drive (sin dominio) — 20 a 44 chars alfanuméricos/guiones
     if (preg_match('/^[a-zA-Z0-9_-]{20,44}$/', $url)) {
         return "https://lh3.googleusercontent.com/d/{$url}";
     }
 
-    // Cualquier otra URL pública (imgur, cloudinary, etc.) → dejar como está
     return $url;
-}
-
-/**
- * Procesa una fila con soporte para cover_image_url.
- * Extiende processRow() de import_helpers.php.
- */
-function processRowWithCover(PDO $db, array $data, int $rowNum, int &$inserted, int &$updated, int &$coversUpdated, array &$errors): void
-{
-    $sku = $data['sku'] ?? '';
-    if (empty($sku)) {
-        $errors[] = "Fila {$rowNum}: SKU vacío, se omitió.";
-        return;
-    }
-
-    $gender = strtolower($data['gender'] ?? 'unisex');
-    if (!in_array($gender, ['hombre', 'mujer', 'unisex']))
-        $gender = 'unisex';
-
-    $status = strtolower($data['status'] ?? 'active');
-    if (!in_array($status, ['active', 'discontinued']))
-        $status = 'active';
-    $archived = ($status === 'discontinued') ? 1 : 0;
-
-    $price = floatval(str_replace([',', '$', ' '], ['', '', ''], $data['price_suggested'] ?? '0'));
-    $coverUrl = $data['cover_image_url'] ?? '';
-
-    try {
-        $exists = $db->prepare("SELECT id, cover_image_url FROM products WHERE sku = ?");
-        $exists->execute([$sku]);
-        $existing = $exists->fetch();
-
-        if ($existing) {
-            // UPDATE — solo actualizar cover si viene nuevo valor en el sheet
-            $coverSql = '';
-            $params = [
-                $data['name'] ?? '',
-                $data['category'] ?? '',
-                $gender,
-                $data['movement'] ?? '',
-                $price,
-                $price,
-                $status,
-                $data['description'] ?? '',
-            ];
-
-            if (!empty($coverUrl)) {
-                $coverSql = ', cover_image_url = ?';
-                $params[] = $coverUrl;
-                if ($existing['cover_image_url'] !== $coverUrl) {
-                    $coversUpdated++;
-                }
-            }
-
-            $params[] = $archived;
-            $params[] = $sku;
-
-            $stmt = $db->prepare(
-                "UPDATE products SET 
-                    name = COALESCE(NULLIF(?, ''), name),
-                    category = COALESCE(NULLIF(?, ''), category),
-                    gender = ?,
-                    movement = COALESCE(NULLIF(?, ''), movement),
-                    price_suggested = IF(? > 0, ?, price_suggested),
-                    status = ?,
-                    description = COALESCE(NULLIF(?, ''), description)
-                    {$coverSql},
-                    archived = ?,
-                    updated_at = NOW()
-                 WHERE sku = ?"
-            );
-            $stmt->execute($params);
-            $updated++;
-        } else {
-            // INSERT
-            $stmt = $db->prepare(
-                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            );
-            $stmt->execute([
-                $sku,
-                $data['name'] ?? $sku,
-                $data['category'] ?? '',
-                $gender,
-                $data['movement'] ?? '',
-                $price,
-                $status,
-                $archived,
-                $data['description'] ?? '',
-                $coverUrl,
-            ]);
-            $inserted++;
-            if (!empty($coverUrl))
-                $coversUpdated++;
-        }
-    } catch (\Exception $e) {
-        $errors[] = "Fila {$rowNum} (SKU: {$sku}): " . $e->getMessage();
-    }
 }
 
 /**

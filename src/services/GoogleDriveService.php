@@ -153,7 +153,7 @@ class GoogleDriveService
             $query = "trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')";
             $params = [
                 'q' => $query,
-                'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink)',
+                'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,parents)',
                 'pageSize' => 1000, // máximo permitido por Drive API
             ];
             if ($token)
@@ -187,7 +187,7 @@ class GoogleDriveService
         $query = "name contains '{$skuEscaped}' and trashed = false and mimeType != 'application/vnd.google-apps.folder'";
         $params = [
             'q' => $query,
-            'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink)',
+            'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,parents)',
             'pageSize' => 100,
         ];
 
@@ -244,7 +244,7 @@ class GoogleDriveService
             $fileQuery = "'{$sub['id']}' in parents and name contains '{$skuEscaped}' and trashed = false";
             $fileParams = [
                 'q' => $fileQuery,
-                'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink)',
+                'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,parents)',
                 'pageSize' => 50,
             ];
             $fileUrl = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($fileParams);
@@ -578,6 +578,49 @@ class GoogleDriveService
         $response = curl_exec($ch);
         curl_close($ch);
         return $response ?: '';
+    }
+
+    /**
+     * Obtiene el ID del álbum (carpeta de primer nivel bajo la raíz) para un archivo.
+     * Retorna el ID de la carpeta o null si no se encuentra.
+     */
+    public function getAlbumIdForFile(array $file, string $rootFolderId): ?string
+    {
+        $parents = $file['parents'] ?? [];
+        if (empty($parents))
+            return null;
+
+        // Si ya es hijo directo de la raíz, su propio ID (si es carpeta) o su padre
+        if (in_array($rootFolderId, $parents)) {
+            return ($file['mimeType'] === 'application/vnd.google-apps.folder') ? $file['id'] : null;
+        }
+
+        // Si no es hijo directo, necesitamos buscar hacia arriba hasta encontrar el hijo directo de la raíz
+        return $this->findTopLevelParent($parents[0], $rootFolderId);
+    }
+
+    public function findTopLevelParent(string $folderId, string $rootFolderId): ?string
+    {
+        static $folderCache = [];
+        if (isset($folderCache[$folderId]))
+            return $folderCache[$folderId];
+
+        $url = "https://www.googleapis.com/drive/v3/files/{$folderId}?fields=id,parents";
+        $response = $this->httpGet($url);
+        $data = json_decode($response, true);
+
+        if (empty($data['parents']))
+            return null;
+
+        if (in_array($rootFolderId, $data['parents'])) {
+            $folderCache[$folderId] = $folderId;
+            return $folderId;
+        }
+
+        // Recursión hacia arriba
+        $topId = $this->findTopLevelParent($data['parents'][0], $rootFolderId);
+        $folderCache[$folderId] = $topId;
+        return $topId;
     }
 
     private function httpPost(string $url, array $data): string

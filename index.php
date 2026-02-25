@@ -208,6 +208,12 @@ if ($uri === '/admin/media/visibility' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/albums') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_albums.php';
+    exit;
+}
+
 if ($uri === '/admin/product/update' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_product_update.php';
