@@ -208,7 +208,23 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
                         'Content-Type': 'application/json',
                     },
                 });
-                const data = await res.json();
+
+                // Leer texto primero para evitar crash si el servidor devuelve HTML
+                const text = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (_) {
+                    // El servidor devolvió HTML en vez de JSON (error PHP o sesión expirada)
+                    const preview = text.substring(0, 200).replace(/</g, '&lt;');
+                    status.innerHTML = `<div style="padding:0.75rem; background:rgba(220,53,69,0.1); border:1px solid rgba(220,53,69,0.3); border-radius:var(--radius-sm); font-size:0.85rem; color:#dc3545;">❌ El servidor devolvió una respuesta inesperada (HTTP ${res.status}). Recarga la página e intenta de nuevo.<br><small style="opacity:0.6;">${preview}</small></div>`;
+                    return;
+                }
+
+                if (res.status === 401) {
+                    status.innerHTML = `<div style="padding:0.75rem; background:rgba(220,53,69,0.1); border:1px solid rgba(220,53,69,0.3); border-radius:var(--radius-sm); font-size:0.85rem; color:#dc3545;">❌ ${data.error || 'Sesión expirada.'} <a href="/admin/login" style="color:#dc3545; text-decoration:underline;">Iniciar sesión</a></div>`;
+                    return;
+                }
 
                 if (!res.ok || data.error) {
                     status.innerHTML = `<div style="padding:0.75rem; background:rgba(220,53,69,0.1); border:1px solid rgba(220,53,69,0.3); border-radius:var(--radius-sm); font-size:0.85rem; color:#dc3545;">❌ ${data.error || 'Error desconocido'}</div>`;
@@ -232,11 +248,11 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
                 }
             } catch (err) {
                 status.innerHTML = `<div style="padding:0.75rem; background:rgba(220,53,69,0.1); border:1px solid rgba(220,53,69,0.3); border-radius:var(--radius-sm); font-size:0.85rem; color:#dc3545;">❌ Error de conexión: ${err.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔄 Sincronizar Ahora';
+                btn.style.opacity = '1';
             }
-
-            btn.disabled = false;
-            btn.innerHTML = '🔄 Sincronizar Ahora';
-            btn.style.opacity = '1';
         }
     </script>
 </body>

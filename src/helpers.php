@@ -77,11 +77,25 @@ function isAdminLoggedIn(): bool
 }
 
 /**
- * Requiere autenticación de admin. Redirige si no está logueado.
+ * Requiere autenticación de admin.
+ * - Si la petición es AJAX/fetch → responde JSON 401.
+ * - Si es petición normal    → redirige al login.
  */
 function requireAdmin(): void
 {
     if (!isAdminLoggedIn()) {
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+            || !empty($_SERVER['HTTP_X_CSRF_TOKEN'])
+            || (($_SERVER['HTTP_ACCEPT'] ?? '') !== ''
+                && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'));
+
+        if ($isAjax) {
+            http_response_code(401);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => 'Sesión expirada. Por favor, recarga la página e inicia sesión de nuevo.']);
+            exit;
+        }
+
         redirect('/admin/login');
     }
 }
