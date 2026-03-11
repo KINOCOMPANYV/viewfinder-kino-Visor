@@ -475,28 +475,30 @@ img {
 .children-row {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    margin: 0.5rem 0 0.6rem;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
     flex-wrap: wrap;
+    min-height: 42px;
 }
 
 .child-thumb {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     border-radius: 6px;
     overflow: hidden;
-    border: 1.5px solid var(--color-border);
+    border: 1px solid var(--color-border);
     background: var(--color-surface-2);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: border-color 0.2s, transform 0.2s;
+    transition: all 0.2s;
     flex-shrink: 0;
 }
 
 .child-thumb:hover {
     border-color: var(--color-primary);
-    transform: scale(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 .child-thumb img {
@@ -506,35 +508,44 @@ img {
 }
 
 .child-placeholder {
-    font-size: 0.7rem;
+    font-size: 1rem;
     color: var(--color-text-dim);
-}
-
-.child-more {
-    width: 42px;
-    height: 42px;
-    border-radius: 6px;
-    background: var(--color-surface-2);
-    border: 1.5px dashed var(--color-border);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    width: 100%;
+    height: 100%;
+    background: var(--color-surface-3);
+}
+
+.child-more {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    background: var(--color-surface-2);
+    border: 1px dashed var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--color-primary);
     text-decoration: none;
-    transition: background 0.2s;
+    transition: all 0.2s;
     flex-shrink: 0;
 }
 
 .child-more:hover {
     background: rgba(201, 168, 76, 0.1);
+    border-color: var(--color-primary);
 }
 
 .children-label {
-    font-size: 0.7rem;
-    color: var(--color-text-dim);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
     margin-left: 0.25rem;
+    white-space: nowrap;
 }
 
 /* --- Card actions --- */

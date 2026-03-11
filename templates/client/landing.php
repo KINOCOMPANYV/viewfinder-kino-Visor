@@ -128,18 +128,25 @@
              ORDER BY {$orderCol} DESC"
         )->fetchAll();
 
-        // Group by family SKU (strip extension + last -digits)
+        // Group by family SKU using the global extractRootSku standard
         $grouped = [];
         $familyMaxRow = []; // track highest sheet_row per family (last in Sheet = newest)
         foreach ($allProducts as $p) {
             $sku = trim($p['sku']);
             $skuClean = preg_replace('/\.\w{2,4}$/i', '', $sku);
-            $family = preg_match('/^(.+)-\d+$/', $skuClean, $fm) ? $fm[1] : $skuClean;
+            
+            // Usar la función estandarizada de helpers.php para obtener el SKU raíz
+            $family = extractRootSku($skuClean);
+            
             if (!isset($grouped[$family])) {
                 $grouped[$family] = ['parent' => $p, 'children' => []];
                 $familyMaxRow[$family] = (int)$p['sheet_row'];
             } else {
-                $grouped[$family]['children'][] = $p;
+                // Solo añadir a los hijos si el SKU es diferente al padre original
+                if ($p['sku'] !== $grouped[$family]['parent']['sku']) {
+                    $grouped[$family]['children'][] = $p;
+                }
+                
                 if ((int)$p['sheet_row'] > $familyMaxRow[$family]) {
                     $familyMaxRow[$family] = (int)$p['sheet_row'];
                 }
