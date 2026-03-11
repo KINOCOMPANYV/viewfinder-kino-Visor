@@ -92,7 +92,7 @@ function scoreCover(array $file, array $coverKeywords, array $numericPriority): 
 $allDriveFiles = $drive->listAllMediaFiles();
 $driveFileIndex = $allDriveFiles['files'] ?? [];
 
-$updateStmt = $db->prepare("UPDATE products SET cover_image_url = ?, album_id = ? WHERE id = ?");
+$updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 $assigned = 0;
 $assignedVideos = 0;
 $errors = [];
@@ -207,30 +207,10 @@ if (!empty($fileIdsToPublish)) {
 // Actualizar DB e identificar álbumes detectados
 $detectedAlbumIds = [];
 foreach ($updatesQueue as $upd) {
-    $updateStmt->execute([$upd['url'], $upd['album_id'], $upd['id']]);
-    if ($upd['album_id']) {
-        $detectedAlbumIds[] = $upd['album_id'];
-    }
+    $updateStmt->execute([$upd['url'], $upd['id']]);
 }
 
-// Auto-crear álbumes nuevos en la tabla 'albums' si no existen
-if (!empty($detectedAlbumIds)) {
-    $detectedAlbumIds = array_unique($detectedAlbumIds);
-    foreach ($detectedAlbumIds as $aid) {
-        $check = $db->prepare("SELECT drive_id FROM albums WHERE drive_id = ?");
-        $check->execute([$aid]);
-        if (!$check->fetch()) {
-            // Obtener el nombre de la carpeta desde Drive
-            $url = "https://www.googleapis.com/drive/v3/files/{$aid}?fields=name";
-            $response = $drive->httpGet($url);
-            $folderMeta = json_decode($response, true);
-            $name = $folderMeta['name'] ?? 'Álbum Desconocido';
-
-            $ins = $db->prepare("INSERT INTO albums (drive_id, name) VALUES (?, ?)");
-            $ins->execute([$aid, $name]);
-        }
-    }
-}
+// Auto-crear álbumes deshabilitado temporalmente hasta que se corra la migración 012
 
 $remaining = $totalWithout - $assigned;
 
