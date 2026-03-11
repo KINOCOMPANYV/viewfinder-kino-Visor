@@ -199,14 +199,11 @@ class GoogleDriveService
         // Post-filtrar con regla de prefijo
         $files = $this->filterBySku($files, $sku);
 
-        // Si la búsqueda global encontró resultados, usarlos
-        if (!empty($files)) {
-            return $files;
-        }
-
-        // 2) Fallback: búsqueda recursiva (por si la global falla o no tenga permisos)
-        // Timeout de 20s, profundidad máx 5 niveles
-        return $this->findBySkuRecursive($folderId, $skuEscaped, $sku, 0, 5, microtime(true), 20.0);
+        // Retornar archivos encontrados (o vacío si no existen).
+        // NOTA: Se ha deshabilitado la búsqueda recursiva de fallback (que tomaba 20s)
+        // porque la búsqueda global es suficiente y el bloqueo de 20s causaba timeouts masivos
+        // cuando se buscaban portadas de productos que no tenían fotos.
+        return $files;
     }
 
 
