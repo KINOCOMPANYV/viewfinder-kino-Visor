@@ -101,7 +101,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url, album_id 
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url 
          FROM products 
          WHERE $whereSimple
          ORDER BY 
