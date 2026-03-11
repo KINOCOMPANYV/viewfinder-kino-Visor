@@ -67,7 +67,12 @@
     <!-- Albums (Colecciones) -->
     <section class="container" style="margin-bottom: 3rem;">
         <?php
-        $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC")->fetchAll();
+        $albums = [];
+        try {
+            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC")->fetchAll();
+        } catch (\PDOException $e) {
+            // tabla albums aún no existe (migración 012 pendiente)
+        }
         if (!empty($albums)):
         ?>
             <div class="section-header-landing">
