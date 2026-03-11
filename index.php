@@ -98,12 +98,14 @@ if (preg_match('#^/producto/([^/]+)$#', $uri, $matches)) {
 
 if ($uri === '/api/search') {
     // API de búsqueda (para autocomplete AJAX)
+    session_write_close();
     include __DIR__ . '/src/controllers/api_search.php';
     exit;
 }
 
 if ($uri === '/api/batch-search' && $method === 'POST') {
     // API de búsqueda por lote
+    session_write_close();
     include __DIR__ . '/src/controllers/api_batch_search.php';
     exit;
 }
@@ -421,6 +423,7 @@ if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
 // ============================================================
 
 if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    session_write_close(); // Unlock session to prevent blocking concurrent searches
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
 
     $input = json_decode(file_get_contents('php://input'), true);
@@ -456,40 +459,10 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $uncachedSkus = $skus;
     }
 
-    // 2) Para los no cacheados, buscar en Drive (max 10 a la vez para no saturar)
-    if (!empty($uncachedSkus) && $folderId) {
-        $drive = new GoogleDriveService();
-        $token = $drive->getValidToken($db);
-
-        if ($token) {
-            // Limitar a 10 búsquedas de Drive por request para no saturar
-            $toSearch = array_slice(array_values($uncachedSkus), 0, 10);
-
-            foreach ($toSearch as $sku) {
-                // Strip file extension from SKU for Drive search
-                $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $sku);
-                $rootSku = extractRootSku($cleanSku);
-                $files = $drive->findBySku($folderId, $rootSku);
-
-                if (!empty($files)) {
-                    $drive->makePublicBatch(array_column($files, 'id'));
-
-                    // Guardar en caché
-                    try {
-                        $saveStmt = $db->prepare(
-                            "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
-                             VALUES (?, ?, ?, NOW())
-                             ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
-                        );
-                        $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
-                    } catch (Exception $e) {
-                    }
-                }
-
-                $covers[$sku] = extractCoverFromFiles($files);
-            }
-        }
-    }
+    // 2) Búsqueda en Drive en vivo DESHABILITADA POR RENDIMIENTO.
+    // Hacer búsquedas de Drive en vivo desde la página pública era demasiado lento (1-2s por query)
+    // originando bloqueos de 15+ segundos cuando faltaban muchas fotos.
+    // La asignación de portadas debe hacerse en batch desde el panel de Admin -> Media -> Auto-asignar.
 
     // 3) SKUs sin resultado → null
     foreach ($skus as $sku) {
