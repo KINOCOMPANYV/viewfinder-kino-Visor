@@ -405,33 +405,6 @@ function buildMessage(int $inserted, int $updated, int $unchanged, int $archived
     return implode(' · ', $parts) ?: 'Sin cambios';
 }
 
-/**
- * Normaliza una URL/ID de Drive o cualquier URL de imagen a formato lh3.googleusercontent.com
- */
-function normalizeDriveUrl(string $url): string
-{
-    $url = trim($url);
-    if (empty($url))
-        return '';
-
-    if (str_starts_with($url, 'https://lh3.googleusercontent.com/')) {
-        return $url;
-    }
-
-    if (preg_match('#drive\.google\.com/file/d/([a-zA-Z0-9_-]{20,})#', $url, $m)) {
-        return "https://lh3.googleusercontent.com/d/{$m[1]}";
-    }
-
-    if (preg_match('#[?&]id=([a-zA-Z0-9_-]{20,})#', $url, $m)) {
-        return "https://lh3.googleusercontent.com/d/{$m[1]}";
-    }
-
-    if (preg_match('/^[a-zA-Z0-9_-]{20,44}$/', $url)) {
-        return "https://lh3.googleusercontent.com/d/{$url}";
-    }
-
-    return $url;
-}
 
 /**
  * Parsear CSV string a array de arrays.
