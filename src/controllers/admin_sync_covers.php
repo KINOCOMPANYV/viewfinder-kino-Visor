@@ -111,16 +111,25 @@ foreach ($products as $prod) {
     try {
         // Clean SKU: strip file extension for matching
         $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
+        // Root SKU: extraer SKU padre (KNM-8845-RG → KNM-8845) para buscar archivos del padre
+        $rootSku = extractRootSku($cleanSku);
 
-        // Buscar en índice pre-cargado usando skuMatchesFilename helper
+        // Buscar en índice pre-cargado usando AMBOS: SKU completo Y SKU raíz
+        // Esto permite encontrar archivos nombrados como el padre (KNM-8845.jpg)
+        // cuando el producto es una variante (KNM-8845-RG)
         $allFiles = [];
+        $seenIds = [];
         foreach ($driveFileIndex as $file) {
-            if (skuMatchesFilename($cleanSku, $file['name'])) {
+            if (isset($seenIds[$file['id']])) continue;
+            if (skuMatchesFilename($cleanSku, $file['name']) || 
+                ($rootSku !== $cleanSku && skuMatchesFilename($rootSku, $file['name']))) {
                 $allFiles[] = $file;
+                $seenIds[$file['id']] = true;
             }
         }
 
         $diag['files_found'] = count($allFiles);
+        $diag['root_sku'] = $rootSku;
         $diag['file_names'] = array_map(fn($f) => $f['name'] ?? '?', array_slice($allFiles, 0, 10));
 
         if (empty($allFiles)) {
@@ -129,8 +138,12 @@ foreach ($products as $prod) {
             continue;
         }
 
-        // Clasificar matches usando SKU limpio
+        // Clasificar matches: priorizar exactos del SKU completo, luego del root
         $classes = classifyMatches($allFiles, $cleanSku);
+        if (empty($classes['exact']) && empty($classes['compatible']) && $rootSku !== $cleanSku) {
+            // Fallback: clasificar con el root SKU
+            $classes = classifyMatches($allFiles, $rootSku);
+        }
         $diag['exact_count'] = count($classes['exact']);
         $diag['compatible_count'] = count($classes['compatible']);
 
