@@ -48,29 +48,6 @@ if ($uri === '/health/debug') {
     exit;
 }
 
-// Auto-migrar: ejecutar migraciones pendientes en cada deploy
-try {
-    $db = getDB();
-    // Verificar si hay migraciones pendientes
-    $db->exec("CREATE TABLE IF NOT EXISTS migrations (id INT AUTO_INCREMENT PRIMARY KEY, filename VARCHAR(255) NOT NULL, executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-    $executed = $db->query("SELECT filename FROM migrations")->fetchAll(PDO::FETCH_COLUMN);
-    $files = glob(__DIR__ . '/migrations/*.sql');
-    sort($files);
-    foreach ($files as $file) {
-        $filename = basename($file);
-        if ($filename === '000_create_migrations.sql')
-            continue;
-        if (in_array($filename, $executed))
-            continue;
-        $sql = file_get_contents($file);
-        $db->exec($sql);
-        $stmt = $db->prepare("INSERT INTO migrations (filename) VALUES (?)");
-        $stmt->execute([$filename]);
-    }
-} catch (\Exception $e) {
-    // Silenciar errores de migración en producción
-}
-
 // Ruta ya obtenida arriba
 
 // ============================================================
@@ -79,18 +56,21 @@ try {
 
 if ($uri === '/' || $uri === '') {
     // Landing page con buscador
+    session_write_close();
     include __DIR__ . '/templates/client/landing.php';
     exit;
 }
 
 if ($uri === '/buscar' || $uri === '/search') {
     // Búsqueda de productos
+    session_write_close();
     include __DIR__ . '/src/controllers/search.php';
     exit;
 }
 
 if (preg_match('#^/producto/([^/]+)$#', $uri, $matches)) {
     // Ficha del producto por SKU
+    session_write_close();
     $_GET['sku'] = $matches[1];
     include __DIR__ . '/src/controllers/product.php';
     exit;
@@ -237,6 +217,7 @@ if ($uri === '/admin/sync-sheets' && $method === 'POST') {
 if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     // API para obtener media de un producto por SKU
     // Soporta búsqueda bidireccional (padre↔hijo) + caché de 5 min
+    session_write_close();
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
     $sku = urldecode($matches[1]);
     $rootSku = extractRootSku($sku);
@@ -350,6 +331,7 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
 // ============================================================
 
 if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
+    session_write_close();
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
 
     $fileId = $matches[1];
