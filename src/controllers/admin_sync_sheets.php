@@ -405,19 +405,3 @@ function buildMessage(int $inserted, int $updated, int $unchanged, int $archived
     return implode(' · ', $parts) ?: 'Sin cambios';
 }
 
-
-/**
- * Parsear CSV string a array de arrays.
- */
-function str_getcsv_multiline(string $csv): array
-{
-    $rows = [];
-    $handle = fopen('php://temp', 'r+');
-    fwrite($handle, $csv);
-    rewind($handle);
-    while (($row = fgetcsv($handle)) !== false) {
-        $rows[] = $row;
-    }
-    fclose($handle);
-    return $rows;
-}

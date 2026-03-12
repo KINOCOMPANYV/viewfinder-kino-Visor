@@ -25,8 +25,8 @@ if (!$stmt->fetch()) {
     exit;
 }
 
-// Actualizar cover_image_url
-$update = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
+// Actualizar cover_image_url + timestamp
+$update = $db->prepare("UPDATE products SET cover_image_url = ?, updated_at = NOW() WHERE id = ?");
 $update->execute([$imageUrl, $productId]);
 
 echo json_encode(['ok' => true, 'cover_image_url' => $imageUrl]);

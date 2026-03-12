@@ -42,6 +42,8 @@ if (empty($products)) {
 
 /**
  * Clasificar archivos en: exactos, compatibles (prefijo) y rechazados.
+ * Regla: el carácter siguiente al SKU NO puede ser dígito (evita 123-1 → 123-10).
+ * Letras, guiones bajos, puntos, espacios SÍ son válidos (soporta variantes como 839-5f1, 839-5_V1).
  */
 function classifyMatches(array $files, string $sku): array
 {
@@ -58,7 +60,9 @@ function classifyMatches(array $files, string $sku): array
 
         if (stripos($nameOnly, $sku) === 0 && strlen($nameOnly) > strlen($sku)) {
             $nextChar = $nameOnly[strlen($sku)];
-            if (!ctype_alnum($nextChar)) {
+            // Solo rechazar si el siguiente carácter es dígito (evita 123-1 → 123-10)
+            // Letras, guiones bajos, etc. son válidos (variantes como f1, v2, _ROJO)
+            if (!ctype_digit($nextChar)) {
                 $compatible[] = $f;
             }
         }
@@ -172,7 +176,7 @@ foreach ($products as $prod) {
 
             $fileIdsToPublish[] = $bestMedia['id'];
             $coverUrl = $isVideo
-                ? "[VIDEO]https://drive.google.com/thumbnail?id={$bestMedia['id']}&sz=w400"
+                ? "[VIDEO]https://lh3.googleusercontent.com/d/{$bestMedia['id']}"
                 : "https://lh3.googleusercontent.com/d/{$bestMedia['id']}";
 
             $updatesQueue[] = [

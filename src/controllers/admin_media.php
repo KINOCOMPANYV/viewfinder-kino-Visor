@@ -79,59 +79,38 @@ foreach ($allProducts as $prod) {
     $productsBySku[$prod['sku']] = $prod;
 }
 
-// Obtener productos enlazados (que tienen archivos en Drive con su SKU)
-// Optimización: listar TODOS los archivos recursivamente una sola vez,
-// luego hacer el matching localmente en PHP (en vez de N llamadas a la API).
+// Enlazados: usar pre-index global (una sola llamada API) con caché de sesión
 $linkedCount = 0;
 if ($isConnected && !empty($rootFolderId)) {
-    // Recopilar todos los archivos (raíz + subcarpetas)
-    $allDriveFiles = $driveFiles; // archivos de la carpeta actual
-    if ($isRoot) {
-        // Agregar archivos de subcarpetas recursivamente
-        $allDriveFiles = collectAllFilesRecursive($drive, $rootFolderId);
-    }
+    // Caché en sesión (5 min TTL) para evitar re-indexar Drive en cada carga
+    $cacheKey = 'media_linked_count_cache';
+    $cacheTimeKey = 'media_linked_count_time';
+    $cached = $_SESSION[$cacheKey] ?? null;
+    $cacheTime = $_SESSION[$cacheTimeKey] ?? 0;
+    $cacheExpired = (time() - $cacheTime) > 300; // 5 minutos
 
-    foreach ($productsBySku as $sku => $prod) {
-        foreach ($allDriveFiles as $file) {
-            if (skuMatchesFilename($sku, $file['name'])) {
-                $linkedCount++;
-                break;
+    if ($cached !== null && !$cacheExpired) {
+        $linkedCount = $cached;
+    } else {
+        // Pre-indexar TODOS los archivos de Drive con una sola llamada API
+        $allDriveFilesIndex = $drive->listAllMediaFiles();
+        $allDriveFiles = $allDriveFilesIndex['files'] ?? [];
+
+        foreach ($productsBySku as $sku => $prod) {
+            foreach ($allDriveFiles as $file) {
+                if (skuMatchesFilename($sku, $file['name'])) {
+                    $linkedCount++;
+                    break;
+                }
             }
         }
+
+        $_SESSION[$cacheKey] = $linkedCount;
+        $_SESSION[$cacheTimeKey] = time();
     }
 }
 
-/**
- * Recopila TODOS los archivos de una carpeta y subcarpetas (recursivo).
- * Hace pocas llamadas a la API (una por carpeta) en vez de una por producto.
- */
-function collectAllFilesRecursive(GoogleDriveService $drive, string $folderId, int $depth = 0, int $maxDepth = 3): array
-{
-    if ($depth >= $maxDepth)
-        return [];
 
-    $result = $drive->listFiles($folderId);
-    $items = $result['files'] ?? [];
-
-    $files = [];
-    $subfolders = [];
-
-    foreach ($items as $item) {
-        if (($item['mimeType'] ?? '') === 'application/vnd.google-apps.folder') {
-            $subfolders[] = $item;
-        } else {
-            $files[] = $item;
-        }
-    }
-
-    // Recurrir en subcarpetas
-    foreach ($subfolders as $sub) {
-        $subFiles = collectAllFilesRecursive($drive, $sub['id'], $depth + 1, $maxDepth);
-        $files = array_merge($files, $subFiles);
-    }
-
-    return $files;
-}
 
 
 

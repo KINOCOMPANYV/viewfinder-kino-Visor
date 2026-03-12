@@ -233,16 +233,20 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
                     if (data.errors && data.errors.length > 0) {
                         errHtml = `<div style="margin-top:0.5rem; font-size:0.8rem; color:var(--color-text-muted);">⚠️ ${data.errors.length} advertencia(s): ${data.errors.slice(0, 5).join(', ')}</div>`;
                     }
+                    const coversTotal = (data.covers_from_sheets || 0) + (data.covers_from_drive || 0);
                     status.innerHTML = `
                         <div style="padding:1rem; background:rgba(52,168,83,0.1); border:1px solid rgba(52,168,83,0.3); border-radius:var(--radius-sm);">
                             <div style="font-size:0.95rem; font-weight:600; color:#34A853; margin-bottom:0.5rem;">✅ Sincronización completada</div>
-                            <div style="display:flex; gap:1.5rem; font-size:0.85rem; color:var(--color-text);">
+                            <div style="display:flex; gap:1.5rem; font-size:0.85rem; color:var(--color-text); flex-wrap:wrap;">
                                 <span>🆕 <strong>${data.inserted}</strong> nuevos</span>
                                 <span>🔄 <strong>${data.updated}</strong> actualizados</span>
+                                ${data.unchanged > 0 ? '<span>✅ <strong>' + data.unchanged + '</strong> sin cambios</span>' : ''}
+                                ${data.archived_from_sheet > 0 ? '<span>📦 <strong>' + data.archived_from_sheet + '</strong> archivados</span>' : ''}
                                 <span>📄 <strong>${data.total}</strong> filas</span>
-                                ${data.covers_assigned > 0 ? '<span>🖼️ <strong>' + data.covers_assigned + '</strong> portadas asignadas</span>' : ''}
+                                ${coversTotal > 0 ? '<span>🖼️ <strong>' + coversTotal + '</strong> portadas asignadas</span>' : ''}
                             </div>
                             ${data.cover_errors ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ Cover sync: ' + data.cover_errors + '</div>' : ''}
+                            ${data.duplicates_in_sheet > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#fbbf24;">⚠️ ' + data.duplicates_in_sheet + ' SKUs duplicados en Sheet (se usó última fila)</div>' : ''}
                             ${errHtml}
                         </div>`;
                 }
