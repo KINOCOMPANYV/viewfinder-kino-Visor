@@ -487,6 +487,7 @@ function extractCoverFromFiles(array $files): ?array
 
 if ($uri === '/health') {
     try {
+        $db = getDB();
         $db->query("SELECT 1");
         jsonCachedResponse(['status' => 'ok', 'db' => 'connected'], 10);
     } catch (\Exception $e) {

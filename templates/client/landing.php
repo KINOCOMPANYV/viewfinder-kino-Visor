@@ -67,6 +67,7 @@
     <!-- Albums (Colecciones) -->
     <section class="container" style="margin-bottom: 3rem;">
         <?php
+        $db = getDB();
         $albums = [];
         try {
             $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC")->fetchAll();
