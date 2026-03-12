@@ -178,15 +178,6 @@ foreach ($products as $prod) {
         }
 
         if ($bestMedia) {
-            $albumId = $drive->getAlbumIdForFile($bestMedia, $rootFolderId);
-
-            // Si encontramos un álbum, registrarlo para asegurarnos que exista en la tabla albums
-            if ($albumId) {
-                // El nombre del álbum es más difícil de obtener sin otra llamada, 
-                // pero findTopLevelParent podría ser mejorado o simplemente dejar que se cree luego.
-                // Para ahora, asumimos que findTopLevelParent hace el trabajo.
-            }
-
             $fileIdsToPublish[] = $bestMedia['id'];
             $coverUrl = $isVideo
                 ? "[VIDEO]https://lh3.googleusercontent.com/d/{$bestMedia['id']}"
@@ -194,7 +185,6 @@ foreach ($products as $prod) {
 
             $updatesQueue[] = [
                 'url' => $coverUrl,
-                'album_id' => $albumId,
                 'id' => $prod['id']
             ];
 
@@ -203,7 +193,6 @@ foreach ($products as $prod) {
                 $assignedVideos++;
             $diag['status'] = ($isVideo ? 'video' : 'image') . '_assigned';
             $diag['assigned_file'] = $bestMedia['name'];
-            $diag['album_id'] = $albumId;
         } else {
             $diag['status'] = 'no_media_files';
         }
