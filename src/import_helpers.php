@@ -46,6 +46,23 @@ function normalizeDriveUrl(string $url): string
 }
 
 /**
+ * Parsear CSV string a array de arrays.
+ * Maneja correctamente campos con saltos de línea dentro de comillas.
+ */
+function str_getcsv_multiline(string $csv): array
+{
+    $rows = [];
+    $handle = fopen('php://temp', 'r+');
+    fwrite($handle, $csv);
+    rewind($handle);
+    while (($row = fgetcsv($handle)) !== false) {
+        $rows[] = $row;
+    }
+    fclose($handle);
+    return $rows;
+}
+
+/**
  * Ensures the sheet_row column exists in the products table.
  * Auto-creates it if missing (self-healing migration).
  */
