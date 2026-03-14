@@ -93,7 +93,7 @@ if ($isConnected && !empty($rootFolderId)) {
         $linkedCount = $cached;
     } else {
         // Pre-indexar TODOS los archivos de Drive con una sola llamada API
-        $allDriveFilesIndex = $drive->listAllMediaFiles();
+        $allDriveFilesIndex = $drive->listAllMediaFiles($rootFolderId);
         $allDriveFiles = $allDriveFilesIndex['files'] ?? [];
 
         foreach ($productsBySku as $sku => $prod) {

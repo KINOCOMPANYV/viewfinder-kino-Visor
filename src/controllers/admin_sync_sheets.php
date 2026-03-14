@@ -294,7 +294,7 @@ if (!$hasCoverColumn) {
             )->fetchAll(PDO::FETCH_ASSOC);
 
             if (!empty($noCover)) {
-                $allDriveFiles = $drive->listAllMediaFiles();
+                $allDriveFiles = $drive->listAllMediaFiles($rootFolderId);
                 $driveFiles = $allDriveFiles['files'] ?? [];
 
                 $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");

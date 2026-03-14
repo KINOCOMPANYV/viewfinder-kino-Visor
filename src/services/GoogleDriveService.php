@@ -145,22 +145,59 @@ class GoogleDriveService
      * Lista TODOS los archivos de imagen y video en Drive (búsqueda global, no restringida a carpeta).
      * Usa paginación automática para recuperar todos los resultados.
      * Ideal para pre-indexar 3000+ archivos con ~30 API calls en vez de búsquedas individuales.
+     *
+     * Estrategia de fallback:
+     *   1) Búsqueda global simple (funciona en la mayoría de cuentas personales)
+     *   2) Si retorna 0, intenta con corpora=allDrives (para Shared Drives)
+     *   3) Si aún 0, hace búsqueda recursiva dentro de la carpeta raíz
      */
-    public function listAllMediaFiles(): array
+    public function listAllMediaFiles(?string $rootFolderId = null): array
+    {
+        // Intento 1: Búsqueda global simple
+        $files = $this->searchMediaFiles([
+            'supportsAllDrives' => 'true',
+            'includeItemsFromAllDrives' => 'true',
+        ]);
+
+        if (!empty($files)) {
+            return ['files' => $files, 'strategy' => 'global'];
+        }
+
+        // Intento 2: Con corpora=allDrives (para Shared Drives)
+        $files = $this->searchMediaFiles([
+            'supportsAllDrives' => 'true',
+            'includeItemsFromAllDrives' => 'true',
+            'corpora' => 'allDrives',
+        ]);
+
+        if (!empty($files)) {
+            return ['files' => $files, 'strategy' => 'allDrives'];
+        }
+
+        // Intento 3: Búsqueda recursiva dentro de la carpeta raíz
+        if ($rootFolderId) {
+            $files = $this->listMediaFilesRecursive($rootFolderId);
+            return ['files' => $files, 'strategy' => 'recursive'];
+        }
+
+        return ['files' => [], 'strategy' => 'none', 'error' => 'No se encontraron archivos con ninguna estrategia'];
+    }
+
+    /**
+     * Búsqueda interna de archivos media con parámetros configurables.
+     */
+    private function searchMediaFiles(array $extraParams = []): array
     {
         $allFiles = [];
         $token = '';
 
         do {
             $query = "trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')";
-            $params = [
+            $params = array_merge([
                 'q' => $query,
                 'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,parents)',
-                'pageSize' => 1000, // máximo permitido por Drive API
-                'supportsAllDrives' => 'true',
-                'includeItemsFromAllDrives' => 'true',
-                'corpora' => 'allDrives',
-            ];
+                'pageSize' => 1000,
+            ], $extraParams);
             if ($token)
                 $params['pageToken'] = $token;
 
@@ -168,12 +205,45 @@ class GoogleDriveService
             $response = $this->httpGet($url);
             $data = json_decode($response, true) ?: [];
 
+            // Si la API devuelve un error, abortar este intento
+            if (isset($data['error'])) {
+                return [];
+            }
+
             $files = $data['files'] ?? [];
             $allFiles = array_merge($allFiles, $files);
             $token = $data['nextPageToken'] ?? '';
         } while (!empty($token));
 
-        return ['files' => $allFiles];
+        return $allFiles;
+    }
+
+    /**
+     * Lista archivos media recursivamente dentro de una carpeta específica.
+     * Fallback para cuando la búsqueda global no funciona.
+     */
+    private function listMediaFilesRecursive(string $folderId, int $depth = 0, int $maxDepth = 3): array
+    {
+        if ($depth >= $maxDepth) return [];
+
+        $allMedia = [];
+
+        // Listar TODO el contenido de esta carpeta
+        $result = $this->listFiles($folderId);
+        $items = $result['files'] ?? [];
+
+        foreach ($items as $item) {
+            $mime = $item['mimeType'] ?? '';
+            if ($mime === 'application/vnd.google-apps.folder') {
+                // Recurrir dentro de la subcarpeta
+                $subFiles = $this->listMediaFilesRecursive($item['id'], $depth + 1, $maxDepth);
+                $allMedia = array_merge($allMedia, $subFiles);
+            } elseif (str_starts_with($mime, 'image/') || str_starts_with($mime, 'video/')) {
+                $allMedia[] = $item;
+            }
+        }
+
+        return $allMedia;
     }
 
     /**

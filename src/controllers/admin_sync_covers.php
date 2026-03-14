@@ -93,8 +93,9 @@ function scoreCover(array $file, array $coverKeywords, array $numericPriority): 
 // ============================================================
 // Pre-index: listar TODOS los archivos de Drive de una vez
 // ============================================================
-$allDriveFiles = $drive->listAllMediaFiles();
+$allDriveFiles = $drive->listAllMediaFiles($rootFolderId);
 $driveFileIndex = $allDriveFiles['files'] ?? [];
+$driveStrategy = $allDriveFiles['strategy'] ?? 'unknown';
 
 $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 $assigned = 0;
@@ -227,9 +228,11 @@ echo json_encode([
     'assigned_videos' => $assignedVideos,
     'total' => count($products),
     'remaining' => $remaining,
+    'drive_files_count' => count($driveFileIndex),
+    'drive_strategy' => $driveStrategy,
     'errors' => $errors,
     'diagnostics' => $diagnostics,
     'message' => $assigned > 0
-        ? "⭐ {$assigned} producto(s) recibieron portada (" . ($assigned - $assignedVideos) . " img, {$assignedVideos} vid)." . ($remaining > 0 ? " Quedan {$remaining} sin portada." : '')
-        : "No se encontraron archivos para los " . count($products) . " productos procesados. Ver diagnósticos."
+        ? "⭐ {$assigned} producto(s) recibieron portada (" . ($assigned - $assignedVideos) . " img, {$assignedVideos} vid). Drive: " . count($driveFileIndex) . " archivos ({$driveStrategy})." . ($remaining > 0 ? " Quedan {$remaining} sin portada." : '')
+        : "No se encontraron archivos (" . count($driveFileIndex) . " en Drive, estrategia: {$driveStrategy}). Ver diagnósticos."
 ]);
