@@ -29,8 +29,8 @@ if (empty($rootFolderId)) {
     exit;
 }
 
-// Cargar productos sin cover (hasta 50 por batch para evitar timeouts de API)
-$products = $db->query("SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0 LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
+// Cargar productos sin cover (hasta 200 por batch)
+$products = $db->query("SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0 LIMIT 200")->fetchAll(PDO::FETCH_ASSOC);
 
 $totalWithout = $db->query("SELECT COUNT(*) FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0")->fetchColumn();
 
