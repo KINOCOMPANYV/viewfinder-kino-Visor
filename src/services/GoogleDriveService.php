@@ -123,6 +123,8 @@ class GoogleDriveService
                 'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,createdTime)',
                 'pageSize' => $pageSize,
                 'orderBy' => 'name',
+                'supportsAllDrives' => 'true',
+                'includeItemsFromAllDrives' => 'true',
             ];
             if ($token)
                 $params['pageToken'] = $token;
@@ -155,6 +157,9 @@ class GoogleDriveService
                 'q' => $query,
                 'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,parents)',
                 'pageSize' => 1000, // máximo permitido por Drive API
+                'supportsAllDrives' => 'true',
+                'includeItemsFromAllDrives' => 'true',
+                'corpora' => 'allDrives',
             ];
             if ($token)
                 $params['pageToken'] = $token;
@@ -189,6 +194,9 @@ class GoogleDriveService
             'q' => $query,
             'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,parents)',
             'pageSize' => 100,
+            'supportsAllDrives' => 'true',
+            'includeItemsFromAllDrives' => 'true',
+            'corpora' => 'allDrives',
         ];
 
         $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
@@ -228,6 +236,8 @@ class GoogleDriveService
             'q' => $subQuery,
             'fields' => 'files(id,name)',
             'pageSize' => 100,
+            'supportsAllDrives' => 'true',
+            'includeItemsFromAllDrives' => 'true',
         ];
         $subUrl = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($subParams);
         $subResp = $this->httpGet($subUrl);
@@ -243,6 +253,8 @@ class GoogleDriveService
                 'q' => $fileQuery,
                 'fields' => 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,parents)',
                 'pageSize' => 50,
+                'supportsAllDrives' => 'true',
+                'includeItemsFromAllDrives' => 'true',
             ];
             $fileUrl = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($fileParams);
             $fileResp = $this->httpGet($fileUrl);
@@ -456,7 +468,7 @@ class GoogleDriveService
      */
     public function makePublic(string $fileId): bool
     {
-        $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions";
+        $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions?supportsAllDrives=true";
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
@@ -487,7 +499,7 @@ class GoogleDriveService
         $body = json_encode(['role' => 'reader', 'type' => 'anyone']);
 
         foreach ($fileIds as $fileId) {
-            $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions";
+            $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions?supportsAllDrives=true";
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_POST => true,
