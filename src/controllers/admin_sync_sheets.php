@@ -332,7 +332,7 @@ if (!$hasCoverColumn) {
                     if ($coverFile) {
                         $fileIdsToPublish[] = $coverFile['id'];
                         $isVideo = str_starts_with($coverFile['mimeType'] ?? '', 'video/');
-                        $coverUrl = "https://lh3.googleusercontent.com/d/{$coverFile['id']}";
+                        $coverUrl = "https://lh3.googleusercontent.com/d/{$coverFile['id']}=s400";
                         if ($isVideo)
                             $coverUrl = "[VIDEO]{$coverUrl}";
                         $updatesQueue[] = ['url' => $coverUrl, 'id' => $prod['id']];

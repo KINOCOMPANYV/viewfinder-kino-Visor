@@ -181,7 +181,7 @@ foreach ($products as $prod) {
             $fileIdsToPublish[] = $bestMedia['id'];
             $coverUrl = $isVideo
                 ? "[VIDEO]https://lh3.googleusercontent.com/d/{$bestMedia['id']}"
-                : "https://lh3.googleusercontent.com/d/{$bestMedia['id']}";
+                : "https://lh3.googleusercontent.com/d/{$bestMedia['id']}=s400";
 
             $updatesQueue[] = [
                 'url' => $coverUrl,

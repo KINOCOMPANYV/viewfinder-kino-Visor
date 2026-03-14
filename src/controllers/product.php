@@ -31,7 +31,11 @@ if (!$product) {
 }
 
 // Precargar portada desde caché del server (evita esperar JS)
+// Upscale a =s800 para la vista de detalle (en catálogo se usa =s400)
 $serverCover = $product['cover_image_url'] ?? '';
+if ($serverCover && !str_starts_with($serverCover, '[VIDEO]')) {
+    $serverCover = preg_replace('/=s\d+$/', '=s800', $serverCover);
+}
 if (empty($serverCover)) {
     try {
         $cacheStmt = $db->prepare(
