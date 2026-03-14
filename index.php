@@ -306,6 +306,31 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
             } catch (Exception $e) {
                 // Si la tabla no existe aún, ignorar
             }
+
+            // === AUTO-CACHE PORTADA ===
+            // Si el producto no tiene cover_image_url, guardar la primera imagen automáticamente
+            try {
+                $coverCheck = $db->prepare("SELECT id, cover_image_url FROM products WHERE sku = ? LIMIT 1");
+                $coverCheck->execute([$sku]);
+                $prodRow = $coverCheck->fetch();
+                if ($prodRow && empty($prodRow['cover_image_url'])) {
+                    // Buscar la primera imagen
+                    $firstImage = null;
+                    foreach ($files as $f) {
+                        if (str_starts_with($f['mimeType'] ?? '', 'image/')) {
+                            $firstImage = $f;
+                            break;
+                        }
+                    }
+                    if ($firstImage) {
+                        $coverUrl = "https://lh3.googleusercontent.com/d/{$firstImage['id']}=s400";
+                        $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
+                           ->execute([$coverUrl, $prodRow['id']]);
+                    }
+                }
+            } catch (Exception $e) {
+                // Ignorar errores de auto-cache
+            }
         }
 
         // Filter hidden files before returning

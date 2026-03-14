@@ -3,17 +3,16 @@
  * Admin Sync Covers — Auto-asignar portadas de Drive a productos.
  * POST /admin/media/sync-covers
  *
- * Estrategia optimizada:
- *   1) Pre-indexa TODOS los archivos de Drive en memoria (un solo listFiles)
- *   2) Para cada producto sin cover, busca match por SKU en el índice local
- *   3) Prioriza imágenes sobre videos, usa keywords para mejor cover
- *   4) makePublicBatch para hacer públicos todos a la vez
- *   5) Procesa hasta 200 productos por ejecución
+ * NUEVO ENFOQUE: Usa findBySku() directamente contra la API de Drive
+ * (la misma búsqueda que funciona en la página de producto).
+ * No depende de matching local por nombre de archivo.
+ *
+ * Procesa hasta 50 productos por ejecución para evitar timeouts.
  */
 require_once __DIR__ . '/../services/GoogleDriveService.php';
 
 header('Content-Type: application/json');
-set_time_limit(300); // 5 minutos
+set_time_limit(300);
 
 $db = getDB();
 $drive = new GoogleDriveService();
@@ -30,45 +29,14 @@ if (empty($rootFolderId)) {
     exit;
 }
 
-// Cargar productos sin cover (hasta 200)
-$products = $db->query("SELECT id, sku FROM products WHERE cover_image_url IS NULL OR cover_image_url = '' LIMIT 200")->fetchAll(PDO::FETCH_ASSOC);
+// Cargar productos sin cover (hasta 50 por batch para evitar timeouts de API)
+$products = $db->query("SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0 LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
 
-$totalWithout = $db->query("SELECT COUNT(*) FROM products WHERE cover_image_url IS NULL OR cover_image_url = ''")->fetchColumn();
+$totalWithout = $db->query("SELECT COUNT(*) FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0")->fetchColumn();
 
 if (empty($products)) {
     echo json_encode(['ok' => true, 'assigned' => 0, 'message' => 'Todos los productos ya tienen portada.']);
     exit;
-}
-
-/**
- * Clasificar archivos en: exactos, compatibles (prefijo) y rechazados.
- * Regla: el carácter siguiente al SKU NO puede ser dígito (evita 123-1 → 123-10).
- * Letras, guiones bajos, puntos, espacios SÍ son válidos (soporta variantes como 839-5f1, 839-5_V1).
- */
-function classifyMatches(array $files, string $sku): array
-{
-    $exact = [];
-    $compatible = [];
-
-    foreach ($files as $f) {
-        $nameOnly = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
-
-        if (strcasecmp($nameOnly, $sku) === 0) {
-            $exact[] = $f;
-            continue;
-        }
-
-        if (stripos($nameOnly, $sku) === 0 && strlen($nameOnly) > strlen($sku)) {
-            $nextChar = $nameOnly[strlen($sku)];
-            // Solo rechazar si el siguiente carácter es dígito (evita 123-1 → 123-10)
-            // Letras, guiones bajos, etc. son válidos (variantes como f1, v2, _ROJO)
-            if (!ctype_digit($nextChar)) {
-                $compatible[] = $f;
-            }
-        }
-    }
-
-    return ['exact' => $exact, 'compatible' => $compatible];
 }
 
 // Palabras clave para priorizar como portada
@@ -90,13 +58,6 @@ function scoreCover(array $file, array $coverKeywords, array $numericPriority): 
     return $score;
 }
 
-// ============================================================
-// Pre-index: listar TODOS los archivos de Drive de una vez
-// ============================================================
-$allDriveFiles = $drive->listAllMediaFiles($rootFolderId);
-$driveFileIndex = $allDriveFiles['files'] ?? [];
-$driveStrategy = $allDriveFiles['strategy'] ?? 'unknown';
-
 $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 $assigned = 0;
 $assignedVideos = 0;
@@ -104,78 +65,48 @@ $errors = [];
 $diagnostics = [];
 $fileIdsToPublish = [];
 $updatesQueue = [];
-$albumsToCreate = []; // [drive_id => name]
 
 foreach ($products as $prod) {
     $diag = ['sku' => $prod['sku'], 'status' => 'no_files'];
 
     try {
-        // Clean SKU: strip file extension for matching
-        $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
-        // Root SKU: extraer SKU padre (KNM-8845-RG → KNM-8845)
-        $rootSku = extractRootSku($cleanSku);
-        // SKU sin prefijo de marca: KNM-8845-RG → 8845-RG
-        $noPrefixSku = extractSkuWithoutPrefix($cleanSku);
-        // Root sin prefijo: KNM-8845 → 8845
-        $noPrefixRoot = extractSkuWithoutPrefix($rootSku);
+        $sku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
+        $rootSku = extractRootSku($sku);
 
-        // Construir lista de variaciones únicas para buscar
-        $skuVariations = array_unique(array_filter([
-            $cleanSku,      // KNM-8845-RG
-            $rootSku,       // KNM-8845
-            $noPrefixSku,   // 8845-RG
-            $noPrefixRoot,  // 8845
-        ]));
+        // ============================================================
+        // NUEVO: Usar findBySku() directamente contra la API de Drive
+        // Esta es la MISMA búsqueda que funciona en /api/media/{sku}
+        // Busca con "name contains 'SKU'" en la API, no matching local
+        // ============================================================
+        $allFiles = $drive->findBySku($rootFolderId, $rootSku);
 
-        // Buscar en índice pre-cargado usando TODAS las variaciones
-        $allFiles = [];
-        $seenIds = [];
-        foreach ($driveFileIndex as $file) {
-            if (isset($seenIds[$file['id']])) continue;
-            foreach ($skuVariations as $variation) {
-                if (skuMatchesFilename($variation, $file['name'])) {
-                    $allFiles[] = $file;
-                    $seenIds[$file['id']] = true;
-                    break;
+        // Si buscamos con el root y el SKU original es diferente, buscar también por el original
+        if ($sku !== $rootSku) {
+            $extraFiles = $drive->findBySku($rootFolderId, $sku);
+            $existingIds = array_column($allFiles, 'id');
+            foreach ($extraFiles as $ef) {
+                if (!in_array($ef['id'], $existingIds)) {
+                    $allFiles[] = $ef;
                 }
             }
         }
 
         $diag['files_found'] = count($allFiles);
         $diag['root_sku'] = $rootSku;
-        $diag['file_names'] = array_map(fn($f) => $f['name'] ?? '?', array_slice($allFiles, 0, 10));
+        $diag['file_names'] = array_map(fn($f) => $f['name'] ?? '?', array_slice($allFiles, 0, 5));
 
         if (empty($allFiles)) {
-            $diag['status'] = 'drive_returned_0';
+            $diag['status'] = 'no_files_in_drive';
             $diagnostics[] = $diag;
             continue;
         }
-
-        // Clasificar matches: priorizar exactos del SKU completo, luego del root
-        $classes = classifyMatches($allFiles, $cleanSku);
-        if (empty($classes['exact']) && empty($classes['compatible']) && $rootSku !== $cleanSku) {
-            // Fallback: clasificar con el root SKU
-            $classes = classifyMatches($allFiles, $rootSku);
-        }
-        $diag['exact_count'] = count($classes['exact']);
-        $diag['compatible_count'] = count($classes['compatible']);
-
-        // Usar exactos primero, luego compatibles
-        $candidates = !empty($classes['exact']) ? $classes['exact'] : $classes['compatible'];
-
-        if (empty($candidates)) {
-            $diag['status'] = 'no_matching_names';
-            $diagnostics[] = $diag;
-            continue;
-        }
-
-        // Identificar el Álbum (carpeta de primer nivel bajo la raíz)
-        $bestMedia = null;
-        $albumId = null;
 
         // Separar imágenes y videos
-        $images = array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
-        $videos = array_filter($candidates, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
+        $images = array_filter($allFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+        $videos = array_filter($allFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
+
+        $bestMedia = null;
+        $isVideo = false;
 
         if (!empty($images)) {
             $images = array_values($images);
@@ -184,7 +115,6 @@ foreach ($products as $prod) {
                     - scoreCover($a, $coverKeywords, $numericPriority);
             });
             $bestMedia = $images[0];
-            $isVideo = false;
         } elseif (!empty($videos)) {
             $bestMedia = array_values($videos)[0];
             $isVideo = true;
@@ -223,13 +153,13 @@ if (!empty($fileIdsToPublish)) {
     $drive->makePublicBatch($fileIdsToPublish);
 }
 
-// Actualizar DB e identificar álbumes detectados
-$detectedAlbumIds = [];
+// Actualizar DB
 foreach ($updatesQueue as $upd) {
     $updateStmt->execute([$upd['url'], $upd['id']]);
 }
 
-// Auto-crear álbumes deshabilitado temporalmente hasta que se corra la migración 012
+// Invalidar cache de linked count
+unset($_SESSION['media_linked_count_cache'], $_SESSION['media_linked_count_time']);
 
 $remaining = $totalWithout - $assigned;
 
@@ -240,11 +170,9 @@ echo json_encode([
     'assigned_videos' => $assignedVideos,
     'total' => count($products),
     'remaining' => $remaining,
-    'drive_files_count' => count($driveFileIndex),
-    'drive_strategy' => $driveStrategy,
     'errors' => $errors,
     'diagnostics' => $diagnostics,
     'message' => $assigned > 0
-        ? "⭐ {$assigned} producto(s) recibieron portada (" . ($assigned - $assignedVideos) . " img, {$assignedVideos} vid). Drive: " . count($driveFileIndex) . " archivos ({$driveStrategy})." . ($remaining > 0 ? " Quedan {$remaining} sin portada." : '')
-        : "No se encontraron archivos (" . count($driveFileIndex) . " en Drive, estrategia: {$driveStrategy}). Ver diagnósticos."
+        ? "⭐ {$assigned} producto(s) recibieron portada (" . ($assigned - $assignedVideos) . " img, {$assignedVideos} vid)." . ($remaining > 0 ? " Quedan {$remaining} sin portada." : '')
+        : "No se encontraron archivos para los " . count($products) . " productos. Verifica que los archivos en Drive contengan el código del producto en su nombre."
 ]);
