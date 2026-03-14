@@ -302,11 +302,19 @@ if (!$hasCoverColumn) {
                 $updatesQueue = [];
 
                 foreach ($noCover as $prod) {
-                    $rootSku = extractRootSku($prod['sku']);
+                    $cleanSku = $prod['sku'];
+                    $rootSku = extractRootSku($cleanSku);
+                    $noPrefixSku = extractSkuWithoutPrefix($cleanSku);
+                    $noPrefixRoot = extractSkuWithoutPrefix($rootSku);
+                    $skuVariations = array_unique(array_filter([$cleanSku, $rootSku, $noPrefixSku, $noPrefixRoot]));
+
                     $matched = [];
                     foreach ($driveFiles as $file) {
-                        if (skuMatchesFilename($rootSku, $file['name'])) {
-                            $matched[] = $file;
+                        foreach ($skuVariations as $variation) {
+                            if (skuMatchesFilename($variation, $file['name'])) {
+                                $matched[] = $file;
+                                break;
+                            }
                         }
                     }
 

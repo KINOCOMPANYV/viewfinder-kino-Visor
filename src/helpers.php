@@ -218,3 +218,34 @@ function extractRootSku(string $code): string
     return $code;
 }
 
+/**
+ * Extrae el SKU sin el prefijo de marca (letras antes del primer dígito).
+ * 
+ * Muchas veces los archivos en Drive se nombran sin el prefijo de marca
+ * del catálogo. Esta función permite matchear ambos formatos.
+ * 
+ * Ejemplos:
+ *   "KNM-8845-RG"  → "8845-RG"     (quita KNM-)
+ *   "KNM-8845"     → "8845"         (quita KNM-)
+ *   "ABC-1234-V1"  → "1234-V1"      (quita ABC-)
+ *   "8845-RG"      → "8845-RG"      (ya no tiene prefijo, no cambia)
+ *   "WATCH-99"     → "99"           (quita WATCH-)
+ *   "123-456"      → "123-456"      (empieza con dígito, no cambia)
+ */
+function extractSkuWithoutPrefix(string $sku): string
+{
+    $sku = trim($sku);
+    
+    // Si ya empieza con dígito, no tiene prefijo
+    if (preg_match('/^\d/', $sku)) {
+        return $sku;
+    }
+    
+    // Quitar prefijo de letras seguido de guion: "KNM-8845-RG" → "8845-RG"
+    if (preg_match('/^[A-Za-z]+-(.+)$/', $sku, $matches)) {
+        return $matches[1];
+    }
+    
+    return $sku;
+}
+

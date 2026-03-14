@@ -112,20 +112,32 @@ foreach ($products as $prod) {
     try {
         // Clean SKU: strip file extension for matching
         $cleanSku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
-        // Root SKU: extraer SKU padre (KNM-8845-RG → KNM-8845) para buscar archivos del padre
+        // Root SKU: extraer SKU padre (KNM-8845-RG → KNM-8845)
         $rootSku = extractRootSku($cleanSku);
+        // SKU sin prefijo de marca: KNM-8845-RG → 8845-RG
+        $noPrefixSku = extractSkuWithoutPrefix($cleanSku);
+        // Root sin prefijo: KNM-8845 → 8845
+        $noPrefixRoot = extractSkuWithoutPrefix($rootSku);
 
-        // Buscar en índice pre-cargado usando AMBOS: SKU completo Y SKU raíz
-        // Esto permite encontrar archivos nombrados como el padre (KNM-8845.jpg)
-        // cuando el producto es una variante (KNM-8845-RG)
+        // Construir lista de variaciones únicas para buscar
+        $skuVariations = array_unique(array_filter([
+            $cleanSku,      // KNM-8845-RG
+            $rootSku,       // KNM-8845
+            $noPrefixSku,   // 8845-RG
+            $noPrefixRoot,  // 8845
+        ]));
+
+        // Buscar en índice pre-cargado usando TODAS las variaciones
         $allFiles = [];
         $seenIds = [];
         foreach ($driveFileIndex as $file) {
             if (isset($seenIds[$file['id']])) continue;
-            if (skuMatchesFilename($cleanSku, $file['name']) || 
-                ($rootSku !== $cleanSku && skuMatchesFilename($rootSku, $file['name']))) {
-                $allFiles[] = $file;
-                $seenIds[$file['id']] = true;
+            foreach ($skuVariations as $variation) {
+                if (skuMatchesFilename($variation, $file['name'])) {
+                    $allFiles[] = $file;
+                    $seenIds[$file['id']] = true;
+                    break;
+                }
             }
         }
 
