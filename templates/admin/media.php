@@ -988,66 +988,96 @@
 
         async function syncCovers() {
             const btn = document.getElementById('syncCoversBtn');
-            const originalText = btn.textContent;
-            btn.textContent = '⏳ Buscando imágenes en Drive...';
+            const container = btn.parentElement;
+
+            // Create progress UI
+            let progressDiv = document.getElementById('syncProgress');
+            if (!progressDiv) {
+                progressDiv = document.createElement('div');
+                progressDiv.id = 'syncProgress';
+                progressDiv.style.cssText = 'margin-top:1rem; padding:1.25rem; background:var(--color-surface); border:1px solid var(--color-border); border-radius:8px;';
+                container.appendChild(progressDiv);
+            }
+
             btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner" style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.6s linear infinite;margin-right:0.5rem;vertical-align:middle;"></span> Indexando archivos de Drive...';
+
+            progressDiv.innerHTML = `
+                <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
+                    <div class="loading-spinner" style="width:20px;height:20px;border:2px solid rgba(201,168,76,0.3);border-top-color:var(--color-gold);border-radius:50%;animation:spin 0.6s linear infinite;flex-shrink:0;"></div>
+                    <div>
+                        <div style="font-weight:600; color:var(--color-text);" id="syncStatusText">Descargando índice de archivos de Drive...</div>
+                        <div style="font-size:0.8rem; color:var(--color-text-muted);" id="syncStatusDetail">Esto indexa todos los archivos de una vez (mucho más rápido)</div>
+                    </div>
+                </div>
+                <div style="background:var(--color-border); border-radius:10px; height:8px; overflow:hidden;">
+                    <div id="syncProgressBar" style="height:100%; width:10%; background:linear-gradient(90deg, var(--color-gold), #e6c040); border-radius:10px; transition:width 0.5s;"></div>
+                </div>`;
 
             try {
+                // Animate progress bar while waiting
+                const bar = document.getElementById('syncProgressBar');
+                const statusText = document.getElementById('syncStatusText');
+                const statusDetail = document.getElementById('syncStatusDetail');
+                let fakeProgress = 10;
+                const progressInterval = setInterval(() => {
+                    if (fakeProgress < 85) {
+                        fakeProgress += Math.random() * 8;
+                        bar.style.width = Math.min(fakeProgress, 85) + '%';
+                    }
+                    if (fakeProgress > 30 && fakeProgress < 60) {
+                        statusText.textContent = 'Matcheando archivos con productos...';
+                    } else if (fakeProgress >= 60) {
+                        statusText.textContent = 'Asignando portadas...';
+                    }
+                }, 800);
+
                 const resp = await fetch('/admin/media/sync-covers', { method: 'POST' });
                 const data = await resp.json();
+                clearInterval(progressInterval);
+
                 if (data.ok) {
-                    showToast(data.message);
+                    bar.style.width = '100%';
+                    bar.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)';
 
-                    // Mostrar diagnósticos si hay productos sin match
-                    if (data.diagnostics && data.diagnostics.length > 0) {
-                        let diagHtml = '<div style="margin-top:1rem; padding:1rem; background:var(--color-surface-2); border:1px solid var(--color-border); border-radius:8px; max-height:400px; overflow-y:auto;">';
-                        diagHtml += '<h4 style="margin-bottom:0.75rem; color:var(--color-primary);">📊 Diagnóstico por SKU:</h4>';
-                        diagHtml += '<table style="width:100%; font-size:0.8rem; border-collapse:collapse;">';
-                        diagHtml += '<tr style="color:var(--color-text-muted);"><th style="text-align:left; padding:0.3rem;">SKU</th><th>Archivos</th><th>Estado</th><th>Nombres en Drive</th></tr>';
-                        data.diagnostics.forEach(d => {
-                            const statusIcons = {
-                                'image_assigned': '✅ Imagen',
-                                'video_assigned': '🎬 Video',
-                                'drive_returned_0': '❌ 0 en Drive',
-                                'no_matching_names': '⚠️ Sin match exacto',
-                                'no_media_files': '⚠️ Sin media',
-                                'error': '🔴 Error'
-                            };
-                            const icon = statusIcons[d.status] || d.status;
-                            const names = (d.file_names || []).join(', ') || '-';
-                            const color = d.status.includes('assigned') ? 'var(--color-success)' : 'var(--color-danger)';
-                            diagHtml += `<tr style="border-top:1px solid var(--color-border);">
-                                <td style="padding:0.4rem; color:var(--color-primary); font-weight:600;">${d.sku}</td>
-                                <td style="padding:0.4rem; text-align:center;">${d.files_found ?? 0}</td>
-                                <td style="padding:0.4rem; color:${color};">${icon}</td>
-                                <td style="padding:0.4rem; color:var(--color-text-muted); font-size:0.75rem; max-width:300px; word-break:break-all;">${names}</td>
-                            </tr>`;
-                        });
-                        diagHtml += '</table></div>';
+                    const resultHtml = `
+                        <div style="margin-top:1rem;">
+                            <div style="font-size:1.1rem; font-weight:700; color:#22c55e; margin-bottom:0.5rem;">
+                                ${data.assigned > 0 ? '⭐' : '📊'} ${data.message}
+                            </div>
+                            <div style="display:flex; gap:1.5rem; flex-wrap:wrap; font-size:0.85rem; color:var(--color-text); margin-top:0.5rem;">
+                                <span>📁 <strong>${data.drive_files_indexed || 0}</strong> archivos indexados</span>
+                                <span>🖼️ <strong>${data.assigned_images || 0}</strong> portadas imagen</span>
+                                <span>🎬 <strong>${data.assigned_videos || 0}</strong> portadas video</span>
+                                ${data.remaining > 0 ? '<span>❓ <strong>' + data.remaining + '</strong> sin coincidencia en Drive</span>' : '<span style="color:#22c55e;">✅ ¡Todos cubiertos!</span>'}
+                            </div>
+                            ${data.errors && data.errors.length > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ ' + data.errors.length + ' error(es): ' + data.errors.slice(0, 3).join(', ') + '</div>' : ''}
+                        </div>`;
 
-                        // Insertar diagnóstico después del botón
-                        const existing = document.getElementById('syncDiagnostics');
-                        if (existing) existing.remove();
-                        const div = document.createElement('div');
-                        div.id = 'syncDiagnostics';
-                        div.innerHTML = diagHtml;
-                        btn.parentElement.appendChild(div);
-                    }
+                    statusText.textContent = data.assigned > 0 ? '¡Portadas asignadas!' : 'Proceso completado';
+                    statusDetail.textContent = '';
+                    progressDiv.innerHTML += resultHtml;
+
+                    showToast(data.assigned > 0 ? `⭐ ${data.assigned} portada(s) asignada(s)` : 'Sin nuevas asignaciones', data.assigned > 0 ? 'success' : 'info');
 
                     if (data.assigned > 0) {
-                        setTimeout(() => location.reload(), 3000); // Dar tiempo para ver diagnósticos
+                        setTimeout(() => location.reload(), 3000);
                     } else {
-                        btn.textContent = originalText;
+                        btn.innerHTML = '⭐ Auto-asignar portadas (completado)';
                         btn.disabled = false;
                     }
                 } else {
+                    bar.style.background = '#e74c3c';
+                    statusText.textContent = 'Error';
+                    statusDetail.textContent = data.error || 'Error desconocido';
                     showToast(data.error || 'Error al sincronizar.', 'error');
-                    btn.textContent = originalText;
+                    btn.innerHTML = '⭐ Reintentar asignación';
                     btn.disabled = false;
                 }
             } catch (e) {
+                progressDiv.innerHTML = `<div style="color:#dc3545; font-weight:600;">❌ Error de conexión: ${e.message}</div>`;
                 showToast('Error de conexión.', 'error');
-                btn.textContent = originalText;
+                btn.innerHTML = '⭐ Reintentar asignación';
                 btn.disabled = false;
             }
         }

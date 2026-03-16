@@ -1,6 +1,8 @@
 <?php $results = $_SESSION['import_results'] ?? null;
 unset($_SESSION['import_results']);
 $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
+$autoAssignCovers = !empty($_SESSION['auto_assign_covers']);
+unset($_SESSION['auto_assign_covers']);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -120,6 +122,25 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
                     </div>
                 <?php endif; ?>
             </div>
+
+            <!-- Auto-asignar portadas después de importar -->
+            <?php if ($autoAssignCovers): ?>
+                <div id="autoCoverSection" style="margin-top:1.5rem; padding:1.25rem; background:linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02)); border:1px solid rgba(201,168,76,0.3); border-radius:var(--radius-sm);">
+                    <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
+                        <span style="font-size:1.5rem;">⭐</span>
+                        <div>
+                            <h3 style="font-size:1rem; margin:0; color:var(--color-text);" id="coverTitle">Asignando portadas automáticamente...</h3>
+                            <p style="font-size:0.8rem; color:var(--color-text-muted); margin:0.25rem 0 0;" id="coverSubtitle">
+                                Buscando imágenes en Google Drive para los productos importados
+                            </p>
+                        </div>
+                    </div>
+                    <div style="background:var(--color-border); border-radius:10px; height:8px; overflow:hidden; margin-bottom:0.75rem;">
+                        <div id="coverProgressBar" style="height:100%; width:10%; background:linear-gradient(90deg, var(--color-gold), #e6c040); border-radius:10px; transition:width 0.5s;"></div>
+                    </div>
+                    <div id="coverResult" style="font-size:0.85rem;"></div>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
 
         <!-- Upload Form -->
@@ -248,6 +269,19 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
                             ${data.cover_errors ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ Cover sync: ' + data.cover_errors + '</div>' : ''}
                             ${data.duplicates_in_sheet > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#fbbf24;">⚠️ ' + data.duplicates_in_sheet + ' SKUs duplicados en Sheet (se usó última fila)</div>' : ''}
                             ${errHtml}
+                        </div>
+                        <div id="syncCoverSection" style="margin-top:1rem; padding:1.25rem; background:linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02)); border:1px solid rgba(201,168,76,0.3); border-radius:var(--radius-sm);">
+                            <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
+                                <span style="font-size:1.5rem;">⭐</span>
+                                <div>
+                                    <h3 style="font-size:1rem; margin:0; color:var(--color-text);" id="syncCoverTitle">Asignando portadas automáticamente...</h3>
+                                    <p style="font-size:0.8rem; color:var(--color-text-muted); margin:0.25rem 0 0;" id="syncCoverSubtitle">Buscando imágenes en Google Drive</p>
+                                </div>
+                            </div>
+                            <div style="background:var(--color-border); border-radius:10px; height:8px; overflow:hidden; margin-bottom:0.75rem;">
+                                <div id="syncCoverBar" style="height:100%; width:10%; background:linear-gradient(90deg, var(--color-gold), #e6c040); border-radius:10px; transition:width 0.5s;"></div>
+                            </div>
+                            <div id="syncCoverResult" style="font-size:0.85rem;"></div>
                         </div>`;
                 }
             } catch (err) {
@@ -257,7 +291,67 @@ $hasSheetId = !empty(env('GOOGLE_SHEET_ID', ''));
                 btn.innerHTML = '🔄 Sincronizar Ahora';
                 btn.style.opacity = '1';
             }
+
+            // Auto-trigger cover assignment after sheets sync
+            autoAssignCoversAfterSync();
         }
+
+        // ========== AUTO COVER ASSIGNMENT ==========
+        async function autoAssignCoversAfterSync() {
+            await runCoverAssignment('syncCoverSection', 'syncCoverTitle', 'syncCoverSubtitle', 'syncCoverBar', 'syncCoverResult');
+        }
+
+        // Shared cover assignment logic
+        async function runCoverAssignment(sectionId, titleId, subtitleId, barId, resultId) {
+            const section = document.getElementById(sectionId);
+            const title = document.getElementById(titleId);
+            const subtitle = document.getElementById(subtitleId);
+            const bar = document.getElementById(barId);
+            const resultDiv = document.getElementById(resultId);
+            if (!bar) return;
+
+            let fakeProgress = 10;
+            const progressInterval = setInterval(() => {
+                if (fakeProgress < 85) {
+                    fakeProgress += Math.random() * 8;
+                    bar.style.width = Math.min(fakeProgress, 85) + '%';
+                }
+                if (title) {
+                    if (fakeProgress > 30 && fakeProgress < 60) title.textContent = 'Matcheando archivos con productos...';
+                    else if (fakeProgress >= 60) title.textContent = 'Asignando portadas...';
+                }
+            }, 800);
+
+            try {
+                const resp = await fetch('/admin/media/sync-covers', { method: 'POST' });
+                const data = await resp.json();
+                clearInterval(progressInterval);
+
+                bar.style.width = '100%';
+                if (data.ok && data.assigned > 0) {
+                    bar.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)';
+                    if (title) title.textContent = `⭐ ${data.assigned} portada(s) asignada(s)`;
+                    if (subtitle) subtitle.textContent = `${data.drive_files_indexed || 0} archivos indexados · ${data.assigned_images || 0} imágenes, ${data.assigned_videos || 0} videos`;
+                    if (resultDiv) resultDiv.innerHTML = data.remaining > 0 ? `<span style="color:var(--color-text-muted);">❓ ${data.remaining} productos sin coincidencia en Drive</span>` : '<span style="color:#22c55e;">✅ ¡Todos los productos tienen portada!</span>';
+                } else {
+                    bar.style.background = 'var(--color-border)';
+                    if (title) title.textContent = data.ok ? 'Sin nuevas portadas para asignar' : 'Error al asignar portadas';
+                    if (subtitle) subtitle.textContent = data.message || data.error || '';
+                }
+            } catch (err) {
+                clearInterval(progressInterval);
+                bar.style.background = '#dc3545';
+                if (title) title.textContent = 'Error de conexión';
+                if (subtitle) subtitle.textContent = err.message;
+            }
+        }
+
+        // Auto-trigger on page load if flag was set
+        <?php if ($autoAssignCovers): ?>
+        document.addEventListener('DOMContentLoaded', () => {
+            runCoverAssignment('autoCoverSection', 'coverTitle', 'coverSubtitle', 'coverProgressBar', 'coverResult');
+        });
+        <?php endif; ?>
     </script>
 </body>
 

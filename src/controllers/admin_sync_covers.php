@@ -3,11 +3,11 @@
  * Admin Sync Covers — Auto-asignar portadas de Drive a productos.
  * POST /admin/media/sync-covers
  *
- * NUEVO ENFOQUE: Usa findBySku() directamente contra la API de Drive
- * (la misma búsqueda que funciona en la página de producto).
- * No depende de matching local por nombre de archivo.
+ * ENFOQUE RÁPIDO: Indexa TODOS los archivos media de Drive en una sola
+ * llamada bulk (~30 API calls), luego matchea localmente con cada producto
+ * sin portada. Esto es 10-50x más rápido que buscar por SKU individual.
  *
- * Procesa hasta 50 productos por ejecución para evitar timeouts.
+ * Procesa TODOS los productos sin portada en cada ejecución.
  */
 require_once __DIR__ . '/../services/GoogleDriveService.php';
 
@@ -29,15 +29,46 @@ if (empty($rootFolderId)) {
     exit;
 }
 
-// Cargar productos sin cover (hasta 200 por batch)
-$products = $db->query("SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0 LIMIT 200")->fetchAll(PDO::FETCH_ASSOC);
-
-$totalWithout = $db->query("SELECT COUNT(*) FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0")->fetchColumn();
+// ============================================================
+// 1) Cargar TODOS los productos sin portada
+// ============================================================
+$products = $db->query(
+    "SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0"
+)->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($products)) {
-    echo json_encode(['ok' => true, 'assigned' => 0, 'message' => 'Todos los productos ya tienen portada.']);
+    echo json_encode([
+        'ok' => true,
+        'assigned' => 0,
+        'remaining' => 0,
+        'message' => '✅ Todos los productos ya tienen portada.'
+    ]);
     exit;
 }
+
+// ============================================================
+// 2) Indexar TODOS los archivos media de Drive de una sola vez
+//    Esto es ~30 API calls en total (vs 1 por SKU = cientos)
+// ============================================================
+$bulkResult = $drive->listAllMediaFiles($rootFolderId);
+$allDriveFiles = $bulkResult['files'] ?? [];
+$strategy = $bulkResult['strategy'] ?? 'unknown';
+
+if (empty($allDriveFiles)) {
+    echo json_encode([
+        'ok' => true,
+        'assigned' => 0,
+        'remaining' => count($products),
+        'strategy' => $strategy,
+        'message' => 'No se encontraron archivos media en Drive. Verifica la conexión y la carpeta configurada.'
+    ]);
+    exit;
+}
+
+// ============================================================
+// 3) Construir índice SKU → archivos usando matching local
+//    Reutiliza la misma lógica de skuMatchesFilename()
+// ============================================================
 
 // Palabras clave para priorizar como portada
 $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
@@ -58,52 +89,47 @@ function scoreCover(array $file, array $coverKeywords, array $numericPriority): 
     return $score;
 }
 
+// Pre-indexar: por cada producto, encontrar archivos que matcheen su SKU
 $updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
 $assigned = 0;
 $assignedVideos = 0;
 $errors = [];
-$diagnostics = [];
 $fileIdsToPublish = [];
 $updatesQueue = [];
 
 foreach ($products as $prod) {
-    $diag = ['sku' => $prod['sku'], 'status' => 'no_files'];
-
     try {
         $sku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
         $rootSku = extractRootSku($sku);
 
-        // ============================================================
-        // NUEVO: Usar findBySku() directamente contra la API de Drive
-        // Esta es la MISMA búsqueda que funciona en /api/media/{sku}
-        // Busca con "name contains 'SKU'" en la API, no matching local
-        // ============================================================
-        $allFiles = $drive->findBySku($rootFolderId, $rootSku);
-
-        // Si buscamos con el root y el SKU original es diferente, buscar también por el original
-        if ($sku !== $rootSku) {
-            $extraFiles = $drive->findBySku($rootFolderId, $sku);
-            $existingIds = array_column($allFiles, 'id');
-            foreach ($extraFiles as $ef) {
-                if (!in_array($ef['id'], $existingIds)) {
-                    $allFiles[] = $ef;
+        // Buscar archivos que matcheen este SKU en el índice bulk
+        $matchingFiles = [];
+        foreach ($allDriveFiles as $f) {
+            $fileName = $f['name'] ?? '';
+            // Intentar match con SKU completo
+            if (skuMatchesFilename($sku, $fileName)) {
+                $matchingFiles[] = $f;
+            }
+            // También intentar match con SKU raíz si es diferente
+            elseif ($rootSku !== $sku && skuMatchesFilename($rootSku, $fileName)) {
+                $matchingFiles[] = $f;
+            }
+            // También intentar match sin prefijo de marca
+            else {
+                $skuNoPrefijo = extractSkuWithoutPrefix($sku);
+                if ($skuNoPrefijo !== $sku && skuMatchesFilename($skuNoPrefijo, $fileName)) {
+                    $matchingFiles[] = $f;
                 }
             }
         }
 
-        $diag['files_found'] = count($allFiles);
-        $diag['root_sku'] = $rootSku;
-        $diag['file_names'] = array_map(fn($f) => $f['name'] ?? '?', array_slice($allFiles, 0, 5));
-
-        if (empty($allFiles)) {
-            $diag['status'] = 'no_files_in_drive';
-            $diagnostics[] = $diag;
+        if (empty($matchingFiles)) {
             continue;
         }
 
         // Separar imágenes y videos
-        $images = array_filter($allFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
-        $videos = array_filter($allFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
+        $images = array_filter($matchingFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+        $videos = array_filter($matchingFiles, fn($f) => str_starts_with($f['mimeType'] ?? '', 'video/'));
 
         $bestMedia = null;
         $isVideo = false;
@@ -134,34 +160,30 @@ foreach ($products as $prod) {
             $assigned++;
             if ($isVideo)
                 $assignedVideos++;
-            $diag['status'] = ($isVideo ? 'video' : 'image') . '_assigned';
-            $diag['assigned_file'] = $bestMedia['name'];
-        } else {
-            $diag['status'] = 'no_media_files';
         }
     } catch (Exception $e) {
-        $diag['status'] = 'error';
-        $diag['error'] = $e->getMessage();
         $errors[] = "SKU {$prod['sku']}: {$e->getMessage()}";
     }
-
-    $diagnostics[] = $diag;
 }
 
-// Hacer públicos en batch
+// ============================================================
+// 4) Hacer públicos en batch (paralelo con curl_multi)
+// ============================================================
 if (!empty($fileIdsToPublish)) {
     $drive->makePublicBatch($fileIdsToPublish);
 }
 
-// Actualizar DB
+// ============================================================
+// 5) Actualizar DB en lote
+// ============================================================
 foreach ($updatesQueue as $upd) {
     $updateStmt->execute([$upd['url'], $upd['id']]);
 }
 
-// Invalidar cache de linked count
+// Invalidar cache
 unset($_SESSION['media_linked_count_cache'], $_SESSION['media_linked_count_time']);
 
-$remaining = $totalWithout - $assigned;
+$remaining = count($products) - $assigned;
 
 echo json_encode([
     'ok' => true,
@@ -170,9 +192,12 @@ echo json_encode([
     'assigned_videos' => $assignedVideos,
     'total' => count($products),
     'remaining' => $remaining,
+    'drive_files_indexed' => count($allDriveFiles),
+    'strategy' => $strategy,
     'errors' => $errors,
-    'diagnostics' => $diagnostics,
     'message' => $assigned > 0
-        ? "⭐ {$assigned} producto(s) recibieron portada (" . ($assigned - $assignedVideos) . " img, {$assignedVideos} vid)." . ($remaining > 0 ? " Quedan {$remaining} sin portada." : '')
-        : "No se encontraron archivos para los " . count($products) . " productos. Verifica que los archivos en Drive contengan el código del producto en su nombre."
+        ? "⭐ {$assigned} portada(s) asignada(s) (" . ($assigned - $assignedVideos) . " img, {$assignedVideos} vid). " 
+          . "Indexados " . count($allDriveFiles) . " archivos de Drive. "
+          . ($remaining > 0 ? "Quedan {$remaining} sin portada (no se encontraron archivos que coincidan con su SKU)." : '¡Todos los productos tienen portada!')
+        : "No se encontraron coincidencias para " . count($products) . " productos. Indexamos " . count($allDriveFiles) . " archivos de Drive. Verifica que los archivos contengan el código del producto en su nombre."
 ]);

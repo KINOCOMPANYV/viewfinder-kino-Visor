@@ -134,6 +134,11 @@ $_SESSION['import_results'] = [
     'total' => $rowNum,
 ];
 
+// Flag para auto-asignar portadas después de importar
+if ($inserted > 0 || $updated > 0) {
+    $_SESSION['auto_assign_covers'] = true;
+}
+
 redirect('/admin/import');
 
 // processRow() cargada desde src/import_helpers.php
