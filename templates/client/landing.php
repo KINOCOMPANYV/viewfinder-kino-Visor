@@ -86,7 +86,7 @@
                     <?php foreach ($albums as $album): 
                         $icon = $album['icon_url'] ?: '';
                     ?>
-                        <a href="/buscar?album=<?= urlencode($album['drive_id']) ?>" class="drive-folder-chip" title="<?= e($album['name']) ?>">
+                        <a href="/carpeta/<?= urlencode($album['drive_id']) ?>" class="drive-folder-chip" title="<?= e($album['name']) ?>">
                             <div class="folder-icon">
                                 <?php if ($icon): ?>
                                     <img src="<?= e($icon) ?>" alt="<?= e($album['name']) ?>" loading="lazy">
@@ -133,7 +133,7 @@
 
                         folders.forEach(f => {
                             const a = document.createElement('a');
-                            a.href = '/buscar?album=' + encodeURIComponent(f.id);
+                            a.href = '/carpeta/' + encodeURIComponent(f.id);
                             a.className = 'drive-folder-chip';
                             a.title = f.name;
                             const iconHTML = f.icon_url 

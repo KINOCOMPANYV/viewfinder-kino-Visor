@@ -76,6 +76,14 @@ if (preg_match('#^/producto/([^/]+)$#', $uri, $matches)) {
     exit;
 }
 
+if (preg_match('#^/carpeta/([^/]+)$#', $uri, $matches)) {
+    // Vista de carpeta de Drive — contenido real
+    session_write_close();
+    $_GET['folder_id'] = urldecode($matches[1]);
+    include __DIR__ . '/src/controllers/folder_view.php';
+    exit;
+}
+
 if ($uri === '/api/search') {
     // API de búsqueda (para autocomplete AJAX)
     session_write_close();
