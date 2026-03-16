@@ -11,6 +11,16 @@ $offset = ($page - 1) * $perPage;
 
 $db = getDB();
 
+// Verificar si existe la columna album_id
+$hasAlbumId = false;
+try {
+    $db->query("SELECT album_id FROM products LIMIT 1");
+    $hasAlbumId = true;
+} catch (\PDOException $e) { /* columna no existe aún */ }
+
+// Si no existe album_id, ignorar filtro por álbum
+if (!$hasAlbumId) $albumId = '';
+
 // Detectar si es búsqueda multi-código (comas o saltos de línea)
 $isMultiCode = (strpos($q, ',') !== false || strpos($q, "\n") !== false || strpos($q, "\r") !== false);
 $multiCodes = [];
@@ -46,7 +56,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url, album_id 
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url 
          FROM products WHERE $where 
          ORDER BY name ASC 
          LIMIT ? OFFSET ?"
