@@ -67,74 +67,166 @@ a:hover {
     color: var(--color-primary-hover);
 }
 
-/* --- Album Grid --- */
-.album-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
+/* --- Drive Folders (Compact Chips) --- */
+.drive-folders-section {
+    margin-bottom: 2rem;
 }
 
-@media (max-width: 600px) {
-    .album-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-    }
+.drive-folders-section .section-header-landing {
+    margin-bottom: 0.75rem;
 }
 
-.album-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1rem;
-    text-align: center;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    text-decoration: none;
-    color: inherit;
+.drive-folders-scroll {
+    position: relative;
+}
+
+.drive-folders-grid {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.5rem 0 1rem;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-3) transparent;
+}
+
+.drive-folders-grid::-webkit-scrollbar {
+    height: 4px;
+}
+
+.drive-folders-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.drive-folders-grid::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 2px;
+}
+
+.drive-folder-chip {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.4rem;
+    min-width: 80px;
+    max-width: 90px;
+    padding: 0.6rem 0.5rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    flex-shrink: 0;
+    text-align: center;
 }
 
-.album-card:hover {
-    transform: translateY(-5px);
+.drive-folder-chip:hover {
+    transform: translateY(-3px);
     border-color: var(--color-primary);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 6px 16px rgba(201, 168, 76, 0.15);
     background: var(--color-surface-2);
+    color: var(--color-primary-hover);
 }
 
-.album-icon-wrapper {
-    width: 100%;
-    aspect-ratio: 1;
-    background: #1a1a24;
-    border-radius: var(--radius-md);
-    overflow: hidden;
+.drive-folder-chip .folder-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, rgba(201, 168, 76, 0.15), rgba(201, 168, 76, 0.05));
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--color-border);
+    font-size: 1.3rem;
+    transition: transform 0.25s ease;
+    overflow: hidden;
 }
 
-.album-icon-wrapper img {
+.drive-folder-chip .folder-icon img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.3s ease;
+    border-radius: 8px;
 }
 
-.album-card:hover .album-icon-wrapper img {
+.drive-folder-chip:hover .folder-icon {
     transform: scale(1.1);
 }
 
-.album-placeholder {
-    font-size: 2.5rem;
+.drive-folder-chip .folder-name {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.2s;
 }
 
-.album-name {
-    font-size: 0.9rem;
-    font-weight: 600;
+.drive-folder-chip:hover .folder-name {
     color: var(--color-text);
+}
+
+/* Fade indicator for horizontal scroll */
+.drive-folders-scroll::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    background: linear-gradient(to right, transparent, var(--color-bg));
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+
+.drive-folders-scroll.scrolled-end::after {
+    opacity: 0;
+}
+
+/* When loading folders via API */
+.drive-folders-loading {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.drive-folder-skeleton {
+    min-width: 80px;
+    height: 76px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 0.3; }
+}
+
+@media (max-width: 600px) {
+    .drive-folder-chip {
+        min-width: 70px;
+        max-width: 80px;
+        padding: 0.5rem 0.4rem;
+    }
+    
+    .drive-folder-chip .folder-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 1.1rem;
+    }
+    
+    .drive-folder-chip .folder-name {
+        font-size: 0.65rem;
+    }
 }
 
 img {

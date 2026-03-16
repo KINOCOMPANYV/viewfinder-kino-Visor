@@ -64,8 +64,8 @@
         </div>
     </section>
 
-    <!-- Albums (Colecciones) -->
-    <section class="container" style="margin-bottom: 3rem;">
+    <!-- Carpetas de Drive (Compact Folder Chips) -->
+    <section class="container drive-folders-section" id="driveFoldersSection">
         <?php
         $db = getDB();
         $albums = [];
@@ -74,29 +74,82 @@
         } catch (\PDOException $e) {
             // tabla albums aún no existe (migración 012 pendiente)
         }
-        if (!empty($albums)):
         ?>
+
+        <?php if (!empty($albums)): ?>
             <div class="section-header-landing">
-                <h2>Explorar Colecciones</h2>
-                <span class="product-count"><?= count($albums) ?> álbumes</span>
+                <h2>📂 Carpetas</h2>
+                <span class="product-count"><?= count($albums) ?> carpetas</span>
             </div>
-            <div class="album-grid">
-                <?php foreach ($albums as $album): 
-                    $icon = $album['icon_url'] ?: '';
-                    // Si no tiene icono, podríamos buscar la primera portada de un producto en este álbum
-                ?>
-                    <a href="/buscar?album=<?= urlencode($album['drive_id']) ?>" class="album-card">
-                        <div class="album-icon-wrapper">
-                            <?php if ($icon): ?>
-                                <img src="<?= e($icon) ?>" alt="<?= e($album['name']) ?>" loading="lazy">
-                            <?php else: ?>
-                                <div class="album-placeholder">📁</div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="album-name"><?= e($album['name']) ?></div>
-                    </a>
-                <?php endforeach; ?>
+            <div class="drive-folders-scroll" id="foldersScroll">
+                <div class="drive-folders-grid" id="foldersGrid">
+                    <?php foreach ($albums as $album): 
+                        $icon = $album['icon_url'] ?: '';
+                    ?>
+                        <a href="/buscar?album=<?= urlencode($album['drive_id']) ?>" class="drive-folder-chip" title="<?= e($album['name']) ?>">
+                            <div class="folder-icon">
+                                <?php if ($icon): ?>
+                                    <img src="<?= e($icon) ?>" alt="<?= e($album['name']) ?>" loading="lazy">
+                                <?php else: ?>
+                                    📁
+                                <?php endif; ?>
+                            </div>
+                            <div class="folder-name"><?= e($album['name']) ?></div>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
             </div>
+        <?php else: ?>
+            <!-- No hay álbumes en DB: intentar cargar de Drive via API -->
+            <div class="section-header-landing">
+                <h2>📂 Carpetas</h2>
+            </div>
+            <div class="drive-folders-scroll" id="foldersScroll">
+                <div class="drive-folders-grid" id="foldersGrid">
+                    <div class="drive-folder-skeleton"></div>
+                    <div class="drive-folder-skeleton"></div>
+                    <div class="drive-folder-skeleton"></div>
+                    <div class="drive-folder-skeleton"></div>
+                    <div class="drive-folder-skeleton"></div>
+                </div>
+            </div>
+            <script>
+                // Cargar carpetas de Drive vía API
+                fetch('/api/drive-folders')
+                    .then(r => r.json())
+                    .then(data => {
+                        const grid = document.getElementById('foldersGrid');
+                        const folders = data.folders || [];
+                        if (folders.length === 0) {
+                            document.getElementById('driveFoldersSection').style.display = 'none';
+                            return;
+                        }
+                        grid.innerHTML = '';
+                        document.querySelector('#driveFoldersSection .product-count')?.remove();
+                        const countSpan = document.createElement('span');
+                        countSpan.className = 'product-count';
+                        countSpan.textContent = folders.length + ' carpetas';
+                        document.querySelector('#driveFoldersSection .section-header-landing')?.appendChild(countSpan);
+
+                        folders.forEach(f => {
+                            const a = document.createElement('a');
+                            a.href = '/buscar?album=' + encodeURIComponent(f.id);
+                            a.className = 'drive-folder-chip';
+                            a.title = f.name;
+                            const iconHTML = f.icon_url 
+                                ? `<img src="${f.icon_url}" alt="${f.name}" loading="lazy">`
+                                : '📁';
+                            a.innerHTML = `
+                                <div class="folder-icon">${iconHTML}</div>
+                                <div class="folder-name">${f.name}</div>
+                            `;
+                            grid.appendChild(a);
+                        });
+                    })
+                    .catch(() => {
+                        document.getElementById('driveFoldersSection').style.display = 'none';
+                    });
+            </script>
         <?php endif; ?>
     </section>
 
@@ -362,6 +415,21 @@ KV-1003
 
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
+    <script>
+        // Scroll fade indicator for drive folders
+        document.addEventListener('DOMContentLoaded', () => {
+            const scroll = document.getElementById('foldersScroll');
+            const grid = document.getElementById('foldersGrid');
+            if (!scroll || !grid) return;
+            function checkScroll() {
+                const atEnd = grid.scrollLeft + grid.clientWidth >= grid.scrollWidth - 10;
+                scroll.classList.toggle('scrolled-end', atEnd);
+            }
+            grid.addEventListener('scroll', checkScroll);
+            checkScroll();
+            new ResizeObserver(checkScroll).observe(grid);
+        });
+    </script>
     <script>
         // Lazy-load covers from Drive for products without cover_image_url
         document.addEventListener('DOMContentLoaded', () => {

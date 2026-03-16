@@ -91,6 +91,51 @@ if ($uri === '/api/batch-search' && $method === 'POST') {
 }
 
 // ============================================================
+// API: Drive Folders — lista carpetas para el visor de cliente
+// ============================================================
+
+if ($uri === '/api/drive-folders') {
+    session_write_close();
+    header('Content-Type: application/json');
+    
+    $db = getDB();
+    $folders = [];
+    
+    // 1) Intentar leer de la tabla albums
+    try {
+        $stmt = $db->query("SELECT drive_id AS id, name, icon_url FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC");
+        $folders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (\PDOException $e) {
+        // tabla no existe aún
+    }
+    
+    // 2) Si no hay álbumes en DB, intentar leer de Drive API
+    if (empty($folders)) {
+        $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
+        if ($rootFolderId) {
+            require_once __DIR__ . '/src/services/GoogleDriveService.php';
+            $drive = new GoogleDriveService();
+            $token = $drive->getValidToken($db);
+            
+            if ($token) {
+                $result = $drive->listFiles($rootFolderId);
+                foreach ($result['files'] as $item) {
+                    if (($item['mimeType'] ?? '') === 'application/vnd.google-apps.folder') {
+                        $folders[] = [
+                            'id' => $item['id'],
+                            'name' => $item['name'],
+                            'icon_url' => null,
+                        ];
+                    }
+                }
+            }
+        }
+    }
+    
+    jsonCachedResponse(['folders' => $folders], 300);
+}
+
+// ============================================================
 // RUTAS ADMIN
 // ============================================================
 
