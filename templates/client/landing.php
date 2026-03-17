@@ -64,8 +64,8 @@
         </div>
     </section>
 
-    <!-- Carpetas de Drive (Compact Folder Chips) -->
-    <section class="container drive-folders-section" id="driveFoldersSection">
+    <!-- Carpetas de Drive (Product-style Cards) -->
+    <section class="container" id="driveFoldersSection">
         <?php
         $db = getDB();
         $albums = [];
@@ -81,40 +81,42 @@
                 <h2>📂 Carpetas</h2>
                 <span class="product-count"><?= count($albums) ?> carpetas</span>
             </div>
-            <div class="drive-folders-scroll" id="foldersScroll">
-                <div class="drive-folders-grid" id="foldersGrid">
-                    <?php foreach ($albums as $album): 
-                        $icon = $album['icon_url'] ?: '';
-                    ?>
-                        <a href="/carpeta/<?= urlencode($album['drive_id']) ?>" class="drive-folder-chip" title="<?= e($album['name']) ?>">
-                            <div class="folder-icon">
-                                <?php if ($icon): ?>
-                                    <img src="<?= e($icon) ?>" alt="<?= e($album['name']) ?>" loading="lazy">
-                                <?php else: ?>
-                                    📁
-                                <?php endif; ?>
-                            </div>
-                            <div class="folder-name"><?= e($album['name']) ?></div>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
+
+            <div class="parent-grid" style="padding-top:1rem;">
+                <?php foreach ($albums as $idx => $album): 
+                    $icon = $album['icon_url'] ?: '';
+                ?>
+                    <a href="/carpeta/<?= urlencode($album['drive_id']) ?>" class="parent-card" style="text-decoration:none; color:inherit; display:block;">
+                        <div class="card-image">
+                            <?php if ($icon): ?>
+                                <img src="<?= e($icon) ?>" alt="<?= e($album['name']) ?>"
+                                     loading="<?= $idx < 3 ? 'eager' : 'lazy' ?>"
+                                     class="img-fade-in"
+                                     onload="this.classList.add('loaded')"
+                                     onerror="this.outerHTML='<div class=\'cover-placeholder\' style=\'font-size:4rem;\'>📂</div>'"
+                                     style="width:100%;height:100%;object-fit:cover;">
+                            <?php else: ?>
+                                <div class="cover-placeholder" style="font-size:4rem;">📂</div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-sku" style="font-size:0.7rem;">📂 Carpeta</div>
+                            <div class="card-name"><?= e($album['name']) ?></div>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
             </div>
         <?php else: ?>
             <!-- No hay álbumes en DB: intentar cargar de Drive via API -->
             <div class="section-header-landing">
                 <h2>📂 Carpetas</h2>
             </div>
-            <div class="drive-folders-scroll" id="foldersScroll">
-                <div class="drive-folders-grid" id="foldersGrid">
-                    <div class="drive-folder-skeleton"></div>
-                    <div class="drive-folder-skeleton"></div>
-                    <div class="drive-folder-skeleton"></div>
-                    <div class="drive-folder-skeleton"></div>
-                    <div class="drive-folder-skeleton"></div>
-                </div>
+            <div class="parent-grid" id="foldersGrid" style="padding-top:1rem;">
+                <div class="parent-card" style="opacity:0.3;"><div class="card-image"><div class="cover-placeholder" style="font-size:3rem;">⏳</div></div></div>
+                <div class="parent-card" style="opacity:0.3;"><div class="card-image"><div class="cover-placeholder" style="font-size:3rem;">⏳</div></div></div>
+                <div class="parent-card" style="opacity:0.3;"><div class="card-image"><div class="cover-placeholder" style="font-size:3rem;">⏳</div></div></div>
             </div>
             <script>
-                // Cargar carpetas de Drive vía API
                 fetch('/api/drive-folders')
                     .then(r => r.json())
                     .then(data => {
@@ -131,19 +133,22 @@
                         countSpan.textContent = folders.length + ' carpetas';
                         document.querySelector('#driveFoldersSection .section-header-landing')?.appendChild(countSpan);
 
-                        folders.forEach(f => {
-                            const a = document.createElement('a');
-                            a.href = '/carpeta/' + encodeURIComponent(f.id);
-                            a.className = 'drive-folder-chip';
-                            a.title = f.name;
-                            const iconHTML = f.icon_url 
-                                ? `<img src="${f.icon_url}" alt="${f.name}" loading="lazy">`
-                                : '📁';
-                            a.innerHTML = `
-                                <div class="folder-icon">${iconHTML}</div>
-                                <div class="folder-name">${f.name}</div>
+                        folders.forEach((f, idx) => {
+                            const card = document.createElement('a');
+                            card.href = '/carpeta/' + encodeURIComponent(f.id);
+                            card.className = 'parent-card';
+                            card.style.cssText = 'text-decoration:none; color:inherit; display:block;';
+                            const imgHTML = f.icon_url
+                                ? `<img src="${f.icon_url}" alt="${f.name}" loading="${idx < 3 ? 'eager' : 'lazy'}" class="img-fade-in" onload="this.classList.add('loaded')" onerror="this.outerHTML='<div class=\'cover-placeholder\' style=\'font-size:4rem;\'>📂</div>'" style="width:100%;height:100%;object-fit:cover;">`
+                                : '<div class="cover-placeholder" style="font-size:4rem;">📂</div>';
+                            card.innerHTML = `
+                                <div class="card-image">${imgHTML}</div>
+                                <div class="card-body">
+                                    <div class="card-sku" style="font-size:0.7rem;">📂 Carpeta</div>
+                                    <div class="card-name">${f.name}</div>
+                                </div>
                             `;
-                            grid.appendChild(a);
+                            grid.appendChild(card);
                         });
                     })
                     .catch(() => {
@@ -157,7 +162,7 @@
     <section class="container">
         <?php
         $db = getDB();
-        $perPage = 20;
+        $perPage = 10;
         $currentPage = max(1, intval($_GET['page'] ?? 1));
 
         // Check if sheet_row column exists (migration may not have run yet)
@@ -416,19 +421,7 @@ KV-1003
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
     <script>
-        // Scroll fade indicator for drive folders
-        document.addEventListener('DOMContentLoaded', () => {
-            const scroll = document.getElementById('foldersScroll');
-            const grid = document.getElementById('foldersGrid');
-            if (!scroll || !grid) return;
-            function checkScroll() {
-                const atEnd = grid.scrollLeft + grid.clientWidth >= grid.scrollWidth - 10;
-                scroll.classList.toggle('scrolled-end', atEnd);
-            }
-            grid.addEventListener('scroll', checkScroll);
-            checkScroll();
-            new ResizeObserver(checkScroll).observe(grid);
-        });
+        // Folders now use parent-grid layout (no horizontal scroll)
     </script>
     <script>
         // Lazy-load covers from Drive for products without cover_image_url
