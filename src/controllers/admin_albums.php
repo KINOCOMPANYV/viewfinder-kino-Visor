@@ -127,8 +127,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $noMatch = count($allAlbums) - $assigned;
-        $noMatchMsg = $noMatch > 0 ? " ($noMatch sin coincidencia — verifica que el nombre de la foto coincida exactamente con el nombre de la carpeta)." : '';
-        $_SESSION['flash'] = "✅ Portadas asignadas: $assigned de " . count($allAlbums) . " carpetas. Se encontraron " . count($coverIndex) . " imágenes en PORTADAS.{$noMatchMsg}";
+        
+        // Debug info: mostrar nombres para diagnóstico
+        $albumNames = array_map(fn($a) => $a['name'], array_slice($allAlbums, 0, 10));
+        $coverNames = array_slice(array_keys($coverIndex), 0, 10);
+        $unmatchedAlbums = [];
+        foreach ($allAlbums as $a) {
+            if (!isset($coverIndex[strtolower($a['name'])])) {
+                $unmatchedAlbums[] = $a['name'];
+            }
+        }
+        $debugInfo = " | 📋 Álbumes DB: [" . implode(', ', $albumNames) . "]"
+                   . " | 🖼️ Fotos PORTADAS: [" . implode(', ', $coverNames) . "]";
+        if (!empty($unmatchedAlbums)) {
+            $debugInfo .= " | ❌ Sin match: [" . implode(', ', array_slice($unmatchedAlbums, 0, 10)) . "]";
+        }
+        
+        $_SESSION['flash'] = "✅ Portadas asignadas: $assigned de " . count($allAlbums) . " carpetas. "
+            . count($coverIndex) . " imágenes en PORTADAS. "
+            . count($portadasFiles) . " archivos totales." . $debugInfo;
         redirect('/admin/albums');
     }
 }
