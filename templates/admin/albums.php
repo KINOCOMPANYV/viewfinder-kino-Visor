@@ -102,11 +102,21 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
             <h1>🗂️ Gestión de Álbumes (Carpetas de Drive)</h1>
-            <form method="POST">
-                <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
-                <button type="submit" name="action" value="sync_folders" class="btn btn-primary">🔄 Sincronizar Carpetas
-                    de Drive</button>
-            </form>
+            <div style="display:flex; gap:0.75rem;">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
+                    <button type="submit" name="action" value="sync_covers" class="btn btn-primary"
+                        style="background:linear-gradient(135deg, #c9a84c, #b8963f); white-space:nowrap;"
+                        title="Busca dentro de cada carpeta una foto con el mismo nombre de la carpeta y la asigna como portada">
+                        🖼️ Auto-asignar Portadas
+                    </button>
+                </form>
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
+                    <button type="submit" name="action" value="sync_folders" class="btn btn-primary">🔄 Sincronizar Carpetas
+                        de Drive</button>
+                </form>
+            </div>
         </div>
 
         <?php if ($flash = $_SESSION['flash'] ?? null):
