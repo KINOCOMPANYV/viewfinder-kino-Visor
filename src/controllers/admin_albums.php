@@ -8,6 +8,29 @@ $db = getDB();
 $drive = new GoogleDriveService();
 $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
 
+// Auto-crear tabla albums si no existe (self-healing migration)
+try {
+    $db->exec("CREATE TABLE IF NOT EXISTS albums (
+        drive_id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        icon_url VARCHAR(500) DEFAULT NULL,
+        is_active TINYINT(1) DEFAULT 1,
+        order_priority INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    
+    // Añadir album_id a products si no existe
+    try {
+        $db->exec("ALTER TABLE products ADD COLUMN album_id VARCHAR(50) DEFAULT NULL");
+        $db->exec("CREATE INDEX idx_album_id ON products(album_id)");
+    } catch (\PDOException $e) {
+        // Columna ya existe, ignorar
+    }
+} catch (\PDOException $e) {
+    // Ignorar errores de creación
+}
+
 $token = $drive->getValidToken($db);
 $isConnected = !empty($token);
 
