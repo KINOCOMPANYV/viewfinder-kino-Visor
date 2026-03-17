@@ -63,68 +63,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($_POST['action'] === 'sync_covers') {
-        // Auto-asignar portadas: buscar dentro de cada carpeta un archivo
-        // cuyo nombre (sin extensión) coincida con el nombre de la carpeta
+        // Auto-asignar portadas: buscar en la carpeta "PORTADAS" del Drive
+        // Las fotos dentro de esa carpeta deben tener el mismo nombre que la carpeta/álbum
         $assigned = 0;
         $errors = [];
         $fileIdsToPublish = [];
         $updatesQueue = [];
 
-        // Obtener todos los álbumes
-        $allAlbums = $db->query("SELECT drive_id, name, icon_url FROM albums")->fetchAll();
-
-        foreach ($allAlbums as $album) {
-            try {
-                // Listar archivos dentro de esta carpeta
-                $result = $drive->listFiles($album['drive_id']);
-                $files = $result['files'] ?? [];
-
-                $folderName = $album['name'];
-                $bestMatch = null;
-
-                foreach ($files as $file) {
-                    $mime = $file['mimeType'] ?? '';
-                    // Solo considerar imágenes
-                    if (!str_starts_with($mime, 'image/')) {
-                        continue;
-                    }
-
-                    // Comparar nombre del archivo (sin extensión) con nombre de carpeta
-                    $fileBaseName = pathinfo($file['name'] ?? '', PATHINFO_FILENAME);
-
-                    if (strcasecmp($fileBaseName, $folderName) === 0) {
-                        $bestMatch = $file;
-                        break; // Match exacto, no buscar más
-                    }
-                }
-
-                if ($bestMatch) {
-                    $fileIdsToPublish[] = $bestMatch['id'];
-                    $coverUrl = "https://lh3.googleusercontent.com/d/{$bestMatch['id']}=s400";
-                    $updatesQueue[] = [
-                        'drive_id' => $album['drive_id'],
-                        'icon_url' => $coverUrl,
-                    ];
-                    $assigned++;
-                }
-            } catch (\Exception $e) {
-                $errors[] = "Carpeta '{$album['name']}': {$e->getMessage()}";
+        // 1) Buscar la carpeta "PORTADAS" en Drive (dentro de la raíz)
+        $portadasFolderId = null;
+        foreach ($driveFolders as $df) {
+            if (strcasecmp($df['name'], 'PORTADAS') === 0) {
+                $portadasFolderId = $df['id'];
+                break;
             }
         }
 
-        // Hacer públicos en batch
+        if (!$portadasFolderId) {
+            $_SESSION['flash'] = '⚠️ No se encontró la carpeta "PORTADAS" en Drive. Créala y sube las fotos de portada con el mismo nombre de cada carpeta.';
+            redirect('/admin/albums');
+        }
+
+        // 2) Listar TODOS los archivos dentro de PORTADAS (una sola llamada)
+        $portadasResult = $drive->listFiles($portadasFolderId);
+        $portadasFiles = $portadasResult['files'] ?? [];
+
+        // Construir índice: nombre_sin_extension → archivo
+        $coverIndex = [];
+        foreach ($portadasFiles as $pf) {
+            $mime = $pf['mimeType'] ?? '';
+            if (!str_starts_with($mime, 'image/')) continue;
+            $baseName = strtolower(pathinfo($pf['name'] ?? '', PATHINFO_FILENAME));
+            $coverIndex[$baseName] = $pf;
+        }
+
+        // 3) Matchear álbumes con archivos de PORTADAS
+        $allAlbums = $db->query("SELECT drive_id, name, icon_url FROM albums")->fetchAll();
+
+        foreach ($allAlbums as $album) {
+            $albumNameLower = strtolower($album['name']);
+            
+            if (isset($coverIndex[$albumNameLower])) {
+                $match = $coverIndex[$albumNameLower];
+                $fileIdsToPublish[] = $match['id'];
+                $coverUrl = "https://lh3.googleusercontent.com/d/{$match['id']}=s400";
+                $updatesQueue[] = [
+                    'drive_id' => $album['drive_id'],
+                    'icon_url' => $coverUrl,
+                ];
+                $assigned++;
+            }
+        }
+
+        // 4) Hacer públicos en batch
         if (!empty($fileIdsToPublish)) {
             $drive->makePublicBatch($fileIdsToPublish);
         }
 
-        // Actualizar DB
+        // 5) Actualizar DB
         $updateStmt = $db->prepare("UPDATE albums SET icon_url = ? WHERE drive_id = ?");
         foreach ($updatesQueue as $upd) {
             $updateStmt->execute([$upd['icon_url'], $upd['drive_id']]);
         }
 
-        $errMsg = !empty($errors) ? ' Errores: ' . implode(', ', array_slice($errors, 0, 5)) : '';
-        $_SESSION['flash'] = "✅ Portadas asignadas: $assigned de " . count($allAlbums) . " carpetas.{$errMsg}";
+        $noMatch = count($allAlbums) - $assigned;
+        $noMatchMsg = $noMatch > 0 ? " ($noMatch sin coincidencia — verifica que el nombre de la foto coincida exactamente con el nombre de la carpeta)." : '';
+        $_SESSION['flash'] = "✅ Portadas asignadas: $assigned de " . count($allAlbums) . " carpetas. Se encontraron " . count($coverIndex) . " imágenes en PORTADAS.{$noMatchMsg}";
         redirect('/admin/albums');
     }
 }
