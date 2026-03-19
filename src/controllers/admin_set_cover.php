@@ -7,6 +7,13 @@ header('Content-Type: application/json');
 
 $db = getDB();
 
+$csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
+if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'Token CSRF inválido.']);
+    exit;
+}
+
 $productId = intval($_POST['product_id'] ?? 0);
 $imageUrl = trim($_POST['image_url'] ?? '');
 

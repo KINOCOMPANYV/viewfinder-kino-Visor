@@ -22,31 +22,52 @@ if (empty($codes)) {
 
 $db = getDB();
 
-// Estrategia: para cada código, buscar exacto primero, luego LIKE
+// Estrategia batch: 1 query exacta + 1 query LIKE (en vez de 2N queries)
 $results = [];
 
-foreach ($codes as $code) {
-    // 1) Búsqueda exacta por SKU
+// 1) Búsqueda exacta batch — todos los SKUs en una sola query IN()
+$matchedCodes = [];
+if (!empty($codes)) {
+    $placeholders = implode(',', array_fill(0, count($codes), '?'));
     $stmt = $db->prepare(
         "SELECT sku, name, cover_image_url FROM products 
-         WHERE archived = 0 AND sku = ? 
+         WHERE archived = 0 AND sku IN ({$placeholders})"
+    );
+    $stmt->execute($codes);
+    $exactRows = $stmt->fetchAll();
+
+    foreach ($exactRows as $row) {
+        $coverUrl = $row['cover_image_url'] ?? '';
+        if (str_starts_with($coverUrl, '[VIDEO]')) {
+            $coverUrl = substr($coverUrl, 7);
+        }
+        // Mapear al código original (case-insensitive match)
+        foreach ($codes as $code) {
+            if (strcasecmp($code, $row['sku']) === 0 && !isset($results[$code])) {
+                $results[$code] = [
+                    'sku' => $row['sku'],
+                    'name' => $row['name'],
+                    'image' => $coverUrl ?: null,
+                ];
+                $matchedCodes[] = $code;
+                break;
+            }
+        }
+    }
+}
+
+// 2) Fallback LIKE — solo para códigos que no tuvieron match exacto
+$unmatchedCodes = array_diff($codes, $matchedCodes);
+foreach ($unmatchedCodes as $code) {
+    $like = "%" . addcslashes($code, '%_') . "%";
+    $stmt = $db->prepare(
+        "SELECT sku, name, cover_image_url FROM products 
+         WHERE archived = 0 AND (sku LIKE ? OR ? LIKE CONCAT('%', sku, '%'))
+         ORDER BY LENGTH(sku) ASC
          LIMIT 1"
     );
-    $stmt->execute([$code]);
+    $stmt->execute([$like, $code]);
     $product = $stmt->fetch();
-
-    // 2) Si no encontró exacto, intentar LIKE (el código contenido en el SKU o viceversa)
-    if (!$product) {
-        $stmt = $db->prepare(
-            "SELECT sku, name, cover_image_url FROM products 
-             WHERE archived = 0 AND (sku LIKE ? OR sku LIKE ? OR ? LIKE CONCAT('%', sku, '%'))
-             ORDER BY LENGTH(sku) ASC
-             LIMIT 1"
-        );
-        $like = "%{$code}%";
-        $stmt->execute([$like, $like, $code]);
-        $product = $stmt->fetch();
-    }
 
     if ($product) {
         $coverUrl = $product['cover_image_url'] ?? '';
@@ -59,6 +80,13 @@ foreach ($codes as $code) {
             'image' => $coverUrl ?: null,
         ];
     } else {
+        $results[$code] = null;
+    }
+}
+
+// Asegurar que todos los códigos tengan entrada (incluso null)
+foreach ($codes as $code) {
+    if (!isset($results[$code])) {
         $results[$code] = null;
     }
 }

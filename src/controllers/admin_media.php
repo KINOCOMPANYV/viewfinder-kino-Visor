@@ -96,11 +96,28 @@ if ($isConnected && !empty($rootFolderId)) {
         $allDriveFilesIndex = $drive->listAllMediaFiles($rootFolderId);
         $allDriveFiles = $allDriveFilesIndex['files'] ?? [];
 
+        // Construir HashMap: nombre_archivo → true (para O(1) lookup)
+        $driveFileStems = [];
+        foreach ($allDriveFiles as $file) {
+            $stem = strtolower(pathinfo($file['name'] ?? '', PATHINFO_FILENAME));
+            $driveFileStems[$stem] = true;
+        }
+
         foreach ($productsBySku as $sku => $prod) {
-            foreach ($allDriveFiles as $file) {
-                if (skuMatchesFilename($sku, $file['name'])) {
-                    $linkedCount++;
-                    break;
+            $skuLower = strtolower($sku);
+            // Check exact match or prefix match in HashMap
+            if (isset($driveFileStems[$skuLower])) {
+                $linkedCount++;
+                continue;
+            }
+            // Check prefix matches: any stem that starts with SKU
+            foreach ($driveFileStems as $stem => $_) {
+                if (stripos($stem, $skuLower) === 0) {
+                    $nextPos = strlen($skuLower);
+                    if ($nextPos >= strlen($stem) || !ctype_digit($stem[$nextPos])) {
+                        $linkedCount++;
+                        break;
+                    }
                 }
             }
         }

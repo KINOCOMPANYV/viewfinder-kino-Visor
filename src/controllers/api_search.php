@@ -31,7 +31,8 @@ $stmt = $db->prepare(
      ORDER BY sku ASC 
      LIMIT 10"
 );
-$like = "%{$q}%";
+$escaped = addcslashes($q, '%_');
+$like = "%{$escaped}%";
 $stmt->execute([$like, $like, $q]);
 $partial = $stmt->fetchAll();
 

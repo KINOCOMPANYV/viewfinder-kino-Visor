@@ -278,28 +278,9 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     $db = getDB();
     $freshRequested = !empty($_GET['fresh']);
 
-    // Helper: filter out files hidden via drive_cache.visible_publico
-    function filterHiddenFiles(PDO $db, array $files): array
-    {
-        if (empty($files))
-            return $files;
-        $ids = array_column($files, 'id');
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        try {
-            $stmt = $db->prepare("SELECT file_id FROM drive_cache WHERE file_id IN ({$placeholders}) AND visible_publico = 0");
-            $stmt->execute($ids);
-            $hiddenIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            if (!empty($hiddenIds)) {
-                $hiddenSet = array_flip($hiddenIds);
-                $files = array_values(array_filter($files, fn($f) => !isset($hiddenSet[$f['id']])));
-            }
-        } catch (Exception $e) {
-            // drive_cache table might not exist yet, skip filtering
-        }
-        return $files;
-    }
+    // filterHiddenFiles() ahora definida en src/helpers.php
 
-    // === CACHÉ: verificar si hay respuesta en caché (TTL 5 min) ===
+    // === CACHÉ: verificar si hay respuesta en caché (TTL 30 min) ===
     if (!$freshRequested) {
         try {
             $cacheStmt = $db->prepare(
@@ -343,7 +324,8 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
             }
         }
 
-        // Hacer públicos todos los archivos en PARALELO (evita bloqueo)
+        // Hacer públicos todos los archivos en PARALELO
+        // (este bloque solo se ejecuta si NO hubo cache hit, así que son archivos frescos)
         $drive->makePublicBatch(array_column($files, 'id'));
 
         // === CACHÉ: guardar resultado SOLO si hay archivos ===
@@ -534,29 +516,7 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     jsonCachedResponse(['covers' => $covers], 300);
 }
 
-/**
- * Extrae la portada (primer imagen o video) de un array de archivos Drive.
- */
-function extractCoverFromFiles(array $files): ?array
-{
-    // Buscar primera imagen
-    foreach ($files as $f) {
-        if (str_starts_with($f['mimeType'] ?? '', 'image/')) {
-            $thumb = $f['thumbnailLink'] ?? '';
-            $url = $thumb
-                ? preg_replace('/=s\d+/', '=s400', $thumb)
-                : "https://lh3.googleusercontent.com/d/{$f['id']}=s400";
-            return ['url' => $url, 'video' => false];
-        }
-    }
-    // Fallback: primer video
-    foreach ($files as $f) {
-        if (str_starts_with($f['mimeType'] ?? '', 'video/') && !empty($f['thumbnailLink'])) {
-            return ['url' => preg_replace('/=s\d+/', '=s400', $f['thumbnailLink']), 'video' => true];
-        }
-    }
-    return null;
-}
+// extractCoverFromFiles() ahora definida en src/helpers.php
 
 
 // ============================================================

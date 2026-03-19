@@ -3,8 +3,13 @@
  * Admin Media Delete — Elimina un archivo de Google Drive.
  */
 require_once __DIR__ . '/../services/GoogleDriveService.php';
-
 $db = getDB();
+
+if (!verifyCsrf()) {
+    $_SESSION['flash_error'] = 'Token CSRF inválido.';
+    redirect('/admin/media');
+}
+
 $drive = new GoogleDriveService();
 
 $token = $drive->getValidToken($db);

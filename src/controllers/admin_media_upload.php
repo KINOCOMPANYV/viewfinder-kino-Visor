@@ -5,6 +5,12 @@
 require_once __DIR__ . '/../services/GoogleDriveService.php';
 
 $db = getDB();
+
+if (!verifyCsrf()) {
+    $_SESSION['flash_error'] = 'Token CSRF inválido.';
+    redirect('/admin/media');
+}
+
 $drive = new GoogleDriveService();
 $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
 

@@ -15,6 +15,14 @@ header('Content-Type: application/json');
 set_time_limit(300);
 
 $db = getDB();
+
+$csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
+if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'Token CSRF inválido.']);
+    exit;
+}
+
 $drive = new GoogleDriveService();
 $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
 
@@ -66,9 +74,42 @@ if (empty($allDriveFiles)) {
 }
 
 // ============================================================
-// 3) Construir índice SKU → archivos usando matching local
-//    Reutiliza la misma lógica de skuMatchesFilename()
+// 3) Construir índice HashMap: nombre_archivo → [archivos]
+//    Esto convierte la búsqueda de O(N×M) a O(N+M)
 // ============================================================
+
+// Build reverse index: for each drive file, store it under possible SKU keys
+$fileIndex = []; // key: lowercase filename stem, value: [file, file, ...]
+foreach ($allDriveFiles as $f) {
+    $name = strtolower(pathinfo($f['name'] ?? '', PATHINFO_FILENAME));
+    if (!isset($fileIndex[$name])) $fileIndex[$name] = [];
+    $fileIndex[$name][] = $f;
+}
+
+// Helper: find matching files for a SKU using the HashMap index
+function findMatchesInIndex(string $sku, array &$fileIndex, array &$allDriveFiles): array {
+    $skuLower = strtolower($sku);
+    $matches = [];
+    
+    // Direct exact match
+    if (isset($fileIndex[$skuLower])) {
+        $matches = array_merge($matches, $fileIndex[$skuLower]);
+    }
+    
+    // Prefix match: check keys that start with the SKU 
+    // (e.g. SKU "839-5" matches file "839-5v1", "839-5_rojo")
+    foreach ($fileIndex as $key => $files) {
+        if ($key === $skuLower) continue; // already added
+        if (stripos($key, $skuLower) === 0) {
+            // Next char after SKU must NOT be a digit
+            $nextPos = strlen($skuLower);
+            if ($nextPos < strlen($key) && ctype_digit($key[$nextPos])) continue;
+            $matches = array_merge($matches, $files);
+        }
+    }
+    
+    return $matches;
+}
 
 // Palabras clave para priorizar como portada
 $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
@@ -102,23 +143,28 @@ foreach ($products as $prod) {
         $sku = preg_replace('/\.\w{2,4}$/i', '', $prod['sku']);
         $rootSku = extractRootSku($sku);
 
-        // Buscar archivos que matcheen este SKU en el índice bulk
-        $matchingFiles = [];
-        foreach ($allDriveFiles as $f) {
-            $fileName = $f['name'] ?? '';
-            // Intentar match con SKU completo
-            if (skuMatchesFilename($sku, $fileName)) {
-                $matchingFiles[] = $f;
+        // Buscar archivos usando el HashMap (mucho más rápido que O(M) por producto)
+        $matchingFiles = findMatchesInIndex($sku, $fileIndex, $allDriveFiles);
+        
+        // También buscar con SKU raíz si es diferente
+        if ($rootSku !== $sku) {
+            $rootMatches = findMatchesInIndex($rootSku, $fileIndex, $allDriveFiles);
+            $existingIds = array_column($matchingFiles, 'id');
+            foreach ($rootMatches as $rm) {
+                if (!in_array($rm['id'], $existingIds)) {
+                    $matchingFiles[] = $rm;
+                }
             }
-            // También intentar match con SKU raíz si es diferente
-            elseif ($rootSku !== $sku && skuMatchesFilename($rootSku, $fileName)) {
-                $matchingFiles[] = $f;
-            }
-            // También intentar match sin prefijo de marca
-            else {
-                $skuNoPrefijo = extractSkuWithoutPrefix($sku);
-                if ($skuNoPrefijo !== $sku && skuMatchesFilename($skuNoPrefijo, $fileName)) {
-                    $matchingFiles[] = $f;
+        }
+        
+        // También intentar sin prefijo de marca
+        $skuNoPrefijo = extractSkuWithoutPrefix($sku);
+        if ($skuNoPrefijo !== $sku) {
+            $noPrefMatches = findMatchesInIndex($skuNoPrefijo, $fileIndex, $allDriveFiles);
+            $existingIds = array_column($matchingFiles, 'id');
+            foreach ($noPrefMatches as $npm) {
+                if (!in_array($npm['id'], $existingIds)) {
+                    $matchingFiles[] = $npm;
                 }
             }
         }
