@@ -7,7 +7,7 @@
 $sku = $_GET['sku'] ?? '';
 $db = getDB();
 
-$stmt = $db->prepare("SELECT id, sku, name, category, gender, movement, price_suggested, status, description, cover_image_url, updated_at FROM products WHERE sku = ?");
+$stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
 $stmt->execute([$sku]);
 $product = $stmt->fetch();
 
@@ -17,7 +17,7 @@ $isVariant = false;
 if (!$product) {
     $rootSku = extractRootSku($sku);
     if ($rootSku !== $sku) {
-        $stmt = $db->prepare("SELECT id, sku, name, category, gender, movement, price_suggested, status, description, cover_image_url, updated_at FROM products WHERE sku = ?");
+        $stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
         $stmt->execute([$rootSku]);
         $product = $stmt->fetch();
         $isVariant = true;
