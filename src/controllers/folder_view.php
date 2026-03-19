@@ -123,26 +123,32 @@ if ($token) {
             </div>
             <div class="parent-grid" style="padding-top:1rem;">
                 <?php foreach ($files as $idx => $file): ?>
+                    <?php
+                        // Extraer SKU del nombre del archivo (quitar extensión)
+                        $fileSku = pathinfo($file['name'] ?? '', PATHINFO_FILENAME);
+                        // También extraer el root SKU para búsqueda bidireccional
+                        $rootSku = extractRootSku($fileSku);
+                    ?>
                     <div class="parent-card">
-                        <div class="card-image" style="position:relative;">
-                            <?php if ($file['isVideo']): ?>
-                                <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.7rem;z-index:2;">🎬 Video</div>
-                            <?php endif; ?>
-                            <img src="<?= e($file['thumb']) ?>" 
-                                 alt="<?= e($file['name']) ?>" 
-                                 loading="<?= $idx < 6 ? 'eager' : 'lazy' ?>"
-                                 class="img-fade-in"
-                                 onload="this.classList.add('loaded')"
-                                 onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'"
-                                 style="width:100%;height:100%;object-fit:cover;">
-                        </div>
-                        <div class="card-body">
-                            <div class="card-sku" style="font-size:0.7rem; word-break:break-all;"><?= e($file['name']) ?></div>
-                            <?php if (!empty($file['size'])): ?>
-                                <div class="card-meta" style="font-size:0.75rem;">
-                                    <?= number_format(intval($file['size']) / 1024 / 1024, 1) ?> MB
-                                </div>
-                            <?php endif; ?>
+                        <a href="/producto/<?= urlencode($rootSku) ?>" style="text-decoration:none;color:inherit;display:block;">
+                            <div class="card-image" style="position:relative;">
+                                <?php if ($file['isVideo']): ?>
+                                    <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.7rem;z-index:2;">🎬 Video</div>
+                                <?php endif; ?>
+                                <img src="<?= e($file['thumb']) ?>" 
+                                     alt="<?= e($file['name']) ?>" 
+                                     loading="<?= $idx < 6 ? 'eager' : 'lazy' ?>"
+                                     class="img-fade-in"
+                                     onload="this.classList.add('loaded')"
+                                     onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'"
+                                     style="width:100%;height:100%;object-fit:cover;">
+                            </div>
+                            <div class="card-body">
+                                <div class="card-sku" style="font-size:0.75rem; font-weight:600;"><?= e($rootSku) ?></div>
+                                <div class="card-name" style="font-size:0.7rem; word-break:break-all; color:var(--color-text-muted);"><?= e($file['name']) ?></div>
+                            </div>
+                        </a>
+                        <div class="card-body" style="padding-top:0;">
                             <div class="card-actions" style="margin-top:0.5rem;">
                                 <a href="/api/download/<?= e($file['id']) ?>" class="btn-ver" style="flex:1;text-align:center;font-size:0.75rem;">
                                     ⬇️ Descargar
