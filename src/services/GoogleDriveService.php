@@ -272,14 +272,249 @@ class GoogleDriveService
         $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
         $response = $this->httpGet($url);
         $data = json_decode($response, true) ?: [];
-        // Usar los que el API de Google filtró
         $files = $data['files'] ?? [];
+
+        // Usar los que el API de Google filtró
+        // (ya no se hace post-filtro local para mayor velocidad)
 
         // Retornar archivos encontrados (o vacío si no existen).
         // NOTA: Se ha deshabilitado la búsqueda recursiva de fallback (que tomaba 20s)
         // porque la búsqueda global es suficiente y el bloqueo de 20s causaba timeouts masivos
         // cuando se buscaban portadas de productos que no tenían fotos.
         return $files;
+    }
+
+    /**
+     * Sube un archivo a Drive.
+     * Auto-selecciona: simple upload (<5MB) o resumable upload (>=5MB).
+     */
+    public function uploadFile(string $folderId, string $filename, string $filePath, string $mimeType): ?array
+    {
+        $fileSize = filesize($filePath);
+
+        // Para archivos grandes (>=5MB), usar resumable upload
+        if ($fileSize >= 5 * 1024 * 1024) {
+            return $this->uploadFileResumable($folderId, $filename, $filePath, $mimeType, $fileSize);
+        }
+
+        // Simple upload para archivos pequeños
+        $boundary = 'viewfinder_boundary_' . uniqid();
+        $fileContent = file_get_contents($filePath);
+
+        $metadata = json_encode([
+            'name' => $filename,
+            'parents' => [$folderId],
+        ]);
+
+        $body = "--{$boundary}\r\n"
+            . "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+            . $metadata . "\r\n"
+            . "--{$boundary}\r\n"
+            . "Content-Type: {$mimeType}\r\n"
+            . "Content-Transfer-Encoding: base64\r\n\r\n"
+            . base64_encode($fileContent) . "\r\n"
+            . "--{$boundary}--";
+
+        $url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,webContentLink';
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer {$this->accessToken}",
+                "Content-Type: multipart/related; boundary={$boundary}",
+            ],
+        ]);
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        return json_decode($response, true) ?: null;
+    }
+
+    /**
+     * Resumable upload — sube archivos grandes en trozos de 5MB.
+     * Protocolo: https://developers.google.com/drive/api/guides/manage-uploads#resumable
+     */
+    private function uploadFileResumable(string $folderId, string $filename, string $filePath, string $mimeType, int $fileSize): ?array
+    {
+        $chunkSize = 5 * 1024 * 1024; // 5MB chunks
+
+        // Paso 1: Iniciar sesión de subida resumable
+        $metadata = json_encode([
+            'name' => $filename,
+            'parents' => [$folderId],
+        ]);
+
+        $initUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink,webContentLink';
+        $ch = curl_init($initUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $metadata,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER => true,
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer {$this->accessToken}",
+                "Content-Type: application/json; charset=UTF-8",
+                "X-Upload-Content-Type: {$mimeType}",
+                "X-Upload-Content-Length: {$fileSize}",
+            ],
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200) {
+            return null;
+        }
+
+        // Extraer la URL de sesión de subida del header Location
+        $uploadUrl = null;
+        foreach (explode("\r\n", $response) as $line) {
+            if (stripos($line, 'Location:') === 0) {
+                $uploadUrl = trim(substr($line, 9));
+                break;
+            }
+        }
+
+        if (!$uploadUrl) {
+            return null;
+        }
+
+        // Paso 2: Subir en chunks
+        $handle = fopen($filePath, 'rb');
+        $offset = 0;
+        $lastResponse = null;
+
+        while ($offset < $fileSize) {
+            $chunk = fread($handle, $chunkSize);
+            $chunkLen = strlen($chunk);
+            $endByte = $offset + $chunkLen - 1;
+
+            $ch = curl_init($uploadUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_CUSTOMREQUEST => 'PUT',
+                CURLOPT_POSTFIELDS => $chunk,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "Content-Length: {$chunkLen}",
+                    "Content-Range: bytes {$offset}-{$endByte}/{$fileSize}",
+                ],
+            ]);
+            $lastResponse = curl_exec($ch);
+            $chunkCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            // 308 = Resume Incomplete (más chunks por enviar)
+            // 200/201 = Upload completo
+            if ($chunkCode !== 308 && $chunkCode !== 200 && $chunkCode !== 201) {
+                fclose($handle);
+                return null;
+            }
+
+            $offset += $chunkLen;
+        }
+
+        fclose($handle);
+
+        return json_decode($lastResponse, true) ?: null;
+    }
+
+
+    /**
+     * Elimina un archivo de Drive.
+     */
+    public function deleteFile(string $fileId): bool
+    {
+        $url = "https://www.googleapis.com/drive/v3/files/{$fileId}";
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST => 'DELETE',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer {$this->accessToken}",
+            ],
+        ]);
+        curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return $code === 204 || $code === 200;
+    }
+
+    /**
+     * Obtener URL pública de un archivo (con permisos).
+     */
+    public function makePublic(string $fileId): bool
+    {
+        $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions?supportsAllDrives=true";
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode(['role' => 'reader', 'type' => 'anyone']),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer {$this->accessToken}",
+                "Content-Type: application/json",
+            ],
+        ]);
+        curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return $code === 200;
+    }
+
+    /**
+     * Hace públicos múltiples archivos en paralelo usando curl_multi.
+     * Mucho más rápido que llamar makePublic() N veces secuencialmente.
+     */
+    public function makePublicBatch(array $fileIds): int
+    {
+        if (empty($fileIds))
+            return 0;
+
+        $mh = curl_multi_init();
+        $handles = [];
+        $body = json_encode(['role' => 'reader', 'type' => 'anyone']);
+
+        foreach ($fileIds as $fileId) {
+            $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions?supportsAllDrives=true";
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_HTTPHEADER => [
+                    "Authorization: Bearer {$this->accessToken}",
+                    "Content-Type: application/json",
+                ],
+            ]);
+            curl_multi_add_handle($mh, $ch);
+            $handles[] = $ch;
+        }
+
+        // Ejecutar todas las peticiones en paralelo
+        $running = null;
+        do {
+            curl_multi_exec($mh, $running);
+            if ($running > 0) {
+                curl_multi_select($mh, 0.5);
+            }
+        } while ($running > 0);
+
+        // Contar éxitos
+        $success = 0;
+        foreach ($handles as $ch) {
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            if ($code === 200)
+                $success++;
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+        }
+        curl_multi_close($mh);
+
+        return $success;
     }
 
     /**
