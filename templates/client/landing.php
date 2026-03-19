@@ -751,6 +751,7 @@ KV-1003
 
     <!-- Autocomplete JS -->
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
+    <?php include __DIR__ . '/../partials/loading_overlay.php'; ?>
 </body>
 
 </html>

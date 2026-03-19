@@ -1353,6 +1353,7 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
         }
     </script>
 
+    <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
 </body>
 
 </html>

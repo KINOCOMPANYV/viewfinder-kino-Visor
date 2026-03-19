@@ -190,6 +190,7 @@ if ($token) {
 
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
+    <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
 </body>
 
 </html>
