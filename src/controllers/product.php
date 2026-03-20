@@ -136,10 +136,18 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
         }
 
         .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 1rem;
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 0.5rem;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: var(--color-border) transparent;
         }
+
+        .gallery-grid::-webkit-scrollbar { height: 4px; }
+        .gallery-grid::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
 
         .gallery-item {
             background: var(--color-surface);
@@ -147,6 +155,8 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
             border-radius: var(--radius);
             overflow: hidden;
             transition: transform 0.2s;
+            flex-shrink: 0;
+            width: 160px;
         }
 
         .gallery-item:hover {
@@ -482,6 +492,10 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
         .main-image img {
             cursor: pointer;
             transition: transform 0.2s;
+            max-height: 450px;
+            width: 100%;
+            object-fit: contain;
+            border-radius: var(--radius);
         }
 
         .main-image img:hover {
@@ -596,8 +610,11 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
         /* Mobile responsive for product page */
         @media (max-width: 768px) {
             .gallery-grid {
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
-                gap: 0.75rem !important;
+                gap: 0.5rem !important;
+            }
+
+            .gallery-item {
+                width: 120px !important;
             }
 
             .media-gallery h2 {
