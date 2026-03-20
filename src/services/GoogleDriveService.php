@@ -274,14 +274,23 @@ class GoogleDriveService
         $data = json_decode($response, true) ?: [];
         $files = $data['files'] ?? [];
 
-        // Usar los que el API de Google filtró
-        // (ya no se hace post-filtro local para mayor velocidad)
+        // Post-filtro estricto: el nombre del archivo debe comenzar con el SKU exacto
+        // seguido de un separador (guion, punto, espacio, underscore) o fin del nombre base.
+        // Esto evita que "1948" coincida con "1948O", "JR1948O", "1948DG", etc.
+        $skuLower = strtolower($sku);
+        $skuLen = strlen($sku);
+        $filtered = array_filter($files, function($f) use ($skuLower, $skuLen) {
+            $name = strtolower(pathinfo($f['name'] ?? '', PATHINFO_FILENAME));
+            // El nombre debe comenzar con el SKU exacto
+            if (strpos($name, $skuLower) !== 0) return false;
+            // Si el nombre es exactamente el SKU, OK
+            if (strlen($name) === $skuLen) return true;
+            // El carácter después del SKU debe ser un separador, no alfanumérico
+            $nextChar = $name[$skuLen];
+            return !ctype_alnum($nextChar);
+        });
 
-        // Retornar archivos encontrados (o vacío si no existen).
-        // NOTA: Se ha deshabilitado la búsqueda recursiva de fallback (que tomaba 20s)
-        // porque la búsqueda global es suficiente y el bloqueo de 20s causaba timeouts masivos
-        // cuando se buscaban portadas de productos que no tenían fotos.
-        return $files;
+        return array_values($filtered);
     }
 
     /**
