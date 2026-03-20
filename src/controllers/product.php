@@ -65,6 +65,15 @@ if (!$product) {
 }
 
 if (!$product) {
+    // 5) Buscar con guion (root sin producto propio, ej: 1555 → 1555-1)
+    $stmt = $db->prepare(
+        "SELECT * FROM products WHERE archived = 0 AND sku LIKE ? ORDER BY sku ASC LIMIT 1"
+    );
+    $stmt->execute([$sku . '-%']);
+    $product = $stmt->fetch();
+}
+
+if (!$product) {
     http_response_code(404);
     include __DIR__ . '/../../templates/404.php';
     exit;
