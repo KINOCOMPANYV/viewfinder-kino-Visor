@@ -71,7 +71,7 @@ if ($uri === '/buscar' || $uri === '/search') {
 if (preg_match('#^/producto/([^/]+)$#', $uri, $matches)) {
     // Ficha del producto por SKU
     session_write_close();
-    $_GET['sku'] = $matches[1];
+    $_GET['sku'] = urldecode($matches[1]);
     include __DIR__ . '/src/controllers/product.php';
     exit;
 }

@@ -231,7 +231,7 @@ $totalPages = ceil($total / $perPage);
             <div class="product-grid">
                 <?php foreach ($products as $idx => $p): ?>
                     <div class="product-card search-selectable-card">
-                        <a href="/producto/<?= e($p['sku']) ?>" style="text-decoration:none; color:inherit; display:block;">
+                        <a href="/producto/<?= rawurlencode($p['sku']) ?>" style="text-decoration:none; color:inherit; display:block;">
                             <div class="card-image" data-sku="<?= e($p['sku']) ?>"
                                  <?php
                                  $coverUrl = $p['cover_image_url'] ?? '';
