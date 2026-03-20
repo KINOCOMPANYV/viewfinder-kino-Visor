@@ -507,9 +507,10 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
         .main-image img {
             cursor: pointer;
             transition: transform 0.2s;
-            max-height: 450px;
-            width: 100%;
-            object-fit: contain;
+            max-height: 500px;
+            max-width: 100%;
+            display: block;
+            margin: 0 auto;
             border-radius: var(--radius);
         }
 
