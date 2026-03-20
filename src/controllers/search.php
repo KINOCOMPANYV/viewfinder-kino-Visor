@@ -58,13 +58,10 @@ if ($q === '' && !$isMultiCode) {
     $stmt = $db->prepare(
         "SELECT sku, name, category, gender, price_suggested, cover_image_url 
          FROM products WHERE $where 
-         ORDER BY name ASC 
-         LIMIT ? OFFSET ?"
+         ORDER BY name ASC"
     );
-    $params[] = $perPage;
-    $params[] = $offset;
     $stmt->execute($params);
-    $products = $stmt->fetchAll();
+    $allMatches = $stmt->fetchAll();
 } elseif ($isMultiCode) {
     // BÚSQUEDA MULTI-CÓDIGO: buscar cada SKU con LIKE para mayor flexibilidad
     // Esto permite encontrar "1971-1" aunque en la BD esté como "1971-1.JPG"
@@ -83,7 +80,6 @@ if ($q === '' && !$isMultiCode) {
     $countStmt->execute($params);
     $total = $countStmt->fetchColumn();
 
-    // Sin paginación — mostrar todos los resultados multi-código
     $stmt = $db->prepare(
         "SELECT sku, name, category, gender, price_suggested, cover_image_url 
          FROM products 
@@ -91,7 +87,7 @@ if ($q === '' && !$isMultiCode) {
          ORDER BY sku ASC"
     );
     $stmt->execute($params);
-    $products = $stmt->fetchAll();
+    $allMatches = $stmt->fetchAll();
     
     // Sin paginación para multi-código
     $perPage = max($total, 1);
@@ -118,16 +114,41 @@ if ($q === '' && !$isMultiCode) {
             CASE WHEN sku = ? THEN 0
                  WHEN sku LIKE ? THEN 1
                  ELSE 2 END,
-            name ASC
-         LIMIT ? OFFSET ?"
+            name ASC"
     );
     $startsWith = "{$q}%";
-    $finalParams = array_merge($paramsBase, [$q, $startsWith, $perPage, $offset]);
+    $finalParams = array_merge($paramsBase, [$q, $startsWith]);
     $stmt->execute($finalParams);
-    $products = $stmt->fetchAll();
+    $allMatches = $stmt->fetchAll();
 }
 
-$totalPages = ceil($total / $perPage);
+// Group by family SKU using the global extractRootSku standard
+$grouped = [];
+foreach ($allMatches as $p) {
+    $sku = trim($p['sku']);
+    $skuClean = preg_replace('/\.\w{2,4}$/i', '', $sku);
+    $family = extractRootSku($skuClean);
+    
+    if (!isset($grouped[$family])) {
+        $grouped[$family] = ['parent' => $p, 'children' => []];
+    } else {
+        if ($p['sku'] !== $grouped[$family]['parent']['sku']) {
+            $grouped[$family]['children'][] = $p;
+        }
+    }
+}
+
+$parentOrder = array_keys($grouped);
+$totalParents = count($parentOrder);
+$totalPages = max(1, ceil($totalParents / $perPage));
+$page = min($page, $totalPages);
+$offset = ($page - 1) * $perPage;
+$pageRoots = array_slice($parentOrder, $offset, $perPage);
+
+// Helper para limpiar el SKU
+function cleanSkuDisplay(string $sku): string {
+    return preg_replace('/\.\w{2,4}$/i', '', $sku);
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -183,10 +204,10 @@ $totalPages = ceil($total / $perPage);
         <!-- Results count -->
         <p style="color:var(--color-text-muted); font-size:0.9rem; margin-bottom:1rem;">
             <?php if ($isMultiCode): ?>
-                <?= $total ?> resultado<?= $total !== 1 ? 's' : '' ?> para <?= count($multiCodes) ?> código<?= count($multiCodes) !== 1 ? 's' : '' ?>
+                <?= $totalParents ?> resultado<?= $totalParents !== 1 ? 's' : '' ?> para <?= count($multiCodes) ?> código<?= count($multiCodes) !== 1 ? 's' : '' ?>
                 <?php
                     // Verificar cuáles códigos no tuvieron ningún resultado (ni exacto ni hijo)
-                    $allSkus = array_column($products, 'sku');
+                    $allSkus = array_column($allMatches, 'sku');
                     $sinResultado = [];
                     foreach ($multiCodes as $code) {
                         $found = false;
@@ -202,17 +223,15 @@ $totalPages = ceil($total / $perPage);
                     <br><span style="color:var(--color-warning, #fbbf24); font-size:0.85rem;">Sin resultados para: <?= e(implode(', ', $sinResultado)) ?></span>
                 <?php endif; ?>
             <?php elseif ($q): ?>
-                <?= $total ?> resultado
-                <?= $total !== 1 ? 's' : '' ?> para "<strong style="color:var(--color-text)">
+                <?= $totalParents ?> resultado<?= $totalParents !== 1 ? 's' : '' ?> para "<strong style="color:var(--color-text)">
                     <?= e($q) ?>
                 </strong>"
             <?php else: ?>
-                <?= $total ?> producto
-                <?= $total !== 1 ? 's' : '' ?> en el catálogo
+                <?= $totalParents ?> colección(es)
             <?php endif; ?>
         </p>
 
-        <?php if (!empty($products)): ?>
+        <?php if (!empty($pageRoots)): ?>
             <!-- WhatsApp toolbar -->
             <div class="search-wa-toolbar" id="searchWaBar">
                 <label class="wa-toolbar-select">
@@ -228,23 +247,29 @@ $totalPages = ceil($total / $perPage);
                 </button>
             </div>
 
-            <div class="product-grid">
-                <?php foreach ($products as $idx => $p): ?>
-                    <div class="product-card search-selectable-card">
-                        <a href="/producto/<?= rawurlencode($p['sku']) ?>" style="text-decoration:none; color:inherit; display:block;">
+            <div class="parent-grid">
+                <?php $cardIndex = 0; ?>
+                <?php foreach ($pageRoots as $root):
+                    $group = $grouped[$root];
+                    $p = $group['parent'];
+                    $children = $group['children'];
+                    $childCount = count($children);
+                    $coverUrl = $p['cover_image_url'] ?? '';
+                    $isVideo = str_starts_with($coverUrl, '[VIDEO]');
+                    if ($isVideo) $coverUrl = substr($coverUrl, 7);
+                ?>
+                    <div class="parent-card search-selectable-card">
+                        <a href="/producto/<?= rawurlencode($p['sku']) ?>" class="parent-card-link" style="text-decoration:none; color:inherit; display:block;">
                             <div class="card-image" data-sku="<?= e($p['sku']) ?>"
-                                 <?php
-                                 $coverUrl = $p['cover_image_url'] ?? '';
-                                 $isVideo = str_starts_with($coverUrl, '[VIDEO]');
-                                 if ($isVideo) $coverUrl = substr($coverUrl, 7);
-                                 if ($coverUrl): ?>
+                                 <?php if ($coverUrl): ?>
                                     data-cover="<?= e($coverUrl) ?>"
                                     data-video="<?= $isVideo ? '1' : '0' ?>"
                                  <?php endif; ?>
                             >
+                                <?php $loadMode = ($cardIndex < 3 && $page === 1) ? 'eager' : 'lazy'; ?>
                                 <?php if ($coverUrl): ?>
                                     <img src="<?= e($coverUrl) ?>" alt="<?= e($p['name']) ?>"
-                                         loading="lazy" class="img-fade-in"
+                                         loading="<?= $loadMode ?>" class="img-fade-in"
                                          onload="this.classList.add('loaded')"
                                          onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
                                 <?php else: ?>
@@ -252,33 +277,52 @@ $totalPages = ceil($total / $perPage);
                                 <?php endif; ?>
                             </div>
                             <div class="card-body">
-                                <div class="card-sku"><?= e($p['sku']) ?></div>
+                                <div class="card-sku"><?= e(cleanSkuDisplay($p['sku'])) ?></div>
                                 <div class="card-name"><?= e($p['name']) ?></div>
-                                <div class="card-meta">
-                                    <?php if ($p['category']): ?>
-                                        <span><?= e($p['category']) ?></span>
-                                    <?php endif; ?>
-                                </div>
+                                <?php if ($p['category']): ?>
+                                    <div class="card-meta"><span><?= e($p['category']) ?></span></div>
+                                <?php endif; ?>
+
+                                <!-- Children thumbnails -->
+                                <?php if ($childCount > 0): ?>
+                                    <div class="children-row">
+                                        <?php
+                                        $showMax = 4;
+                                        $visibleChildren = array_slice($children, 0, $showMax);
+                                        foreach ($visibleChildren as $child):
+                                            $childCover = $child['cover_image_url'] ?? '';
+                                            $childIsVideo = str_starts_with($childCover, '[VIDEO]');
+                                            if ($childIsVideo) $childCover = substr($childCover, 7);
+                                        ?>
+                                            <div class="child-thumb" title="<?= e(cleanSkuDisplay($child['sku'])) ?>">
+                                                <?php if ($childCover): ?>
+                                                    <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
+                                                <?php else: ?>
+                                                    <span class="child-placeholder">📷</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                        <?php if ($childCount > $showMax): ?>
+                                            <div class="child-more">+<?= $childCount - $showMax ?></div>
+                                        <?php endif; ?>
+                                        <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </a>
                         <!-- Checkbox FUERA de la imagen -->
-                        <label class="search-check-footer">
-                            <?php
-                                $rawUrl = $p['cover_image_url'] ?? '';
-                                $isVid = str_starts_with($rawUrl, '[VIDEO]');
-                                $cleanUrl = $isVid ? substr($rawUrl, 7) : $rawUrl;
-                            ?>
+                        <label class="search-check-footer" style="border-top: 1px solid var(--color-border); margin-top: auto; border-radius: 0 0 var(--radius) var(--radius);">
                             <input type="checkbox" class="search-card-check" 
-                                   data-index="<?= $idx ?>" 
+                                   data-index="<?= $cardIndex ?>" 
                                    data-sku="<?= e($p['sku']) ?>"
                                    data-name="<?= e(addslashes($p['name'])) ?>"
-                                   data-image="<?= e($cleanUrl) ?>"
-                                   data-is-video="<?= $isVid ? '1' : '0' ?>">
+                                   data-image="<?= e($coverUrl) ?>"
+                                   data-is-video="<?= $isVideo ? '1' : '0' ?>">
                             <span class="search-check-icon">✓</span>
                             <span class="search-check-text">Seleccionar</span>
                         </label>
                     </div>
-                <?php endforeach; ?>
+                <?php $cardIndex++; endforeach; ?>
             </div>
 
             <!-- Pagination -->

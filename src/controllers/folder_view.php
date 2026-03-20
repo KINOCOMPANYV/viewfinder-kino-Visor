@@ -116,19 +116,29 @@ if ($token) {
         <?php endif; ?>
 
         <!-- Archivos (fotos/videos) -->
-        <?php if (!empty($files)): ?>
+        <?php if (!empty($files)): 
+            // Agrupar archivos por SKU raíz para mostrar variantes juntas
+            $groupedFiles = [];
+            foreach ($files as $f) {
+                $fileSku = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
+                $rootSku = extractRootSku($fileSku);
+                if (!isset($groupedFiles[$rootSku])) {
+                    $groupedFiles[$rootSku] = ['parent' => $f, 'children' => []];
+                } else {
+                    $groupedFiles[$rootSku]['children'][] = $f;
+                }
+            }
+        ?>
             <div class="section-header-landing" style="margin-top:1rem;">
                 <h2>🖼️ Archivos</h2>
-                <span class="product-count"><?= count($files) ?> archivo<?= count($files) !== 1 ? 's' : '' ?></span>
+                <span class="product-count"><?= count($groupedFiles) ?> referencia<?= count($groupedFiles) !== 1 ? 's' : '' ?> (<?= count($files) ?> archivos)</span>
             </div>
             <div class="parent-grid" style="padding-top:1rem;">
-                <?php foreach ($files as $idx => $file): ?>
-                    <?php
-                        // Extraer SKU del nombre del archivo (quitar extensión)
-                        $fileSku = pathinfo($file['name'] ?? '', PATHINFO_FILENAME);
-                        // También extraer el root SKU para búsqueda bidireccional
-                        $rootSku = extractRootSku($fileSku);
-                    ?>
+                <?php $idx = 0; foreach ($groupedFiles as $rootSku => $group): 
+                    $file = $group['parent'];
+                    $children = $group['children'];
+                    $childCount = count($children);
+                ?>
                     <div class="parent-card">
                         <a href="/producto/<?= urlencode($rootSku) ?>" style="text-decoration:none;color:inherit;display:block;">
                             <div class="card-image" style="position:relative;">
@@ -146,20 +156,39 @@ if ($token) {
                             <div class="card-body">
                                 <div class="card-sku" style="font-size:0.75rem; font-weight:600;"><?= e($rootSku) ?></div>
                                 <div class="card-name" style="font-size:0.7rem; word-break:break-all; color:var(--color-text-muted);"><?= e($file['name']) ?></div>
+                                
+                                <!-- Children thumbnails -->
+                                <?php if ($childCount > 0): ?>
+                                    <div class="children-row" style="margin-top:0.75rem;">
+                                        <?php
+                                        $showMax = 4;
+                                        $visibleChildren = array_slice($children, 0, $showMax);
+                                        foreach ($visibleChildren as $child):
+                                        ?>
+                                            <div class="child-thumb" title="<?= e(pathinfo($child['name'] ?? '', PATHINFO_FILENAME)) ?>">
+                                                <img src="<?= e($child['thumb']) ?>" alt="<?= e($child['name']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
+                                            </div>
+                                        <?php endforeach; ?>
+                                        <?php if ($childCount > $showMax): ?>
+                                            <div class="child-more">+<?= $childCount - $showMax ?></div>
+                                        <?php endif; ?>
+                                        <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </a>
                         <div class="card-body" style="padding-top:0;">
-                            <div class="card-actions" style="margin-top:0.5rem;">
-                                <a href="/api/download/<?= e($file['id']) ?>" class="btn-ver" style="flex:1;text-align:center;font-size:0.75rem;">
-                                    ⬇️ Descargar
+                            <div class="card-actions" style="margin-top:0.5rem; justify-content:space-between;">
+                                <a href="/api/download/<?= e($file['id']) ?>" class="btn-ver" style="flex:1;text-align:center;font-size:0.7rem;padding:0.4rem;">
+                                    ⬇️ Original
                                 </a>
-                                <a href="<?= e($file['webViewLink'] ?? '#') ?>" target="_blank" rel="noopener" class="btn-ver" style="font-size:0.75rem;" title="Abrir en Drive">
-                                    🔗
+                                <a href="<?= e($file['webViewLink'] ?? '#') ?>" target="_blank" rel="noopener" class="btn-ver" style="font-size:0.7rem;padding:0.4rem;" title="Abrir en Drive">
+                                    🔗 Drive
                                 </a>
                             </div>
                         </div>
                     </div>
-                <?php endforeach; ?>
+                <?php $idx++; endforeach; ?>
             </div>
         <?php endif; ?>
 
