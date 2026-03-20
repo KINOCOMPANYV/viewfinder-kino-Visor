@@ -786,6 +786,81 @@ KV-1003
         }
     </script>
 
+    <script>
+        // Lazy-load covers for child thumbnails with placeholders
+        document.addEventListener('DOMContentLoaded', () => {
+            const skuElements = {};
+
+            // Main card images with placeholders
+            document.querySelectorAll('.card-image .cover-placeholder').forEach(ph => {
+                const cardImage = ph.closest('.card-image');
+                if (cardImage && cardImage.dataset.sku) {
+                    const sku = cardImage.dataset.sku;
+                    if (!skuElements[sku]) skuElements[sku] = [];
+                    skuElements[sku].push({ el: cardImage, type: 'main' });
+                }
+            });
+
+            // Child thumbnails with placeholders
+            document.querySelectorAll('.child-thumb').forEach(thumb => {
+                const ph = thumb.querySelector('.child-placeholder');
+                if (ph && thumb.dataset.sku) {
+                    const sku = thumb.dataset.sku;
+                    if (!skuElements[sku]) skuElements[sku] = [];
+                    skuElements[sku].push({ el: thumb, type: 'child' });
+                }
+            });
+
+            const allSkus = Object.keys(skuElements);
+            if (allSkus.length === 0) return;
+
+            const batchSize = 50;
+            for (let i = 0; i < allSkus.length; i += batchSize) {
+                const batch = allSkus.slice(i, i + batchSize);
+                fetch('/api/covers/batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ skus: batch })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    const covers = data.covers || {};
+                    Object.entries(covers).forEach(([sku, cover]) => {
+                        if (!cover || !cover.url) return;
+                        const entries = skuElements[sku] || [];
+                        entries.forEach(entry => {
+                            if (entry.type === 'main') {
+                                const placeholder = entry.el.querySelector('.cover-placeholder');
+                                if (placeholder) {
+                                    const img = document.createElement('img');
+                                    img.src = cover.url;
+                                    img.alt = sku;
+                                    img.loading = 'lazy';
+                                    img.className = 'img-fade-in';
+                                    img.onload = () => img.classList.add('loaded');
+                                    img.onerror = () => { img.outerHTML = '<div class="cover-placeholder">📷</div>'; };
+                                    placeholder.replaceWith(img);
+                                }
+                            } else {
+                                const placeholder = entry.el.querySelector('.child-placeholder');
+                                if (placeholder) {
+                                    const img = document.createElement('img');
+                                    img.src = cover.url;
+                                    img.alt = sku;
+                                    img.loading = 'lazy';
+                                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                                    img.onerror = () => { img.outerHTML = '<span class="child-placeholder">📷</span>'; };
+                                    placeholder.replaceWith(img);
+                                }
+                            }
+                        });
+                    });
+                })
+                .catch(() => {});
+            }
+        });
+    </script>
+
     <!-- Autocomplete JS -->
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
     <?php include __DIR__ . '/../partials/loading_overlay.php'; ?>

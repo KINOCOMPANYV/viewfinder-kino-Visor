@@ -298,6 +298,7 @@ function cleanSkuDisplay(string $sku): string {
                                         ?>
                                             <div class="child-thumb" style="cursor:pointer;" 
                                                 title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
+                                                data-sku="<?= e($child['sku']) ?>"
                                                 onclick="previewVariant(this, '<?= rawurlencode($child['sku']) ?>', '<?= e(cleanSkuDisplay($child['sku'])) ?>')">
                                                 <?php if ($childCover): ?>
                                                     <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
@@ -459,17 +460,24 @@ function cleanSkuDisplay(string $sku): string {
     <script>
         // Lazy-load covers from Drive for products without cover_image_url
         document.addEventListener('DOMContentLoaded', () => {
-            const placeholders = document.querySelectorAll('.cover-placeholder');
-            if (placeholders.length === 0) return;
-
-            // Collect SKUs that need covers
+            // Collect SKUs that need covers (main card images)
             const skuElements = {};
-            placeholders.forEach(ph => {
+            document.querySelectorAll('.cover-placeholder').forEach(ph => {
                 const cardImage = ph.closest('.card-image');
                 if (cardImage && cardImage.dataset.sku) {
                     const sku = cardImage.dataset.sku;
                     if (!skuElements[sku]) skuElements[sku] = [];
-                    skuElements[sku].push(cardImage);
+                    skuElements[sku].push({ el: cardImage, type: 'main' });
+                }
+            });
+
+            // Collect SKUs from child thumbnails with placeholders
+            document.querySelectorAll('.child-thumb').forEach(thumb => {
+                const ph = thumb.querySelector('.child-placeholder');
+                if (ph && thumb.dataset.sku) {
+                    const sku = thumb.dataset.sku;
+                    if (!skuElements[sku]) skuElements[sku] = [];
+                    skuElements[sku].push({ el: thumb, type: 'child' });
                 }
             });
 
@@ -490,18 +498,32 @@ function cleanSkuDisplay(string $sku): string {
                     const covers = data.covers || {};
                     Object.entries(covers).forEach(([sku, cover]) => {
                         if (!cover || !cover.url) return;
-                        const elements = skuElements[sku] || [];
-                        elements.forEach(el => {
-                            const placeholder = el.querySelector('.cover-placeholder');
-                            if (placeholder) {
-                                const img = document.createElement('img');
-                                img.src = cover.url;
-                                img.alt = sku;
-                                img.loading = 'lazy';
-                                img.className = 'img-fade-in';
-                                img.onload = () => img.classList.add('loaded');
-                                img.onerror = () => { img.outerHTML = '<div class="cover-placeholder">📷</div>'; };
-                                placeholder.replaceWith(img);
+                        const entries = skuElements[sku] || [];
+                        entries.forEach(entry => {
+                            if (entry.type === 'main') {
+                                const placeholder = entry.el.querySelector('.cover-placeholder');
+                                if (placeholder) {
+                                    const img = document.createElement('img');
+                                    img.src = cover.url;
+                                    img.alt = sku;
+                                    img.loading = 'lazy';
+                                    img.className = 'img-fade-in';
+                                    img.onload = () => img.classList.add('loaded');
+                                    img.onerror = () => { img.outerHTML = '<div class="cover-placeholder">📷</div>'; };
+                                    placeholder.replaceWith(img);
+                                }
+                            } else {
+                                // child-thumb: replace placeholder with small image
+                                const placeholder = entry.el.querySelector('.child-placeholder');
+                                if (placeholder) {
+                                    const img = document.createElement('img');
+                                    img.src = cover.url;
+                                    img.alt = sku;
+                                    img.loading = 'lazy';
+                                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                                    img.onerror = () => { img.outerHTML = '<span class="child-placeholder">📷</span>'; };
+                                    placeholder.replaceWith(img);
+                                }
                             }
                         });
                     });
