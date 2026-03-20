@@ -776,10 +776,7 @@ KV-1003
                 }
             }
 
-            // 3. Actualizar enlaces dinámicos para ir a la vista del hijo
-            card.querySelectorAll('.dynamic-card-link').forEach(a => {
-                a.href = '/producto/' + skuEnc;
-            });
+            // 3. Actualizar SKU visual (no cambiar links para evitar 404)
 
             // 4. Actualizar título (opcional, para sentir feedback)
             const skuText = card.querySelector('.dynamic-card-sku');

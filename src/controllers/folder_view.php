@@ -249,9 +249,7 @@ if ($token) {
                 }
             }
 
-            card.querySelectorAll('.dynamic-card-link').forEach(a => {
-                a.href = '/producto/' + skuEnc;
-            });
+            // SKU label update (visual only)
 
             const skuText = card.querySelector('.dynamic-card-sku');
             if (skuText) skuText.textContent = skuLabel;
