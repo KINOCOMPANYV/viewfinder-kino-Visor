@@ -207,14 +207,25 @@ function extractRootSku(string $code): string
 {
     $code = trim($code);
 
-    // Patrón: capturar todo hasta el último dígito de la secuencia "X-NNN"
-    // donde X puede ser alfanumérico y NNN son dígitos
-    if (preg_match('/^(.+?-\d+)/i', $code, $matches)) {
-        return $matches[1];
+    // 1. Manejar sufijos pegados al final (ej: "366V1" -> "366", "1234A" -> "1234")
+    // que consisten en letras después de un dígito.
+    if (preg_match('/^(.+?\d+)[a-zA-Z]+$/i', $code, $matches)) {
+        $code = $matches[1];
     }
 
-    // Si no tiene guion, intentar separar por primer carácter no-alfanumérico
-    // o devolver tal cual si no tiene patrón reconocible
+    // 2. Manejar variantes con guion (-1, -ROJO, -V1)
+    $lastDash = strrpos($code, '-');
+    if ($lastDash !== false) {
+        $prefix = substr($code, 0, $lastDash);
+        $suffix = substr($code, $lastDash + 1);
+
+        // Si el sufijo es corto (<= 3) o es solo letras (ROJO, B), lo consideramos variante y lo quitamos.
+        // Si el sufijo es largo (ej: 8464 en M-8464), es muy probable que sea parte fundamental del modelo base.
+        if (strlen($suffix) <= 3 || ctype_alpha(str_replace('_', '', $suffix))) {
+            return $prefix;
+        }
+    }
+
     return $code;
 }
 
