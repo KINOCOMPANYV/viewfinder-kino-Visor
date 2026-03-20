@@ -11,10 +11,11 @@ $stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
 $stmt->execute([$sku]);
 $product = $stmt->fetch();
 
-// Si no encontró producto exacto, intentar con el SKU raíz (padre)
+// Si no encontró producto exacto, intentar estrategias de fallback
 $originalSku = $sku;
 $isVariant = false;
 if (!$product) {
+    // 1) Intentar con el SKU raíz (padre)
     $rootSku = extractRootSku($sku);
     if ($rootSku !== $sku) {
         $stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
@@ -22,6 +23,39 @@ if (!$product) {
         $product = $stmt->fetch();
         $isVariant = true;
     }
+}
+
+if (!$product) {
+    // 2) Intentar con extensiones comunes (archivo de Drive sin extensión → DB con extensión)
+    $extensions = ['.jpg', '.JPG', '.jpeg', '.png', '.mp4', '.webp'];
+    foreach ($extensions as $ext) {
+        $stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
+        $stmt->execute([$sku . $ext]);
+        $product = $stmt->fetch();
+        if ($product) break;
+    }
+}
+
+if (!$product) {
+    // 3) Intentar LIKE match flexible (quitar guiones/espacios para comparar)
+    //    Ej: Drive filename "M-8464" → DB tiene "M8464-1"
+    $skuDigits = preg_replace('/[^a-zA-Z0-9]/', '', $sku);
+    if (strlen($skuDigits) >= 3) {
+        $stmt = $db->prepare(
+            "SELECT * FROM products WHERE archived = 0 AND REPLACE(REPLACE(sku, '-', ''), '.', '') LIKE ? ORDER BY sku ASC LIMIT 1"
+        );
+        $stmt->execute([$skuDigits . '%']);
+        $product = $stmt->fetch();
+    }
+}
+
+if (!$product) {
+    // 4) Último intento: búsqueda LIKE directa por SKU
+    $stmt = $db->prepare(
+        "SELECT * FROM products WHERE archived = 0 AND sku LIKE ? ORDER BY sku ASC LIMIT 1"
+    );
+    $stmt->execute([$sku . '%']);
+    $product = $stmt->fetch();
 }
 
 if (!$product) {
