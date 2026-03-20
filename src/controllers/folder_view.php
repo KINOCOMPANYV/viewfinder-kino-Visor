@@ -165,9 +165,7 @@ if ($token) {
                                 <?php if ($childCount > 0): ?>
                                     <div class="children-row" style="margin-top:0.75rem;">
                                         <?php
-                                        $showMax = 4;
-                                        $visibleChildren = array_slice($children, 0, $showMax);
-                                        foreach ($visibleChildren as $child):
+                                        foreach ($children as $child):
                                             $childName = pathinfo($child['name'] ?? '', PATHINFO_FILENAME);
                                         ?>
                                             <div class="child-thumb" style="cursor:pointer;" 
@@ -176,9 +174,6 @@ if ($token) {
                                                 <img src="<?= e($child['thumb']) ?>" alt="<?= e($child['name']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
                                             </div>
                                         <?php endforeach; ?>
-                                        <?php if ($childCount > $showMax): ?>
-                                            <a href="/producto/<?= urlencode($rootSku) ?>" class="child-more dynamic-card-link">+<?= $childCount - $showMax ?></a>
-                                        <?php endif; ?>
                                         <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
                                     </div>
                                 <?php endif; ?>

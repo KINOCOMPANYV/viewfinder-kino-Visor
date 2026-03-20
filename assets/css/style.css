@@ -569,9 +569,19 @@ img {
     align-items: center;
     gap: 0.5rem;
     margin: 0.75rem 0;
-    flex-wrap: wrap;
-    min-height: 42px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.25rem;
+    min-height: 46px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
 }
+
+.children-row::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+}
+
 
 .child-thumb {
     width: 44px;

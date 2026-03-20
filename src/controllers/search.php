@@ -291,9 +291,7 @@ function cleanSkuDisplay(string $sku): string {
                                 <?php if ($childCount > 0): ?>
                                     <div class="children-row">
                                         <?php
-                                        $showMax = 4;
-                                        $visibleChildren = array_slice($children, 0, $showMax);
-                                        foreach ($visibleChildren as $child):
+                                        foreach ($children as $child):
                                             $childCover = $child['cover_image_url'] ?? '';
                                             $childIsVideo = str_starts_with($childCover, '[VIDEO]');
                                             if ($childIsVideo) $childCover = substr($childCover, 7);
@@ -308,9 +306,6 @@ function cleanSkuDisplay(string $sku): string {
                                                 <?php endif; ?>
                                             </div>
                                         <?php endforeach; ?>
-                                        <?php if ($childCount > $showMax): ?>
-                                            <a href="/producto/<?= rawurlencode($p['sku']) ?>" class="child-more dynamic-card-link">+<?= $childCount - $showMax ?></a>
-                                        <?php endif; ?>
                                         <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
                                     </div>
                                 <?php endif; ?>
