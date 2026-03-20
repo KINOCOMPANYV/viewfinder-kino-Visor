@@ -246,29 +246,33 @@
                     if ($isVideo) $coverUrl = substr($coverUrl, 7);
                 ?>
                     <div class="parent-card">
-                        <a href="/producto/<?= rawurlencode($parent['sku']) ?>" class="parent-card-link" style="text-decoration:none; color:inherit; display:block;">
+                        <div style="text-decoration:none; color:inherit; display:block;">
                             <!-- Parent image -->
-                            <div class="card-image" id="cover-<?= e($parent['sku']) ?>"
-                                data-sku="<?= e($parent['sku']) ?>"
-                                <?php if ($coverUrl): ?>
-                                    data-cover="<?= e($coverUrl) ?>"
-                                    data-video="<?= $isVideo ? '1' : '0' ?>"
-                                <?php endif; ?>>
-                                <?php $loadMode = ($cardIndex < 3 && $currentPage === 1) ? 'eager' : 'lazy'; ?>
-                                <?php if ($coverUrl): ?>
-                                    <img src="<?= e($coverUrl) ?>" alt="<?= e($parent['name']) ?>"
-                                        loading="<?= $loadMode ?>" class="img-fade-in"
-                                        onload="this.classList.add('loaded')"
-                                        onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
-                                <?php else: ?>
-                                    <div class="cover-placeholder">📷</div>
-                                <?php endif; ?>
-                            </div>
+                            <a href="/producto/<?= rawurlencode($parent['sku']) ?>" class="dynamic-card-link" style="display:block;">
+                                <div class="card-image" id="cover-<?= e($parent['sku']) ?>"
+                                    data-sku="<?= e($parent['sku']) ?>"
+                                    <?php if ($coverUrl): ?>
+                                        data-cover="<?= e($coverUrl) ?>"
+                                        data-video="<?= $isVideo ? '1' : '0' ?>"
+                                    <?php endif; ?>>
+                                    <?php $loadMode = ($cardIndex < 3 && $currentPage === 1) ? 'eager' : 'lazy'; ?>
+                                    <?php if ($coverUrl): ?>
+                                        <img src="<?= e($coverUrl) ?>" alt="<?= e($parent['name']) ?>"
+                                            loading="<?= $loadMode ?>" class="img-fade-in"
+                                            onload="this.classList.add('loaded')"
+                                            onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
+                                    <?php else: ?>
+                                        <div class="cover-placeholder">📷</div>
+                                    <?php endif; ?>
+                                </div>
+                            </a>
 
                             <!-- Card body -->
                             <div class="card-body">
-                                <div class="card-sku"><?= e(cleanSkuDisplay($parent['sku'])) ?></div>
-                                <div class="card-name"><?= e($parent['name']) ?></div>
+                                <a href="/producto/<?= rawurlencode($parent['sku']) ?>" class="dynamic-card-link" style="text-decoration:none; color:inherit; display:block;">
+                                    <div class="card-sku dynamic-card-sku"><?= e(cleanSkuDisplay($parent['sku'])) ?></div>
+                                    <div class="card-name"><?= e($parent['name']) ?></div>
+                                </a>
                                 <?php if ($parent['category']): ?>
                                     <div class="card-meta"><span><?= e($parent['category']) ?></span></div>
                                 <?php endif; ?>
@@ -284,9 +288,10 @@
                                             $childIsVideo = str_starts_with($childCover, '[VIDEO]');
                                             if ($childIsVideo) $childCover = substr($childCover, 7);
                                         ?>
-                                            <a href="/producto/<?= rawurlencode($child['sku']) ?>" class="child-thumb"
+                                            <div class="child-thumb" style="cursor:pointer;"
                                                 title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
                                                 data-sku="<?= e($child['sku']) ?>"
+                                                onclick="previewVariant(this, '<?= rawurlencode($child['sku']) ?>', '<?= e(cleanSkuDisplay($child['sku'])) ?>')"
                                                 <?php if ($childCover): ?>data-cover="<?= e($childCover) ?>"<?php endif; ?>>
                                                 <?php if ($childCover): ?>
                                                     <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>"
@@ -295,17 +300,17 @@
                                                 <?php else: ?>
                                                     <span class="child-placeholder" data-sku="<?= e($child['sku']) ?>">📷</span>
                                                 <?php endif; ?>
-                                            </a>
+                                            </div>
                                         <?php endforeach; ?>
                                         <?php if ($childCount > $showMax): ?>
-                                            <a href="/producto/<?= rawurlencode($parent['sku']) ?>" class="child-more"
+                                            <a href="/producto/<?= rawurlencode($parent['sku']) ?>" class="child-more dynamic-card-link"
                                                 title="Ver todas las variantes">+<?= $childCount - $showMax ?></a>
                                         <?php endif; ?>
                                         <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
                                     </div>
                                 <?php endif; ?>
                             </div>
-                        </a>
+                        </div>
                         <!-- Actions row (outside link to avoid navigation conflict) -->
                         <div class="card-actions">
                             <button class="btn-whatsapp" style="width:100%"
@@ -745,6 +750,46 @@ KV-1003
                     });
             });
         })();
+</script>
+
+    <script>
+        function previewVariant(thumbEl, skuEnc, skuLabel) {
+            const card = thumbEl.closest('.parent-card');
+            if (!card) return;
+
+            // 1. Obtener imagen del thumb
+            const thumbImg = thumbEl.querySelector('img');
+            const newSrc = thumbImg ? thumbImg.src : null;
+            if (!newSrc) return;
+
+            // 2. Actualizar imagen principal (agrandar si es de drive thumbnail=s120 -> s600)
+            const mainImgContainer = card.querySelector('.card-image');
+            const mainImg = mainImgContainer.querySelector('img');
+            const hiresUrl = newSrc.replace(/=s\d+/, '=s600'); 
+            
+            if (mainImg) {
+                mainImg.src = hiresUrl;
+            } else {
+                // Si no había imagen (placeholder)
+                const ph = mainImgContainer.querySelector('.cover-placeholder');
+                if (ph) {
+                    ph.outerHTML = `<img src="${hiresUrl}" class="img-fade-in loaded" style="width:100%;height:100%;object-fit:cover;">`;
+                }
+            }
+
+            // 3. Actualizar enlaces dinámicos para ir a la vista del hijo
+            card.querySelectorAll('.dynamic-card-link').forEach(a => {
+                a.href = '/producto/' + skuEnc;
+            });
+
+            // 4. Actualizar título (opcional, para sentir feedback)
+            const skuText = card.querySelector('.dynamic-card-sku');
+            if (skuText) skuText.textContent = skuLabel;
+
+            // 5. Destacar miniatura activa visualmente
+            card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
+            thumbEl.style.boxShadow = 'var(--glow-accent)';
+        }
     </script>
 
     <!-- Autocomplete JS -->

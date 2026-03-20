@@ -140,22 +140,26 @@ if ($token) {
                     $childCount = count($children);
                 ?>
                     <div class="parent-card">
-                        <a href="/producto/<?= urlencode($rootSku) ?>" style="text-decoration:none;color:inherit;display:block;">
-                            <div class="card-image" style="position:relative;">
-                                <?php if ($file['isVideo']): ?>
-                                    <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.7rem;z-index:2;">🎬 Video</div>
-                                <?php endif; ?>
-                                <img src="<?= e($file['thumb']) ?>" 
-                                     alt="<?= e($file['name']) ?>" 
-                                     loading="<?= $idx < 6 ? 'eager' : 'lazy' ?>"
-                                     class="img-fade-in"
-                                     onload="this.classList.add('loaded')"
-                                     onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'"
-                                     style="width:100%;height:100%;object-fit:cover;">
-                            </div>
+                        <div style="text-decoration:none;color:inherit;display:block;">
+                            <a href="/producto/<?= urlencode($rootSku) ?>" class="dynamic-card-link" style="display:block;">
+                                <div class="card-image" style="position:relative;">
+                                    <?php if ($file['isVideo']): ?>
+                                        <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.7rem;z-index:2;">🎬 Video</div>
+                                    <?php endif; ?>
+                                    <img src="<?= e($file['thumb']) ?>" 
+                                         alt="<?= e($file['name']) ?>" 
+                                         loading="<?= $idx < 6 ? 'eager' : 'lazy' ?>"
+                                         class="img-fade-in"
+                                         onload="this.classList.add('loaded')"
+                                         onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'"
+                                         style="width:100%;height:100%;object-fit:cover;">
+                                </div>
+                            </a>
                             <div class="card-body">
-                                <div class="card-sku" style="font-size:0.75rem; font-weight:600;"><?= e($rootSku) ?></div>
-                                <div class="card-name" style="font-size:0.7rem; word-break:break-all; color:var(--color-text-muted);"><?= e($file['name']) ?></div>
+                                <a href="/producto/<?= urlencode($rootSku) ?>" class="dynamic-card-link" style="text-decoration:none; color:inherit; display:block;">
+                                    <div class="card-sku dynamic-card-sku" style="font-size:0.75rem; font-weight:600;"><?= e($rootSku) ?></div>
+                                    <div class="card-name" style="font-size:0.7rem; word-break:break-all; color:var(--color-text-muted);"><?= e($file['name']) ?></div>
+                                </a>
                                 
                                 <!-- Children thumbnails -->
                                 <?php if ($childCount > 0): ?>
@@ -164,19 +168,22 @@ if ($token) {
                                         $showMax = 4;
                                         $visibleChildren = array_slice($children, 0, $showMax);
                                         foreach ($visibleChildren as $child):
+                                            $childName = pathinfo($child['name'] ?? '', PATHINFO_FILENAME);
                                         ?>
-                                            <div class="child-thumb" title="<?= e(pathinfo($child['name'] ?? '', PATHINFO_FILENAME)) ?>">
+                                            <div class="child-thumb" style="cursor:pointer;" 
+                                                 title="<?= e($childName) ?>"
+                                                 onclick="previewVariant(this, '<?= urlencode(extractRootSku($childName)) ?>', '<?= e($childName) ?>')">
                                                 <img src="<?= e($child['thumb']) ?>" alt="<?= e($child['name']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
                                             </div>
                                         <?php endforeach; ?>
                                         <?php if ($childCount > $showMax): ?>
-                                            <div class="child-more">+<?= $childCount - $showMax ?></div>
+                                            <a href="/producto/<?= urlencode($rootSku) ?>" class="child-more dynamic-card-link">+<?= $childCount - $showMax ?></a>
                                         <?php endif; ?>
                                         <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
                                     </div>
                                 <?php endif; ?>
                             </div>
-                        </a>
+                        </div>
                         <div class="card-body" style="padding-top:0;">
                             <div class="card-actions" style="margin-top:0.5rem; justify-content:space-between;">
                                 <a href="/api/download/<?= e($file['id']) ?>" class="btn-ver" style="flex:1;text-align:center;font-size:0.7rem;padding:0.4rem;">
@@ -219,6 +226,39 @@ if ($token) {
 
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
+    <script>
+        function previewVariant(thumbEl, skuEnc, skuLabel) {
+            const card = thumbEl.closest('.parent-card');
+            if (!card) return;
+
+            const thumbImg = thumbEl.querySelector('img');
+            const newSrc = thumbImg ? thumbImg.src : null;
+            if (!newSrc) return;
+
+            const mainImgContainer = card.querySelector('.card-image');
+            const mainImg = mainImgContainer.querySelector('img');
+            const hiresUrl = newSrc.replace(/=s\d+/, '=s600'); 
+            
+            if (mainImg) {
+                mainImg.src = hiresUrl;
+            } else {
+                const ph = mainImgContainer.querySelector('.cover-placeholder');
+                if (ph) {
+                    ph.outerHTML = `<img src="${hiresUrl}" class="img-fade-in loaded" style="width:100%;height:100%;object-fit:cover;">`;
+                }
+            }
+
+            card.querySelectorAll('.dynamic-card-link').forEach(a => {
+                a.href = '/producto/' + skuEnc;
+            });
+
+            const skuText = card.querySelector('.dynamic-card-sku');
+            if (skuText) skuText.textContent = skuLabel;
+
+            card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
+            thumbEl.style.boxShadow = 'var(--glow-accent)';
+        }
+    </script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
 </body>
 

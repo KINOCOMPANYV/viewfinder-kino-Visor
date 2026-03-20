@@ -259,26 +259,30 @@ function cleanSkuDisplay(string $sku): string {
                     if ($isVideo) $coverUrl = substr($coverUrl, 7);
                 ?>
                     <div class="parent-card search-selectable-card">
-                        <a href="/producto/<?= rawurlencode($p['sku']) ?>" class="parent-card-link" style="text-decoration:none; color:inherit; display:block;">
-                            <div class="card-image" data-sku="<?= e($p['sku']) ?>"
-                                 <?php if ($coverUrl): ?>
-                                    data-cover="<?= e($coverUrl) ?>"
-                                    data-video="<?= $isVideo ? '1' : '0' ?>"
-                                 <?php endif; ?>
-                            >
-                                <?php $loadMode = ($cardIndex < 3 && $page === 1) ? 'eager' : 'lazy'; ?>
-                                <?php if ($coverUrl): ?>
-                                    <img src="<?= e($coverUrl) ?>" alt="<?= e($p['name']) ?>"
-                                         loading="<?= $loadMode ?>" class="img-fade-in"
-                                         onload="this.classList.add('loaded')"
-                                         onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
-                                <?php else: ?>
-                                    <div class="cover-placeholder">📷</div>
-                                <?php endif; ?>
-                            </div>
+                        <div style="text-decoration:none; color:inherit; display:block;">
+                            <a href="/producto/<?= rawurlencode($p['sku']) ?>" class="dynamic-card-link" style="display:block;">
+                                <div class="card-image" data-sku="<?= e($p['sku']) ?>"
+                                     <?php if ($coverUrl): ?>
+                                        data-cover="<?= e($coverUrl) ?>"
+                                        data-video="<?= $isVideo ? '1' : '0' ?>"
+                                     <?php endif; ?>
+                                >
+                                    <?php $loadMode = ($cardIndex < 3 && $page === 1) ? 'eager' : 'lazy'; ?>
+                                    <?php if ($coverUrl): ?>
+                                        <img src="<?= e($coverUrl) ?>" alt="<?= e($p['name']) ?>"
+                                             loading="<?= $loadMode ?>" class="img-fade-in"
+                                             onload="this.classList.add('loaded')"
+                                             onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
+                                    <?php else: ?>
+                                        <div class="cover-placeholder">📷</div>
+                                    <?php endif; ?>
+                                </div>
+                            </a>
                             <div class="card-body">
-                                <div class="card-sku"><?= e(cleanSkuDisplay($p['sku'])) ?></div>
-                                <div class="card-name"><?= e($p['name']) ?></div>
+                                <a href="/producto/<?= rawurlencode($p['sku']) ?>" class="dynamic-card-link" style="text-decoration:none; color:inherit; display:block;">
+                                    <div class="card-sku dynamic-card-sku"><?= e(cleanSkuDisplay($p['sku'])) ?></div>
+                                    <div class="card-name"><?= e($p['name']) ?></div>
+                                </a>
                                 <?php if ($p['category']): ?>
                                     <div class="card-meta"><span><?= e($p['category']) ?></span></div>
                                 <?php endif; ?>
@@ -294,7 +298,9 @@ function cleanSkuDisplay(string $sku): string {
                                             $childIsVideo = str_starts_with($childCover, '[VIDEO]');
                                             if ($childIsVideo) $childCover = substr($childCover, 7);
                                         ?>
-                                            <div class="child-thumb" title="<?= e(cleanSkuDisplay($child['sku'])) ?>">
+                                            <div class="child-thumb" style="cursor:pointer;" 
+                                                title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
+                                                onclick="previewVariant(this, '<?= rawurlencode($child['sku']) ?>', '<?= e(cleanSkuDisplay($child['sku'])) ?>')">
                                                 <?php if ($childCover): ?>
                                                     <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
                                                 <?php else: ?>
@@ -303,13 +309,13 @@ function cleanSkuDisplay(string $sku): string {
                                             </div>
                                         <?php endforeach; ?>
                                         <?php if ($childCount > $showMax): ?>
-                                            <div class="child-more">+<?= $childCount - $showMax ?></div>
+                                            <a href="/producto/<?= rawurlencode($p['sku']) ?>" class="child-more dynamic-card-link">+<?= $childCount - $showMax ?></a>
                                         <?php endif; ?>
                                         <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
                                     </div>
                                 <?php endif; ?>
                             </div>
-                        </a>
+                        </div>
                         <!-- Checkbox FUERA de la imagen -->
                         <label class="search-check-footer" style="border-top: 1px solid var(--color-border); margin-top: auto; border-radius: 0 0 var(--radius) var(--radius);">
                             <input type="checkbox" class="search-card-check" 
@@ -508,6 +514,40 @@ function cleanSkuDisplay(string $sku): string {
                 .catch(() => {});
             }
         });
+    </script>
+
+    <script>
+        function previewVariant(thumbEl, skuEnc, skuLabel) {
+            const card = thumbEl.closest('.parent-card');
+            if (!card) return;
+
+            const thumbImg = thumbEl.querySelector('img');
+            const newSrc = thumbImg ? thumbImg.src : null;
+            if (!newSrc) return;
+
+            const mainImgContainer = card.querySelector('.card-image');
+            const mainImg = mainImgContainer.querySelector('img');
+            const hiresUrl = newSrc.replace(/=s\d+/, '=s600'); 
+            
+            if (mainImg) {
+                mainImg.src = hiresUrl;
+            } else {
+                const ph = mainImgContainer.querySelector('.cover-placeholder');
+                if (ph) {
+                    ph.outerHTML = `<img src="${hiresUrl}" class="img-fade-in loaded" style="width:100%;height:100%;object-fit:cover;">`;
+                }
+            }
+
+            card.querySelectorAll('.dynamic-card-link').forEach(a => {
+                a.href = '/producto/' + skuEnc;
+            });
+
+            const skuText = card.querySelector('.dynamic-card-sku');
+            if (skuText) skuText.textContent = skuLabel;
+
+            card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
+            thumbEl.style.boxShadow = 'var(--glow-accent)';
+        }
     </script>
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
