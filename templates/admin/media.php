@@ -1032,7 +1032,10 @@
                     }
                 }, 800);
 
-                const resp = await fetch('/admin/media/sync-covers', { method: 'POST' });
+                const resp = await fetch('/admin/media/sync-covers', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': CSRF }
+                });
                 const data = await resp.json();
                 clearInterval(progressInterval);
 

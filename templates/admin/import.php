@@ -323,7 +323,10 @@ unset($_SESSION['auto_assign_covers']);
             }, 800);
 
             try {
-                const resp = await fetch('/admin/media/sync-covers', { method: 'POST' });
+                const resp = await fetch('/admin/media/sync-covers', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': '<?= csrfToken() ?>' }
+                });
                 const data = await resp.json();
                 clearInterval(progressInterval);
 
