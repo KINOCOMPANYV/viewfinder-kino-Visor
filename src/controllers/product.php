@@ -7,6 +7,12 @@
 $sku = $_GET['sku'] ?? '';
 $db = getDB();
 
+// Limpieza inicial: quitar sufijos de duplicados de Drive " (1)", " (2)", etc.
+$sku = preg_replace('/\s*\(\d+\)\s*$/', '', $sku);
+// Quitar extensiones de archivo comunes
+$sku = preg_replace('/\.(jpg|jpeg|png|webp|mp4|gif)$/i', '', $sku);
+$sku = trim($sku);
+
 $stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
 $stmt->execute([$sku]);
 $product = $stmt->fetch();
