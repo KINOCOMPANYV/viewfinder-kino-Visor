@@ -163,17 +163,23 @@ if ($token) {
                                 
                                 <!-- Children thumbnails -->
                                 <?php if ($childCount > 0): ?>
-                                    <div class="children-row" style="margin-top:0.75rem;">
-                                        <?php
-                                        foreach ($children as $child):
-                                            $childName = pathinfo($child['name'] ?? '', PATHINFO_FILENAME);
-                                        ?>
-                                            <div class="child-thumb" style="cursor:pointer;" 
-                                                 title="<?= e($childName) ?>"
-                                                 onclick="previewVariant(this, '<?= urlencode(extractRootSku($childName)) ?>', '<?= e($childName) ?>')">
-                                                <img src="<?= e($child['thumb']) ?>" alt="<?= e($child['name']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
-                                            </div>
-                                        <?php endforeach; ?>
+                                    <div class="children-scroll-wrapper" style="margin-top:0.75rem;">
+                                        <button class="children-scroll-btn scroll-left hidden" onclick="scrollChildren(this,-1)" type="button">◀</button>
+                                        <div class="children-row">
+                                            <?php
+                                            foreach ($children as $child):
+                                                $childName = pathinfo($child['name'] ?? '', PATHINFO_FILENAME);
+                                            ?>
+                                                <div class="child-thumb" style="cursor:pointer;" 
+                                                     title="<?= e($childName) ?>"
+                                                     onclick="previewVariant(this, '<?= urlencode(extractRootSku($childName)) ?>', '<?= e($childName) ?>')">
+                                                    <img src="<?= e($child['thumb']) ?>" alt="<?= e($child['name']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <button class="children-scroll-btn scroll-right" onclick="scrollChildren(this,1)" type="button">▶</button>
+                                    </div>
+                                    <div class="children-info">
                                         <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
                                     </div>
                                 <?php endif; ?>
@@ -253,6 +259,30 @@ if ($token) {
             card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
             thumbEl.style.boxShadow = 'var(--glow-accent)';
         }
+
+        function scrollChildren(btn, direction) {
+            const wrapper = btn.closest('.children-scroll-wrapper');
+            const row = wrapper.querySelector('.children-row');
+            row.scrollBy({ left: direction * 120, behavior: 'smooth' });
+            setTimeout(() => {
+                const leftBtn = wrapper.querySelector('.scroll-left');
+                const rightBtn = wrapper.querySelector('.scroll-right');
+                if (leftBtn) leftBtn.classList.toggle('hidden', row.scrollLeft <= 0);
+                if (rightBtn) rightBtn.classList.toggle('hidden', row.scrollLeft + row.clientWidth >= row.scrollWidth - 2);
+            }, 350);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.children-scroll-wrapper').forEach(wrapper => {
+                const row = wrapper.querySelector('.children-row');
+                const leftBtn = wrapper.querySelector('.scroll-left');
+                const rightBtn = wrapper.querySelector('.scroll-right');
+                if (!row) return;
+                const needsScroll = row.scrollWidth > row.clientWidth + 2;
+                if (leftBtn) leftBtn.classList.add('hidden');
+                if (rightBtn) rightBtn.classList.toggle('hidden', !needsScroll);
+            });
+        });
     </script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
 </body>

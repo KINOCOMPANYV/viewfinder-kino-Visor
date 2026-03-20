@@ -289,24 +289,30 @@ function cleanSkuDisplay(string $sku): string {
 
                                 <!-- Children thumbnails -->
                                 <?php if ($childCount > 0): ?>
-                                    <div class="children-row">
-                                        <?php
-                                        foreach ($children as $child):
-                                            $childCover = $child['cover_image_url'] ?? '';
-                                            $childIsVideo = str_starts_with($childCover, '[VIDEO]');
-                                            if ($childIsVideo) $childCover = substr($childCover, 7);
-                                        ?>
-                                            <div class="child-thumb" style="cursor:pointer;" 
-                                                title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
-                                                data-sku="<?= e($child['sku']) ?>"
-                                                onclick="previewVariant(this, '<?= rawurlencode($child['sku']) ?>', '<?= e(cleanSkuDisplay($child['sku'])) ?>')">
-                                                <?php if ($childCover): ?>
-                                                    <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
-                                                <?php else: ?>
-                                                    <span class="child-placeholder">📷</span>
-                                                <?php endif; ?>
-                                            </div>
-                                        <?php endforeach; ?>
+                                    <div class="children-scroll-wrapper">
+                                        <button class="children-scroll-btn scroll-left hidden" onclick="scrollChildren(this,-1)" type="button">◀</button>
+                                        <div class="children-row">
+                                            <?php
+                                            foreach ($children as $child):
+                                                $childCover = $child['cover_image_url'] ?? '';
+                                                $childIsVideo = str_starts_with($childCover, '[VIDEO]');
+                                                if ($childIsVideo) $childCover = substr($childCover, 7);
+                                            ?>
+                                                <div class="child-thumb" style="cursor:pointer;" 
+                                                    title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
+                                                    data-sku="<?= e($child['sku']) ?>"
+                                                    onclick="previewVariant(this, '<?= rawurlencode($child['sku']) ?>', '<?= e(cleanSkuDisplay($child['sku'])) ?>')">
+                                                    <?php if ($childCover): ?>
+                                                        <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
+                                                    <?php else: ?>
+                                                        <span class="child-placeholder">📷</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <button class="children-scroll-btn scroll-right" onclick="scrollChildren(this,1)" type="button">▶</button>
+                                    </div>
+                                    <div class="children-info">
                                         <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
                                     </div>
                                 <?php endif; ?>
@@ -398,8 +404,8 @@ function cleanSkuDisplay(string $sku): string {
                     selected.push({ sku: cb.dataset.sku, name: cb.dataset.name, image: cb.dataset.image, isVideo: cb.dataset.isVideo === '1' });
                 });
                 if (selected.length === 0) return;
-                if (selected.length > 10) {
-                    alert('\u26A0\uFE0F M\u00E1ximo 10 productos a la vez.\n\nDeselecciona algunos y haz otro env\u00EDo.');
+                if (selected.length > 20) {
+                    alert('\u26A0\uFE0F M\u00E1ximo 20 productos a la vez.\n\nDeselecciona algunos y haz otro env\u00EDo.');
                     return;
                 }
 
@@ -565,6 +571,30 @@ function cleanSkuDisplay(string $sku): string {
             card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
             thumbEl.style.boxShadow = 'var(--glow-accent)';
         }
+
+        function scrollChildren(btn, direction) {
+            const wrapper = btn.closest('.children-scroll-wrapper');
+            const row = wrapper.querySelector('.children-row');
+            row.scrollBy({ left: direction * 120, behavior: 'smooth' });
+            setTimeout(() => {
+                const leftBtn = wrapper.querySelector('.scroll-left');
+                const rightBtn = wrapper.querySelector('.scroll-right');
+                if (leftBtn) leftBtn.classList.toggle('hidden', row.scrollLeft <= 0);
+                if (rightBtn) rightBtn.classList.toggle('hidden', row.scrollLeft + row.clientWidth >= row.scrollWidth - 2);
+            }, 350);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.children-scroll-wrapper').forEach(wrapper => {
+                const row = wrapper.querySelector('.children-row');
+                const leftBtn = wrapper.querySelector('.scroll-left');
+                const rightBtn = wrapper.querySelector('.scroll-right');
+                if (!row) return;
+                const needsScroll = row.scrollWidth > row.clientWidth + 2;
+                if (leftBtn) leftBtn.classList.add('hidden');
+                if (rightBtn) rightBtn.classList.toggle('hidden', !needsScroll);
+            });
+        });
     </script>
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
