@@ -44,119 +44,71 @@
         </div>
     </header>
 
-    <!-- Hero -->
-    <section class="hero">
-        <div class="container">
-            <h1>Centro de Contenido</h1>
-            <p>Busca por referencia o SKU para acceder a fotos, videos y descripción del producto.</p>
-
-            <!-- Search -->
-            <div class="search-box">
-                <span class="search-icon">🔍</span>
-                <form action="/buscar" method="GET" id="searchForm">
-                    <textarea name="q" id="searchInput" rows="1"
-                        placeholder="Buscar por SKU o nombre..."
-                        autocomplete="off" autofocus></textarea>
-                    <button type="submit" class="search-btn">Buscar</button>
-                </form>
-                <div class="autocomplete-dropdown" id="autocomplete"></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Carpetas de Drive (Product-style Cards) -->
-    <section class="container" id="driveFoldersSection">
+    <!-- Layotu Principal a Dos Columnas -->
+    <section class="container search-layout" style="padding-top:2rem;">
         <?php
         $db = getDB();
         $albums = [];
+        $totalAlbums = 0;
         try {
-            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC")->fetchAll();
+            $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
+            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC LIMIT 20")->fetchAll();
         } catch (\PDOException $e) {
-            // tabla albums aún no existe (migración 012 pendiente)
+            // tabla albums aún no existe
         }
         ?>
 
+        <!-- ===== SIDEBAR: Álbumes ===== -->
         <?php if (!empty($albums)): ?>
-            <div class="section-header-landing">
-                <h2>📂 Carpetas</h2>
-                <span class="product-count"><?= count($albums) ?> carpetas</span>
+        <aside class="search-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">📁 Álbumes</span>
             </div>
-
-            <div class="parent-grid" style="padding-top:1rem;">
-                <?php foreach ($albums as $idx => $album): 
-                    $icon = $album['icon_url'] ?: '';
+            <div class="sidebar-albums" id="sidebarAlbums">
+                <?php foreach ($albums as $sa):
+                    $href = '/buscar?album=' . urlencode($sa['drive_id']);
                 ?>
-                    <a href="/carpeta/<?= urlencode($album['drive_id']) ?>" class="parent-card" style="text-decoration:none; color:inherit; display:block;">
-                        <div class="card-image">
-                            <?php if ($icon): ?>
-                                <img src="<?= e($icon) ?>" alt="<?= e($album['name']) ?>"
-                                     loading="<?= $idx < 3 ? 'eager' : 'lazy' ?>"
-                                     class="img-fade-in"
-                                     onload="this.classList.add('loaded')"
-                                     onerror="this.outerHTML='<div class=\'cover-placeholder\' style=\'font-size:4rem;\'>📂</div>'"
-                                     style="width:100%;height:100%;object-fit:cover;">
-                            <?php else: ?>
-                                <div class="cover-placeholder" style="font-size:4rem;">📂</div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="card-body">
-                            <div class="card-sku" style="font-size:0.7rem;">📂 Carpeta</div>
-                            <div class="card-name"><?= e($album['name']) ?></div>
-                        </div>
-                    </a>
+                <a href="<?= $href ?>" class="sidebar-album-item" title="<?= e($sa['name']) ?>">
+                    <div class="sidebar-album-thumb">
+                        <?php if ($sa['icon_url']): ?>
+                            <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
+                                 loading="lazy"
+                                 onerror="this.outerHTML='<span style=\'font-size:1.2rem;\'>📁</span>'">
+                        <?php else: ?>
+                            <span style="font-size:1.2rem;">📁</span>
+                        <?php endif; ?>
+                    </div>
+                    <span class="sidebar-album-name"><?= e($sa['name']) ?></span>
+                </a>
                 <?php endforeach; ?>
             </div>
-        <?php else: ?>
-            <!-- No hay álbumes en DB: intentar cargar de Drive via API -->
-            <div class="section-header-landing">
-                <h2>📂 Carpetas</h2>
-            </div>
-            <div class="parent-grid" id="foldersGrid" style="padding-top:1rem;">
-                <div class="parent-card" style="opacity:0.3;"><div class="card-image"><div class="cover-placeholder" style="font-size:3rem;">⏳</div></div></div>
-                <div class="parent-card" style="opacity:0.3;"><div class="card-image"><div class="cover-placeholder" style="font-size:3rem;">⏳</div></div></div>
-                <div class="parent-card" style="opacity:0.3;"><div class="card-image"><div class="cover-placeholder" style="font-size:3rem;">⏳</div></div></div>
-            </div>
-            <script>
-                fetch('/api/drive-folders')
-                    .then(r => r.json())
-                    .then(data => {
-                        const grid = document.getElementById('foldersGrid');
-                        const folders = data.folders || [];
-                        if (folders.length === 0) {
-                            document.getElementById('driveFoldersSection').style.display = 'none';
-                            return;
-                        }
-                        grid.innerHTML = '';
-                        document.querySelector('#driveFoldersSection .product-count')?.remove();
-                        const countSpan = document.createElement('span');
-                        countSpan.className = 'product-count';
-                        countSpan.textContent = folders.length + ' carpetas';
-                        document.querySelector('#driveFoldersSection .section-header-landing')?.appendChild(countSpan);
-
-                        folders.forEach((f, idx) => {
-                            const card = document.createElement('a');
-                            card.href = '/carpeta/' + encodeURIComponent(f.id);
-                            card.className = 'parent-card';
-                            card.style.cssText = 'text-decoration:none; color:inherit; display:block;';
-                            const imgHTML = f.icon_url
-                                ? `<img src="${f.icon_url}" alt="${f.name}" loading="${idx < 3 ? 'eager' : 'lazy'}" class="img-fade-in" onload="this.classList.add('loaded')" onerror="this.outerHTML='<div class=\'cover-placeholder\' style=\'font-size:4rem;\'>📂</div>'" style="width:100%;height:100%;object-fit:cover;">`
-                                : '<div class="cover-placeholder" style="font-size:4rem;">📂</div>';
-                            card.innerHTML = `
-                                <div class="card-image">${imgHTML}</div>
-                                <div class="card-body">
-                                    <div class="card-sku" style="font-size:0.7rem;">📂 Carpeta</div>
-                                    <div class="card-name">${f.name}</div>
-                                </div>
-                            `;
-                            grid.appendChild(card);
-                        });
-                    })
-                    .catch(() => {
-                        document.getElementById('driveFoldersSection').style.display = 'none';
-                    });
-            </script>
+            <?php if ($totalAlbums > 20): ?>
+            <a href="/buscar?ver_albums=1" class="sidebar-ver-mas">
+                Ver todos los álbumes (<?= $totalAlbums ?>)
+            </a>
+            <?php endif; ?>
+        </aside>
         <?php endif; ?>
-    </section>
+
+        <!-- ===== MAIN: Hero (Search) + Productos Recientes ===== -->
+        <div class="search-main">
+            <!-- Hero Integrado -->
+            <div class="hero" style="padding: 0 0 2.5rem; text-align: left;">
+                <h1 style="font-size: 2.5rem;">Centro de Contenido</h1>
+                <p style="margin: 0 0 1.5rem 0; font-size: 1rem;">Busca por referencia o SKU para acceder a fotos y videos.</p>
+
+                <!-- Search Box alineado a la izquierda para Desktop -->
+                <div class="search-box" style="max-width: 100%; margin: 0;">
+                    <span class="search-icon">🔍</span>
+                    <form action="/buscar" method="GET" id="searchForm">
+                        <textarea name="q" id="searchInput" rows="1"
+                            placeholder="Buscar por SKU o nombre..."
+                            autocomplete="off" autofocus></textarea>
+                        <button type="submit" class="search-btn">Buscar</button>
+                    </form>
+                    <div class="autocomplete-dropdown" id="autocomplete"></div>
+                </div>
+            </div>
 
     <!-- Recent / Featured Products -->
     <section class="container">
@@ -358,15 +310,16 @@
                     <?php endif; ?>
                     <span class="page-info">Página <?= $currentPage ?> de <?= $totalPages ?></span>
                 </nav>
-            <?php endif; ?>
+            <?php endif; ?>  <!-- End of if ($totalPages > 1) -->
 
-        <?php else: ?>
+        <?php else: ?>  <!-- Else of if (!empty($pageRoots)) -->
             <div class="empty-state fade-in">
                 <div class="empty-icon">📦</div>
                 <h3>Aún no hay productos</h3>
                 <p>El catálogo está vacío. El administrador puede importar productos desde Excel.</p>
             </div>
         <?php endif; ?>
+        </div> <!-- End of search-main -->
     </section>
 
     <!-- Footer -->
