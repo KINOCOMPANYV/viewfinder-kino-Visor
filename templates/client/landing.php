@@ -203,7 +203,16 @@
             } else {
                 // Solo añadir a los hijos si el SKU es diferente al padre original
                 if ($p['sku'] !== $grouped[$family]['parent']['sku']) {
-                    $grouped[$family]['children'][] = $p;
+                    $exists = false;
+                    foreach ($grouped[$family]['children'] as $c) {
+                        if ($c['sku'] === $p['sku']) {
+                            $exists = true;
+                            break;
+                        }
+                    }
+                    if (!$exists) {
+                        $grouped[$family]['children'][] = $p;
+                    }
                 }
                 
                 if ((int)$p['sheet_row'] > $familyMaxRow[$family]) {

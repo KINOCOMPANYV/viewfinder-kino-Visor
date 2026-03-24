@@ -75,7 +75,7 @@ if ($q === '' && !$isMultiCode) {
     $whereOr = implode(' OR ', $conditions);
     
     $countStmt = $db->prepare(
-        "SELECT COUNT(*) FROM products 
+        "SELECT COUNT(DISTINCT sku) FROM products 
          WHERE archived = 0 AND ($whereOr)"
     );
     $countStmt->execute($params);
@@ -85,6 +85,7 @@ if ($q === '' && !$isMultiCode) {
         "SELECT sku, name, category, gender, price_suggested, cover_image_url 
          FROM products 
          WHERE archived = 0 AND ($whereOr)
+         GROUP BY sku
          ORDER BY sku ASC"
     );
     $stmt->execute($params);
@@ -107,7 +108,7 @@ if ($q === '' && !$isMultiCode) {
     }
 
     $countStmt = $db->prepare(
-        "SELECT COUNT(p.id) FROM products p
+        "SELECT COUNT(DISTINCT p.sku) FROM products p
          LEFT JOIN albums a ON p.album_id = a.drive_id
          WHERE $whereSimple"
     );
@@ -119,6 +120,7 @@ if ($q === '' && !$isMultiCode) {
          FROM products p
          LEFT JOIN albums a ON p.album_id = a.drive_id
          WHERE $whereSimple
+         GROUP BY p.sku
          ORDER BY 
             CASE WHEN p.sku = ? THEN 0
                  WHEN p.sku LIKE ? THEN 1
@@ -168,7 +170,16 @@ foreach ($allMatches as $p) {
         $grouped[$family] = ['parent' => $p, 'children' => []];
     } else {
         if ($p['sku'] !== $grouped[$family]['parent']['sku']) {
-            $grouped[$family]['children'][] = $p;
+            $exists = false;
+            foreach ($grouped[$family]['children'] as $c) {
+                if ($c['sku'] === $p['sku']) {
+                    $exists = true;
+                    break;
+                }
+            }
+            if (!$exists) {
+                $grouped[$family]['children'][] = $p;
+            }
         }
     }
 }
