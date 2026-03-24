@@ -71,9 +71,12 @@ if ($q === '' && !$isMultiCode) {
         $albumNameStmt->execute([$albumId]);
         $albumName = trim($albumNameStmt->fetchColumn() ?: '');
         if ($albumName) {
-            $likeName = '%' . $albumName . '%';
-            $where .= " AND (category = ? OR category LIKE ? OR name LIKE ?)";
-            array_push($params, $albumName, $likeName, $likeName);
+            $words = array_filter(explode(' ', $albumName));
+            foreach ($words as $w) {
+                $likeW = '%' . $w . '%';
+                $where .= " AND (category LIKE ? OR name LIKE ? OR sku LIKE ?)";
+                array_push($params, $likeW, $likeW, $likeW);
+            }
         } else {
             // If album doesn't exist, force 0 results
             $where .= " AND 1 = 0";
@@ -139,9 +142,12 @@ if ($q === '' && !$isMultiCode) {
         $albumNameStmt->execute([$albumId]);
         $albumName = trim($albumNameStmt->fetchColumn() ?: '');
         if ($albumName) {
-            $likeName = '%' . $albumName . '%';
-            $whereSimple .= " AND (p.category = ? OR p.category LIKE ? OR p.name LIKE ?)";
-            array_push($paramsBase, $albumName, $likeName, $likeName);
+            $words = array_filter(explode(' ', $albumName));
+            foreach ($words as $w) {
+                $likeW = '%' . $w . '%';
+                $whereSimple .= " AND (p.category LIKE ? OR p.name LIKE ? OR p.sku LIKE ?)";
+                array_push($paramsBase, $likeW, $likeW, $likeW);
+            }
         } else {
             $whereSimple .= " AND 1 = 0";
         }
