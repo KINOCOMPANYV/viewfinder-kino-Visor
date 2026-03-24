@@ -189,39 +189,52 @@ function skuMatchesFilename(string $sku, string $filename): bool
 
 /**
  * Extrae el SKU raíz (padre) de un código de variante.
- * 
- * Lógica: Busca el patrón base (dígitos-dígitos) y elimina sufijos de variante.
- * El SKU raíz es todo hasta que aparece una letra después del último grupo de dígitos.
- * 
+ *
+ * REGLA: Solo se considera "variante" un sufijo que sea EXCLUSIVAMENTE letras
+ * (colores, tallas, estilos: ROJO, A, B, GOLD). Los sufijos numéricos o
+ * alfanuméricos como -5, -10, V1, F2 representan referencias DISTINTAS.
+ *
  * Ejemplos:
- *   "839-5"     → "839-5"    (ya es raíz)
- *   "839-5V1"   → "839-5"    (quita V1)
- *   "839-5F2"   → "839-5"    (quita F2)
- *   "839-5_V1"  → "839-5"    (quita _V1)
- *   "839-5.A"   → "839-5"    (quita .A)
- *   "1234-12"   → "1234-12"  (ya es raíz)
- *   "1234-12v3" → "1234-12"  (quita v3)
- *   "ABC-1F1"   → "ABC-1"    (quita F1 — también funciona con letras antes del guion)
+ *   "839-5"      → "839-5"    (sufijo numérico = referencia propia, NO toca)
+ *   "839-5V1"    → "839-5"    (quita sufijo de letra V1 pegado: letra+dígito)
+ *   "839-5-ROJO" → "839-5"    (quita sufijo solo letras)
+ *   "839-5-A"    → "839-5"    (quita sufijo 1 letra)
+ *   "839-5-B"    → "839-5"    (quita sufijo 1 letra)
+ *   "839-10"     → "839-10"   (sufijo numérico = referencia distinta, NO toca)
+ *   "1234-12"    → "1234-12"  (ya es raíz)
+ *   "1234-12v3"  → "1234-12"  (quita v3 pegado)
+ *   "ABC-1F1"    → "ABC-1"    (quita F1 pegado)
+ *   "M-8464"     → "M-8464"   (sufijo numérico largo = referencia propia)
  */
 function extractRootSku(string $code): string
 {
     $code = trim($code);
 
-    // 1. Manejar sufijos pegados al final (ej: "366V1" -> "366", "1234A" -> "1234")
-    // que consisten en letras después de un dígito.
-    if (preg_match('/^(.+?\d+)[a-zA-Z]+$/i', $code, $matches)) {
-        $code = $matches[1];
+    // 1. Manejar sufijos alfanuméricos pegados al final de un dígito
+    //    SOLO si termina en letras puras (sin dígito final)
+    //    Ej: "839-5V1" → "839-5", "1234-12v3" → "1234-12", "ABC-1F1" → "ABC-1"
+    //    NO toca: "839-5" (termina en dígito), "839-10" (termina en dígito)
+    if (preg_match('/^(.+?\d+)[a-zA-Z][a-zA-Z0-9]*$/i', $code, $matches)) {
+        // Solo aplicar si el sufijo capturado empieza con letra (variante pegada)
+        $candidate = $matches[1];
+        // Verificar que candidate acaba en dígito (es el código base real)
+        if (preg_match('/\d$/', $candidate)) {
+            $code = $candidate;
+        }
     }
 
-    // 2. Manejar variantes con guion (-1, -ROJO, -V1)
+    // 2. Manejar variantes separadas por guion: solo colapsar si el sufijo es
+    //    EXCLUSIVAMENTE letras (ROJO, A, B, GOLD, etc.).
+    //    NO colapsar si el sufijo tiene dígitos (son referencias distintas).
     $lastDash = strrpos($code, '-');
     if ($lastDash !== false) {
         $prefix = substr($code, 0, $lastDash);
         $suffix = substr($code, $lastDash + 1);
 
-        // Si el sufijo es corto (<= 3) o es solo letras (ROJO, B), lo consideramos variante y lo quitamos.
-        // Si el sufijo es largo (ej: 8464 en M-8464), es muy probable que sea parte fundamental del modelo base.
-        if (strlen($suffix) <= 3 || ctype_alpha(str_replace('_', '', $suffix))) {
+        // Solo es "variante" si el sufijo es SOLO letras (y al menos 1 char, máx 6)
+        // Ejemplos válidos: A, B, ROJO, GOLD, AZUL, BLK
+        // Ejemplos NO válidos: 5, 10, V1, F2, 12RG (contienen dígitos)
+        if (strlen($suffix) >= 1 && strlen($suffix) <= 6 && ctype_alpha($suffix)) {
             return $prefix;
         }
     }

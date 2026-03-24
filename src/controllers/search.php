@@ -11,6 +11,20 @@ $offset = ($page - 1) * $perPage;
 
 $db = getDB();
 
+// ============================================================
+// Álbumes para el sidebar de filtros
+// ============================================================
+$sidebarAlbums = [];
+$totalAlbums = 0;
+try {
+    $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
+    $sidebarStmt = $db->prepare(
+        "SELECT drive_id, name, icon_url FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC LIMIT 20"
+    );
+    $sidebarStmt->execute();
+    $sidebarAlbums = $sidebarStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (\PDOException $e) { /* tabla no existe aún */ }
+
 // Verificar si existe la columna album_id
 $hasAlbumId = false;
 try {
@@ -96,8 +110,11 @@ if ($q === '' && !$isMultiCode) {
 } else {
     // Con query simple: buscar por LIKE extendido (+ albums)
     $qCleanForSku = preg_replace('/\.\w{2,4}$/i', '', $q);
-    $likeSku = "%{$qCleanForSku}%";
-    $like = "%{$q}%";
+    // Escapar caracteres especiales de SQL LIKE para evitar búsquedas incorrectas
+    $qEscaped = addcslashes($q, '%_');
+    $qCleanEscaped = addcslashes($qCleanForSku, '%_');
+    $likeSku = "%{$qCleanEscaped}%";
+    $like = "%{$qEscaped}%";
     
     $whereSimple = "p.archived = 0 AND (p.sku LIKE ? OR p.name LIKE ? OR p.category LIKE ? OR a.name LIKE ?)";
     $paramsBase = [$likeSku, $like, $like, $like];
@@ -127,7 +144,7 @@ if ($q === '' && !$isMultiCode) {
                  ELSE 2 END,
             p.name ASC"
     );
-    $startsWith = "{$qCleanForSku}%";
+    $startsWith = "{$qCleanEscaped}%";
     $finalParams = array_merge($paramsBase, [$qCleanForSku, $startsWith]);
     $stmt->execute($finalParams);
     $allMatches = $stmt->fetchAll();
@@ -234,11 +251,53 @@ function cleanSkuDisplay(string $sku): string {
     </div>
     <?php endif; ?>
 
-    <section class="container" style="padding-top:2rem;">
+    <section class="container search-layout" style="padding-top:2rem;">
+
+        <!-- ===== SIDEBAR: Álbumes ===== -->
+        <?php if (!empty($sidebarAlbums)): ?>
+        <aside class="search-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">📁 Álbumes</span>
+                <?php if ($albumId): ?>
+                    <a href="/buscar<?= $q ? '?q='.urlencode($q) : '' ?>" class="sidebar-clear" title="Quitar filtro">✕</a>
+                <?php endif; ?>
+            </div>
+            <div class="sidebar-albums" id="sidebarAlbums">
+                <?php foreach ($sidebarAlbums as $sa):
+                    $isActive = ($albumId === $sa['drive_id']);
+                    $href = '/buscar?' . http_build_query(array_filter(['q' => $q, 'album' => $sa['drive_id']]));
+                ?>
+                <a href="<?= $href ?>" class="sidebar-album-item<?= $isActive ? ' active' : '' ?>" title="<?= e($sa['name']) ?>">
+                    <div class="sidebar-album-thumb">
+                        <?php if ($sa['icon_url']): ?>
+                            <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
+                                 loading="lazy"
+                                 onerror="this.outerHTML='<span style=\'font-size:1.2rem;\'>📁</span>'">
+                        <?php else: ?>
+                            <span style="font-size:1.2rem;">📁</span>
+                        <?php endif; ?>
+                    </div>
+                    <span class="sidebar-album-name"><?= e($sa['name']) ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <?php if ($totalAlbums > 20): ?>
+            <a href="/buscar?<?= $q ? 'q='.urlencode($q).'&' : '' ?>ver_albums=1" class="sidebar-ver-mas">
+                Ver todos los álbumes (<?= $totalAlbums ?>)
+            </a>
+            <?php endif; ?>
+        </aside>
+        <?php endif; ?>
+
+        <!-- ===== MAIN: Búsqueda + Resultados ===== -->
+        <div class="search-main">
         <!-- Search bar inline -->
         <div class="search-box" style="max-width:100%; margin-bottom:1.5rem;">
             <span class="search-icon">🔍</span>
             <form action="/buscar" method="GET" id="searchForm">
+                <?php if ($albumId): ?>
+                    <input type="hidden" name="album" value="<?= e($albumId) ?>">
+                <?php endif; ?>
                 <textarea name="q" id="searchInput" rows="1"
                     placeholder="Buscar por SKU o nombre..."
                     autocomplete="off"><?= e($q) ?></textarea>
@@ -272,10 +331,14 @@ function cleanSkuDisplay(string $sku): string {
                 <?= $totalParents ?> resultado<?= $totalParents !== 1 ? 's' : '' ?> para "<strong style="color:var(--color-text)">
                     <?= e($q) ?>
                 </strong>"
+                <?php if ($albumId && isset($albumTitle)): ?>
+                    <span style="color:var(--color-primary); font-size:0.82rem;"> · en <?= e($albumTitle) ?></span>
+                <?php endif; ?>
             <?php else: ?>
-                <?= $totalParents ?> colección(es)
+                <?= $totalParents ?> colección(es)<?php if ($albumId && isset($albumTitle)): ?> · <span style="color:var(--color-primary)"><?= e($albumTitle) ?></span><?php endif; ?>
             <?php endif; ?>
         </p>
+
 
         <?php if (!empty($matchedFolders)): ?>
             <!-- Matched Folders -->
@@ -438,6 +501,7 @@ function cleanSkuDisplay(string $sku): string {
                 </p>
             </div>
         <?php endif; ?>
+        </div> <!-- Fin de search-main -->
     </section>
 
     <footer class="footer">
