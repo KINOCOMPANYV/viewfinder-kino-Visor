@@ -38,10 +38,10 @@ if (empty($rootFolderId)) {
 }
 
 // ============================================================
-// 1) Cargar TODOS los productos sin portada
+// 1) Cargar TODOS los productos sin portada o sin album_id
 // ============================================================
 $products = $db->query(
-    "SELECT id, sku FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '') AND archived = 0"
+    "SELECT id, sku, cover_image_url, album_id FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '' OR album_id IS NULL) AND archived = 0"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($products)) {
@@ -49,14 +49,13 @@ if (empty($products)) {
         'ok' => true,
         'assigned' => 0,
         'remaining' => 0,
-        'message' => '✅ Todos los productos ya tienen portada.'
+        'message' => '✅ Todos los productos ya tienen portada y álbum asignado.'
     ]);
     exit;
 }
 
 // ============================================================
 // 2) Indexar TODOS los archivos media de Drive de una sola vez
-//    Esto es ~30 API calls en total (vs 1 por SKU = cientos)
 // ============================================================
 $bulkResult = $drive->listAllMediaFiles($rootFolderId);
 $allDriveFiles = $bulkResult['files'] ?? [];
@@ -68,50 +67,38 @@ if (empty($allDriveFiles)) {
         'assigned' => 0,
         'remaining' => count($products),
         'strategy' => $strategy,
-        'message' => 'No se encontraron archivos media en Drive. Verifica la conexión y la carpeta configurada.'
+        'message' => 'No se encontraron archivos media en Drive. Verifica la conexión.'
     ]);
     exit;
 }
 
 // ============================================================
 // 3) Construir índice HashMap: nombre_archivo → [archivos]
-//    Esto convierte la búsqueda de O(N×M) a O(N+M)
 // ============================================================
-
-// Build reverse index: for each drive file, store it under possible SKU keys
-$fileIndex = []; // key: lowercase filename stem, value: [file, file, ...]
+$fileIndex = []; 
 foreach ($allDriveFiles as $f) {
     $name = strtolower(pathinfo($f['name'] ?? '', PATHINFO_FILENAME));
     if (!isset($fileIndex[$name])) $fileIndex[$name] = [];
     $fileIndex[$name][] = $f;
 }
 
-// Helper: find matching files for a SKU using the HashMap index
 function findMatchesInIndex(string $sku, array &$fileIndex, array &$allDriveFiles): array {
     $skuLower = strtolower($sku);
     $matches = [];
-    
-    // Direct exact match
     if (isset($fileIndex[$skuLower])) {
         $matches = array_merge($matches, $fileIndex[$skuLower]);
     }
-    
-    // Prefix match: check keys that start with the SKU 
-    // (e.g. SKU "839-5" matches file "839-5v1", "839-5_rojo")
     foreach ($fileIndex as $key => $files) {
-        if ($key === $skuLower) continue; // already added
+        if ($key === $skuLower) continue; 
         if (stripos($key, $skuLower) === 0) {
-            // Next char after SKU must NOT be a digit
             $nextPos = strlen($skuLower);
             if ($nextPos < strlen($key) && ctype_digit($key[$nextPos])) continue;
             $matches = array_merge($matches, $files);
         }
     }
-    
     return $matches;
 }
 
-// Palabras clave para priorizar como portada
 $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
 $numericPriority = ['01', '_1', '-1', 'f1'];
 
@@ -120,18 +107,16 @@ function scoreCover(array $file, array $coverKeywords, array $numericPriority): 
     $name = strtolower($file['name'] ?? '');
     $score = 0;
     foreach ($coverKeywords as $kw) {
-        if (str_contains($name, $kw))
-            $score += 10;
+        if (str_contains($name, $kw)) $score += 10;
     }
     foreach ($numericPriority as $np) {
-        if (str_contains($name, $np))
-            $score += 5;
+        if (str_contains($name, $np)) $score += 5;
     }
     return $score;
 }
 
 // Pre-indexar: por cada producto, encontrar archivos que matcheen su SKU
-$updateStmt = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
+$updateStmt = $db->prepare("UPDATE products SET cover_image_url = COALESCE(?, cover_image_url), album_id = COALESCE(?, album_id) WHERE id = ?");
 $assigned = 0;
 $assignedVideos = 0;
 $errors = [];
@@ -197,9 +182,12 @@ foreach ($products as $prod) {
             $coverUrl = $isVideo
                 ? "[VIDEO]https://lh3.googleusercontent.com/d/{$bestMedia['id']}"
                 : "https://lh3.googleusercontent.com/d/{$bestMedia['id']}=s400";
+            
+            $albumId = $drive->getAlbumIdForFile($bestMedia, $rootFolderId);
 
             $updatesQueue[] = [
                 'url' => $coverUrl,
+                'album_id' => $albumId,
                 'id' => $prod['id']
             ];
 
@@ -223,7 +211,7 @@ if (!empty($fileIdsToPublish)) {
 // 5) Actualizar DB en lote
 // ============================================================
 foreach ($updatesQueue as $upd) {
-    $updateStmt->execute([$upd['url'], $upd['id']]);
+    $updateStmt->execute([$upd['url'], $upd['album_id'], $upd['id']]);
 }
 
 // Invalidar cache

@@ -66,21 +66,8 @@ if ($q === '' && !$isMultiCode) {
     $where = "archived = 0";
     $params = [];
     if ($albumId) {
-        // Resolve album name from drive_id and filter flexibly
-        $albumNameStmt = $db->prepare("SELECT name FROM albums WHERE drive_id = ?");
-        $albumNameStmt->execute([$albumId]);
-        $albumName = trim($albumNameStmt->fetchColumn() ?: '');
-        if ($albumName) {
-            $words = array_filter(explode(' ', $albumName));
-            foreach ($words as $w) {
-                $likeW = '%' . $w . '%';
-                $where .= " AND (category LIKE ? OR name LIKE ? OR sku LIKE ?)";
-                array_push($params, $likeW, $likeW, $likeW);
-            }
-        } else {
-            // If album doesn't exist, force 0 results
-            $where .= " AND 1 = 0";
-        }
+        $where .= " AND album_id = ?";
+        $params[] = $albumId;
     }
     
     $countStmt = $db->prepare("SELECT COUNT(*) FROM products WHERE $where");
@@ -138,19 +125,8 @@ if ($q === '' && !$isMultiCode) {
     $paramsBase = [$likeSku, $like, $like, $like];
     
     if ($albumId) {
-        $albumNameStmt = $db->prepare("SELECT name FROM albums WHERE drive_id = ?");
-        $albumNameStmt->execute([$albumId]);
-        $albumName = trim($albumNameStmt->fetchColumn() ?: '');
-        if ($albumName) {
-            $words = array_filter(explode(' ', $albumName));
-            foreach ($words as $w) {
-                $likeW = '%' . $w . '%';
-                $whereSimple .= " AND (p.category LIKE ? OR p.name LIKE ? OR p.sku LIKE ?)";
-                array_push($paramsBase, $likeW, $likeW, $likeW);
-            }
-        } else {
-            $whereSimple .= " AND 1 = 0";
-        }
+        $whereSimple .= " AND p.album_id = ?";
+        $paramsBase[] = $albumId;
     }
 
     $countStmt = $db->prepare(
