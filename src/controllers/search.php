@@ -131,6 +131,32 @@ if ($q === '' && !$isMultiCode) {
     $allMatches = $stmt->fetchAll();
 }
 
+// Fetch matched folders (Albums and Subfolders) if single query
+$matchedFolders = [];
+if (!$isMultiCode && $q !== '') {
+    $like = "%{$q}%";
+    
+    // 1. Fetch top-level Albums
+    $albumStmt = $db->prepare("SELECT drive_id as id, name, icon_url FROM albums WHERE is_active = 1 AND name LIKE ? ORDER BY name ASC LIMIT 20");
+    $albumStmt->execute([$like]);
+    $matchedAlbums = $albumStmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // 2. Fetch cached Subfolders from drive_cache
+    $matchedSubfolders = [];
+    try {
+        $subStmt = $db->prepare("SELECT file_id as id, file_name as name, thumbnail_link as icon_url FROM drive_cache WHERE mime_type = 'application/vnd.google-apps.folder' AND file_name LIKE ? ORDER BY file_name ASC LIMIT 20");
+        $subStmt->execute([$like]);
+        $matchedSubfolders = $subStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (\PDOException $e) { /* might not exist yet */ }
+    
+    // Merge and deduplicate by ID
+    $folderMap = [];
+    foreach ($matchedAlbums as $a) $folderMap[$a['id']] = $a;
+    foreach ($matchedSubfolders as $s) $folderMap[$s['id']] = $s;
+    
+    $matchedFolders = array_values($folderMap);
+}
+
 // Group by family SKU using the global extractRootSku standard
 $grouped = [];
 foreach ($allMatches as $p) {
@@ -239,6 +265,36 @@ function cleanSkuDisplay(string $sku): string {
                 <?= $totalParents ?> colección(es)
             <?php endif; ?>
         </p>
+
+        <?php if (!empty($matchedFolders)): ?>
+            <!-- Matched Folders -->
+            <div class="section-header-landing" style="margin-bottom:1rem; border-top: 1px solid var(--color-border); padding-top:1.5rem;">
+                <h2 style="font-size:1.2rem;">📂 Carpetas encontradas</h2>
+            </div>
+            <div class="parent-grid" style="margin-bottom:2rem;">
+                <?php foreach ($matchedFolders as $idx => $folder): 
+                    $fIcon = $folder['icon_url'] ?? '';
+                ?>
+                    <a href="/carpeta/<?= urlencode($folder['id']) ?>" class="parent-card" style="text-decoration:none; color:inherit; display:block;">
+                        <div class="card-image">
+                            <?php if ($fIcon): ?>
+                                <img src="<?= e($fIcon) ?>" alt="<?= e($folder['name']) ?>"
+                                     loading="lazy"
+                                     class="img-fade-in loaded"
+                                     onerror="this.outerHTML='<div class=\'cover-placeholder\' style=\'font-size:3rem;\'>📂</div>'"
+                                     style="width:100%;height:100%;object-fit:cover;">
+                            <?php else: ?>
+                                <div class="cover-placeholder" style="font-size:3rem;">📂</div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-sku" style="font-size:0.7rem;">Carpeta</div>
+                            <div class="card-name"><?= e($folder['name']) ?></div>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
         <?php if (!empty($pageRoots)): ?>
             <!-- WhatsApp toolbar -->
@@ -363,7 +419,7 @@ function cleanSkuDisplay(string $sku): string {
                     <?php endfor; ?>
                 </div>
             <?php endif; ?>
-        <?php else: ?>
+        <?php elseif(empty($matchedFolders)): ?>
             <div class="no-results fade-in">
                 <h3>Sin resultados</h3>
                 <p>No encontramos productos con "
