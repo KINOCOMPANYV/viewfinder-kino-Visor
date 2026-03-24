@@ -17,6 +17,11 @@ $db = getDB();
 $sidebarAlbums = [];
 $totalAlbums = 0;
 try {
+    // Self-healing: asegurar que existe la columna is_active en albums heredada de versiones previas
+    try {
+        $db->exec("ALTER TABLE albums ADD COLUMN is_active TINYINT(1) DEFAULT 1");
+    } catch (\PDOException $e) { /* Columna ya existe */ }
+
     $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
     $sidebarStmt = $db->prepare(
         "SELECT drive_id, name, icon_url FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC LIMIT 20"
