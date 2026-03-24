@@ -68,8 +68,9 @@ if ($q === '' && !$isMultiCode) {
     $conditions = [];
     $params = [];
     foreach ($multiCodes as $code) {
+        $codeClean = preg_replace('/\.\w{2,4}$/i', '', $code);
         $conditions[] = "sku LIKE ?";
-        $params[] = $code . '%';
+        $params[] = $codeClean . '%';
     }
     $whereOr = implode(' OR ', $conditions);
     
@@ -92,32 +93,40 @@ if ($q === '' && !$isMultiCode) {
     // Sin paginación para multi-código
     $perPage = max($total, 1);
 } else {
-    // Con query simple: buscar por LIKE (comportamiento original)
+    // Con query simple: buscar por LIKE extendido (+ albums)
+    $qCleanForSku = preg_replace('/\.\w{2,4}$/i', '', $q);
+    $likeSku = "%{$qCleanForSku}%";
     $like = "%{$q}%";
-    $whereSimple = "archived = 0 AND (sku LIKE ? OR name LIKE ? OR category LIKE ?)";
-    $paramsBase = [$like, $like, $like];
+    
+    $whereSimple = "p.archived = 0 AND (p.sku LIKE ? OR p.name LIKE ? OR p.category LIKE ? OR a.name LIKE ?)";
+    $paramsBase = [$likeSku, $like, $like, $like];
     
     if ($albumId) {
-        $whereSimple .= " AND album_id = ?";
+        $whereSimple .= " AND p.album_id = ?";
         $paramsBase[] = $albumId;
     }
 
-    $countStmt = $db->prepare("SELECT COUNT(*) FROM products WHERE $whereSimple");
+    $countStmt = $db->prepare(
+        "SELECT COUNT(p.id) FROM products p
+         LEFT JOIN albums a ON p.album_id = a.drive_id
+         WHERE $whereSimple"
+    );
     $countStmt->execute($paramsBase);
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url 
-         FROM products 
+        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url 
+         FROM products p
+         LEFT JOIN albums a ON p.album_id = a.drive_id
          WHERE $whereSimple
          ORDER BY 
-            CASE WHEN sku = ? THEN 0
-                 WHEN sku LIKE ? THEN 1
+            CASE WHEN p.sku = ? THEN 0
+                 WHEN p.sku LIKE ? THEN 1
                  ELSE 2 END,
-            name ASC"
+            p.name ASC"
     );
-    $startsWith = "{$q}%";
-    $finalParams = array_merge($paramsBase, [$q, $startsWith]);
+    $startsWith = "{$qCleanForSku}%";
+    $finalParams = array_merge($paramsBase, [$qCleanForSku, $startsWith]);
     $stmt->execute($finalParams);
     $allMatches = $stmt->fetchAll();
 }

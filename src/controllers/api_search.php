@@ -4,6 +4,8 @@
  */
 $q = trim($_GET['q'] ?? '');
 
+$qCleanForSku = preg_replace('/\.\w{2,4}$/i', '', $q);
+
 if (strlen($q) < 2) {
     jsonCachedResponse([], 30);
 }
@@ -19,21 +21,25 @@ $stmt = $db->prepare(
      WHERE archived = 0 AND sku = ? 
      LIMIT 1"
 );
-$stmt->execute([$q]);
+$stmt->execute([$qCleanForSku]);
 $exact = $stmt->fetchAll();
 
-// 2) LIKE parcial (SKU o nombre)
+// 2) LIKE parcial (SKU, nombre o carpeta)
 $stmt = $db->prepare(
-    "SELECT sku, name, category, cover_image_url FROM products 
-     WHERE archived = 0 
-       AND (sku LIKE ? OR name LIKE ?)
-       AND sku != ?
-     ORDER BY sku ASC 
+    "SELECT p.sku, p.name, p.category, p.cover_image_url 
+     FROM products p
+     LEFT JOIN albums a ON p.album_id = a.drive_id
+     WHERE p.archived = 0 
+       AND (p.sku LIKE ? OR p.name LIKE ? OR a.name LIKE ?)
+       AND p.sku != ?
+     ORDER BY p.sku ASC 
      LIMIT 10"
 );
 $escaped = addcslashes($q, '%_');
 $like = "%{$escaped}%";
-$stmt->execute([$like, $like, $q]);
+$escapedClean = addcslashes($qCleanForSku, '%_');
+$likeClean = "%{$escapedClean}%";
+$stmt->execute([$likeClean, $like, $like, $qCleanForSku]);
 $partial = $stmt->fetchAll();
 
 $results = array_merge($exact, $partial);
