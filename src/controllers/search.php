@@ -66,8 +66,17 @@ if ($q === '' && !$isMultiCode) {
     $where = "archived = 0";
     $params = [];
     if ($albumId) {
-        $where .= " AND album_id = ?";
-        $params[] = $albumId;
+        // Resolve album name from drive_id and filter by product category
+        $albumNameStmt = $db->prepare("SELECT name FROM albums WHERE drive_id = ?");
+        $albumNameStmt->execute([$albumId]);
+        $albumName = $albumNameStmt->fetchColumn();
+        if ($albumName) {
+            $where .= " AND category = ?";
+            $params[] = $albumName;
+        } else {
+            // If album doesn't exist, force 0 results
+            $where .= " AND 1 = 0";
+        }
     }
     
     $countStmt = $db->prepare("SELECT COUNT(*) FROM products WHERE $where");
@@ -125,8 +134,15 @@ if ($q === '' && !$isMultiCode) {
     $paramsBase = [$likeSku, $like, $like, $like];
     
     if ($albumId) {
-        $whereSimple .= " AND p.album_id = ?";
-        $paramsBase[] = $albumId;
+        $albumNameStmt = $db->prepare("SELECT name FROM albums WHERE drive_id = ?");
+        $albumNameStmt->execute([$albumId]);
+        $albumName = $albumNameStmt->fetchColumn();
+        if ($albumName) {
+            $whereSimple .= " AND p.category = ?";
+            $paramsBase[] = $albumName;
+        } else {
+            $whereSimple .= " AND 1 = 0";
+        }
     }
 
     $countStmt = $db->prepare(
