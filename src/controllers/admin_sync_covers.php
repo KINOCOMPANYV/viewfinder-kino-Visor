@@ -60,18 +60,29 @@ if (empty($products)) {
 // Construir índice de productos por SKU (limpio, sin extensión y sin prefijo)
 $productIndex = [];
 foreach ($products as $prod) {
-    $sku = preg_replace('/\.\w{2,4}$/i', '', trim($prod['sku']));
-    $skuLower = strtolower($sku);
-    $productIndex[$skuLower] = $prod;
+    $sku = trim($prod['sku']);
+    // Indexar el SKU original (limpio sin extensión)
+    $skuClean = preg_replace('/\.\w{2,4}$/i', '', $sku);
+    $skuLower = strtolower($skuClean);
     
-    // También indexar el SKU raíz
-    $rootSku = strtolower(extractRootSku($sku));
+    if (!isset($productIndex[$skuLower])) {
+        $productIndex[$skuLower] = $prod;
+    }
+    
+    // También indexar con extensión por si acaso
+    $skuWithExt = strtolower($sku);
+    if ($skuWithExt !== $skuLower && !isset($productIndex[$skuWithExt])) {
+        $productIndex[$skuWithExt] = $prod;
+    }
+    
+    // También indexar el SKU raíz (sin sufijos de color/variante)
+    $rootSku = strtolower(extractRootSku($skuClean));
     if ($rootSku !== $skuLower && !isset($productIndex[$rootSku])) {
         $productIndex[$rootSku] = $prod;
     }
     
-    // También indexar sin prefijo de marca
-    $noPrefijo = strtolower(extractSkuWithoutPrefix($sku));
+    // También indexar sin prefijo de marca (ej: KNM-8845 → 8845)
+    $noPrefijo = strtolower(extractSkuWithoutPrefix($skuClean));
     if ($noPrefijo !== $skuLower && !isset($productIndex[$noPrefijo])) {
         $productIndex[$noPrefijo] = $prod;
     }
