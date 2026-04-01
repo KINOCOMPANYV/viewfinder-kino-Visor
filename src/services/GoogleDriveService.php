@@ -603,7 +603,7 @@ class GoogleDriveService
         if (isset($folderCache[$folderId]))
             return $folderCache[$folderId];
 
-        $url = "https://www.googleapis.com/drive/v3/files/{$folderId}?fields=id,parents";
+        $url = "https://www.googleapis.com/drive/v3/files/{$folderId}?fields=id,parents&supportsAllDrives=true";
         $response = $this->httpGet($url);
         $data = json_decode($response, true);
 
