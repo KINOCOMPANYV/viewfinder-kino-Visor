@@ -120,7 +120,7 @@ class GoogleDriveService
             $query = "'{$folderId}' in parents and trashed = false";
             $params = [
                 'q' => $query,
-                'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,createdTime)',
+                'fields' => 'nextPageToken,files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,createdTime,parents)',
                 'pageSize' => $pageSize,
                 'orderBy' => 'name',
                 'supportsAllDrives' => 'true',
