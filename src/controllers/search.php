@@ -62,90 +62,25 @@ if ($isMultiCode && $q !== '') {
 }
 
 if ($q === '' && !$isMultiCode) {
-    // Sin query: mostrar todos los activos paginados
-    
+    // Sin query: mostrar productos del álbum o todos
+    $where = "archived = 0";
+    $params = [];
     if ($albumId) {
-        // ESTRATEGIA DINÁMICA: Buscar en drive_cache los archivos de esta carpeta
-        // y mostrar productos cuyos SKU coincidan con los nombres de esos archivos.
-        $driveSkus = [];
-        try {
-            $cacheStmt = $db->prepare(
-                "SELECT file_name FROM drive_cache 
-                 WHERE parent_folder_id = ? 
-                 AND mime_type LIKE 'image/%' 
-                 ORDER BY file_name ASC"
-            );
-            $cacheStmt->execute([$albumId]);
-            $cacheFiles = $cacheStmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            foreach ($cacheFiles as $fname) {
-                $baseName = preg_replace('/\.\w{2,4}$/i', '', $fname);
-                $driveSkus[] = strtolower($baseName);
-                // Sin sufijos numéricos (JX1251-3 → JX1251)
-                $rootName = preg_replace('/-\d+$/', '', $baseName);
-                if ($rootName !== $baseName) {
-                    $driveSkus[] = strtolower($rootName);
-                }
-            }
-            $driveSkus = array_unique($driveSkus);
-        } catch (\PDOException $e) { /* drive_cache no existe aún */ }
-        
-        if (!empty($driveSkus)) {
-            $conditions = [];
-            $params = [];
-            foreach ($driveSkus as $dsku) {
-                $conditions[] = "LOWER(sku) LIKE ?";
-                $params[] = $dsku . '%';
-            }
-            $whereOr = implode(' OR ', $conditions);
-            
-            $countStmt = $db->prepare(
-                "SELECT COUNT(DISTINCT sku) FROM products WHERE archived = 0 AND ($whereOr)"
-            );
-            $countStmt->execute($params);
-            $total = $countStmt->fetchColumn();
-            
-            $stmt = $db->prepare(
-                "SELECT sku, name, category, gender, price_suggested, cover_image_url 
-                 FROM products 
-                 WHERE archived = 0 AND ($whereOr)
-                 GROUP BY sku
-                 ORDER BY name ASC"
-            );
-            $stmt->execute($params);
-            $allMatches = $stmt->fetchAll();
-        } else {
-            // Fallback: usar album_id si drive_cache no tiene datos para esta carpeta
-            $where = "archived = 0";
-            $params = [];
-            if ($hasAlbumId) {
-                $where .= " AND album_id = ?";
-                $params[] = $albumId;
-            }
-            $countStmt = $db->prepare("SELECT COUNT(*) FROM products WHERE $where");
-            $countStmt->execute($params);
-            $total = $countStmt->fetchColumn();
-            
-            $stmt = $db->prepare(
-                "SELECT sku, name, category, gender, price_suggested, cover_image_url 
-                 FROM products WHERE $where ORDER BY name ASC"
-            );
-            $stmt->execute($params);
-            $allMatches = $stmt->fetchAll();
-        }
-    } else {
-        // Sin filtro de álbum: mostrar todos
-        $countStmt = $db->prepare("SELECT COUNT(*) FROM products WHERE archived = 0");
-        $countStmt->execute();
-        $total = $countStmt->fetchColumn();
-
-        $stmt = $db->prepare(
-            "SELECT sku, name, category, gender, price_suggested, cover_image_url 
-             FROM products WHERE archived = 0 ORDER BY name ASC"
-        );
-        $stmt->execute();
-        $allMatches = $stmt->fetchAll();
+        $where .= " AND album_id = ?";
+        $params[] = $albumId;
     }
+
+    $countStmt = $db->prepare("SELECT COUNT(*) FROM products WHERE $where");
+    $countStmt->execute($params);
+    $total = $countStmt->fetchColumn();
+
+    $stmt = $db->prepare(
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url
+         FROM products WHERE $where
+         ORDER BY name ASC"
+    );
+    $stmt->execute($params);
+    $allMatches = $stmt->fetchAll();
 
 } elseif ($isMultiCode) {
     // BÚSQUEDA MULTI-CÓDIGO: buscar cada SKU con LIKE para mayor flexibilidad
