@@ -312,6 +312,12 @@ if ($uri === '/admin/sync-sheets' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/api/cron/sync-covers') {
+    session_write_close();
+    include __DIR__ . '/src/controllers/admin_sync_covers.php';
+    exit;
+}
+
 if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     // API para obtener media de un producto por SKU
     // Soporta búsqueda bidireccional (padre↔hijo) + caché de 5 min

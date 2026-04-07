@@ -1055,6 +1055,7 @@
                                 ${data.remaining > 0 ? '<span>❓ <strong>' + data.remaining + '</strong> sin coincidencia en Drive</span>' : '<span style="color:#22c55e;">✅ ¡Todos cubiertos!</span>'}
                             </div>
                             ${data.errors && data.errors.length > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ ' + data.errors.length + ' error(es): ' + data.errors.slice(0, 3).join(', ') + '</div>' : ''}
+                            ${data.unmapped_files && data.unmapped_files.length > 0 ? '<div style="margin-top:1rem; font-size:0.8rem; color:var(--color-text-muted); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.8rem;"><strong style="color:var(--color-gold);">⚠️ Archivos ignorados por no hacer match con ningún producto (' + data.unmapped_files.length + '):</strong><br><div style="max-height:150px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:0.3rem; word-break: break-all;">' + data.unmapped_files.join('<br>') + '</div></div>' : ''}
                         </div>`;
 
                     statusText.textContent = data.assigned > 0 ? '¡Portadas asignadas!' : 'Proceso completado';

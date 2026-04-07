@@ -335,7 +335,12 @@ unset($_SESSION['auto_assign_covers']);
                     bar.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)';
                     if (title) title.textContent = `⭐ ${data.assigned} portada(s) asignada(s)`;
                     if (subtitle) subtitle.textContent = `${data.drive_files_indexed || 0} archivos indexados · ${data.assigned_images || 0} imágenes, ${data.assigned_videos || 0} videos`;
-                    if (resultDiv) resultDiv.innerHTML = data.remaining > 0 ? `<span style="color:var(--color-text-muted);">❓ ${data.remaining} productos sin coincidencia en Drive</span>` : '<span style="color:#22c55e;">✅ ¡Todos los productos tienen portada!</span>';
+                    
+                    let innerHTML = data.remaining > 0 ? `<span style="color:var(--color-text-muted);">❓ ${data.remaining} productos sin coincidencia en Drive</span>` : '<span style="color:#22c55e;">✅ ¡Todos los productos tienen portada!</span>';
+                    if (data.unmapped_files && data.unmapped_files.length > 0) {
+                        innerHTML += `<div style="margin-top:0.8rem; font-size:0.8rem; color:var(--color-text-muted); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem;"><strong style="color:var(--color-gold);">⚠️ Archivos ignorados (' + data.unmapped_files.length + '):</strong><br><div style="max-height:100px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:0.3rem;">` + data.unmapped_files.join('<br>') + `</div></div>`;
+                    }
+                    if (resultDiv) resultDiv.innerHTML = innerHTML;
                 } else {
                     bar.style.background = 'var(--color-border)';
                     if (title) title.textContent = data.ok ? 'Sin nuevas portadas para asignar' : 'Error al asignar portadas';

@@ -19,11 +19,18 @@ set_time_limit(300);
 
 $db = getDB();
 
-$csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
-if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'Token CSRF inválido.']);
-    exit;
+$isCron = false;
+$cronToken = env('CRON_SECRET', 'kino-cron-1234');
+if (isset($_GET['token']) && hash_equals($cronToken, $_GET['token'])) {
+    $isCron = true;
+} else {
+    session_start(); // Asegurar que la sesión exista para la validación normal
+    $csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'Token CSRF inválido o acceso denegado.']);
+        exit;
+    }
 }
 
 $drive = new GoogleDriveService();
@@ -86,6 +93,12 @@ foreach ($products as $prod) {
     if ($noPrefijo !== $skuLower && !isset($productIndex[$noPrefijo])) {
         $productIndex[$noPrefijo] = $prod;
     }
+    
+    // También indexar sin espacios
+    $noSpace = str_replace(' ', '', $skuLower);
+    if ($noSpace !== $skuLower && !isset($productIndex[$noSpace])) {
+        $productIndex[$noSpace] = $prod;
+    }
 }
 
 // ============================================================
@@ -109,8 +122,35 @@ if (empty($albums)) {
     $albums = $db->query("SELECT drive_id, name FROM albums WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
 }
 
+// La raíz no se agrega como álbum para evitar duplicar el procesamiento recursivo de todas las subcarpetas.
+
 // ============================================================
-// 3) Para cada álbum, listar archivos y matchear con productos
+// 3) Buscar archivos sueltos en la carpeta raíz
+// ============================================================
+$rootFilesOnly = [];
+try {
+    $rootResult = $drive->listFiles($rootFolderId);
+    $items = $rootResult['files'] ?? [];
+    foreach ($items as $item) {
+        $mime = $item['mimeType'] ?? '';
+        if (str_starts_with($mime, 'image/') || str_starts_with($mime, 'video/')) {
+            $rootFilesOnly[] = $item;
+        }
+    }
+} catch (Exception $e) {}
+
+if (!empty($rootFilesOnly)) {
+    // Simulamos que la raíz es un álbum más, pero pasamos los archivos ya listados
+    // para no hacer recursión en subcarpetas de la raíz (que ya son los demás álbumes).
+    $albums[] = [
+        'drive_id' => $rootFolderId,
+        'name' => 'Raíz (Archivos sueltos)',
+        '_files' => $rootFilesOnly
+    ];
+}
+
+// ============================================================
+// 4) Para cada álbum, listar archivos y matchear con productos
 // ============================================================
 $coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
 $numericPriority = ['01', '_1', '-1', 'f1'];
@@ -134,24 +174,32 @@ function scoreCover(array $file, array $coverKeywords, array $numericPriority): 
  */
 function matchFileToProduct(array $file, array &$productIndex): ?string
 {
-    $fileName = strtolower(pathinfo($file['name'] ?? '', PATHINFO_FILENAME));
+    $baseName = strtolower(pathinfo($file['name'] ?? '', PATHINFO_FILENAME));
+    $noSpaceName = str_replace(' ', '', $baseName);
+    $noPrefixName = strtolower(extractSkuWithoutPrefix($baseName));
     
+    $variations = array_unique([$baseName, $noSpaceName, $noPrefixName]);
+
     // Match exacto
-    if (isset($productIndex[$fileName])) {
-        return $fileName;
+    foreach ($variations as $v) {
+        if (isset($productIndex[$v])) {
+            return $v;
+        }
     }
     
     // Match por prefijo: buscar si algún SKU del índice es prefijo del nombre del archivo
-    foreach ($productIndex as $skuKey => $prod) {
-        if (strpos($fileName, $skuKey) === 0) {
-            // Verificar que el siguiente carácter no sea un dígito (evitar 123-1 -> 123-10)
-            $nextPos = strlen($skuKey);
-            if ($nextPos >= strlen($fileName)) {
-                return $skuKey; // Match exacto con nombre completo
-            }
-            $nextChar = $fileName[$nextPos];
-            if (!ctype_digit($nextChar)) {
-                return $skuKey;
+    foreach ($variations as $v) {
+        foreach ($productIndex as $skuKey => $prod) {
+            if (strpos($v, $skuKey) === 0) {
+                // Verificar que el siguiente carácter no sea un dígito (evitar 123-1 -> 123-10)
+                $nextPos = strlen($skuKey);
+                if ($nextPos >= strlen($v)) {
+                    return $skuKey; // Match exacto con nombre completo
+                }
+                $nextChar = $v[$nextPos];
+                if (!ctype_digit($nextChar)) {
+                    return $skuKey;
+                }
             }
         }
     }
@@ -164,20 +212,31 @@ $assignedVideos = 0;
 $albumsProcessed = 0;
 $totalDriveFiles = 0;
 $errors = [];
+$unmappedFiles = []; // Track files that matched no products
 $fileIdsToPublish = [];
 $updatesQueue = []; // id => ['url' => ..., 'album_id' => ...]
 $productUpdated = []; // Track which products have been updated (avoid duplicates)
 
 foreach ($albums as $album) {
     try {
-        // Listar TODOS los archivos dentro de este álbum (incluye subcarpetas)
-        $albumFiles = listAlbumMediaRecursive($drive, $album['drive_id']);
+        if (isset($album['_files'])) {
+            $albumFiles = $album['_files'];
+        } else {
+            // Listar TODOS los archivos dentro de este álbum (incluye subcarpetas)
+            $albumFiles = listAlbumMediaRecursive($drive, $album['drive_id']);
+        }
         $albumsProcessed++;
         $totalDriveFiles += count($albumFiles);
         
         foreach ($albumFiles as $file) {
+            $isMedia = str_starts_with($file['mimeType'] ?? '', 'image/') || str_starts_with($file['mimeType'] ?? '', 'video/');
+            if (!$isMedia) continue;
+            
             $matchedSku = matchFileToProduct($file, $productIndex);
-            if (!$matchedSku) continue;
+            if (!$matchedSku) {
+                $unmappedFiles[] = $file['name'];
+                continue;
+            }
             
             $prod = $productIndex[$matchedSku];
             $prodId = $prod['id'];
@@ -187,8 +246,6 @@ foreach ($albums as $album) {
             
             $isImage = str_starts_with($file['mimeType'] ?? '', 'image/');
             $isVideo = str_starts_with($file['mimeType'] ?? '', 'video/');
-            
-            if (!$isImage && !$isVideo) continue;
             
             // Solo asignar portada si el producto no tiene una
             $needsCover = empty($prod['cover_image_url']);
@@ -278,6 +335,7 @@ echo json_encode([
     'drive_files_indexed' => $totalDriveFiles,
     'strategy' => 'direct-album-scan',
     'errors' => $errors,
+    'unmapped_files' => $unmappedFiles,
     'message' => $assigned > 0
         ? "⭐ {$assigned} producto(s) actualizado(s). "
           . "Escaneamos {$albumsProcessed} álbumes con {$totalDriveFiles} archivos en Drive. "

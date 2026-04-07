@@ -265,8 +265,9 @@ function extractSkuWithoutPrefix(string $sku): string
         return $sku;
     }
     
-    // Quitar prefijo de letras seguido de guion: "KNM-8845-RG" → "8845-RG"
-    if (preg_match('/^[A-Za-z]+-(.+)$/', $sku, $matches)) {
+    // Quitar prefijo de letras seguido opcionalmente de guion, punto, espacio o guion bajo:
+    // "KNM-8845-RG" → "8845-RG", "NO 2218" → "2218", "NO.2405" → "2405"
+    if (preg_match('/^[A-Za-z]+[-. _]?(\d.*)$/', $sku, $matches)) {
         return $matches[1];
     }
     
