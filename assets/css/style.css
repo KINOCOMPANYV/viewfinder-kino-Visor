@@ -2560,12 +2560,12 @@ textarea.form-input {
     align-items: flex-start;
 }
 
-/* --- Sidebar --- */
+/* --- Sidebar (desktop lateral / albums section inline) --- */
 .search-sidebar {
     width: 260px;
     flex-shrink: 0;
     position: sticky;
-    top: 5.5rem; /* debajo del header fijo */
+    top: 5.5rem;
     height: calc(100vh - 6rem);
     display: flex;
     flex-direction: column;
@@ -2573,7 +2573,24 @@ textarea.form-input {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    order: -1; /* En desktop, sidebar a la izquierda */
+    order: -1;
+}
+
+/* Albums section (aparece dentro de search-main, entre buscador y productos) */
+.albums-section {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.album-hidden {
+    display: none;
+}
+
+.album-hidden.album-revealed {
+    display: flex;
 }
 
 .sidebar-header {
@@ -2708,6 +2725,11 @@ textarea.form-input {
     transition: all 0.2s;
     display: block;
     text-decoration: none;
+    width: 100%;
+    border: none;
+    border-top: 1px solid var(--color-border);
+    cursor: pointer;
+    font-family: var(--font);
 }
 
 .sidebar-ver-mas:hover {
@@ -2780,15 +2802,18 @@ textarea.form-input {
     }
 
     /* Albums: compact 2-column grid */
-    .search-sidebar {
+    .search-sidebar,
+    .albums-section {
         border-radius: var(--radius);
     }
 
-    .sidebar-header {
+    .albums-section .sidebar-header,
+    .search-sidebar .sidebar-header {
         padding: 0.85rem 1rem;
     }
 
-    .sidebar-title {
+    .albums-section .sidebar-title,
+    .search-sidebar .sidebar-title {
         font-size: 0.95rem;
     }
 
