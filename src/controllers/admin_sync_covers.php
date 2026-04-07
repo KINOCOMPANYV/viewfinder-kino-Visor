@@ -33,6 +33,8 @@ if (isset($_GET['token']) && hash_equals($cronToken, $_GET['token'])) {
     }
 }
 
+$forceReassign = !empty($_GET['force']) || !empty($_POST['force']);
+
 $drive = new GoogleDriveService();
 $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
 
@@ -247,9 +249,9 @@ foreach ($albums as $album) {
             $isImage = str_starts_with($file['mimeType'] ?? '', 'image/');
             $isVideo = str_starts_with($file['mimeType'] ?? '', 'video/');
             
-            // Solo asignar portada si el producto no tiene una
-            $needsCover = empty($prod['cover_image_url']);
-            $needsAlbum = empty($prod['album_id']);
+            // Solo asignar portada si el producto no tiene una (o si es modo forzado)
+            $needsCover = $forceReassign || empty($prod['cover_image_url']);
+            $needsAlbum = $forceReassign || empty($prod['album_id']);
             
             if (!$needsCover && !$needsAlbum) continue;
             

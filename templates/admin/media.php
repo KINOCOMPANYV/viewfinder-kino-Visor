@@ -595,17 +595,21 @@
         <?php if ($isConnected): ?>
 
             <!-- Botón sincronizar portadas -->
-            <?php if ($withoutCover > 0): ?>
                 <div style="margin: 1.5rem 0; text-align:center;">
-                    <button class="btn btn-primary" id="syncCoversBtn" onclick="syncCovers()"
+                    <?php if ($withoutCover > 0): ?>
+                    <button class="btn btn-primary" id="syncCoversBtn" onclick="syncCovers(false)"
                         style="font-size:1rem; padding:0.8rem 2rem;">
                         ⭐ Auto-asignar portadas (<?= $withoutCover ?> sin imagen)
                     </button>
+                    <?php endif; ?>
+                    <button class="btn btn-secondary" id="<?= $withoutCover > 0 ? '' : 'syncCoversBtn' ?>" onclick="syncCovers(true)"
+                        style="font-size:0.85rem; padding:0.6rem 1.5rem; <?= $withoutCover > 0 ? 'margin-left:0.5rem;' : '' ?>">
+                        🔄 Reasignar TODAS las portadas
+                    </button>
                     <p style="font-size:0.8rem; color:var(--color-text-muted); margin-top:0.5rem;">
-                        Busca en Drive (incluyendo subcarpetas) la primera imagen para cada producto sin portada.
+                        <?= $withoutCover > 0 ? 'Auto-asignar busca los faltantes. ' : '' ?>Reasignar TODO refresca TODAS las portadas desde Drive.
                     </p>
                 </div>
-            <?php endif; ?>
 
             <!-- Subir archivos -->
             <div class="section-title">
@@ -986,7 +990,7 @@
             }
         }
 
-        async function syncCovers() {
+        async function syncCovers(force = false) {
             const btn = document.getElementById('syncCoversBtn');
             const container = btn.parentElement;
 
@@ -1032,7 +1036,8 @@
                     }
                 }, 800);
 
-                const resp = await fetch('/admin/media/sync-covers', {
+                const url = '/admin/media/sync-covers' + (force ? '?force=1' : '');
+                const resp = await fetch(url, {
                     method: 'POST',
                     headers: { 'X-CSRF-Token': CSRF }
                 });
