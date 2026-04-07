@@ -52,17 +52,38 @@
         $totalAlbums = 0;
         try {
             $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
-            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC LIMIT 20")->fetchAll();
+            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC")->fetchAll();
         } catch (\PDOException $e) {
             // tabla albums aún no existe
         }
         ?>
+        <!-- ===== MAIN: Hero (Search) ===== -->
+        <div class="search-main">
+            <!-- Hero Integrado -->
+            <div class="hero" style="padding: 0 0 2.5rem; text-align: left;">
+                <h1 style="font-size: 2.5rem;">Centro de Contenido</h1>
+                <p style="margin: 0 0 1.5rem 0; font-size: 1rem;">Busca por referencia o SKU para acceder a fotos y videos.</p>
 
-        <!-- ===== SIDEBAR: Álbumes ===== -->
+                <!-- Search Box -->
+                <div class="search-box" style="max-width: 100%; margin: 0;">
+                    <span class="search-icon">🔍</span>
+                    <form action="/buscar" method="GET" id="searchForm">
+                        <textarea name="q" id="searchInput" rows="1"
+                            placeholder="Buscar por SKU o nombre..."
+                            autocomplete="off" autofocus></textarea>
+                        <button type="submit" class="search-btn">Buscar</button>
+                    </form>
+                    <div class="autocomplete-dropdown" id="autocomplete"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SIDEBAR: Álbumes (aparece después del buscador en móvil) ===== -->
         <?php if (!empty($albums)): ?>
         <aside class="search-sidebar">
             <div class="sidebar-header">
                 <span class="sidebar-title">📁 Álbumes</span>
+                <span class="sidebar-album-count"><?= count($albums) ?></span>
             </div>
             <div class="sidebar-albums" id="sidebarAlbums">
                 <?php foreach ($albums as $sa):
@@ -82,33 +103,8 @@
                 </a>
                 <?php endforeach; ?>
             </div>
-            <?php if ($totalAlbums > 20): ?>
-            <a href="/buscar?ver_albums=1" class="sidebar-ver-mas">
-                Ver todos los álbumes (<?= $totalAlbums ?>)
-            </a>
-            <?php endif; ?>
         </aside>
         <?php endif; ?>
-
-        <!-- ===== MAIN: Hero (Search) + Productos Recientes ===== -->
-        <div class="search-main">
-            <!-- Hero Integrado -->
-            <div class="hero" style="padding: 0 0 2.5rem; text-align: left;">
-                <h1 style="font-size: 2.5rem;">Centro de Contenido</h1>
-                <p style="margin: 0 0 1.5rem 0; font-size: 1rem;">Busca por referencia o SKU para acceder a fotos y videos.</p>
-
-                <!-- Search Box alineado a la izquierda para Desktop -->
-                <div class="search-box" style="max-width: 100%; margin: 0;">
-                    <span class="search-icon">🔍</span>
-                    <form action="/buscar" method="GET" id="searchForm">
-                        <textarea name="q" id="searchInput" rows="1"
-                            placeholder="Buscar por SKU o nombre..."
-                            autocomplete="off" autofocus></textarea>
-                        <button type="submit" class="search-btn">Buscar</button>
-                    </form>
-                    <div class="autocomplete-dropdown" id="autocomplete"></div>
-                </div>
-            </div>
 
     <!-- Recent / Featured Products -->
     <section class="container">

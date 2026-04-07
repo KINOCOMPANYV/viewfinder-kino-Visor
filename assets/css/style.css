@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    Viewfinder Kino Visor — Design System
    Mobile-first, dark mode premium aesthetic
    ============================================================ */
@@ -2573,6 +2573,7 @@ textarea.form-input {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
+    order: -1; /* En desktop, sidebar a la izquierda */
 }
 
 .sidebar-header {
@@ -2588,6 +2589,17 @@ textarea.form-input {
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--color-text);
+}
+
+.sidebar-album-count {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    background: rgba(201, 168, 76, 0.12);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    line-height: 1.3;
 }
 
 .sidebar-clear {
@@ -2707,25 +2719,152 @@ textarea.form-input {
 .search-main {
     flex: 1;
     min-width: 0; /* previene desbordamientos flex */
+    order: 0;
 }
 
-/* Ajustes Responsive */
+/* ============================================================
+   Responsive: Tablet (≤900px)
+   ============================================================ */
 @media (max-width: 900px) {
     .search-layout {
         flex-direction: column;
-        gap: 1.5rem;
+        gap: 1.25rem;
+    }
+
+    /* En tablet/móvil: search-main primero (order:0), sidebar después (order:1) */
+    .search-main {
+        order: 0;
+        width: 100%;
     }
 
     .search-sidebar {
+        order: 1;
         width: 100%;
         height: auto;
-        max-height: 350px;
+        max-height: none;
         position: static;
     }
-    
+
     .sidebar-albums {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
         gap: 0.5rem;
+        max-height: none;
+        overflow-y: visible;
     }
 }
+
+/* ============================================================
+   Responsive: Mobile (≤640px)
+   ============================================================ */
+@media (max-width: 640px) {
+    .search-layout {
+        padding-top: 1rem !important;
+        gap: 1rem;
+    }
+
+    /* Hero title smaller on mobile */
+    .search-main .hero h1 {
+        font-size: 1.6rem !important;
+        text-align: center;
+    }
+
+    .search-main .hero p {
+        font-size: 0.85rem !important;
+        text-align: center;
+    }
+
+    .search-main .hero {
+        padding: 0 0 1.5rem !important;
+        text-align: center !important;
+    }
+
+    /* Albums: compact 2-column grid */
+    .search-sidebar {
+        border-radius: var(--radius);
+    }
+
+    .sidebar-header {
+        padding: 0.85rem 1rem;
+    }
+
+    .sidebar-title {
+        font-size: 0.95rem;
+    }
+
+    .sidebar-albums {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.35rem;
+        padding: 0.6rem;
+    }
+
+    .sidebar-album-item {
+        padding: 0.4rem;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .sidebar-album-thumb {
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+    }
+
+    .sidebar-album-name {
+        font-size: 0.75rem;
+    }
+
+    /* Product cards responsive */
+    .parent-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.6rem !important;
+    }
+
+    .card-body {
+        padding: 0.5rem !important;
+    }
+
+    .card-sku {
+        font-size: 0.7rem !important;
+    }
+
+    .card-name {
+        font-size: 0.75rem !important;
+    }
+
+    .section-header-landing h2 {
+        font-size: 1.1rem;
+    }
+}
+
+/* ============================================================
+   Responsive: Small Mobile (≤400px)
+   ============================================================ */
+@media (max-width: 400px) {
+    .search-main .hero h1 {
+        font-size: 1.35rem !important;
+    }
+
+    .sidebar-albums {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.25rem;
+        padding: 0.4rem;
+    }
+
+    .sidebar-album-item {
+        padding: 0.3rem;
+        gap: 0.35rem;
+    }
+
+    .sidebar-album-thumb {
+        width: 26px;
+        height: 26px;
+    }
+
+    .sidebar-album-name {
+        font-size: 0.7rem;
+        -webkit-line-clamp: 1;
+        line-clamp: 1;
+    }
+}
+
