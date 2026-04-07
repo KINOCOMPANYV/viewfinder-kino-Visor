@@ -214,11 +214,9 @@ $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 $pageRoots = array_slice($parentOrder, $offset, $perPage);
 
-// Helper para limpiar el SKU
-function cleanSkuDisplay(string $sku): string {
-    return preg_replace('/\.\w{2,4}$/i', '', $sku);
-}
+// cleanSkuDisplay() ahora definida en src/helpers.php
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 
@@ -579,7 +577,9 @@ function cleanSkuDisplay(string $sku): string {
                     try {
                         const files = (await Promise.all(images.map(async (item, i) => {
                             try {
-                                const r = await fetch(item.image, { mode: 'cors' });
+                                const driveIdMatch = item.image ? item.image.match(/\/d\/([^=]+)/) : null;
+                                const fetchUrl = driveIdMatch ? `/api/download/${driveIdMatch[1]}` : item.image;
+                                const r = await fetch(fetchUrl, driveIdMatch ? {} : { mode: 'cors' });
                                 const b = await r.blob();
                                 return new File([b], `imagen_${i + 1}.jpg`, { type: b.type || 'image/jpeg' });
                             } catch { return null; }

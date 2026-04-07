@@ -11,15 +11,58 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/src/helpers.php';
 
 // ============================================================
-// CORS — permitir llamadas desde apps externas (ej. Poedagar SPA)
+// CORS — permitir llamadas desde orígenes configurados
+// Configurar CORS_ALLOWED_ORIGINS en Railway para restringir
+// Ejemplo: "https://poedagar.com,https://tu-dominio.com"
 // ============================================================
-header('Access-Control-Allow-Origin: *');
+$allowedOrigins = env('CORS_ALLOWED_ORIGINS', '*');
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+if ($allowedOrigins === '*') {
+    header('Access-Control-Allow-Origin: *');
+} elseif ($origin) {
+    $allowed = array_map('trim', explode(',', $allowedOrigins));
+    if (in_array($origin, $allowed, true)) {
+        header("Access-Control-Allow-Origin: {$origin}");
+        header('Vary: Origin');
+    }
+}
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
+}
+
+// ============================================================
+// Rate Limiting — protección básica contra abuso en APIs públicas
+// Máximo N peticiones por minuto por IP (configurable)
+// ============================================================
+function checkRateLimit(int $maxPerMinute = 60): void
+{
+    $ip = getClientIP();
+    $key = 'rl_' . md5($ip);
+    
+    if (!isset($_SESSION[$key])) {
+        $_SESSION[$key] = ['count' => 1, 'reset' => time() + 60];
+        return;
+    }
+    
+    if (time() > $_SESSION[$key]['reset']) {
+        $_SESSION[$key] = ['count' => 1, 'reset' => time() + 60];
+        return;
+    }
+    
+    $_SESSION[$key]['count']++;
+    
+    if ($_SESSION[$key]['count'] > $maxPerMinute) {
+        http_response_code(429);
+        header('Retry-After: ' . ($_SESSION[$key]['reset'] - time()));
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Demasiadas peticiones. Intenta en un momento.']);
+        exit;
+    }
 }
 
 // Obtener la ruta antes de auto-migrar
@@ -86,6 +129,7 @@ if (preg_match('#^/carpeta/([^/]+)$#', $uri, $matches)) {
 
 if ($uri === '/api/search') {
     // API de búsqueda (para autocomplete AJAX)
+    checkRateLimit(120); // 120 req/min — autocomplete es frecuente
     session_write_close();
     include __DIR__ . '/src/controllers/api_search.php';
     exit;
@@ -93,6 +137,7 @@ if ($uri === '/api/search') {
 
 if ($uri === '/api/batch-search' && $method === 'POST') {
     // API de búsqueda por lote
+    checkRateLimit(30); // 30 req/min — operación pesada
     session_write_close();
     include __DIR__ . '/src/controllers/api_batch_search.php';
     exit;
@@ -465,6 +510,7 @@ if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
 // ============================================================
 
 if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkRateLimit(60); // 60 req/min
     session_write_close(); // Unlock session to prevent blocking concurrent searches
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
 

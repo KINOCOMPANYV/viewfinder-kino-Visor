@@ -321,3 +321,11 @@ function extractCoverFromFiles(array $files): ?array
     return null;
 }
 
+/**
+ * Limpia un SKU para display: quita extensiones de archivo (.jpg, .png, etc.)
+ * Centralizado aquí para evitar duplicados en landing.php y search.php.
+ */
+function cleanSkuDisplay(string $sku): string
+{
+    return preg_replace('/\.\w{2,4}$/i', '', $sku);
+}

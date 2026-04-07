@@ -127,53 +127,34 @@
         }
 
         $orderCol = $hasSheetRow ? 'sheet_row' : 'id';
-        $selectCols = $hasSheetRow
-            ? 'id, sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
-            : 'id, sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
-
-        // Fetch all active products ordered by sheet position (last rows in Sheet = newest)
-        $allProducts = $db->query(
-            "SELECT {$selectCols} 
+        
+        // ── FASE 1: Cargar minimal data para paginación ──
+        $skuRows = $db->query(
+            "SELECT sku, {$orderCol} AS sheet_row 
              FROM products 
              WHERE archived = 0 
              ORDER BY {$orderCol} DESC"
         )->fetchAll();
 
-        // Group by family SKU using the global extractRootSku standard
-        $grouped = [];
-        $familyMaxRow = []; // track highest sheet_row per family (last in Sheet = newest)
-        foreach ($allProducts as $p) {
-            $sku = trim($p['sku']);
-            $skuClean = preg_replace('/\.\w{2,4}$/i', '', $sku);
-            
-            // Usar la función estandarizada de helpers.php para obtener el SKU raíz
+        // Agrupar SKUs por familia
+        $familyMap = [];      // family -> [skus]
+        $familyMaxRow = [];   // family -> max sheet_row
+        foreach ($skuRows as $row) {
+            $skuClean = cleanSkuDisplay($row['sku']);
             $family = extractRootSku($skuClean);
             
-            if (!isset($grouped[$family])) {
-                $grouped[$family] = ['parent' => $p, 'children' => []];
-                $familyMaxRow[$family] = (int)$p['sheet_row'];
-            } else {
-                // Solo añadir a los hijos si el SKU es diferente al padre original
-                if ($p['sku'] !== $grouped[$family]['parent']['sku']) {
-                    $exists = false;
-                    foreach ($grouped[$family]['children'] as $c) {
-                        if ($c['sku'] === $p['sku']) {
-                            $exists = true;
-                            break;
-                        }
-                    }
-                    if (!$exists) {
-                        $grouped[$family]['children'][] = $p;
-                    }
-                }
-                
-                if ((int)$p['sheet_row'] > $familyMaxRow[$family]) {
-                    $familyMaxRow[$family] = (int)$p['sheet_row'];
-                }
+            if (!isset($familyMap[$family])) {
+                $familyMap[$family] = [];
+                $familyMaxRow[$family] = (int)$row['sheet_row'];
+            }
+            $familyMap[$family][] = $row['sku'];
+            if ((int)$row['sheet_row'] > $familyMaxRow[$family]) {
+                $familyMaxRow[$family] = (int)$row['sheet_row'];
             }
         }
+        unset($skuRows); // Liberar memoria
 
-        // Sort families by highest sheet_row DESC (last in Sheet = newest = first on page)
+        // Ordenar familias: las más recientes primero
         arsort($familyMaxRow);
         $parentOrder = array_keys($familyMaxRow);
 
@@ -183,11 +164,53 @@
         $offset = ($currentPage - 1) * $perPage;
         $pageRoots = array_slice($parentOrder, $offset, $perPage);
 
-        // Helper: clean SKU for display (remove file extensions)
-        function cleanSkuDisplay(string $sku): string {
-            return preg_replace('/\.\w{2,4}$/i', '', $sku);
+        // ── FASE 2: Cargar datos completos SOLO para esta página ──
+        $grouped = [];
+        if (!empty($pageRoots)) {
+            $pageSkus = [];
+            foreach ($pageRoots as $family) {
+                $pageSkus = array_merge($pageSkus, $familyMap[$family]);
+            }
+            unset($familyMap);
+
+            if (!empty($pageSkus)) {
+                $placeholders = implode(',', array_fill(0, count($pageSkus), '?'));
+                $selectCols = $hasSheetRow
+                    ? 'id, sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
+                    : 'id, sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
+                
+                $stmt = $db->prepare(
+                    "SELECT {$selectCols} 
+                     FROM products 
+                     WHERE sku IN ({$placeholders})
+                     ORDER BY {$orderCol} DESC"
+                );
+                $stmt->execute($pageSkus);
+                $pageProducts = $stmt->fetchAll();
+
+                foreach ($pageProducts as $p) {
+                    $skuClean = cleanSkuDisplay($p['sku']);
+                    $family = extractRootSku($skuClean);
+                    
+                    if (!isset($grouped[$family])) {
+                        $grouped[$family] = ['parent' => $p, 'children' => []];
+                    } else {
+                        if ($p['sku'] !== $grouped[$family]['parent']['sku']) {
+                            $exists = false;
+                            foreach ($grouped[$family]['children'] as $c) {
+                                if ($c['sku'] === $p['sku']) { $exists = true; break; }
+                            }
+                            if (!$exists) {
+                                $grouped[$family]['children'][] = $p;
+                            }
+                        }
+                    }
+                }
+            }
         }
+
         ?>
+
 
         <?php if (!empty($pageRoots)): ?>
             <div class="section-header-landing">
@@ -557,7 +580,9 @@ KV-1003
                     try {
                         const files = (await Promise.all(images.map(async (item, i) => {
                             try {
-                                const resp = await fetch(item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`, { mode: 'cors' });
+                                const driveIdMatch = item.image ? item.image.match(/\/d\/([^=]+)/) : null;
+                                const fetchUrl = driveIdMatch ? `/api/download/${driveIdMatch[1]}` : (item.image || `https://lh3.googleusercontent.com/d/${item.driveId}=s800`);
+                                const resp = await fetch(fetchUrl, driveIdMatch ? {} : { mode: 'cors' });
                                 const blob = await resp.blob();
                                 return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
                             } catch { return null; }

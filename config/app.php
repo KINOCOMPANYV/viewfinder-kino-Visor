@@ -29,8 +29,12 @@ define('APP_URL', getenv('APP_URL') ?: 'http://localhost:8080');
 define('APP_SECRET', getenv('APP_SECRET') ?: 'dev-secret-cambiar');
 
 // Admin
-define('ADMIN_USER', getenv('ADMIN_USER') ?: 'admin');
-define('ADMIN_PASSWORD', getenv('ADMIN_PASSWORD') ?: 'admin123');
+define('ADMIN_USER', env('ADMIN_USER', 'admin'));
+// Soporte para password hasheado (bcrypt). Si ADMIN_PASSWORD_HASH está definido, se usa.
+// Si no, se genera un hash a partir de ADMIN_PASSWORD para comparación segura.
+$rawPass = env('ADMIN_PASSWORD', 'admin123');
+$passHash = env('ADMIN_PASSWORD_HASH', '');
+define('ADMIN_PASSWORD_HASH', $passHash ?: password_hash($rawPass, PASSWORD_BCRYPT));
 
 // Detectar HTTPS detrás de proxy
 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
@@ -41,4 +45,4 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROT
 define('APP_VERSION', substr(md5(filemtime(__FILE__) . filemtime(BASE_DIR . '/assets/css/style.css')), 0, 8));
 
 // App info
-define('APP_BUILD', '2026-02-17');
+define('APP_BUILD', '2026-04-06');

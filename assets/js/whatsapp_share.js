@@ -183,7 +183,7 @@
                 // Descargar imágenes como blobs
                 const filePromises = selected.map(async (img, i) => {
                     try {
-                        const resp = await fetch(img.url, { mode: 'cors' });
+                        const resp = await fetch(`/api/download/${img.id}`);
                         const blob = await resp.blob();
                         return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
                     } catch {
