@@ -48,10 +48,10 @@ if (empty($rootFolderId)) {
 }
 
 // ============================================================
-// 1) Cargar TODOS los productos sin portada o sin album_id
+// 1) Cargar TODOS los productos para el índice de coincidencia
 // ============================================================
 $products = $db->query(
-    "SELECT id, sku, cover_image_url, album_id FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '' OR album_id IS NULL) AND archived = 0"
+    "SELECT id, sku, cover_image_url, album_id FROM products WHERE archived = 0"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($products)) {
@@ -59,7 +59,7 @@ if (empty($products)) {
         'ok' => true,
         'assigned' => 0,
         'remaining' => 0,
-        'message' => '✅ Todos los productos ya tienen portada y álbum asignado.'
+        'message' => 'No hay productos activos en la base de datos.'
     ]);
     exit;
 }
@@ -319,10 +319,15 @@ foreach ($updatesQueue as $upd) {
     $updateStmt->execute([$upd['url'], $upd['album_id'], $upd['id']]);
 }
 
+// Contar cuántos productos faltan realmente por portada al final
+$productsMissing = $db->query(
+    "SELECT COUNT(*) FROM products WHERE (cover_image_url IS NULL OR cover_image_url = '' OR album_id IS NULL) AND archived = 0"
+)->fetchColumn();
+
 // Invalidar cache
 unset($_SESSION['media_linked_count_cache'], $_SESSION['media_linked_count_time']);
 
-$remaining = count($products) - $assigned;
+$remaining = $productsMissing;
 
 echo json_encode([
     'ok' => true,
