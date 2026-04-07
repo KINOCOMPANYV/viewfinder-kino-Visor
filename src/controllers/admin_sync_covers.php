@@ -24,7 +24,7 @@ $cronToken = env('CRON_SECRET', 'kino-cron-1234');
 if (isset($_GET['token']) && hash_equals($cronToken, $_GET['token'])) {
     $isCron = true;
 } else {
-    session_start(); // Asegurar que la sesión exista para la validación normal
+    // La sesión ya es manejada por index.php
     $csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
     if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
         http_response_code(403);
