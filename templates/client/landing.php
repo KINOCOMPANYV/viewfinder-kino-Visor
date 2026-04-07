@@ -129,7 +129,7 @@
             </div>
             <?php endif; ?>
         </div>
-
+    </section>
 
     <!-- Recent / Featured Products -->
     <section class="container">
@@ -385,7 +385,6 @@
                 <p>El catálogo está vacío. El administrador puede importar productos desde Excel.</p>
             </div>
         <?php endif; ?>
-        </div> <!-- End of search-main -->
     </section>
 
     <!-- Footer -->
