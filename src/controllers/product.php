@@ -123,13 +123,31 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
 $variants = [];
 $rootForVariants = !empty($product['parent_sku']) ? $product['parent_sku'] : extractRootSku($product['sku']);
 
-$varStmt = $db->prepare(
-    "SELECT id, sku, name, cover_image_url 
-     FROM products 
-     WHERE (sku = ? OR parent_sku = ?) AND archived = 0 
-     ORDER BY sku ASC"
-);
-$varStmt->execute([$rootForVariants, $rootForVariants]);
+// Verificación de resiliencia: si la columna aún no existe (migración pendiente), evitar error fatal
+$hasParentSku = false;
+try {
+    $checkCol = $db->query("SHOW COLUMNS FROM products LIKE 'parent_sku'")->fetch();
+    if ($checkCol) $hasParentSku = true;
+} catch (Exception $e) {}
+
+if ($hasParentSku) {
+    $varStmt = $db->prepare(
+        "SELECT id, sku, name, cover_image_url 
+         FROM products 
+         WHERE (sku = ? OR parent_sku = ?) AND archived = 0 
+         ORDER BY sku ASC"
+    );
+    $varStmt->execute([$rootForVariants, $rootForVariants]);
+} else {
+    // Fallback hasta que se ejecute la migración
+    $varStmt = $db->prepare(
+        "SELECT id, sku, name, cover_image_url 
+         FROM products 
+         WHERE (sku = ? OR sku LIKE ?) AND archived = 0 
+         ORDER BY sku ASC"
+    );
+    $varStmt->execute([$rootForVariants, $rootForVariants . '-%']);
+}
 $variants = $varStmt->fetchAll();
 ?>
 <!DOCTYPE html>
