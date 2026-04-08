@@ -118,6 +118,19 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
     http_response_code(304);
     exit;
 }
+
+// ── Buscar Variantes (Hermanos) ──
+$variants = [];
+$rootForVariants = !empty($product['parent_sku']) ? $product['parent_sku'] : extractRootSku($product['sku']);
+
+$varStmt = $db->prepare(
+    "SELECT id, sku, name, cover_image_url 
+     FROM products 
+     WHERE (sku = ? OR parent_sku = ?) AND archived = 0 
+     ORDER BY sku ASC"
+);
+$varStmt->execute([$rootForVariants, $rootForVariants]);
+$variants = $varStmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -232,6 +245,33 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
                             <p id="descriptionText">
                                 <?= e($product['description']) ?>
                             </p>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Variants Section -->
+                    <?php if (count($variants) > 1): ?>
+                        <div class="product-variants-section">
+                            <h3>Variantes Disponibles (<?= count($variants) ?>)</h3>
+                            <div class="variant-strip">
+                                <?php foreach ($variants as $v):
+                                    $vCover = $v['cover_image_url'] ?: '';
+                                    if ($vCover && !str_starts_with($vCover, '[VIDEO]')) {
+                                        $vCover = preg_replace('/=s\d+$/', '=s150', $vCover);
+                                    }
+                                    $isActive = ($v['sku'] === $product['sku']);
+                                ?>
+                                    <a href="/producto/<?= urlencode($v['sku']) ?>" 
+                                       class="variant-chip-link <?= $isActive ? 'active' : '' ?>" 
+                                       title="<?= e($v['sku']) ?> - <?= e($v['name']) ?>">
+                                        <?php if ($vCover): ?>
+                                            <img src="<?= e($vCover) ?>" alt="<?= e($v['sku']) ?>" loading="lazy">
+                                        <?php else: ?>
+                                            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📷</div>
+                                        <?php endif; ?>
+                                        <div class="variant-sku-pop"><?= e($v['sku']) ?></div>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     <?php endif; ?>
 
