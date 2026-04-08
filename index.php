@@ -362,17 +362,30 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
 
     if ($token && $folderId) {
         // 1) Buscar por el SKU raíz (trae padre + todos los hijos)
-        $files = $drive->findBySku($folderId, $rootSku);
+        $rootFiles = $drive->findBySku($folderId, $rootSku);
 
-        // 2) Si el input es diferente al root (es un hijo), también buscar específicamente por el input
+        // 2) Si el input es diferente al root (es un hijo/variante)
         if ($sku !== $rootSku) {
+            // Filtrar rootFiles para dejar SOLO los que son del padre exacto
+            // (evita que el hijo A vea archivos del hijo B)
+            $parentOnlyFiles = array_filter($rootFiles, function ($f) use ($rootSku) {
+                return isGenericMediaForSku($rootSku, $f['name']);
+            });
+
+            // Buscar específicamente los del hijo
             $childFiles = $drive->findBySku($folderId, $sku);
-            $existingIds = array_column($files, 'id');
-            foreach ($childFiles as $cf) {
-                if (!in_array($cf['id'], $existingIds)) {
-                    $files[] = $cf;
+
+            // Combinar: primero los del hijo, luego los genéricos del padre
+            $existingIds = array_column($childFiles, 'id');
+            $files = $childFiles;
+            foreach ($parentOnlyFiles as $pf) {
+                if (!in_array($pf['id'], $existingIds)) {
+                    $files[] = $pf;
                 }
             }
+        } else {
+            // Si es el padre, mostrar todo lo que trajo el search (padre + todos los hijos)
+            $files = $rootFiles;
         }
 
         // Hacer públicos todos los archivos en PARALELO

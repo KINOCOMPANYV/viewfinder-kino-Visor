@@ -103,6 +103,13 @@ foreach ($products as $prod) {
     }
 }
 
+// Ordenar el índice por longitud de SKU descendente
+// Esto garantiza que el match más específico (más largo) gane sobre prefijos cortos.
+// Ej: "839-5V1" debe matchear antes que "839-5".
+uksort($productIndex, function ($a, $b) {
+    return strlen($b) - strlen($a);
+});
+
 // ============================================================
 // 2) Obtener todos los álbumes (carpetas de primer nivel)
 // ============================================================

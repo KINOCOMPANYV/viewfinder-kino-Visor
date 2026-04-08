@@ -125,10 +125,20 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
         $exists = $db->prepare("SELECT id FROM products WHERE sku = ?");
         $exists->execute([$sku]);
 
+    // Calcular SKU raíz (padre) si es una variante
+    $rootSku = extractRootSku($sku);
+    $parentSku = ($rootSku !== $sku) ? $rootSku : null;
+
+    try {
+        // Verificar si existe
+        $exists = $db->prepare("SELECT id FROM products WHERE sku = ?");
+        $exists->execute([$sku]);
+
         if ($exists->fetch()) {
             // UPDATE
             $stmt = $db->prepare(
                 "UPDATE products SET 
+                    parent_sku = ?,
                     name = COALESCE(NULLIF(?, ''), name),
                     category = COALESCE(NULLIF(?, ''), category),
                     gender = ?,
@@ -143,6 +153,7 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
                  WHERE sku = ?"
             );
             $stmt->execute([
+                $parentSku,
                 $data['name'] ?? '',
                 $data['category'] ?? '',
                 $gender,
@@ -160,11 +171,12 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
         } else {
             // INSERT
             $stmt = $db->prepare(
-                "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url, sheet_row) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO products (sku, parent_sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url, sheet_row) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $stmt->execute([
                 $sku,
+                $parentSku,
                 $data['name'] ?? $sku,
                 $data['category'] ?? '',
                 $gender,

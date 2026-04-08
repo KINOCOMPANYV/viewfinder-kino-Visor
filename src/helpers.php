@@ -209,37 +209,52 @@ function skuMatchesFilename(string $sku, string $filename): bool
 function extractRootSku(string $code): string
 {
     $code = trim($code);
+    $current = $code;
 
     // 1. Manejar sufijos alfanuméricos pegados al final de un dígito
-    //    SOLO si termina en letras puras (sin dígito final)
     //    Ej: "839-5V1" → "839-5", "1234-12v3" → "1234-12", "ABC-1F1" → "ABC-1"
-    //    NO toca: "839-5" (termina en dígito), "839-10" (termina en dígito)
-    if (preg_match('/^(.+?\d+)[a-zA-Z][a-zA-Z0-9]*$/i', $code, $matches)) {
-        // Solo aplicar si el sufijo capturado empieza con letra (variante pegada)
+    if (preg_match('/^(.+?\d+)[a-zA-Z][a-zA-Z0-9]*$/i', $current, $matches)) {
         $candidate = $matches[1];
-        // Verificar que candidate acaba en dígito (es el código base real)
         if (preg_match('/\d$/', $candidate)) {
-            $code = $candidate;
+            $current = $candidate;
         }
     }
 
     // 2. Manejar variantes separadas por guion: solo colapsar si el sufijo es
     //    EXCLUSIVAMENTE letras (ROJO, A, B, GOLD, etc.).
-    //    NO colapsar si el sufijo tiene dígitos (son referencias distintas).
-    $lastDash = strrpos($code, '-');
+    $lastDash = strrpos($current, '-');
     if ($lastDash !== false) {
-        $prefix = substr($code, 0, $lastDash);
-        $suffix = substr($code, $lastDash + 1);
+        $prefix = substr($current, 0, $lastDash);
+        $suffix = substr($current, $lastDash + 1);
 
-        // Solo es "variante" si el sufijo es SOLO letras (y al menos 1 char, máx 6)
-        // Ejemplos válidos: A, B, ROJO, GOLD, AZUL, BLK
-        // Ejemplos NO válidos: 5, 10, V1, F2, 12RG (contienen dígitos)
         if (strlen($suffix) >= 1 && strlen($suffix) <= 6 && ctype_alpha($suffix)) {
-            return $prefix;
+            $current = $prefix;
         }
     }
 
-    return $code;
+    // Si hubo cambios, intentar recursividad (para casos como NO2218G-B -> NO2218G -> NO2218)
+    if ($current !== $code) {
+        return extractRootSku($current);
+    }
+
+    return $current;
+}
+
+/**
+ * Verifica si un nombre de archivo es la portada GENÉRICA del código.
+ * (Ej: archivo "839-5.jpg" es genérica para "839-5", pero "839-5-1.jpg" es específica).
+ * 
+ * Se usa para filtrar que un hijo NO vea las fotos de sus hermanos.
+ */
+function isGenericMediaForSku(string $sku, string $filename): bool
+{
+    $nameOnly = strtolower(pathinfo($filename, PATHINFO_FILENAME));
+    $skuLower = strtolower($sku);
+    
+    // Quitar sufijos de duplicados de Drive " (1)", " (2)", etc.
+    $nameOnly = preg_replace('/\s*\(\d+\)$/', '', $nameOnly);
+    
+    return $nameOnly === $skuLower;
 }
 
 /**
