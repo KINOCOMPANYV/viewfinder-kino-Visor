@@ -75,7 +75,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url, parent_sku
          FROM products WHERE $where
          ORDER BY name ASC"
     );
@@ -102,7 +102,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url 
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url, parent_sku 
          FROM products 
          WHERE archived = 0 AND ($whereOr)
          GROUP BY sku
@@ -139,7 +139,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url 
+        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
          FROM products p
          LEFT JOIN albums a ON p.album_id = a.drive_id
          WHERE $whereSimple
@@ -182,11 +182,10 @@ if (!$isMultiCode && $q !== '') {
     $matchedFolders = array_values($folderMap);
 }
 
-// Identificar familias (parents) de todos los matches usando extractRootSku
+// Identificar familias (parents) de todos los matches usando parent_sku / extractRootSku
 $rootsFound = [];
 foreach ($allMatches as $m) {
-    $skuClean = preg_replace('/\.\w{2,4}$/i', '', $m['sku']);
-    $family = extractRootSku($skuClean);
+    $family = !empty($m['parent_sku']) ? $m['parent_sku'] : extractRootSku($m['sku']);
     $rootsFound[$family] = true;
 }
 $parentOrder = array_keys($rootsFound);
@@ -199,19 +198,21 @@ $pageRoots = array_slice($parentOrder, $offset, $perPage);
 // ── Cargar familias completas para mostrar tarjetas íntegras ──
 $grouped = [];
 if (!empty($pageRoots)) {
-    $whereOrConditions = [];
-    $fetchParams = [];
+    $placeholders = implode(',', array_fill(0, count($pageRoots), '?'));
+    $fetchParams = $pageRoots;
+    
+    // Buscar productos que tengan este parent_sku O cuyo extractRootSku coincida (fallback)
+    // Para el fallback en SQL usamos una aproximación: LIKE 'root%' 
+    $whereOrConditions = ["p.parent_sku IN ($placeholders)"];
     foreach ($pageRoots as $root) {
         $whereOrConditions[] = "(p.sku = ? OR p.sku LIKE ?)";
         $fetchParams[] = $root;
-        // Escape special chars for LIKE, assuming root doesn't have % or _, but safely:
-        $escapedRoot = addcslashes($root, '%_');
-        $fetchParams[] = $escapedRoot . '-%';
+        $fetchParams[] = addcslashes($root, '%_') . '-%';
     }
     $whereOr = implode(' OR ', $whereOrConditions);
     
     $stmt = $db->prepare(
-        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url 
+        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
          FROM products p
          WHERE {$whereOr}
          ORDER BY p.sku ASC"
@@ -220,14 +221,16 @@ if (!empty($pageRoots)) {
     $familyProducts = $stmt->fetchAll();
     
     foreach ($familyProducts as $p) {
-        $skuClean = preg_replace('/\.\w{2,4}$/i', '', $p['sku']);
-        $family = extractRootSku($skuClean);
+        $family = !empty($p['parent_sku']) ? $p['parent_sku'] : extractRootSku($p['sku']);
         
+        // Solo procesar si el producto pertenece a una de las familias de esta página
+        if (!in_array($family, $pageRoots)) continue;
+
         if (!isset($grouped[$family])) {
             $grouped[$family] = ['parent' => null, 'children' => []];
         }
         
-        // Asignar el nodo padre: idealmente es la coincidencia exacta de SKU
+        // Asignar el nodo padre: idealmente es la coincidencia exacta de SKU con la familia
         if (empty($grouped[$family]['parent']) || $p['sku'] === $family) {
             $grouped[$family]['parent'] = $p;
         }

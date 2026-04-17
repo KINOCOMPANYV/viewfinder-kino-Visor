@@ -209,35 +209,12 @@ function skuMatchesFilename(string $sku, string $filename): bool
 function extractRootSku(string $code): string
 {
     $code = trim($code);
-    $current = $code;
-
-    // 1. Manejar sufijos alfanuméricos pegados al final de un dígito
-    //    Ej: "839-5V1" → "839-5", "1234-12v3" → "1234-12", "ABC-1F1" → "ABC-1"
-    if (preg_match('/^(.+?\d+)[a-zA-Z][a-zA-Z0-9]*$/i', $current, $matches)) {
-        $candidate = $matches[1];
-        if (preg_match('/\d$/', $candidate)) {
-            $current = $candidate;
-        }
+    // Eliminar sufijo del tipo -XX o _XX (letras o números) al final del string
+    // Ej: "839_1" -> "839", "839-A" -> "839", "839-5" -> "839"
+    if (preg_match('/^(.+)([-_][a-zA-Z0-9]+)$/', $code, $matches)) {
+        return $matches[1];
     }
-
-    // 2. Manejar variantes separadas por guion: solo colapsar si el sufijo es
-    //    EXCLUSIVAMENTE letras (ROJO, A, B, GOLD, etc.).
-    $lastDash = strrpos($current, '-');
-    if ($lastDash !== false) {
-        $prefix = substr($current, 0, $lastDash);
-        $suffix = substr($current, $lastDash + 1);
-
-        if (strlen($suffix) >= 1 && strlen($suffix) <= 6 && ctype_alpha($suffix)) {
-            $current = $prefix;
-        }
-    }
-
-    // Si hubo cambios, intentar recursividad (para casos como NO2218G-B -> NO2218G -> NO2218)
-    if ($current !== $code) {
-        return extractRootSku($current);
-    }
-
-    return $current;
+    return $code;
 }
 
 /**
