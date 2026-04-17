@@ -2573,7 +2573,6 @@ textarea.form-input {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    order: -1;
 }
 
 /* Albums section (aparece dentro de search-main, entre buscador y productos) */
@@ -2640,18 +2639,15 @@ textarea.form-input {
 
 .sidebar-albums {
     display: flex;
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 0.75rem;
-    padding: 0.5rem 1rem 1rem;
+    flex-direction: column;
+    overflow-y: auto;
+    gap: 0.5rem;
+    padding: 1rem;
     scrollbar-width: thin;
     scrollbar-color: var(--color-surface-3) transparent;
-    -webkit-overflow-scrolling: touch;
 }
 
 .sidebar-albums::-webkit-scrollbar {
-    height: 6px;
     width: 6px;
 }
 .sidebar-albums::-webkit-scrollbar-track {
@@ -2666,16 +2662,13 @@ textarea.form-input {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
+    padding: 0.6rem 0.75rem;
     border-radius: var(--radius-sm);
     text-decoration: none;
     color: var(--color-text-muted);
     transition: all 0.2s;
     border: 1px solid var(--color-border);
     background: var(--color-surface-2);
-    flex-shrink: 0;
-    min-width: 140px;
-    max-width: 200px;
 }
 
 .sidebar-album-item:hover {

@@ -24,7 +24,7 @@ try {
 
     $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
     $sidebarStmt = $db->prepare(
-        "SELECT drive_id, name, icon_url FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC LIMIT 20"
+        "SELECT drive_id, name, icon_url FROM albums WHERE is_active = 1 ORDER BY CASE WHEN LOWER(name) LIKE '%poedagar%' THEN 0 ELSE 1 END, order_priority DESC, name ASC"
     );
     $sidebarStmt->execute();
     $sidebarAlbums = $sidebarStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -257,42 +257,6 @@ $pageRoots = array_slice($parentOrder, $offset, $perPage);
 
     <section class="container search-layout" style="padding-top:2rem;">
 
-        <!-- ===== SIDEBAR: Álbumes ===== -->
-        <?php if (!empty($sidebarAlbums)): ?>
-        <aside class="search-sidebar">
-            <div class="sidebar-header">
-                <span class="sidebar-title">📁 Álbumes</span>
-                <?php if ($albumId): ?>
-                    <a href="/buscar<?= $q ? '?q='.urlencode($q) : '' ?>" class="sidebar-clear" title="Quitar filtro">✕</a>
-                <?php endif; ?>
-            </div>
-            <div class="sidebar-albums" id="sidebarAlbums">
-                <?php foreach ($sidebarAlbums as $sa):
-                    $isActive = ($albumId === $sa['drive_id']);
-                    $href = '/buscar?' . http_build_query(array_filter(['q' => $q, 'album' => $sa['drive_id']]));
-                ?>
-                <a href="<?= $href ?>" class="sidebar-album-item<?= $isActive ? ' active' : '' ?>" title="<?= e($sa['name']) ?>">
-                    <div class="sidebar-album-thumb">
-                        <?php if ($sa['icon_url']): ?>
-                            <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
-                                 loading="lazy"
-                                 onerror="this.outerHTML='<span style=\'font-size:1.2rem;\'>📁</span>'">
-                        <?php else: ?>
-                            <span style="font-size:1.2rem;">📁</span>
-                        <?php endif; ?>
-                    </div>
-                    <span class="sidebar-album-name"><?= e($sa['name']) ?></span>
-                </a>
-                <?php endforeach; ?>
-            </div>
-            <?php if ($totalAlbums > 20): ?>
-            <a href="/buscar?<?= $q ? 'q='.urlencode($q).'&' : '' ?>ver_albums=1" class="sidebar-ver-mas">
-                Ver todos los álbumes (<?= $totalAlbums ?>)
-            </a>
-            <?php endif; ?>
-        </aside>
-        <?php endif; ?>
-
         <!-- ===== MAIN: Búsqueda + Resultados ===== -->
         <div class="search-main">
         <!-- Search bar inline -->
@@ -506,6 +470,61 @@ $pageRoots = array_slice($parentOrder, $offset, $perPage);
             </div>
         <?php endif; ?>
         </div> <!-- Fin de search-main -->
+
+        <!-- ===== SIDEBAR: Álbumes ===== -->
+        <?php if (!empty($sidebarAlbums)): ?>
+        <aside class="search-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">📁 Álbumes</span>
+                <?php if ($albumId): ?>
+                    <a href="/buscar<?= $q ? '?q='.urlencode($q) : '' ?>" class="sidebar-clear" title="Quitar filtro">✕</a>
+                <?php endif; ?>
+            </div>
+            <div class="sidebar-albums" id="sidebarAlbums">
+                <?php foreach ($sidebarAlbums as $idx => $sa):
+                    $isActive = ($albumId === $sa['drive_id']);
+                    $href = '/buscar?' . http_build_query(array_filter(['q' => $q, 'album' => $sa['drive_id']]));
+                    // Mostrar siempre si es el activo, o si es de los primeros 20. Si está activo no ocultarlo, para evitar confusiones.
+                    $hiddenClass = ($idx >= 20 && !$isActive) ? ' album-hidden' : '';
+                ?>
+                <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?><?= $isActive ? ' active' : '' ?>" title="<?= e($sa['name']) ?>">
+                    <div class="sidebar-album-thumb">
+                        <?php if ($sa['icon_url']): ?>
+                            <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
+                                 loading="lazy"
+                                 onerror="this.outerHTML='<span style=\'font-size:1.2rem;\'>📁</span>'">
+                        <?php else: ?>
+                            <span style="font-size:1.2rem;">📁</span>
+                        <?php endif; ?>
+                    </div>
+                    <span class="sidebar-album-name"><?= e($sa['name']) ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <?php if ($totalAlbums > 20): ?>
+            <button class="sidebar-ver-mas" id="btnVerTodas" onclick="toggleAllAlbums()">
+                📂 Ver todas las carpetas (<?= $totalAlbums ?>)
+            </button>
+            <script>
+            function toggleAllAlbums() {
+                const btn = document.getElementById('btnVerTodas');
+                const hidden = document.querySelectorAll('.album-hidden');
+                const showing = hidden.length > 0 && hidden[0].style.display !== 'none';
+                
+                if (!showing && hidden[0] && hidden[0].style.display !== 'flex') {
+                    // Mostrar todas
+                    hidden.forEach(el => { el.style.display = 'flex'; el.classList.add('album-revealed'); });
+                    btn.innerHTML = '📁 Mostrar solo las principales';
+                } else {
+                    // Ocultar extras
+                    hidden.forEach(el => { el.style.display = ''; el.classList.remove('album-revealed'); });
+                    btn.innerHTML = '📂 Ver todas las carpetas (<?= $totalAlbums ?>)';
+                }
+            }
+            </script>
+            <?php endif; ?>
+        </aside>
+        <?php endif; ?>
     </section>
 
     <footer class="footer">
