@@ -123,27 +123,27 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
 $variants = [];
 $rootForVariants = !empty($product['parent_sku']) ? $product['parent_sku'] : extractRootSku($product['sku']);
 
-// Verificación de resiliencia: si la columna aún no existe (migración pendiente), evitar error fatal
-$hasParentSku = false;
+// Buscar siempre con las 3 condiciones combinadas:
+// 1) parent_sku = root  (cuando la BD está populada con parent_sku)
+// 2) sku = root         (el producto padre exacto)
+// 3) sku LIKE root-%    (los hijos por patrón de SKU)
+// Esto funciona tanto si parent_sku está poblado como si no.
 try {
-    $checkCol = $db->query("SHOW COLUMNS FROM products LIKE 'parent_sku'")->fetch();
-    if ($checkCol) $hasParentSku = true;
-} catch (Exception $e) {}
-
-if ($hasParentSku) {
     $varStmt = $db->prepare(
         "SELECT id, sku, name, cover_image_url 
          FROM products 
-         WHERE (sku = ? OR parent_sku = ?) AND archived = 0 
+         WHERE archived = 0
+           AND (parent_sku = ? OR sku = ? OR sku LIKE ?)
          ORDER BY sku ASC"
     );
-    $varStmt->execute([$rootForVariants, $rootForVariants]);
-} else {
-    // Fallback hasta que se ejecute la migración
+    $varStmt->execute([$rootForVariants, $rootForVariants, $rootForVariants . '-%']);
+} catch (\PDOException $e) {
+    // Fallback por si la columna parent_sku aún no existe
     $varStmt = $db->prepare(
         "SELECT id, sku, name, cover_image_url 
          FROM products 
-         WHERE (sku = ? OR sku LIKE ?) AND archived = 0 
+         WHERE archived = 0
+           AND (sku = ? OR sku LIKE ?)
          ORDER BY sku ASC"
     );
     $varStmt->execute([$rootForVariants, $rootForVariants . '-%']);
