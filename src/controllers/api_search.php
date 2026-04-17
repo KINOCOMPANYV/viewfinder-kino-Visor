@@ -17,7 +17,7 @@ $results = [];
 
 // 1) Match exacto de SKU
 $stmt = $db->prepare(
-    "SELECT sku, name, category, cover_image_url FROM products 
+    "SELECT sku, parent_sku, name, category, cover_image_url FROM products 
      WHERE archived = 0 AND sku = ? 
      LIMIT 1"
 );
@@ -26,14 +26,14 @@ $exact = $stmt->fetchAll();
 
 // 2) LIKE parcial (SKU, nombre o carpeta)
 $stmt = $db->prepare(
-    "SELECT p.sku, p.name, p.category, p.cover_image_url 
+    "SELECT p.sku, p.parent_sku, p.name, p.category, p.cover_image_url 
      FROM products p
      LEFT JOIN albums a ON p.album_id = a.drive_id
      WHERE p.archived = 0 
        AND (p.sku LIKE ? OR p.name LIKE ? OR a.name LIKE ?)
        AND p.sku != ?
      ORDER BY p.sku ASC 
-     LIMIT 10"
+     LIMIT 30"
 );
 $escaped = addcslashes($q, '%_');
 $like = "%{$escaped}%";
@@ -44,12 +44,18 @@ $partial = $stmt->fetchAll();
 
 $results = array_merge($exact, $partial);
 
-// Eliminar duplicados por SKU
+// Eliminar duplicados por Familia (parent_sku) en vez de SKU individual
 $seen = [];
 $unique = [];
 foreach ($results as $r) {
-    if (!isset($seen[$r['sku']])) {
-        $seen[$r['sku']] = true;
+    if (!empty($r['parent_sku'])) {
+        $family = $r['parent_sku'];
+    } else {
+        $family = preg_replace('/-[^-]+$/', '', $r['sku']); // fallback heredado
+    }
+    
+    if (!isset($seen[$family])) {
+        $seen[$family] = true;
         $unique[] = $r;
     }
 }
