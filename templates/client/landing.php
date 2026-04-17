@@ -80,62 +80,7 @@
             </div>
 
 
-        </div> <!-- /search-main -->
-
-        <!-- ===== Álbumes (Sidebar Derecho) ===== -->
-        <?php if (!empty($albums)): ?>
-        <aside class="search-sidebar">
-            <div class="sidebar-header">
-                <span class="sidebar-title">📁 Álbumes</span>
-                <span class="sidebar-album-count"><?= $totalAlbums ?></span>
-            </div>
-            <div class="sidebar-albums" id="sidebarAlbums">
-                <?php foreach ($albums as $idx => $sa):
-                    $href = '/buscar?album=' . urlencode($sa['drive_id']);
-                    $hiddenClass = $idx >= 20 ? ' album-hidden' : '';
-                ?>
-                <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?>" title="<?= e($sa['name']) ?>">
-                    <div class="sidebar-album-thumb">
-                        <?php if ($sa['icon_url']): ?>
-                            <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
-                                 loading="lazy"
-                                 onerror="this.outerHTML='<span style=\'font-size:1.2rem;\'>📁</span>'">
-                        <?php else: ?>
-                            <span style="font-size:1.2rem;">📁</span>
-                        <?php endif; ?>
-                    </div>
-                    <span class="sidebar-album-name"><?= e($sa['name']) ?></span>
-                </a>
-                <?php endforeach; ?>
-            </div>
-            <?php if ($totalAlbums > 20): ?>
-            <button class="sidebar-ver-mas" id="btnVerTodas" onclick="toggleAllAlbums()">
-                📂 Ver todas las carpetas (<?= $totalAlbums ?>)
-            </button>
-            <script>
-            function toggleAllAlbums() {
-                const btn = document.getElementById('btnVerTodas');
-                const hidden = document.querySelectorAll('.album-hidden');
-                const showing = hidden.length > 0 && hidden[0].style.display !== 'none';
-                
-                if (!showing && hidden[0] && hidden[0].style.display !== 'flex') {
-                    // Mostrar todas
-                    hidden.forEach(el => { el.style.display = 'flex'; el.classList.add('album-revealed'); });
-                    btn.innerHTML = '📁 Mostrar solo las principales';
-                } else {
-                    // Ocultar extras
-                    hidden.forEach(el => { el.style.display = ''; el.classList.remove('album-revealed'); });
-                    btn.innerHTML = '📂 Ver todas las carpetas (<?= $totalAlbums ?>)';
-                }
-            }
-            </script>
-            <?php endif; ?>
-        </aside>
-        <?php endif; ?>
-    </section>
-
-    <!-- Recent / Featured Products -->
-    <section class="container">
+        <!-- Recent / Featured Products -->
         <?php
         $perPage = 10;
         $currentPage = max(1, intval($_GET['page'] ?? 1));
@@ -398,6 +343,58 @@
                 <h3>Aún no hay productos</h3>
                 <p>El catálogo está vacío. El administrador puede importar productos desde Excel.</p>
             </div>
+        <?php endif; ?>
+        </div> <!-- Fin de search-main -->
+
+        <!-- ===== Álbumes (Sidebar Derecho) ===== -->
+        <?php if (!empty($albums)): ?>
+        <aside class="search-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">📁 Álbumes</span>
+                <span class="sidebar-album-count"><?= $totalAlbums ?></span>
+            </div>
+            <div class="sidebar-albums" id="sidebarAlbums">
+                <?php foreach ($albums as $idx => $sa):
+                    $href = '/buscar?album=' . urlencode($sa['drive_id']);
+                    $hiddenClass = $idx >= 20 ? ' album-hidden' : '';
+                ?>
+                <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?>" title="<?= e($sa['name']) ?>">
+                    <div class="sidebar-album-thumb">
+                        <?php if ($sa['icon_url']): ?>
+                            <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
+                                 loading="lazy"
+                                 onerror="this.outerHTML='<span style=\'font-size:1.2rem;\'>📁</span>'">
+                        <?php else: ?>
+                            <span style="font-size:1.2rem;">📁</span>
+                        <?php endif; ?>
+                    </div>
+                    <span class="sidebar-album-name"><?= e($sa['name']) ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <?php if ($totalAlbums > 20): ?>
+            <button class="sidebar-ver-mas" id="btnVerTodas" onclick="toggleAllAlbums()">
+                📂 Ver todas las carpetas (<?= $totalAlbums ?>)
+            </button>
+            <script>
+            function toggleAllAlbums() {
+                const btn = document.getElementById('btnVerTodas');
+                const hidden = document.querySelectorAll('.album-hidden');
+                const showing = hidden.length > 0 && hidden[0].style.display !== 'none';
+                
+                if (!showing && hidden[0] && hidden[0].style.display !== 'flex') {
+                    // Mostrar todas
+                    hidden.forEach(el => { el.style.display = 'flex'; el.classList.add('album-revealed'); });
+                    btn.innerHTML = '📁 Mostrar solo las principales';
+                } else {
+                    // Ocultar extras
+                    hidden.forEach(el => { el.style.display = ''; el.classList.remove('album-revealed'); });
+                    btn.innerHTML = '📂 Ver todas las carpetas (<?= $totalAlbums ?>)';
+                }
+            }
+            </script>
+            <?php endif; ?>
+        </aside>
         <?php endif; ?>
     </section>
 
