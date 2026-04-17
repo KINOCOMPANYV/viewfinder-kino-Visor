@@ -2573,6 +2573,7 @@ textarea.form-input {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
+    order: -1;
 }
 
 /* Albums section (aparece dentro de search-main, entre buscador y productos) */
