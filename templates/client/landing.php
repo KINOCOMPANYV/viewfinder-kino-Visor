@@ -47,15 +47,16 @@
     <!-- Layotu Principal a Dos Columnas -->
     <section class="container search-layout" style="padding-top:2rem;">
         <?php
-        $db = getDB();
+        $db = null;
         $albums = [];
         $totalAlbums = 0;
         try {
+            $db = getDB();
             $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
             // Poedagar siempre primero, luego por prioridad y nombre
             $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY CASE WHEN LOWER(name) LIKE '%poedagar%' THEN 0 ELSE 1 END, order_priority DESC, name ASC")->fetchAll();
         } catch (\PDOException $e) {
-            // tabla albums aún no existe
+            // tabla albums aún no existe o DB apagada
         }
         ?>
         <!-- ===== MAIN: Hero (Search) ===== -->
@@ -134,52 +135,60 @@
     <!-- Recent / Featured Products -->
     <section class="container">
         <?php
-        $db = getDB();
         $perPage = 10;
         $currentPage = max(1, intval($_GET['page'] ?? 1));
-
-        // Check if sheet_row column exists (migration may not have run yet)
-        $hasSheetRow = false;
-        try {
-            $db->query("SELECT sheet_row FROM products LIMIT 1");
-            $hasSheetRow = true;
-        } catch (\PDOException $e) {
-            // column doesn't exist yet
-        }
-
-        $orderCol = $hasSheetRow ? 'sheet_row' : 'id';
         
-        // ── FASE 1: Cargar minimal data para paginación ──
-        // Priorizar productos del álbum Poedagar
-        $poedagarAlbumId = '';
+        $db = null;
+        $pageRoots = [];
+        $totalParents = 0;
+        $totalPages = 1;
+        $grouped = [];
+
         try {
-            $poedagarRow = $db->query("SELECT drive_id FROM albums WHERE LOWER(name) LIKE '%poedagar%' AND is_active = 1 LIMIT 1")->fetch();
-            if ($poedagarRow) $poedagarAlbumId = $poedagarRow['drive_id'];
-        } catch (\PDOException $e) {}
+            $db = getDB();
+            
+            // Check if sheet_row column exists (migration may not have run yet)
+            $hasSheetRow = false;
+            try {
+                $db->query("SELECT sheet_row FROM products LIMIT 1");
+                $hasSheetRow = true;
+            } catch (\PDOException $e) {
+                // column doesn't exist yet
+            }
 
-        $albumCol = '';
-        try {
-            $db->query("SELECT album_id FROM products LIMIT 1");
-            $albumCol = 'album_id';
-        } catch (\PDOException $e) {}
+            $orderCol = $hasSheetRow ? 'sheet_row' : 'id';
+            
+            // ── FASE 1: Cargar minimal data para paginación ──
+            // Priorizar productos del álbum Poedagar
+            $poedagarAlbumId = '';
+            try {
+                $poedagarRow = $db->query("SELECT drive_id FROM albums WHERE LOWER(name) LIKE '%poedagar%' AND is_active = 1 LIMIT 1")->fetch();
+                if ($poedagarRow) $poedagarAlbumId = $poedagarRow['drive_id'];
+            } catch (\PDOException $e) {}
 
-        $orderClause = $albumCol && $poedagarAlbumId
-            ? "ORDER BY CASE WHEN album_id = " . $db->quote($poedagarAlbumId) . " THEN 0 ELSE 1 END, {$orderCol} DESC"
-            : "ORDER BY {$orderCol} DESC";
+            $albumCol = '';
+            try {
+                $db->query("SELECT album_id FROM products LIMIT 1");
+                $albumCol = 'album_id';
+            } catch (\PDOException $e) {}
 
-        $skuRows = $db->query(
-            "SELECT sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
-             FROM products 
-             WHERE archived = 0 
-             {$orderClause}"
-        )->fetchAll();
+            $orderClause = $albumCol && $poedagarAlbumId
+                ? "ORDER BY CASE WHEN album_id = " . $db->quote($poedagarAlbumId) . " THEN 0 ELSE 1 END, {$orderCol} DESC"
+                : "ORDER BY {$orderCol} DESC";
 
-        // Agrupar SKUs por familia
-        $familyMap = [];      // family -> [skus]
-        $familyMaxRow = [];   // family -> max sheet_row
-        foreach ($skuRows as $rowIdx => $row) {
-            $skuClean = cleanSkuDisplay($row['sku']);
-            $family = extractRootSku($skuClean);
+            $skuRows = $db->query(
+                "SELECT sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
+                 FROM products 
+                 WHERE archived = 0 
+                 {$orderClause}"
+            )->fetchAll();
+
+            // Agrupar SKUs por familia
+            $familyMap = [];      // family -> [skus]
+            $familyMaxRow = [];   // family -> max sheet_row
+            foreach ($skuRows as $rowIdx => $row) {
+                $skuClean = cleanSkuDisplay($row['sku']);
+                $family = extractRootSku($skuClean);
             
             // Usar posición invertida para que Poedagar (que viene primero en la query) tenga el número más alto
             $effectiveRow = count($skuRows) - $rowIdx;
@@ -248,6 +257,9 @@
                     }
                 }
             }
+        }
+        } catch (\PDOException $e) {
+            // failed to connect to db or execute query
         }
 
         ?>

@@ -120,11 +120,6 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
     // Posición en la hoja de cálculo
     $sheetRow = intval($data['_sheet_row'] ?? 0);
 
-    try {
-        // Verificar si existe
-        $exists = $db->prepare("SELECT id FROM products WHERE sku = ?");
-        $exists->execute([$sku]);
-
     // Calcular SKU raíz (padre) si es una variante
     $rootSku = extractRootSku($sku);
     $parentSku = ($rootSku !== $sku) ? $rootSku : null;

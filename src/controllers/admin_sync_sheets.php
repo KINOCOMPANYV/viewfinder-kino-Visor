@@ -126,8 +126,12 @@ for ($i = 1; $i < count($lines); $i++) {
         $coverUrl = normalizeDriveUrl($data['cover_image_url']);
     }
 
+    $rootSku = extractRootSku($sku);
+    $parentSku = ($rootSku !== $sku) ? $rootSku : null;
+
     $rowData = [
         'sku' => $sku,
+        'parent_sku' => $parentSku,
         'name' => $data['name'] ?? $sku,
         'category' => $data['category'] ?? '',
         'gender' => $gender,
@@ -217,8 +221,9 @@ if (!empty($rowsToUpsert)) {
             $placeholders = [];
             $params = [];
             foreach ($chunk as $row) {
-                $placeholders[] = '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                $placeholders[] = '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
                 $params[] = $row['sku'];
+                $params[] = $row['parent_sku'];
                 $params[] = $row['name'];
                 $params[] = $row['category'];
                 $params[] = $row['gender'];
@@ -232,9 +237,10 @@ if (!empty($rowsToUpsert)) {
                 $params[] = $row['_hash'];
             }
 
-            $sql = "INSERT INTO products (sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url, sheet_row, sheet_hash) 
+            $sql = "INSERT INTO products (sku, parent_sku, name, category, gender, movement, price_suggested, status, archived, description, cover_image_url, sheet_row, sheet_hash) 
                     VALUES " . implode(', ', $placeholders) . "
                     ON DUPLICATE KEY UPDATE 
+                        parent_sku = VALUES(parent_sku),
                         name = COALESCE(NULLIF(VALUES(name), ''), name),
                         category = COALESCE(NULLIF(VALUES(category), ''), category),
                         gender = VALUES(gender),
