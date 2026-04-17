@@ -583,6 +583,27 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // extractCoverFromFiles() ahora definida en src/helpers.php
 
+// ============================================================
+// WEBHOOK: Google Sheets → sincronización incremental automática
+// POST /api/webhook/sheets   Header: X-Webhook-Secret: VALOR
+// ============================================================
+
+if ($uri === '/api/webhook/sheets' && $method === 'POST') {
+    session_write_close();
+    include __DIR__ . '/src/controllers/webhook_sheets.php';
+    exit;
+}
+
+// ============================================================
+// CRON: Pre-caché Drive — calienta media_search_cache
+// GET /api/cron/precache-drive?token=CRON_SECRET
+// ============================================================
+
+if ($uri === '/api/cron/precache-drive') {
+    session_write_close();
+    include __DIR__ . '/src/controllers/api_precache_drive.php';
+    exit;
+}
 
 // ============================================================
 // HEALTH CHECK

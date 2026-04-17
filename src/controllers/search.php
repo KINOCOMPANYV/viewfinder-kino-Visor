@@ -406,7 +406,28 @@ if (!empty($pageRoots)) {
                 </button>
             </div>
 
-            <div class="parent-grid">
+            <?php
+            // Recopilar categorías únicas del resultado actual para los chips de filtro
+            $filterCategories = [];
+            foreach ($grouped as $grp) {
+                $cat = strtolower(trim($grp['parent']['category'] ?? ''));
+                if ($cat !== '' && !in_array($cat, $filterCategories)) {
+                    $filterCategories[] = $cat;
+                }
+            }
+            sort($filterCategories);
+            ?>
+            <?php if (count($filterCategories) >= 2): ?>
+            <!-- Filtros de categoría — client-side, sin recarga de página -->
+            <div class="cat-filter-bar" id="catFilterBar">
+                <button class="cat-chip active" data-cat="" id="catChipAll">Todas</button>
+                <?php foreach ($filterCategories as $cat): ?>
+                    <button class="cat-chip" data-cat="<?= e($cat) ?>"><?= e(ucfirst($cat)) ?></button>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <div class="parent-grid" id="productGrid">
                 <?php $cardIndex = 0; ?>
                 <?php foreach ($pageRoots as $root):
                     $group = $grouped[$root];
@@ -417,7 +438,7 @@ if (!empty($pageRoots)) {
                     $isVideo = str_starts_with($coverUrl, '[VIDEO]');
                     if ($isVideo) $coverUrl = substr($coverUrl, 7);
                 ?>
-                    <div class="parent-card search-selectable-card">
+                    <div class="parent-card search-selectable-card" data-category="<?= e(strtolower($p['category'] ?? '')) ?>">
                         <div style="text-decoration:none; color:inherit; display:block;">
                             <a href="/producto/<?= rawurlencode($p['sku']) ?>" class="dynamic-card-link" style="display:block;">
                                 <div class="card-image" data-sku="<?= e($p['sku']) ?>"
@@ -812,6 +833,7 @@ if (!empty($pageRoots)) {
         });
     </script>
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
+    <script src="/assets/js/category-filters.js?v=<?= APP_VERSION ?>"></script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
 </body>
 

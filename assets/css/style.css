@@ -2887,3 +2887,60 @@ textarea.form-input {
     }
 }
 
+/* ============================================================
+   Filtros de Categoría — chips client-side (Paso 3)
+   ============================================================ */
+
+@keyframes fadeInCard {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.cat-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    padding: 0.5rem 0;
+}
+
+.cat-chip {
+    padding: 0.35rem 0.9rem;
+    border-radius: 20px;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-surface-2, #1a1a25);
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+
+.cat-chip:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(201, 168, 76, 0.08);
+}
+
+.cat-chip.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #0a0a0f;
+    font-weight: 700;
+    box-shadow: 0 2px 12px rgba(201, 168, 76, 0.3);
+}
+
+@media (max-width: 640px) {
+    .cat-filter-bar {
+        gap: 0.4rem;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 0.4rem;
+        scrollbar-width: none;
+    }
+    .cat-filter-bar::-webkit-scrollbar { display: none; }
+    .cat-chip { flex-shrink: 0; font-size: 0.75rem; padding: 0.3rem 0.75rem; }
+}

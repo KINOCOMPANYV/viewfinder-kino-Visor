@@ -171,6 +171,7 @@ $variants = $varStmt->fetchAll();
     <?php endif; ?>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="/assets/css/product.css?v=<?= APP_VERSION ?>">
+    <link rel="stylesheet" href="/assets/css/gallery-slider.css?v=<?= APP_VERSION ?>">
 </head>
 
 <body>
@@ -1027,6 +1028,7 @@ $variants = $varStmt->fetchAll();
     </script>
 
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
+    <script src="/assets/js/gallery-slider.js?v=<?= APP_VERSION ?>"></script>
 </body>
 
 </html>

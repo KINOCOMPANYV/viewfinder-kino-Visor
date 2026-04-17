@@ -75,6 +75,12 @@
                             autocomplete="off" autofocus></textarea>
                         <button type="submit" class="search-btn">Buscar</button>
                     </form>
+                    <!-- Botón escáner QR -->
+                    <button type="button" id="btnQrScan" title="Escanear código QR"
+                        style="background:none;border:none;cursor:pointer;padding:0.4rem 0.5rem;color:var(--color-text-muted);font-size:1.3rem;line-height:1;flex-shrink:0;transition:color 0.2s;"
+                        onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-muted)'">
+                        📷
+                    </button>
                     <div class="autocomplete-dropdown" id="autocomplete"></div>
                 </div>
             </div>
@@ -941,6 +947,9 @@ KV-1003
 
     <!-- Autocomplete JS -->
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
+    <!-- QR Scanner (html5-qrcode CDN, solo carga bajo demanda en qr-scanner.js) -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+    <script src="/assets/js/qr-scanner.js?v=<?= APP_VERSION ?>" defer></script>
     <?php include __DIR__ . '/../partials/loading_overlay.php'; ?>
 </body>
 
