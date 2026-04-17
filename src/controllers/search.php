@@ -40,6 +40,21 @@ try {
 // Si no existe album_id, ignorar filtro por álbum
 if (!$hasAlbumId) $albumId = '';
 
+// Self-healing: asegurar que existe la columna parent_sku
+try {
+    $db->exec("ALTER TABLE products ADD COLUMN parent_sku VARCHAR(50) DEFAULT NULL");
+    $db->exec("CREATE INDEX idx_parent_sku ON products (parent_sku)");
+} catch (\PDOException $e) { /* Columna ya existe */ }
+
+// Verificar si parent_sku está disponible para usarla en SELECTs
+$hasParentSku = false;
+try {
+    $db->query("SELECT parent_sku FROM products LIMIT 1");
+    $hasParentSku = true;
+} catch (\PDOException $e) { /* columna no disponible */ }
+$selectParentSku = $hasParentSku ? ', parent_sku' : '';
+$selectPParentSku = $hasParentSku ? ', p.parent_sku' : '';
+
 // Detectar si es búsqueda multi-código (comas o saltos de línea)
 $isMultiCode = (strpos($q, ',') !== false || strpos($q, "\n") !== false || strpos($q, "\r") !== false);
 $multiCodes = [];
@@ -75,7 +90,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url, parent_sku
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url{$selectParentSku}
          FROM products WHERE $where
          ORDER BY name ASC"
     );
@@ -102,7 +117,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url, parent_sku 
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url{$selectParentSku} 
          FROM products 
          WHERE archived = 0 AND ($whereOr)
          GROUP BY sku
@@ -139,7 +154,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
+        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url{$selectPParentSku} 
          FROM products p
          LEFT JOIN albums a ON p.album_id = a.drive_id
          WHERE $whereSimple
