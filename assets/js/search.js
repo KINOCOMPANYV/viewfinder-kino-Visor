@@ -69,33 +69,70 @@
         }
 
         debounceTimer = setTimeout(() => {
-            fetch('/api/search?q=' + encodeURIComponent(q))
-                .then(r => r.json())
-                .then(data => {
-                    if (data.length === 0) {
+            const albumParam = albumFilter ? '&album=' + encodeURIComponent(albumFilter) : '';
+            
+            const resultsContainer = document.getElementById('searchResultsContainer');
+            if (resultsContainer) {
+                resultsContainer.style.opacity = '0.5';
+                fetch('/buscar?ajax=1&q=' + encodeURIComponent(q) + albumParam)
+                    .then(r => r.text())
+                    .then(html => {
+                        resultsContainer.innerHTML = html;
+                        resultsContainer.style.opacity = '1';
+                        
+                        // Hide dropdown
                         dropdown.classList.remove('active');
-                        return;
-                    }
-
-                    dropdown.innerHTML = data.map((p, i) => `
-                        <div class="autocomplete-item" data-sku="${p.sku}" data-index="${i}">
-                            <span class="sku-tag">${p.sku}</span>
-                            <span class="product-name">${p.name}</span>
-                        </div>
-                    `).join('');
-
-                    dropdown.classList.add('active');
-                    activeIndex = -1;
-
-                    // Click handlers
-                    dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
-                        item.addEventListener('click', () => {
-                            try { sessionStorage.setItem('lastSearch', window.location.href); } catch(e) {}
-                            window.location.href = '/producto/' + item.dataset.sku;
+                        dropdown.innerHTML = '';
+                        
+                        // Evaluate any inline scripts returned
+                        const scripts = resultsContainer.querySelectorAll('script');
+                        scripts.forEach(oldScript => {
+                            const newScript = document.createElement('script');
+                            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
                         });
+                        
+                        // Trigger global reinit if defined
+                        if (typeof window.initGridEvents === 'function') {
+                            window.initGridEvents();
+                        } else {
+                            // Re-trigger DOMContentLoaded so existing scripts bind to new elements safely
+                            document.dispatchEvent(new Event('DOMContentLoaded'));
+                        }
+                    })
+                    .catch(() => {
+                        resultsContainer.style.opacity = '1';
                     });
-                })
-                .catch(() => dropdown.classList.remove('active'));
+            } else {
+                // If container not found, do normal autocomplete dropdown
+                fetch('/api/search?q=' + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.length === 0) {
+                            dropdown.classList.remove('active');
+                            return;
+                        }
+
+                        dropdown.innerHTML = data.map((p, i) => `
+                            <div class="autocomplete-item" data-sku="${p.sku}" data-index="${i}">
+                                <span class="sku-tag">${p.sku}</span>
+                                <span class="product-name">${p.name}</span>
+                            </div>
+                        `).join('');
+
+                        dropdown.classList.add('active');
+                        activeIndex = -1;
+
+                        dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+                            item.addEventListener('click', () => {
+                                try { sessionStorage.setItem('lastSearch', window.location.href); } catch(e) {}
+                                window.location.href = '/producto/' + item.dataset.sku;
+                            });
+                        });
+                    })
+                    .catch(() => dropdown.classList.remove('active'));
+            }
         }, 300);
     });
 

@@ -18,28 +18,52 @@ $results = [];
 // 1) Match exacto de SKU
 $stmt = $db->prepare(
     "SELECT sku, name, category, cover_image_url, parent_sku FROM products 
-     WHERE archived = 0 AND sku = ? 
+     WHERE archived = 0 AND REPLACE(REPLACE(sku, '-', ''), ' ', '') = ? 
      LIMIT 1"
 );
-$stmt->execute([$qCleanForSku]);
+$exactMatchNoDash = str_replace(['-', ' '], '', $qCleanForSku);
+$stmt->execute([$exactMatchNoDash]);
 $exact = $stmt->fetchAll();
 
-// 2) LIKE parcial (SKU, nombre o carpeta)
+// 2) LIKE parcial (SKU, nombre o carpeta) multipalabra
+$words = array_filter(preg_split('/\s+/', trim($qCleanForSku)));
+$whereParts = [];
+$params = [];
+
+if (empty($words)) {
+    $whereParts[] = "1=1";
+} else {
+    foreach ($words as $word) {
+        $wordEscaped = addcslashes($word, '%_');
+        $wordLike = "%{$wordEscaped}%";
+        $wordNoDash = str_replace('-', '', $word);
+        $wordNoDashEscaped = addcslashes($wordNoDash, '%_');
+        $wordLikeNoDash = "%{$wordNoDashEscaped}%";
+
+        $whereParts[] = "(REPLACE(REPLACE(p.sku, '-', ''), ' ', '') LIKE ? OR p.name LIKE ? OR a.name LIKE ?)";
+        $params[] = $wordLikeNoDash;
+        $params[] = $wordLike;
+        $params[] = $wordLike;
+    }
+}
+$whereSql = implode(' AND ', $whereParts);
+$params[] = $qCleanForSku; // for p.sku != ?
+
 $stmt = $db->prepare(
     "SELECT p.sku, p.name, p.category, p.cover_image_url, p.parent_sku 
      FROM products p
      LEFT JOIN albums a ON p.album_id = a.drive_id
      WHERE p.archived = 0 
-       AND (p.sku LIKE ? OR p.name LIKE ? OR a.name LIKE ?)
-       AND p.sku != ?
+       AND ($whereSql)
+       AND REPLACE(REPLACE(p.sku, '-', ''), ' ', '') != ?
      ORDER BY p.sku ASC 
      LIMIT 30"
 );
-$escaped = addcslashes($q, '%_');
-$like = "%{$escaped}%";
-$escapedClean = addcslashes($qCleanForSku, '%_');
-$likeClean = "%{$escapedClean}%";
-$stmt->execute([$likeClean, $like, $like, $qCleanForSku]);
+// El último parametro es el qCleanForSku sin guiones para evitar duplicar el match exacto
+$exactMatchNoDash = str_replace(['-', ' '], '', $qCleanForSku);
+$params[count($params)-1] = $exactMatchNoDash;
+
+$stmt->execute($params);
 $partial = $stmt->fetchAll();
 
 $results = array_merge($exact, $partial);

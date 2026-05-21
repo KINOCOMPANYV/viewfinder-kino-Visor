@@ -87,6 +87,7 @@
 
 
         <!-- Recent / Featured Products -->
+        <div id="searchResultsContainer">
         <?php
         $perPage = 10;
         $currentPage = max(1, intval($_GET['page'] ?? 1));
@@ -350,6 +351,7 @@
                 <p>El catálogo está vacío. El administrador puede importar productos desde Excel.</p>
             </div>
         <?php endif; ?>
+        </div> <!-- Fin de searchResultsContainer -->
         </div> <!-- Fin de search-main -->
 
         <!-- ===== Álbumes (Sidebar Derecho) ===== -->

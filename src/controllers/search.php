@@ -4,6 +4,10 @@
  * Soporta búsqueda múltiple: SKUs separados por comas o saltos de línea.
  */
 $q = trim($_GET['q'] ?? '');
+$isAjax = isset($_GET['ajax']) && $_GET['ajax'] === '1';
+if ($isAjax) {
+    ob_start();
+}
 $albumId = trim($_GET['album'] ?? '');
 $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 20;
@@ -129,16 +133,34 @@ if ($q === '' && !$isMultiCode) {
     // Sin paginación para multi-código
     $perPage = max($total, 1);
 } else {
-    // Con query simple: buscar por LIKE extendido (+ albums)
+    // Con query simple: buscar por LIKE extendido (+ albums) y multipalabra
     $qCleanForSku = preg_replace('/\.\w{2,4}$/i', '', $q);
-    // Escapar caracteres especiales de SQL LIKE para evitar búsquedas incorrectas
-    $qEscaped = addcslashes($q, '%_');
-    $qCleanEscaped = addcslashes($qCleanForSku, '%_');
-    $likeSku = "%{$qCleanEscaped}%";
-    $like = "%{$qEscaped}%";
+    $words = array_filter(preg_split('/\s+/', trim($qCleanForSku)));
     
-    $whereSimple = "p.archived = 0 AND (p.sku LIKE ? OR p.name LIKE ? OR p.category LIKE ? OR a.name LIKE ?)";
-    $paramsBase = [$likeSku, $like, $like, $like];
+    $whereSimpleParts = [];
+    $paramsBase = [];
+    
+    if (empty($words)) {
+        $whereSimple = "p.archived = 0";
+    } else {
+        foreach ($words as $word) {
+            $wordEscaped = addcslashes($word, '%_');
+            $wordLike = "%{$wordEscaped}%";
+            
+            // Eliminar guiones para tolerancia en SKU
+            $wordNoDash = str_replace('-', '', $word);
+            $wordNoDashEscaped = addcslashes($wordNoDash, '%_');
+            $wordLikeNoDash = "%{$wordNoDashEscaped}%";
+
+            // Para cada palabra, buscar en los distintos campos
+            $whereSimpleParts[] = "(REPLACE(REPLACE(p.sku, '-', ''), ' ', '') LIKE ? OR p.name LIKE ? OR p.category LIKE ? OR a.name LIKE ?)";
+            $paramsBase[] = $wordLikeNoDash;
+            $paramsBase[] = $wordLike;
+            $paramsBase[] = $wordLike;
+            $paramsBase[] = $wordLike;
+        }
+        $whereSimple = "p.archived = 0 AND (" . implode(' AND ', $whereSimpleParts) . ")";
+    }
     
     if ($albumId) {
         $whereSimple .= " AND p.album_id = ?";
@@ -160,13 +182,16 @@ if ($q === '' && !$isMultiCode) {
          WHERE $whereSimple
          GROUP BY p.sku
          ORDER BY 
-            CASE WHEN p.sku = ? THEN 0
-                 WHEN p.sku LIKE ? THEN 1
+            CASE WHEN REPLACE(REPLACE(p.sku, '-', ''), ' ', '') = ? THEN 0
+                 WHEN REPLACE(REPLACE(p.sku, '-', ''), ' ', '') LIKE ? THEN 1
                  ELSE 2 END,
             p.name ASC"
     );
+    $qCleanEscaped = addcslashes(str_replace(['-', ' '], '', $qCleanForSku), '%_');
     $startsWith = "{$qCleanEscaped}%";
-    $finalParams = array_merge($paramsBase, [$qCleanForSku, $startsWith]);
+    $exactMatch = str_replace(['-', ' '], '', $qCleanForSku);
+    
+    $finalParams = array_merge($paramsBase, [$exactMatch, $startsWith]);
     $stmt->execute($finalParams);
     $allMatches = $stmt->fetchAll();
 }
@@ -327,6 +352,8 @@ if (!empty($pageRoots)) {
         </div>
 
         <!-- Results count -->
+        <div id="searchResultsContainer">
+            <?php if ($isAjax) ob_clean(); ?>
         <p style="color:var(--color-text-muted); font-size:0.9rem; margin-bottom:1rem;">
             <?php if ($isMultiCode): ?>
                 <?= $totalParents ?> resultado<?= $totalParents !== 1 ? 's' : '' ?> para <?= count($multiCodes) ?> código<?= count($multiCodes) !== 1 ? 's' : '' ?>
@@ -542,6 +569,8 @@ if (!empty($pageRoots)) {
                 </p>
             </div>
         <?php endif; ?>
+        <?php if ($isAjax) { echo ob_get_clean(); exit; } ?>
+        </div> <!-- Fin de searchResultsContainer -->
         </div> <!-- Fin de search-main -->
 
         <!-- ===== SIDEBAR: Álbumes ===== -->
