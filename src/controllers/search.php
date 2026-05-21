@@ -335,16 +335,16 @@ if (!empty($pageRoots)) {
     <section class="container search-layout" style="padding-top:2rem;">
 
         <!-- ===== MAIN: Búsqueda + Resultados ===== -->
-        <div class="search-main">
+        <div class="search-main" style="width: 100%; max-width: 100%;">
         <!-- Search bar inline -->
-        <div class="search-box" style="max-width:100%; margin-bottom:1.5rem;">
+        <div class="search-box" style="max-width:800px; margin: 0 auto 1.5rem auto;">
             <span class="search-icon">🔍</span>
-            <form action="/buscar" method="GET" id="searchForm">
+            <form action="/buscar" method="GET" id="searchForm" style="width:100%;">
                 <?php if ($albumId): ?>
                     <input type="hidden" name="album" value="<?= e($albumId) ?>">
                 <?php endif; ?>
                 <textarea name="q" id="searchInput" rows="1"
-                    placeholder="Buscar por SKU o nombre..."
+                    placeholder="Buscar por SKU, referencia o nombre..."
                     autocomplete="off"><?= e($q) ?></textarea>
                 <button type="submit" class="search-btn">Buscar</button>
             </form>
@@ -573,60 +573,6 @@ if (!empty($pageRoots)) {
         </div> <!-- Fin de searchResultsContainer -->
         </div> <!-- Fin de search-main -->
 
-        <!-- ===== SIDEBAR: Álbumes ===== -->
-        <?php if (!empty($sidebarAlbums)): ?>
-        <aside class="search-sidebar">
-            <div class="sidebar-header">
-                <span class="sidebar-title">📁 Álbumes</span>
-                <?php if ($albumId): ?>
-                    <a href="/buscar<?= $q ? '?q='.urlencode($q) : '' ?>" class="sidebar-clear" title="Quitar filtro">✕</a>
-                <?php endif; ?>
-            </div>
-            <div class="sidebar-albums" id="sidebarAlbums">
-                <?php foreach ($sidebarAlbums as $idx => $sa):
-                    $isActive = ($albumId === $sa['drive_id']);
-                    $href = '/buscar?' . http_build_query(array_filter(['q' => $q, 'album' => $sa['drive_id']]));
-                    // Mostrar siempre si es el activo, o si es de los primeros 20. Si está activo no ocultarlo, para evitar confusiones.
-                    $hiddenClass = ($idx >= 20 && !$isActive) ? ' album-hidden' : '';
-                ?>
-                <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?><?= $isActive ? ' active' : '' ?>" title="<?= e($sa['name']) ?>">
-                    <div class="sidebar-album-thumb">
-                        <?php if ($sa['icon_url']): ?>
-                            <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
-                                 loading="lazy"
-                                 onerror="this.outerHTML='<span style=\'font-size:1.2rem;\'>📁</span>'">
-                        <?php else: ?>
-                            <span style="font-size:1.2rem;">📁</span>
-                        <?php endif; ?>
-                    </div>
-                    <span class="sidebar-album-name"><?= e($sa['name']) ?></span>
-                </a>
-                <?php endforeach; ?>
-            </div>
-            <?php if ($totalAlbums > 20): ?>
-            <button class="sidebar-ver-mas" id="btnVerTodas" onclick="toggleAllAlbums()">
-                📂 Ver todas las carpetas (<?= $totalAlbums ?>)
-            </button>
-            <script>
-            function toggleAllAlbums() {
-                const btn = document.getElementById('btnVerTodas');
-                const hidden = document.querySelectorAll('.album-hidden');
-                const showing = hidden.length > 0 && hidden[0].style.display !== 'none';
-                
-                if (!showing && hidden[0] && hidden[0].style.display !== 'flex') {
-                    // Mostrar todas
-                    hidden.forEach(el => { el.style.display = 'flex'; el.classList.add('album-revealed'); });
-                    btn.innerHTML = '📁 Mostrar solo las principales';
-                } else {
-                    // Ocultar extras
-                    hidden.forEach(el => { el.style.display = ''; el.classList.remove('album-revealed'); });
-                    btn.innerHTML = '📂 Ver todas las carpetas (<?= $totalAlbums ?>)';
-                }
-            }
-            </script>
-            <?php endif; ?>
-        </aside>
-        <?php endif; ?>
     </section>
 
     <footer class="footer">
@@ -655,6 +601,12 @@ if (!empty($pageRoots)) {
                 btnSend.disabled = selected === 0;
                 selectAllCb.checked = selected === checks.length && checks.length > 0;
                 selectAllCb.indeterminate = selected > 0 && selected < checks.length;
+                
+                if (selected > 0) {
+                    waBar.classList.add('visible');
+                } else {
+                    waBar.classList.remove('visible');
+                }
             }
 
             checks.forEach(cb => cb.addEventListener('change', updateCount));

@@ -209,9 +209,9 @@ function skuMatchesFilename(string $sku, string $filename): bool
 function extractRootSku(string $code): string
 {
     $code = trim($code);
-    // Eliminar sufijo del tipo -XX o _XX (letras o números) al final del string
-    // Ej: "839_1" -> "839", "839-A" -> "839", "839-5" -> "839"
-    if (preg_match('/^(.+)([-_][a-zA-Z0-9]+)$/', $code, $matches)) {
+    // Eliminar sufijos que contengan al menos una letra (ej: -ROJO, -A, -V1).
+    // NO eliminar sufijos puramente numéricos (ej: -5, -10) porque suelen ser modelos distintos.
+    if (preg_match('/^(.+)[-_]([a-zA-Z0-9]*[a-zA-Z][a-zA-Z0-9]*)$/', $code, $matches)) {
         return $matches[1];
     }
     return $code;

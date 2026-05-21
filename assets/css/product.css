@@ -387,13 +387,14 @@
 }
 
 .main-image img {
-    cursor: pointer;
-    transition: transform 0.2s;
-    max-height: 500px;
+    cursor: zoom-in;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-height: 75vh;
     max-width: 100%;
     display: block;
     margin: 0 auto;
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .main-image img:hover {

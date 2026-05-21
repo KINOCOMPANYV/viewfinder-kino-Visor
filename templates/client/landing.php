@@ -60,18 +60,18 @@
         }
         ?>
         <!-- ===== MAIN: Hero (Search) ===== -->
-        <div class="search-main">
+        <div class="search-main" style="width: 100%; max-width: 100%;">
             <!-- Hero Integrado -->
-            <div class="hero" style="padding: 0 0 2.5rem; text-align: left;">
-                <h1 style="font-size: 2.5rem;">Centro de Contenido</h1>
-                <p style="margin: 0 0 1.5rem 0; font-size: 1rem;">Busca por referencia o SKU para acceder a fotos y videos.</p>
+            <div class="hero" style="padding: 2.5rem 0; text-align: center;">
+                <h1 style="font-size: 3rem; margin-bottom: 0.5rem; letter-spacing: -0.5px;">Centro de Contenido</h1>
+                <p style="margin: 0 0 2rem 0; font-size: 1.1rem; color: var(--color-text-muted);">Busca por referencia o SKU para acceder a fotos y videos de alta calidad.</p>
 
                 <!-- Search Box -->
-                <div class="search-box" style="max-width: 100%; margin: 0;">
+                <div class="search-box" style="max-width: 600px; margin: 0 auto;">
                     <span class="search-icon">🔍</span>
-                    <form action="/buscar" method="GET" id="searchForm">
+                    <form action="/buscar" method="GET" id="searchForm" style="width:100%;">
                         <textarea name="q" id="searchInput" rows="1"
-                            placeholder="Buscar por SKU o nombre..."
+                            placeholder="Buscar por SKU, referencia o nombre..."
                             autocomplete="off" autofocus></textarea>
                         <button type="submit" class="search-btn">Buscar</button>
                     </form>
@@ -84,6 +84,61 @@
                     <div class="autocomplete-dropdown" id="autocomplete"></div>
                 </div>
             </div>
+
+            <!-- ===== Álbumes (Tarjetas Horizontales) ===== -->
+            <?php if (!empty($albums)): ?>
+            <div style="margin-bottom: 3rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2 style="font-size: 1.5rem; margin:0;">Explorar Colecciones</h2>
+                    <span style="color:var(--color-text-muted); font-size:0.9rem;"><?= $totalAlbums ?> carpetas</span>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;" id="horizontalAlbums">
+                    <?php foreach ($albums as $idx => $sa):
+                        $href = '/buscar?album=' . urlencode($sa['drive_id']);
+                        $hiddenClass = $idx >= 10 ? ' album-hidden' : '';
+                    ?>
+                    <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?>" title="<?= e($sa['name']) ?>" style="background:var(--color-surface); padding:0.75rem; border-radius:var(--radius); border:1px solid var(--color-border); flex-direction:column; text-align:center; transition: transform 0.2s; <?php if($idx>=10) echo 'display:none;'; ?>">
+                        <div class="sidebar-album-thumb" style="width:60px; height:60px; margin:0 auto 0.75rem auto; border-radius:50%; background:var(--color-surface-2);">
+                            <?php if ($sa['icon_url']): ?>
+                                <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
+                                     loading="lazy"
+                                     style="width:100%; height:100%; object-fit:cover; border-radius:50%;"
+                                     onerror="this.outerHTML='<span style=\'font-size:1.8rem; line-height:60px;\'>📁</span>'">
+                            <?php else: ?>
+                                <span style="font-size:1.8rem; line-height:60px;">📁</span>
+                            <?php endif; ?>
+                        </div>
+                        <span class="sidebar-album-name" style="font-weight:600; font-size:0.95rem; text-wrap: balance;"><?= e($sa['name']) ?></span>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+                <?php if ($totalAlbums > 10): ?>
+                <div style="text-align:center; margin-top:1.5rem;">
+                    <button class="btn btn-secondary" id="btnVerTodas" onclick="toggleAllAlbums()">
+                        📂 Mostrar más colecciones
+                    </button>
+                </div>
+                <script>
+                function toggleAllAlbums() {
+                    const btn = document.getElementById('btnVerTodas');
+                    const hidden = document.querySelectorAll('.album-hidden');
+                    const showing = hidden.length > 0 && hidden[0].style.display !== 'none';
+                    
+                    if (!showing && hidden[0]) {
+                        // Mostrar todas
+                        hidden.forEach(el => { el.style.display = 'flex'; });
+                        btn.innerHTML = '📁 Mostrar solo principales';
+                    } else {
+                        // Ocultar extras
+                        hidden.forEach(el => { el.style.display = 'none'; });
+                        btn.innerHTML = '📂 Mostrar más colecciones';
+                    }
+                }
+                </script>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
 
 
         <!-- Recent / Featured Products -->
@@ -354,56 +409,7 @@
         </div> <!-- Fin de searchResultsContainer -->
         </div> <!-- Fin de search-main -->
 
-        <!-- ===== Álbumes (Sidebar Derecho) ===== -->
-        <?php if (!empty($albums)): ?>
-        <aside class="search-sidebar">
-            <div class="sidebar-header">
-                <span class="sidebar-title">📁 Álbumes</span>
-                <span class="sidebar-album-count"><?= $totalAlbums ?></span>
-            </div>
-            <div class="sidebar-albums" id="sidebarAlbums">
-                <?php foreach ($albums as $idx => $sa):
-                    $href = '/buscar?album=' . urlencode($sa['drive_id']);
-                    $hiddenClass = $idx >= 20 ? ' album-hidden' : '';
-                ?>
-                <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?>" title="<?= e($sa['name']) ?>">
-                    <div class="sidebar-album-thumb">
-                        <?php if ($sa['icon_url']): ?>
-                            <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
-                                 loading="lazy"
-                                 onerror="this.outerHTML='<span style=\'font-size:1.2rem;\'>📁</span>'">
-                        <?php else: ?>
-                            <span style="font-size:1.2rem;">📁</span>
-                        <?php endif; ?>
-                    </div>
-                    <span class="sidebar-album-name"><?= e($sa['name']) ?></span>
-                </a>
-                <?php endforeach; ?>
-            </div>
-            <?php if ($totalAlbums > 20): ?>
-            <button class="sidebar-ver-mas" id="btnVerTodas" onclick="toggleAllAlbums()">
-                📂 Ver todas las carpetas (<?= $totalAlbums ?>)
-            </button>
-            <script>
-            function toggleAllAlbums() {
-                const btn = document.getElementById('btnVerTodas');
-                const hidden = document.querySelectorAll('.album-hidden');
-                const showing = hidden.length > 0 && hidden[0].style.display !== 'none';
-                
-                if (!showing && hidden[0] && hidden[0].style.display !== 'flex') {
-                    // Mostrar todas
-                    hidden.forEach(el => { el.style.display = 'flex'; el.classList.add('album-revealed'); });
-                    btn.innerHTML = '📁 Mostrar solo las principales';
-                } else {
-                    // Ocultar extras
-                    hidden.forEach(el => { el.style.display = ''; el.classList.remove('album-revealed'); });
-                    btn.innerHTML = '📂 Ver todas las carpetas (<?= $totalAlbums ?>)';
-                }
-            }
-            </script>
-            <?php endif; ?>
-        </aside>
-        <?php endif; ?>
+        <!-- Fin de Álbumes extraídos -->
     </section>
 
     <!-- Footer -->
