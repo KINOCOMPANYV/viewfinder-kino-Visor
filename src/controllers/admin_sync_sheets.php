@@ -20,6 +20,9 @@ if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
 
 require_once __DIR__ . '/../import_helpers.php';
 
+// Modo vista previa: calcula el impacto sin escribir en la BD ni en Drive
+$dryRun = (($_GET['dry_run'] ?? '') === '1');
+
 $sheetId = env('GOOGLE_SHEET_ID', '');
 if (empty($sheetId)) {
     jsonResponse(['error' => 'Variable GOOGLE_SHEET_ID no configurada en Railway.'], 400);
@@ -214,7 +217,7 @@ foreach ($batchRows as $row) {
 // ============================================================
 // PASO 3: Batch UPSERT solo las filas que cambiaron
 // ============================================================
-if (!empty($rowsToUpsert)) {
+if (!$dryRun && !empty($rowsToUpsert)) {
     $db->beginTransaction();
     try {
         foreach (array_chunk($rowsToUpsert, $chunkSize) as $chunk) {
@@ -266,17 +269,20 @@ if (!empty($rowsToUpsert)) {
 // PASO 4: Detectar eliminados — SKUs en DB que NO están en Sheet → archivar
 // ============================================================
 $archivedFromSheet = 0;
+$removedSkus = [];
 if (!empty($sheetSkus)) {
     $allDbSkus = $db->query("SELECT sku FROM products WHERE archived = 0")->fetchAll(PDO::FETCH_COLUMN);
     $removedSkus = array_diff($allDbSkus, $sheetSkus);
 
-    if (!empty($removedSkus)) {
+    if (!$dryRun && !empty($removedSkus)) {
         foreach (array_chunk($removedSkus, 500) as $chunk) {
             $ph = implode(',', array_fill(0, count($chunk), '?'));
             $db->prepare("UPDATE products SET archived = 1, updated_at = NOW() WHERE sku IN ($ph) AND archived = 0")
                 ->execute($chunk);
             $archivedFromSheet += count($chunk);
         }
+    } elseif ($dryRun) {
+        $archivedFromSheet = count($removedSkus);
     }
 }
 
@@ -286,7 +292,7 @@ if (!empty($sheetSkus)) {
 $coversDriveAssigned = 0;
 $coverErrors = '';
 
-if (!$hasCoverColumn) {
+if (!$dryRun && !$hasCoverColumn) {
     try {
         set_time_limit(300);
         require_once __DIR__ . '/../services/GoogleDriveService.php';
@@ -375,10 +381,12 @@ if (!$hasCoverColumn) {
 // ============================================================
 jsonResponse([
     'success' => true,
+    'dry_run' => $dryRun,
     'inserted' => $inserted,
     'updated' => $updated,
     'unchanged' => $unchanged,
     'archived_from_sheet' => $archivedFromSheet,
+    'archived_skus_preview' => array_slice(array_values($removedSkus), 0, 30),
     'duplicates_in_sheet' => $totalDuplicates,
     'covers_from_sheets' => $coversUpdated,
     'covers_from_drive' => $coversDriveAssigned,
@@ -387,7 +395,7 @@ jsonResponse([
     'total' => $totalRows,
     'cover_errors' => $coverErrors,
     'duplicate_skus' => array_keys($duplicateSkus),
-    'message' => buildMessage($inserted, $updated, $unchanged, $archivedFromSheet, $totalDuplicates, $coversUpdated, $coversDriveAssigned, $hasCoverColumn),
+    'message' => ($dryRun ? '👁️ VISTA PREVIA (nada se guardó) — ' : '') . buildMessage($inserted, $updated, $unchanged, $archivedFromSheet, $totalDuplicates, $coversUpdated, $coversDriveAssigned, $hasCoverColumn),
 ]);
 
 // ============================================================

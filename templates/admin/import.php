@@ -70,6 +70,10 @@ unset($_SESSION['auto_assign_covers']);
                         </p>
                     </div>
                 </div>
+                <label style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.85rem; font-size:0.85rem; color:var(--color-text-muted); cursor:pointer;">
+                    <input type="checkbox" id="dryRunCheckbox" checked>
+                    👁️ Vista previa primero (no guarda cambios en la base de datos)
+                </label>
                 <button type="button" id="syncSheetsBtn" onclick="syncFromSheets()"
                     style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.6rem 1.25rem; background:#34A853; color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.2s;">
                     🔄 Sincronizar Ahora
@@ -211,18 +215,20 @@ unset($_SESSION['auto_assign_covers']);
         });
 
         // ========== GOOGLE SHEETS SYNC ==========
-        async function syncFromSheets() {
+        async function syncFromSheets(forceReal) {
             const btn = document.getElementById('syncSheetsBtn');
             const status = document.getElementById('syncStatus');
+            const dryRunBox = document.getElementById('dryRunCheckbox');
+            const isDryRun = forceReal ? false : (dryRunBox && dryRunBox.checked);
 
             btn.disabled = true;
-            btn.innerHTML = '⏳ Sincronizando...';
+            btn.innerHTML = isDryRun ? '⏳ Generando vista previa...' : '⏳ Sincronizando...';
             btn.style.opacity = '0.7';
             status.style.display = 'block';
             status.innerHTML = '<div style="padding:0.75rem; background:var(--color-surface); border-radius:var(--radius-sm); font-size:0.85rem; color:var(--color-text-muted);">⏳ Descargando datos de Google Sheets...</div>';
 
             try {
-                const res = await fetch('/admin/sync-sheets', {
+                const res = await fetch('/admin/sync-sheets' + (isDryRun ? '?dry_run=1' : ''), {
                     method: 'POST',
                     headers: {
                         'X-CSRF-Token': '<?= csrfToken() ?>',
@@ -255,34 +261,63 @@ unset($_SESSION['auto_assign_covers']);
                         errHtml = `<div style="margin-top:0.5rem; font-size:0.8rem; color:var(--color-text-muted);">⚠️ ${data.errors.length} advertencia(s): ${data.errors.slice(0, 5).join(', ')}</div>`;
                     }
                     const coversTotal = (data.covers_from_sheets || 0) + (data.covers_from_drive || 0);
-                    status.innerHTML = `
-                        <div style="padding:1rem; background:rgba(52,168,83,0.1); border:1px solid rgba(52,168,83,0.3); border-radius:var(--radius-sm);">
-                            <div style="font-size:0.95rem; font-weight:600; color:#34A853; margin-bottom:0.5rem;">✅ Sincronización completada</div>
-                            <div style="display:flex; gap:1.5rem; font-size:0.85rem; color:var(--color-text); flex-wrap:wrap;">
-                                <span>🆕 <strong>${data.inserted}</strong> nuevos</span>
-                                <span>🔄 <strong>${data.updated}</strong> actualizados</span>
-                                ${data.unchanged > 0 ? '<span>✅ <strong>' + data.unchanged + '</strong> sin cambios</span>' : ''}
-                                ${data.archived_from_sheet > 0 ? '<span>📦 <strong>' + data.archived_from_sheet + '</strong> archivados</span>' : ''}
-                                <span>📄 <strong>${data.total}</strong> filas</span>
-                                ${coversTotal > 0 ? '<span>🖼️ <strong>' + coversTotal + '</strong> portadas asignadas</span>' : ''}
-                            </div>
-                            ${data.cover_errors ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ Cover sync: ' + data.cover_errors + '</div>' : ''}
-                            ${data.duplicates_in_sheet > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#fbbf24;">⚠️ ' + data.duplicates_in_sheet + ' SKUs duplicados en Sheet (se usó última fila)</div>' : ''}
-                            ${errHtml}
-                        </div>
-                        <div id="syncCoverSection" style="margin-top:1rem; padding:1.25rem; background:linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02)); border:1px solid rgba(201,168,76,0.3); border-radius:var(--radius-sm);">
-                            <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
-                                <span style="font-size:1.5rem;">⭐</span>
-                                <div>
-                                    <h3 style="font-size:1rem; margin:0; color:var(--color-text);" id="syncCoverTitle">Asignando portadas automáticamente...</h3>
-                                    <p style="font-size:0.8rem; color:var(--color-text-muted); margin:0.25rem 0 0;" id="syncCoverSubtitle">Buscando imágenes en Google Drive</p>
+                    const archivedPreview = (data.archived_skus_preview && data.archived_skus_preview.length > 0)
+                        ? `<div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid rgba(255,255,255,0.1); font-size:0.8rem;">
+                             <strong style="color:#fbbf24;">📦 SKUs que se archivarían (no están en la hoja)${data.archived_from_sheet > data.archived_skus_preview.length ? ', primeros ' + data.archived_skus_preview.length + ' de ' + data.archived_from_sheet : ''}:</strong>
+                             <div style="max-height:120px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:0.3rem; font-family:monospace;">${data.archived_skus_preview.join(', ')}</div>
+                           </div>`
+                        : '';
+
+                    if (data.dry_run) {
+                        status.innerHTML = `
+                            <div style="padding:1rem; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.35); border-radius:var(--radius-sm);">
+                                <div style="font-size:0.95rem; font-weight:600; color:#fbbf24; margin-bottom:0.5rem;">👁️ Vista previa — nada se guardó todavía</div>
+                                <div style="display:flex; gap:1.5rem; font-size:0.85rem; color:var(--color-text); flex-wrap:wrap;">
+                                    <span>🆕 <strong>${data.inserted}</strong> se insertarían</span>
+                                    <span>🔄 <strong>${data.updated}</strong> se actualizarían</span>
+                                    ${data.unchanged > 0 ? '<span>✅ <strong>' + data.unchanged + '</strong> sin cambios</span>' : ''}
+                                    ${data.archived_from_sheet > 0 ? '<span>📦 <strong>' + data.archived_from_sheet + '</strong> se archivarían</span>' : ''}
+                                    <span>📄 <strong>${data.total}</strong> filas en la hoja</span>
                                 </div>
+                                ${data.duplicates_in_sheet > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#fbbf24;">⚠️ ' + data.duplicates_in_sheet + ' SKUs duplicados en Sheet (se usaría última fila)</div>' : ''}
+                                ${archivedPreview}
+                                ${errHtml}
+                                <button type="button" onclick="if(confirm('¿Confirmas ejecutar la sincronización REAL? Esto sí modificará la base de datos.')) syncFromSheets(true)"
+                                    style="margin-top:1rem; padding:0.5rem 1rem; background:#dc3545; color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.85rem; font-weight:600;">
+                                    ⚠️ Confirmar y sincronizar de verdad
+                                </button>
+                            </div>`;
+                    } else {
+                        status.innerHTML = `
+                            <div style="padding:1rem; background:rgba(52,168,83,0.1); border:1px solid rgba(52,168,83,0.3); border-radius:var(--radius-sm);">
+                                <div style="font-size:0.95rem; font-weight:600; color:#34A853; margin-bottom:0.5rem;">✅ Sincronización completada</div>
+                                <div style="display:flex; gap:1.5rem; font-size:0.85rem; color:var(--color-text); flex-wrap:wrap;">
+                                    <span>🆕 <strong>${data.inserted}</strong> nuevos</span>
+                                    <span>🔄 <strong>${data.updated}</strong> actualizados</span>
+                                    ${data.unchanged > 0 ? '<span>✅ <strong>' + data.unchanged + '</strong> sin cambios</span>' : ''}
+                                    ${data.archived_from_sheet > 0 ? '<span>📦 <strong>' + data.archived_from_sheet + '</strong> archivados</span>' : ''}
+                                    <span>📄 <strong>${data.total}</strong> filas</span>
+                                    ${coversTotal > 0 ? '<span>🖼️ <strong>' + coversTotal + '</strong> portadas asignadas</span>' : ''}
+                                </div>
+                                ${data.cover_errors ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ Cover sync: ' + data.cover_errors + '</div>' : ''}
+                                ${data.duplicates_in_sheet > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#fbbf24;">⚠️ ' + data.duplicates_in_sheet + ' SKUs duplicados en Sheet (se usó última fila)</div>' : ''}
+                                ${archivedPreview}
+                                ${errHtml}
                             </div>
-                            <div style="background:var(--color-border); border-radius:10px; height:8px; overflow:hidden; margin-bottom:0.75rem;">
-                                <div id="syncCoverBar" style="height:100%; width:10%; background:linear-gradient(90deg, var(--color-gold), #e6c040); border-radius:10px; transition:width 0.5s;"></div>
-                            </div>
-                            <div id="syncCoverResult" style="font-size:0.85rem;"></div>
-                        </div>`;
+                            <div id="syncCoverSection" style="margin-top:1rem; padding:1.25rem; background:linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02)); border:1px solid rgba(201,168,76,0.3); border-radius:var(--radius-sm);">
+                                <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
+                                    <span style="font-size:1.5rem;">⭐</span>
+                                    <div>
+                                        <h3 style="font-size:1rem; margin:0; color:var(--color-text);" id="syncCoverTitle">Asignando portadas automáticamente...</h3>
+                                        <p style="font-size:0.8rem; color:var(--color-text-muted); margin:0.25rem 0 0;" id="syncCoverSubtitle">Buscando imágenes en Google Drive</p>
+                                    </div>
+                                </div>
+                                <div style="background:var(--color-border); border-radius:10px; height:8px; overflow:hidden; margin-bottom:0.75rem;">
+                                    <div id="syncCoverBar" style="height:100%; width:10%; background:linear-gradient(90deg, var(--color-gold), #e6c040); border-radius:10px; transition:width 0.5s;"></div>
+                                </div>
+                                <div id="syncCoverResult" style="font-size:0.85rem;"></div>
+                            </div>`;
+                    }
                 }
             } catch (err) {
                 status.innerHTML = `<div style="padding:0.75rem; background:rgba(220,53,69,0.1); border:1px solid rgba(220,53,69,0.3); border-radius:var(--radius-sm); font-size:0.85rem; color:#dc3545;">❌ Error de conexión: ${err.message}</div>`;
@@ -292,8 +327,10 @@ unset($_SESSION['auto_assign_covers']);
                 btn.style.opacity = '1';
             }
 
-            // Auto-trigger cover assignment after sheets sync
-            autoAssignCoversAfterSync();
+            // Auto-trigger cover assignment solo si fue sync real (no vista previa)
+            if (!isDryRun) {
+                autoAssignCoversAfterSync();
+            }
         }
 
         // ========== AUTO COVER ASSIGNMENT ==========
