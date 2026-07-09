@@ -129,12 +129,8 @@ for ($i = 1; $i < count($lines); $i++) {
         $coverUrl = normalizeDriveUrl($data['cover_image_url']);
     }
 
-    $rootSku = extractRootSku($sku);
-    $parentSku = ($rootSku !== $sku) ? $rootSku : null;
-
     $rowData = [
         'sku' => $sku,
-        'parent_sku' => $parentSku,
         'name' => $data['name'] ?? $sku,
         'category' => $data['category'] ?? '',
         'gender' => $gender,
@@ -147,19 +143,28 @@ for ($i = 1; $i < count($lines); $i++) {
         'sheet_row' => $i,
     ];
 
-    // Hash de la fila para detectar cambios
-    $hashData = $rowData;
-    unset($hashData['sheet_row']); // la posición no cuenta como cambio
-    if (!$hasCoverColumn)
-        unset($hashData['cover_image_url']);
-    $rowData['_hash'] = md5(json_encode($hashData));
-
     // Filtrar duplicados: si el SKU ya existe, se marca y se sobreescribe
     if (isset($rawRows[$sku])) {
         $duplicateSkus[$sku] = ($duplicateSkus[$sku] ?? 1) + 1;
     }
     $rawRows[$sku] = $rowData; // último gana
 }
+
+// Calcular parent_sku con contexto de TODA la hoja: agrupa por SKU raíz candidato
+// + nombre exacto, para distinguir variantes reales ("992-1/2/3/4") de
+// referencias distintas que comparten el mismo patrón de SKU ("839-5" vs "839-10").
+$parentSkuMap = computeParentSkuMap($rawRows);
+foreach ($rawRows as $sku => &$rowData) {
+    $rowData['parent_sku'] = $parentSkuMap[$sku] ?? null;
+
+    // Hash de la fila para detectar cambios
+    $hashData = $rowData;
+    unset($hashData['sheet_row']); // la posición no cuenta como cambio
+    if (!$hasCoverColumn)
+        unset($hashData['cover_image_url']);
+    $rowData['_hash'] = md5(json_encode($hashData));
+}
+unset($rowData);
 
 $batchRows = array_values($rawRows);
 $sheetSkus = array_keys($rawRows);

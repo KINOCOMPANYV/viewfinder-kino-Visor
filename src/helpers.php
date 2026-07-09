@@ -218,6 +218,54 @@ function extractRootSku(string $code): string
 }
 
 /**
+ * Extrae un SKU raíz CANDIDATO quitando el último segmento tras un guion/guion bajo,
+ * sin importar si es letra o número (ej: "992-1" → "992", "839-10" → "839").
+ *
+ * A diferencia de extractRootSku(), esto SÍ considera sufijos numéricos como
+ * posibles variantes. Se usa junto con groupSiblingsByNameAndRoot() para decidir
+ * si de verdad son variantes (mismo nombre de producto) o referencias distintas
+ * (nombre distinto), ya que el patrón del SKU solo no alcanza para diferenciarlos.
+ */
+function extractCandidateRootSku(string $code): string
+{
+    $code = trim($code);
+    if (preg_match('/^(.+)[-_]([a-zA-Z0-9]+)$/', $code, $matches)) {
+        return $matches[1];
+    }
+    return $code;
+}
+
+/**
+ * Recalcula parent_sku para un conjunto de filas (sku => ['sku'=>, 'name'=>, ...]),
+ * agrupando por SKU raíz candidato + nombre EXACTO. Solo se asigna parent_sku
+ * cuando hay 2+ SKUs distintos que comparten raíz y nombre — así "992-1/2/3/4"
+ * (mismo nombre) se agrupan, pero "839-5" y "839-10" (nombres distintos) no.
+ *
+ * @param array<string,array{sku:string,name:string}> $rowsBySku
+ * @return array<string,?string> mapa sku => parent_sku (o null si no tiene familia)
+ */
+function computeParentSkuMap(array $rowsBySku): array
+{
+    $groups = [];
+    foreach ($rowsBySku as $sku => $row) {
+        $root = extractCandidateRootSku($sku);
+        if ($root === $sku)
+            continue; // sin sufijo separable, no puede tener padre
+        $name = trim($row['name'] ?? '');
+        $groups[$root][$name][] = $sku;
+    }
+
+    $parentMap = [];
+    foreach ($rowsBySku as $sku => $row) {
+        $root = extractCandidateRootSku($sku);
+        $name = trim($row['name'] ?? '');
+        $siblings = $groups[$root][$name] ?? [$sku];
+        $parentMap[$sku] = (count($siblings) > 1) ? $root : null;
+    }
+    return $parentMap;
+}
+
+/**
  * Verifica si un nombre de archivo es la portada GENÉRICA del código.
  * (Ej: archivo "839-5.jpg" es genérica para "839-5", pero "839-5-1.jpg" es específica).
  * 

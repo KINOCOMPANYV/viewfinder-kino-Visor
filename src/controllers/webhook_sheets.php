@@ -106,6 +106,20 @@ if (!isset($colMap['sku'])) {
 
 $hasCoverCol = isset($colMap['cover_image_url']);
 
+// Construir mapa sku => name de TODA la hoja (para calcular parent_sku con
+// contexto de hermanos, igual que en el sync completo), aunque solo se
+// actualicen en BD los SKUs que llegaron en el webhook.
+$allSkuNames = [];
+for ($j = 1; $j < count($lines); $j++) {
+    $r = $lines[$j];
+    if (empty(array_filter($r))) continue;
+    $s = trim($r[$colMap['sku']] ?? '');
+    if ($s === '') continue;
+    $rName = isset($colMap['name']) ? trim($r[$colMap['name']] ?? '') : '';
+    $allSkuNames[$s] = ['sku' => $s, 'name' => ($rName !== '' ? $rName : $s)];
+}
+$parentSkuMap = computeParentSkuMap($allSkuNames);
+
 // Buscar SOLO las filas de los SKUs que llegaron en el webhook
 $skuSet = array_flip($skus); // Para O(1) lookup
 $rowsToUpdate = [];
@@ -129,7 +143,6 @@ for ($i = 1; $i < count($lines); $i++) {
     if (!in_array($status, ['active', 'discontinued'])) $status = 'active';
 
     $price   = floatval(str_replace([',', '$', ' '], ['', '', ''], $data['price_suggested'] ?? '0'));
-    $rootSku = extractRootSku($sku);
 
     $coverUrl = '';
     if ($hasCoverCol && !empty($data['cover_image_url'])) {
@@ -138,7 +151,7 @@ for ($i = 1; $i < count($lines); $i++) {
 
     $rowsToUpdate[$sku] = [
         'sku'            => $sku,
-        'parent_sku'     => ($rootSku !== $sku) ? $rootSku : null,
+        'parent_sku'     => $parentSkuMap[$sku] ?? null,
         'name'           => $data['name']        ?? $sku,
         'category'       => $data['category']    ?? '',
         'gender'         => $gender,
