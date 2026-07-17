@@ -363,6 +363,11 @@ $variants = $varStmt->fetchAll();
         let mediaFiles = { images: [], videos: [] };
         let allGalleryFiles = [];
 
+        // Escapa HTML para interpolar texto (nombres de archivo de Drive) en innerHTML
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
         function copyDescription() {
             const text = document.getElementById('descriptionText').innerText;
             const btn = document.getElementById('copyBtn');
@@ -430,7 +435,7 @@ $variants = $varStmt->fetchAll();
                         ? vid.thumbnailLink.replace(/=s\d+/, '=s800')
                         : '';
                     const thumbImg = thumbUrl
-                        ? `<img src="${thumbUrl}" alt="${vid.name}" style="width:100%;height:100%;object-fit:cover;">`
+                        ? `<img src="${thumbUrl}" alt="${esc(vid.name)}" style="width:100%;height:100%;object-fit:cover;">`
                         : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
                     main.innerHTML = `
                         <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
@@ -546,7 +551,7 @@ $variants = $varStmt->fetchAll();
                     ? f.thumbnailLink.replace(/=s\d+/, '=s600')
                     : '';
                 const thumbImg = videoThumb
-                    ? `<img src="${videoThumb}" alt="${f.name}" style="width:100%;height:100%;object-fit:contain;">`
+                    ? `<img src="${videoThumb}" alt="${esc(f.name)}" style="width:100%;height:100%;object-fit:contain;">`
                     : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style="font-size:4rem;opacity:0.3">🎬</span></div>`;
                 main.innerHTML = `
                     <div style="position:relative;width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
@@ -704,10 +709,10 @@ $variants = $varStmt->fetchAll();
                     thumbSrc = f.thumbnailLink.replace(/=s\d+/, '=s120');
                 }
                 const imgTag = thumbSrc
-                    ? `<img src="${thumbSrc}" alt="${f.name}" loading="lazy">`
+                    ? `<img src="${thumbSrc}" alt="${esc(f.name)}" loading="lazy">`
                     : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.5rem;">📄</div>`;
                 const badge = isVideo ? '<span class="thumb-video-badge">▶</span>' : '';
-                return `<div class="thumb-strip-item" onclick="showInMain(${idx})" title="${f.name}">${imgTag}${badge}</div>`;
+                return `<div class="thumb-strip-item" onclick="showInMain(${idx})" title="${esc(f.name)}">${imgTag}${badge}</div>`;
             }).join('');
 
             grid.innerHTML = files.map((f, idx) => {
@@ -720,13 +725,13 @@ $variants = $varStmt->fetchAll();
                     const thumbUrl = f.thumbnailLink
                         ? f.thumbnailLink.replace(/=s\d+/, '=s200')
                         : `https://lh3.googleusercontent.com/d/${f.id}=s200`;
-                    mediaHtml = `<img data-src="${thumbUrl}" alt="${f.name}" class="img-fade-in gallery-lazy" style="cursor:pointer;" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="showInMain(${idx})">`;
+                    mediaHtml = `<img data-src="${thumbUrl}" alt="${esc(f.name)}" class="img-fade-in gallery-lazy" style="cursor:pointer;" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="showInMain(${idx})">`;
                 } else if (isVideo) {
                     const videoThumb = f.thumbnailLink
                         ? f.thumbnailLink.replace(/=s\d+/, '=s300')
                         : '';
                     const thumbContent = videoThumb
-                        ? `<img src="${videoThumb}" alt="${f.name}" loading="lazy">`
+                        ? `<img src="${videoThumb}" alt="${esc(f.name)}" loading="lazy">`
                         : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:2.5rem;opacity:0.3'>🎬</span></div>`;
                     mediaHtml = `<div class="video-thumb-wrap" onclick="openVideoModal(${idx})">
                         ${thumbContent}
@@ -738,7 +743,7 @@ $variants = $varStmt->fetchAll();
                         </div>
                         <span class="video-badge">VIDEO</span>
                     </div>
-                    <button onclick="event.stopPropagation();downloadFile('${f.id}','${f.name.replace(/'/g,'')}',event)" style="display:block;width:100%;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);background:none;border:none;cursor:pointer;">⬇️ Descargar video</button>`;
+                    <button onclick="event.stopPropagation();downloadFile('${f.id}','${esc(f.name.replace(/['"\\]/g, ''))}',event)" style="display:block;width:100%;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);background:none;border:none;cursor:pointer;">⬇️ Descargar video</button>`;
                 } else {
                     mediaHtml = `<div class="video-placeholder">📄</div>`;
                 }
@@ -746,7 +751,7 @@ $variants = $varStmt->fetchAll();
                 // Checkbox for images AND videos (selectable media)
                 const checkHtml = (isImage || isVideo) ? `
                     <label class="search-check-footer">
-                        <input type="checkbox" class="gallery-check" data-index="${idx}" data-file-id="${f.id}" data-name="${f.name.replace(/"/g, '')}" data-type="${isVideo ? 'video' : 'image'}">
+                        <input type="checkbox" class="gallery-check" data-index="${idx}" data-file-id="${f.id}" data-name="${esc(f.name)}" data-type="${isVideo ? 'video' : 'image'}">
                         <span class="search-check-icon">✓</span>
                         <span class="search-check-text">Seleccionar</span>
                     </label>` : '';
@@ -754,8 +759,8 @@ $variants = $varStmt->fetchAll();
                 return `
                     <div class="gallery-item" data-file-id="${f.id}">
                         ${mediaHtml}
-                        <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">
-                            ${f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name}
+                        <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(f.name)}">
+                            ${esc(f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name)}
                         </div>
                         ${checkHtml}
                     </div>

@@ -35,6 +35,8 @@ define('ADMIN_USER', env('ADMIN_USER', 'admin'));
 $rawPass = env('ADMIN_PASSWORD', 'admin123');
 $passHash = env('ADMIN_PASSWORD_HASH', '');
 define('ADMIN_PASSWORD_HASH', $passHash ?: password_hash($rawPass, PASSWORD_BCRYPT));
+// true si NO hay password configurado por env (se está usando el default "admin123")
+define('ADMIN_PASSWORD_IS_DEFAULT', $passHash === '' && env('ADMIN_PASSWORD', '') === '');
 
 // Detectar HTTPS detrás de proxy
 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {

@@ -30,7 +30,7 @@ COPY . /var/www/html/
 RUN cd /var/www/html && composer install --no-dev --optimize-autoloader
 
 # Permisos
-RUN mkdir -p /var/www/html/storage/zip_cache \
+RUN mkdir -p /var/www/html/storage/zip_cache /var/www/html/storage/ratelimit \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html \
     && chmod -R 777 /var/www/html/storage

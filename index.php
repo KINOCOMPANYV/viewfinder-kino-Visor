@@ -42,23 +42,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 function checkRateLimit(int $maxPerMinute = 60): void
 {
     $ip = getClientIP();
-    $key = 'rl_' . md5($ip);
-    
-    if (!isset($_SESSION[$key])) {
-        $_SESSION[$key] = ['count' => 1, 'reset' => time() + 60];
-        return;
+    $window = intdiv(time(), 60); // ventana fija de 60s
+
+    // Contador por IP en disco: compartido entre peticiones aunque el cliente
+    // no mande cookies (el contador en $_SESSION era evadible descartándolas).
+    $dir = __DIR__ . '/storage/ratelimit';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
     }
-    
-    if (time() > $_SESSION[$key]['reset']) {
-        $_SESSION[$key] = ['count' => 1, 'reset' => time() + 60];
-        return;
+
+    $count = 1;
+    $file = $dir . '/' . md5($ip) . '.json';
+    $fh = @fopen($file, 'c+');
+    if ($fh !== false && flock($fh, LOCK_EX)) {
+        $data = json_decode(stream_get_contents($fh), true) ?: [];
+        if (($data['window'] ?? 0) === $window) {
+            $count = ($data['count'] ?? 0) + 1;
+        }
+        ftruncate($fh, 0);
+        rewind($fh);
+        fwrite($fh, json_encode(['window' => $window, 'count' => $count]));
+        flock($fh, LOCK_UN);
+        fclose($fh);
+
+        // Limpieza ocasional de contadores viejos (~1% de las peticiones)
+        if (random_int(1, 100) === 1) {
+            foreach ((glob($dir . '/*.json') ?: []) as $old) {
+                if (@filemtime($old) < time() - 600) {
+                    @unlink($old);
+                }
+            }
+        }
+    } else {
+        // Fallback si el disco no es escribible: contador en sesión
+        $key = 'rl_' . md5($ip);
+        $sess = $_SESSION[$key] ?? ['count' => 0, 'window' => 0];
+        if (($sess['window'] ?? 0) !== $window) {
+            $sess = ['count' => 0, 'window' => $window];
+        }
+        $sess['count']++;
+        $_SESSION[$key] = $sess;
+        $count = $sess['count'];
     }
-    
-    $_SESSION[$key]['count']++;
-    
-    if ($_SESSION[$key]['count'] > $maxPerMinute) {
+
+    if ($count > $maxPerMinute) {
         http_response_code(429);
-        header('Retry-After: ' . ($_SESSION[$key]['reset'] - time()));
+        header('Retry-After: ' . (60 - (time() % 60)));
         header('Content-Type: application/json');
         echo json_encode(['error' => 'Demasiadas peticiones. Intenta en un momento.']);
         exit;
@@ -70,8 +99,17 @@ $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Health debug — funciona SIN conexión a DB
+// Solo accesible en desarrollo, o en producción con ?token=CRON_SECRET
 if ($uri === '/health/debug') {
     header('Content-Type: application/json');
+    $debugSecret = env('CRON_SECRET', '');
+    $debugAllowed = (env('APP_ENV', 'development') !== 'production')
+        || ($debugSecret !== '' && hash_equals($debugSecret, $_GET['token'] ?? ''));
+    if (!$debugAllowed) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Not found']);
+        exit;
+    }
     $url = env('MYSQL_URL', env('MYSQL_PUBLIC_URL', env('DATABASE_URL', '')));
     $resolved = ['host' => '127.0.0.1', 'port' => '3306', 'database' => 'viewfinder_kino', 'user' => 'root'];
     if ($url !== '') {
@@ -455,6 +493,7 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
 // ============================================================
 
 if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
+    checkRateLimit(60); // 60 descargas/min por IP — evita uso como proxy de ancho de banda
     session_write_close();
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
 

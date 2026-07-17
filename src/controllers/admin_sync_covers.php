@@ -20,8 +20,8 @@ set_time_limit(300);
 $db = getDB();
 
 $isCron = false;
-$cronToken = env('CRON_SECRET', 'kino-cron-1234');
-if (isset($_GET['token']) && hash_equals($cronToken, $_GET['token'])) {
+$cronToken = env('CRON_SECRET', '');
+if ($cronToken !== '' && isset($_GET['token']) && hash_equals($cronToken, $_GET['token'])) {
     $isCron = true;
 } else {
     // La sesión ya es manejada por index.php

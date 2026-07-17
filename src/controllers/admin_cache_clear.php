@@ -5,6 +5,11 @@
  * Parámetro: cache_type = media_search | drive_cache | zip_files | all
  */
 
+if (!verifyCsrf()) {
+    $_SESSION['cache_flash'] = ['type' => 'error', 'msg' => '❌ Token CSRF inválido. Recarga la página.'];
+    redirect('/admin');
+}
+
 $db = getDB();
 $type = $_POST['cache_type'] ?? '';
 $results = [];

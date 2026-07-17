@@ -62,8 +62,18 @@ function e(?string $text): string
  */
 function getClientIP(): string
 {
-    return $_SERVER['HTTP_X_FORWARDED_FOR']
-        ?? $_SERVER['HTTP_X_REAL_IP']
+    // X-Forwarded-For puede traer una cadena "ip-cliente-falsa, ip-real".
+    // El proxy de confianza (Railway/Cloudflare) SIEMPRE agrega la IP real al final,
+    // así que usamos la última entrada — las anteriores son falsificables por el cliente.
+    $xff = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+    if ($xff !== '') {
+        $parts = array_map('trim', explode(',', $xff));
+        $last = end($parts);
+        if ($last !== '' && filter_var($last, FILTER_VALIDATE_IP)) {
+            return $last;
+        }
+    }
+    return $_SERVER['HTTP_X_REAL_IP']
         ?? $_SERVER['REMOTE_ADDR']
         ?? '0.0.0.0';
 }

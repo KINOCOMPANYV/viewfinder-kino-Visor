@@ -251,6 +251,7 @@ unset($_SESSION['cache_flash']);
                         </div>
                         <form method="POST" action="/admin/cache/clear" class="cache-card__action">
                             <input type="hidden" name="cache_type" value="media_search">
+                            <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
                             <button type="submit" class="btn btn-sm btn-danger" <?= $mediaSearchCount === 0 ? 'disabled' : '' ?>
                                 onclick="return confirm('¿Limpiar caché Media Search?')">
                                 🧹 Limpiar
@@ -270,6 +271,7 @@ unset($_SESSION['cache_flash']);
                         </div>
                         <form method="POST" action="/admin/cache/clear" class="cache-card__action">
                             <input type="hidden" name="cache_type" value="drive_cache">
+                            <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
                             <button type="submit" class="btn btn-sm btn-danger" <?= $driveCacheCount === 0 ? 'disabled' : '' ?>
                                 onclick="return confirm('¿Limpiar caché Drive?')">
                                 🧹 Limpiar
@@ -292,6 +294,7 @@ unset($_SESSION['cache_flash']);
                         </div>
                         <form method="POST" action="/admin/cache/clear" class="cache-card__action">
                             <input type="hidden" name="cache_type" value="zip_files">
+                            <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
                             <button type="submit" class="btn btn-sm btn-danger" <?= $zipCacheCount === 0 ? 'disabled' : '' ?>
                                 onclick="return confirm('¿Eliminar archivos ZIP temporales?')">
                                 🧹 Limpiar
@@ -303,6 +306,7 @@ unset($_SESSION['cache_flash']);
                 <!-- Limpiar todo -->
                 <form method="POST" action="/admin/cache/clear" style="margin-top:1rem; text-align:right;">
                     <input type="hidden" name="cache_type" value="all">
+                    <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
                     <button type="submit" class="btn btn-danger" <?= ($mediaSearchCount + $driveCacheCount + $zipCacheCount) === 0 ? 'disabled' : '' ?> onclick="return confirm('¿Limpiar TODAS las cachés del sistema?')">
                         🗑️ Limpiar Toda la Caché
                     </button>
