@@ -362,9 +362,11 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     session_write_close();
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
     $sku = urldecode($matches[1]);
-    $rootSku = extractRootSku($sku);
     $folderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
     $db = getDB();
+    // Raíz de familia desde la BD (parent_sku) — agrupa también sufijos numéricos
+    // (ETN54L-4 → ETN54L) que extractRootSku() por sí solo no puede detectar.
+    $rootSku = getFamilyRootSku($db, $sku);
     $freshRequested = !empty($_GET['fresh']);
 
     // filterHiddenFiles() ahora definida en src/helpers.php
@@ -451,14 +453,9 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
                 $coverCheck->execute([$sku]);
                 $prodRow = $coverCheck->fetch();
                 if ($prodRow && empty($prodRow['cover_image_url'])) {
-                    // Buscar la primera imagen
-                    $firstImage = null;
-                    foreach ($files as $f) {
-                        if (str_starts_with($f['mimeType'] ?? '', 'image/')) {
-                            $firstImage = $f;
-                            break;
-                        }
-                    }
+                    // Elegir la mejor imagen (nunca video) como portada
+                    $imgOnly = array_filter($files, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+                    $firstImage = pickBestCoverFile($imgOnly);
                     if ($firstImage) {
                         $coverUrl = "https://lh3.googleusercontent.com/d/{$firstImage['id']}=s400";
                         $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")

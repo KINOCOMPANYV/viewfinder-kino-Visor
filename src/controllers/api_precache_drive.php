@@ -86,7 +86,8 @@ foreach ($skuRows as $sku) {
     $stats['processed']++;
 
     try {
-        $rootSku = extractRootSku($sku);
+        // Raíz de familia desde la BD (parent_sku), con fallback a extractRootSku()
+        $rootSku = getFamilyRootSku($db, $sku);
 
         // Buscar archivos en Drive por SKU raíz
         $files = $drive->findBySku($folderId, $rootSku);
@@ -131,13 +132,13 @@ foreach ($skuRows as $sku) {
             $coverCheck->execute([$sku]);
             $prodRow = $coverCheck->fetch();
             if ($prodRow && empty($prodRow['cover_image_url'])) {
-                foreach ($files as $f) {
-                    if (str_starts_with($f['mimeType'] ?? '', 'image/')) {
-                        $coverUrl = "https://lh3.googleusercontent.com/d/{$f['id']}=s400";
-                        $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
-                           ->execute([$coverUrl, $prodRow['id']]);
-                        break;
-                    }
+                // Elegir la mejor imagen (nunca video) como portada
+                $imgOnly = array_filter($files, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+                $bestImage = pickBestCoverFile($imgOnly);
+                if ($bestImage) {
+                    $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}=s400";
+                    $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
+                       ->execute([$coverUrl, $prodRow['id']]);
                 }
             }
         }

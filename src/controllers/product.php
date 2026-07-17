@@ -271,10 +271,22 @@ $variants = $varStmt->fetchAll();
                     <?php if (count($variants) > 1): ?>
                         <div class="product-variants-section">
                             <h3>Variantes Disponibles (<?= count($variants) ?>)</h3>
+                            <?php
+                            // Portada de familia para variantes sin portada propia
+                            $familyCover = $product['cover_image_url'] ?: '';
+                            if (!$familyCover) {
+                                foreach ($variants as $fv) {
+                                    if (!empty($fv['cover_image_url'])) { $familyCover = $fv['cover_image_url']; break; }
+                                }
+                            }
+                            ?>
                             <div class="variant-strip">
                                 <?php foreach ($variants as $v):
-                                    $vCover = $v['cover_image_url'] ?: '';
-                                    if ($vCover && !str_starts_with($vCover, '[VIDEO]')) {
+                                    $vCover = ($v['cover_image_url'] ?: '') ?: $familyCover;
+                                    if (str_starts_with($vCover, '[VIDEO]')) {
+                                        // usar el thumbnail del video como imagen del chip
+                                        $vCover = substr($vCover, 7);
+                                    } elseif ($vCover) {
                                         $vCover = preg_replace('/=s\d+$/', '=s150', $vCover);
                                     }
                                     $isActive = ($v['sku'] === $product['sku']);

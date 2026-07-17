@@ -161,21 +161,8 @@ if (!empty($rootFilesOnly)) {
 // ============================================================
 // 4) Para cada álbum, listar archivos y matchear con productos
 // ============================================================
-$coverKeywords = ['principal', 'cover', 'portada', 'front', 'frente'];
-$numericPriority = ['01', '_1', '-1', 'f1'];
-
-function scoreCover(array $file, array $coverKeywords, array $numericPriority): int
-{
-    $name = strtolower($file['name'] ?? '');
-    $score = 0;
-    foreach ($coverKeywords as $kw) {
-        if (str_contains($name, $kw)) $score += 10;
-    }
-    foreach ($numericPriority as $np) {
-        if (str_contains($name, $np)) $score += 5;
-    }
-    return $score;
-}
+// El puntaje de candidatos a portada vive en scoreCoverCandidate() (src/helpers.php):
+// imagen siempre gana a video, y se prefieren nombres "principal/cover/01/-1/f1".
 
 /**
  * Matchea un archivo con un producto del índice.
@@ -224,7 +211,7 @@ $errors = [];
 $unmappedFiles = []; // Track files that matched no products
 $fileIdsToPublish = [];
 $updatesQueue = []; // id => ['url' => ..., 'album_id' => ...]
-$productUpdated = []; // Track which products have been updated (avoid duplicates)
+$candidates = []; // prodId => ['file'=>..., 'album_id'=>..., 'score'=>..., 'needs_cover'=>..., 'needs_album'=>...]
 
 foreach ($albums as $album) {
     try {
@@ -236,54 +223,65 @@ foreach ($albums as $album) {
         }
         $albumsProcessed++;
         $totalDriveFiles += count($albumFiles);
-        
+
         foreach ($albumFiles as $file) {
             $isMedia = str_starts_with($file['mimeType'] ?? '', 'image/') || str_starts_with($file['mimeType'] ?? '', 'video/');
             if (!$isMedia) continue;
-            
+
             $matchedSku = matchFileToProduct($file, $productIndex);
             if (!$matchedSku) {
                 $unmappedFiles[] = $file['name'];
                 continue;
             }
-            
+
             $prod = $productIndex[$matchedSku];
             $prodId = $prod['id'];
-            
-            // Si ya se asignó este producto, revisar si esta es mejor portada
-            if (isset($productUpdated[$prodId])) continue;
-            
-            $isImage = str_starts_with($file['mimeType'] ?? '', 'image/');
-            $isVideo = str_starts_with($file['mimeType'] ?? '', 'video/');
-            
+
             // Solo asignar portada si el producto no tiene una (o si es modo forzado)
             $needsCover = $forceReassign || empty($prod['cover_image_url']);
             $needsAlbum = $forceReassign || empty($prod['album_id']);
-            
+
             if (!$needsCover && !$needsAlbum) continue;
-            
-            $coverUrl = null;
-            if ($needsCover) {
-                if ($isVideo) {
-                    $coverUrl = "[VIDEO]https://lh3.googleusercontent.com/d/{$file['id']}";
-                } else {
-                    $coverUrl = "https://lh3.googleusercontent.com/d/{$file['id']}=s400";
-                }
-                $fileIdsToPublish[] = $file['id'];
+
+            // Guardar el MEJOR candidato por producto en vez del primero que aparezca:
+            // una imagen siempre gana a un video (antes el primer match podía ser un
+            // video y la portada quedaba siendo el primer cuadro = logo de la marca).
+            $score = scoreCoverCandidate($file);
+            if (!isset($candidates[$prodId]) || $score > $candidates[$prodId]['score']) {
+                $candidates[$prodId] = [
+                    'file' => $file,
+                    'album_id' => $album['drive_id'],
+                    'score' => $score,
+                    'needs_cover' => $needsCover,
+                    'needs_album' => $needsAlbum,
+                ];
             }
-            
-            $updatesQueue[$prodId] = [
-                'url' => $coverUrl,
-                'album_id' => $album['drive_id'],
-                'id' => $prodId
-            ];
-            $productUpdated[$prodId] = true;
-            $assigned++;
-            if ($isVideo && $needsCover) $assignedVideos++;
         }
     } catch (Exception $e) {
         $errors[] = "Álbum {$album['name']}: {$e->getMessage()}";
     }
+}
+
+// Construir la cola de updates a partir del mejor candidato de cada producto
+foreach ($candidates as $prodId => $cand) {
+    $file = $cand['file'];
+    $isVideo = str_starts_with($file['mimeType'] ?? '', 'video/');
+
+    $coverUrl = null;
+    if ($cand['needs_cover']) {
+        $coverUrl = $isVideo
+            ? "[VIDEO]https://lh3.googleusercontent.com/d/{$file['id']}"
+            : "https://lh3.googleusercontent.com/d/{$file['id']}=s400";
+        $fileIdsToPublish[] = $file['id'];
+        if ($isVideo) $assignedVideos++;
+    }
+
+    $updatesQueue[$prodId] = [
+        'url' => $coverUrl,
+        'album_id' => $cand['album_id'],
+        'id' => $prodId
+    ];
+    $assigned++;
 }
 
 /**

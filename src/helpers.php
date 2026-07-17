@@ -349,27 +349,89 @@ function filterHiddenFiles(PDO $db, array $files): array
 }
 
 /**
- * Extrae la portada (primer imagen o video) de un array de archivos Drive.
+ * Puntúa un archivo de Drive como candidato a portada.
+ * Las IMÁGENES siempre ganan a los videos (evita portadas con el primer
+ * cuadro del video, que suele ser el logo de la marca). Entre imágenes,
+ * se prefieren nombres tipo "principal", "cover", "01", "-1", "f1".
+ */
+function scoreCoverCandidate(array $file): int
+{
+    $name = strtolower($file['name'] ?? '');
+    $mime = $file['mimeType'] ?? '';
+    $score = 0;
+    if (str_starts_with($mime, 'image/')) {
+        $score += 100;
+    } elseif (str_starts_with($mime, 'video/') && !empty($file['thumbnailLink'])) {
+        $score += 1; // video con thumbnail es mejor que video sin thumbnail
+    }
+    foreach (['principal', 'cover', 'portada', 'front', 'frente'] as $kw) {
+        if (str_contains($name, $kw)) $score += 10;
+    }
+    foreach (['01', '_1', '-1', 'f1'] as $np) {
+        if (str_contains($name, $np)) $score += 5;
+    }
+    return $score;
+}
+
+/**
+ * Elige el mejor archivo de portada (imagen preferida, video como fallback).
+ */
+function pickBestCoverFile(array $files): ?array
+{
+    $best = null;
+    $bestScore = -1;
+    foreach ($files as $f) {
+        $mime = $f['mimeType'] ?? '';
+        if (!str_starts_with($mime, 'image/') && !str_starts_with($mime, 'video/')) {
+            continue;
+        }
+        $score = scoreCoverCandidate($f);
+        if ($score > $bestScore) {
+            $best = $f;
+            $bestScore = $score;
+        }
+    }
+    return $best;
+}
+
+/**
+ * Resuelve el SKU raíz de familia para búsquedas de media.
+ * Prioriza parent_sku de la BD (calculado con contexto de hermanos, que sí
+ * agrupa sufijos numéricos como ETN54L-2/-4/-6 → ETN54L) y cae en
+ * extractRootSku() si la columna no existe o el producto no tiene familia.
+ */
+function getFamilyRootSku(PDO $db, string $sku): string
+{
+    try {
+        $stmt = $db->prepare("SELECT parent_sku FROM products WHERE sku = ? LIMIT 1");
+        $stmt->execute([$sku]);
+        $parent = $stmt->fetchColumn();
+        if (is_string($parent) && trim($parent) !== '') {
+            return trim($parent);
+        }
+    } catch (\PDOException $e) {
+        // columna parent_sku puede no existir aún
+    }
+    return extractRootSku($sku);
+}
+
+/**
+ * Extrae la portada de un array de archivos Drive (imagen preferida sobre video).
  */
 function extractCoverFromFiles(array $files): ?array
 {
-    // Buscar primera imagen
-    foreach ($files as $f) {
-        if (str_starts_with($f['mimeType'] ?? '', 'image/')) {
-            $thumb = $f['thumbnailLink'] ?? '';
-            $url = $thumb
-                ? preg_replace('/=s\d+/', '=s400', $thumb)
-                : "https://lh3.googleusercontent.com/d/{$f['id']}=s400";
-            return ['url' => $url, 'video' => false];
-        }
+    $best = pickBestCoverFile($files);
+    if (!$best) return null;
+
+    if (str_starts_with($best['mimeType'] ?? '', 'video/')) {
+        if (empty($best['thumbnailLink'])) return null;
+        return ['url' => preg_replace('/=s\d+/', '=s400', $best['thumbnailLink']), 'video' => true];
     }
-    // Fallback: primer video
-    foreach ($files as $f) {
-        if (str_starts_with($f['mimeType'] ?? '', 'video/') && !empty($f['thumbnailLink'])) {
-            return ['url' => preg_replace('/=s\d+/', '=s400', $f['thumbnailLink']), 'video' => true];
-        }
-    }
-    return null;
+    $thumb = $best['thumbnailLink'] ?? '';
+    $url = $thumb
+        ? preg_replace('/=s\d+/', '=s400', $thumb)
+        : "https://lh3.googleusercontent.com/d/{$best['id']}=s400";
+    return ['url' => $url, 'video' => false];
 }
 
 /**

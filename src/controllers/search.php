@@ -461,7 +461,18 @@ if (!empty($pageRoots)) {
                     $p = $group['parent'];
                     $children = $group['children'];
                     $childCount = count($children);
-                    $coverUrl = $p['cover_image_url'] ?? '';
+
+                    // Portada de familia: primera portada disponible entre padre e hijos.
+                    // Sirve de fallback para que ni la tarjeta ni las variantes queden en 📷
+                    // cuando algún miembro de la familia sí tiene foto.
+                    $familyCover = $p['cover_image_url'] ?? '';
+                    if (!$familyCover) {
+                        foreach ($children as $c) {
+                            if (!empty($c['cover_image_url'])) { $familyCover = $c['cover_image_url']; break; }
+                        }
+                    }
+
+                    $coverUrl = ($p['cover_image_url'] ?? '') ?: $familyCover;
                     $isVideo = str_starts_with($coverUrl, '[VIDEO]');
                     if ($isVideo) $coverUrl = substr($coverUrl, 7);
                 ?>
@@ -501,7 +512,8 @@ if (!empty($pageRoots)) {
                                         <div class="children-row">
                                             <?php
                                             foreach ($children as $child):
-                                                $childCover = $child['cover_image_url'] ?? '';
+                                                // Fallback: si la variante no tiene portada propia, usar la de la familia
+                                                $childCover = ($child['cover_image_url'] ?? '') ?: $familyCover;
                                                 $childIsVideo = str_starts_with($childCover, '[VIDEO]');
                                                 if ($childIsVideo) $childCover = substr($childCover, 7);
                                             ?>
