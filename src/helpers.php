@@ -416,6 +416,74 @@ function getFamilyRootSku(PDO $db, string $sku): string
 }
 
 /**
+ * Busca en Drive los archivos de un SKU (bidireccional padre↔hijo), los hace
+ * públicos, guarda el resultado en media_search_cache y auto-asigna portada
+ * (imagen-primero) si el producto no tiene. Lógica compartida entre
+ * /api/media, /api/covers/batch y el precache cron.
+ *
+ * @return array{files: array, root_sku: string}
+ */
+function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $folderId, string $sku): array
+{
+    $rootSku = getFamilyRootSku($db, $sku);
+
+    // 1) Buscar por el SKU raíz (trae padre + todos los hijos)
+    $rootFiles = $drive->findBySku($folderId, $rootSku);
+
+    if ($sku !== $rootSku) {
+        // Genéricos del padre (evita que el hijo A vea archivos del hijo B)
+        $parentOnly = array_filter($rootFiles, fn($f) => isGenericMediaForSku($rootSku, $f['name']));
+        // Específicos del hijo
+        $childFiles = $drive->findBySku($folderId, $sku);
+        $existingIds = array_column($childFiles, 'id');
+        $files = $childFiles;
+        foreach ($parentOnly as $pf) {
+            if (!in_array($pf['id'], $existingIds)) {
+                $files[] = $pf;
+            }
+        }
+    } else {
+        $files = $rootFiles;
+    }
+    $files = array_values($files);
+
+    if (!empty($files)) {
+        $drive->makePublicBatch(array_column($files, 'id'));
+
+        // Cachear resultado (no se cachean vacíos para evitar envenenamiento)
+        try {
+            $saveStmt = $db->prepare(
+                "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
+                 VALUES (?, ?, ?, NOW())
+                 ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
+            );
+            $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
+        } catch (Exception $e) {
+            // tabla puede no existir aún
+        }
+
+        // Auto-asignar portada (mejor imagen, nunca video) si el producto no tiene
+        try {
+            $coverCheck = $db->prepare("SELECT id, cover_image_url FROM products WHERE sku = ? LIMIT 1");
+            $coverCheck->execute([$sku]);
+            $prodRow = $coverCheck->fetch();
+            if ($prodRow && empty($prodRow['cover_image_url'])) {
+                $imgOnly = array_filter($files, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+                $bestImage = pickBestCoverFile($imgOnly);
+                if ($bestImage) {
+                    $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
+                       ->execute(["https://lh3.googleusercontent.com/d/{$bestImage['id']}=s400", $prodRow['id']]);
+                }
+            }
+        } catch (Exception $e) {
+            // ignorar errores de auto-cover
+        }
+    }
+
+    return ['files' => $files, 'root_sku' => $rootSku];
+}
+
+/**
  * Extrae la portada de un array de archivos Drive (imagen preferida sobre video).
  */
 function extractCoverFromFiles(array $files): ?array

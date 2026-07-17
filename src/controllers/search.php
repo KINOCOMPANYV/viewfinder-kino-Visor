@@ -517,9 +517,10 @@ if (!empty($pageRoots)) {
                                                 $childIsVideo = str_starts_with($childCover, '[VIDEO]');
                                                 if ($childIsVideo) $childCover = substr($childCover, 7);
                                             ?>
-                                                <div class="child-thumb" style="cursor:pointer;" 
+                                                <div class="child-thumb" style="cursor:pointer;"
                                                     title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
                                                     data-sku="<?= e($child['sku']) ?>"
+                                                    data-fallback="<?= empty($child['cover_image_url']) ? '1' : '0' ?>"
                                                     onclick="previewVariant(this, '<?= rawurlencode($child['sku']) ?>', '<?= e(cleanSkuDisplay($child['sku'])) ?>')">
                                                     <?php if ($childCover): ?>
                                                         <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
@@ -771,34 +772,71 @@ if (!empty($pageRoots)) {
     </script>
 
     <script>
-        function previewVariant(thumbEl, skuEnc, skuLabel) {
+        async function previewVariant(thumbEl, skuEnc, skuLabel) {
             const card = thumbEl.closest('.parent-card');
             if (!card) return;
 
-            const thumbImg = thumbEl.querySelector('img');
-            const newSrc = thumbImg ? thumbImg.src : null;
-            if (!newSrc) return;
-
             const mainImgContainer = card.querySelector('.card-image');
-            const mainImg = mainImgContainer.querySelector('img');
-            const hiresUrl = newSrc.replace(/=s\d+/, '=s600'); 
-            
-            if (mainImg) {
-                mainImg.src = hiresUrl;
-            } else {
-                const ph = mainImgContainer.querySelector('.cover-placeholder');
-                if (ph) {
-                    ph.outerHTML = `<img src="${hiresUrl}" class="img-fade-in loaded" style="width:100%;height:100%;object-fit:cover;">`;
+            const skuText = card.querySelector('.dynamic-card-sku');
+
+            // Feedback inmediato: resaltar chip y actualizar el código
+            card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
+            thumbEl.style.boxShadow = 'var(--glow-accent)';
+            if (skuText) skuText.textContent = skuLabel;
+
+            function setMain(url) {
+                const mainImg = mainImgContainer.querySelector('img');
+                if (mainImg) {
+                    mainImg.src = url;
+                } else {
+                    const ph = mainImgContainer.querySelector('.cover-placeholder');
+                    if (ph) {
+                        ph.outerHTML = `<img src="${url}" class="img-fade-in loaded" style="width:100%;height:100%;object-fit:cover;">`;
+                    }
                 }
             }
 
-            // SKU label update (visual only)
+            const thumbImg = thumbEl.querySelector('img');
+            const isFallback = thumbEl.dataset.fallback === '1';
 
-            const skuText = card.querySelector('.dynamic-card-sku');
-            if (skuText) skuText.textContent = skuLabel;
+            // Chip con portada REAL propia: usarla directo
+            if (thumbImg && !isFallback) {
+                setMain(thumbImg.src.replace(/=s\d+/, '=s600'));
+                return;
+            }
 
-            card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
-            thumbEl.style.boxShadow = 'var(--glow-accent)';
+            // Chip sin portada propia (fallback de familia o placeholder):
+            // buscar la foto real de ESTA variante en Drive vía /api/media.
+            // El backend además la cachea y le auto-asigna portada para el futuro.
+            thumbEl.style.opacity = '0.5';
+            try {
+                const resp = await fetch('/api/media/' + skuEnc);
+                const data = await resp.json();
+                const img = (data.files || []).find(f => (f.mimeType || '').startsWith('image/'));
+                if (img) {
+                    const big = img.thumbnailLink
+                        ? img.thumbnailLink.replace(/=s\d+/, '=s600')
+                        : `https://lh3.googleusercontent.com/d/${img.id}=s600`;
+                    setMain(big);
+                    // Actualizar el chip con su foto real
+                    const small = img.thumbnailLink
+                        ? img.thumbnailLink.replace(/=s\d+/, '=s150')
+                        : `https://lh3.googleusercontent.com/d/${img.id}=s150`;
+                    if (thumbImg) {
+                        thumbImg.src = small;
+                    } else {
+                        const ph = thumbEl.querySelector('.child-placeholder');
+                        if (ph) ph.outerHTML = `<img src="${small}" style="width:100%;height:100%;object-fit:cover;">`;
+                    }
+                    thumbEl.dataset.fallback = '0';
+                } else if (thumbImg) {
+                    // La variante no tiene fotos propias en Drive: mostrar el fallback
+                    setMain(thumbImg.src.replace(/=s\d+/, '=s600'));
+                }
+            } catch (e) {
+                if (thumbImg) setMain(thumbImg.src.replace(/=s\d+/, '=s600'));
+            }
+            thumbEl.style.opacity = '';
         }
 
         function scrollChildren(btn, direction) {

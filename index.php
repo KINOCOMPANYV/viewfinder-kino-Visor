@@ -364,9 +364,6 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     $sku = urldecode($matches[1]);
     $folderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
     $db = getDB();
-    // Raíz de familia desde la BD (parent_sku) — agrupa también sufijos numéricos
-    // (ETN54L-4 → ETN54L) que extractRootSku() por sí solo no puede detectar.
-    $rootSku = getFamilyRootSku($db, $sku);
     $freshRequested = !empty($_GET['fresh']);
 
     // filterHiddenFiles() ahora definida en src/helpers.php
@@ -396,85 +393,19 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
         }
     }
 
-    // === Búsqueda en Drive API ===
+    // === Búsqueda en Drive API (lógica compartida en fetchAndCacheMediaForSku) ===
     $drive = new GoogleDriveService();
     $token = $drive->getValidToken($db);
 
     if ($token && $folderId) {
-        // 1) Buscar por el SKU raíz (trae padre + todos los hijos)
-        $rootFiles = $drive->findBySku($folderId, $rootSku);
-
-        // 2) Si el input es diferente al root (es un hijo/variante)
-        if ($sku !== $rootSku) {
-            // Filtrar rootFiles para dejar SOLO los que son del padre exacto
-            // (evita que el hijo A vea archivos del hijo B)
-            $parentOnlyFiles = array_filter($rootFiles, function ($f) use ($rootSku) {
-                return isGenericMediaForSku($rootSku, $f['name']);
-            });
-
-            // Buscar específicamente los del hijo
-            $childFiles = $drive->findBySku($folderId, $sku);
-
-            // Combinar: primero los del hijo, luego los genéricos del padre
-            $existingIds = array_column($childFiles, 'id');
-            $files = $childFiles;
-            foreach ($parentOnlyFiles as $pf) {
-                if (!in_array($pf['id'], $existingIds)) {
-                    $files[] = $pf;
-                }
-            }
-        } else {
-            // Si es el padre, mostrar todo lo que trajo el search (padre + todos los hijos)
-            $files = $rootFiles;
-        }
-
-        // Hacer públicos todos los archivos en PARALELO
-        // (este bloque solo se ejecuta si NO hubo cache hit, así que son archivos frescos)
-        $drive->makePublicBatch(array_column($files, 'id'));
-
-        // === CACHÉ: guardar resultado SOLO si hay archivos ===
-        // No cachear resultados vacíos para evitar envenenamiento del caché
-        if (!empty($files)) {
-            try {
-                $saveStmt = $db->prepare(
-                    "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
-                     VALUES (?, ?, ?, NOW())
-                     ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
-                );
-                $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
-            } catch (Exception $e) {
-                // Si la tabla no existe aún, ignorar
-            }
-
-            // === AUTO-CACHE PORTADA ===
-            // Si el producto no tiene cover_image_url, guardar la primera imagen automáticamente
-            try {
-                $coverCheck = $db->prepare("SELECT id, cover_image_url FROM products WHERE sku = ? LIMIT 1");
-                $coverCheck->execute([$sku]);
-                $prodRow = $coverCheck->fetch();
-                if ($prodRow && empty($prodRow['cover_image_url'])) {
-                    // Elegir la mejor imagen (nunca video) como portada
-                    $imgOnly = array_filter($files, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
-                    $firstImage = pickBestCoverFile($imgOnly);
-                    if ($firstImage) {
-                        $coverUrl = "https://lh3.googleusercontent.com/d/{$firstImage['id']}=s400";
-                        $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
-                           ->execute([$coverUrl, $prodRow['id']]);
-                    }
-                }
-            } catch (Exception $e) {
-                // Ignorar errores de auto-cache
-            }
-        }
-
-        // Filter hidden files before returning
-        $files = filterHiddenFiles($db, $files);
+        $result = fetchAndCacheMediaForSku($db, $drive, $folderId, $sku);
+        $files = filterHiddenFiles($db, $result['files']);
 
         jsonResponse([
             'files' => $files,
             'sku' => $sku,
-            'root_sku' => $rootSku,
-            'is_variant' => ($sku !== $rootSku),
+            'root_sku' => $result['root_sku'],
+            'is_variant' => ($sku !== $result['root_sku']),
             'cached' => false,
         ]);
     } else {
@@ -602,10 +533,27 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $uncachedSkus = $skus;
     }
 
-    // 2) Búsqueda en Drive en vivo DESHABILITADA POR RENDIMIENTO.
-    // Hacer búsquedas de Drive en vivo desde la página pública era demasiado lento (1-2s por query)
-    // originando bloqueos de 15+ segundos cuando faltaban muchas fotos.
-    // La asignación de portadas debe hacerse en batch desde el panel de Admin -> Media -> Auto-asignar.
+    // 2) Búsqueda en Drive en vivo ACOTADA para SKUs sin caché.
+    // La versión sin límite se deshabilitó por rendimiento (bloqueos de 15+ seg
+    // cuando faltaban muchas portadas). Ahora se procesan máximo 5 SKUs por
+    // petición: cada búsqueda se cachea y auto-asigna portada, así el catálogo
+    // se va auto-sanando con cada visita sin bloquear la página.
+    if (!empty($uncachedSkus)) {
+        $drive = new GoogleDriveService();
+        $token = $drive->getValidToken($db);
+        if ($token && $folderId) {
+            foreach (array_slice(array_values($uncachedSkus), 0, 5) as $liveSku) {
+                try {
+                    $result = fetchAndCacheMediaForSku($db, $drive, $folderId, $liveSku);
+                    if (!empty($result['files'])) {
+                        $covers[$liveSku] = extractCoverFromFiles($result['files']);
+                    }
+                } catch (Exception $e) {
+                    // seguir con el resto de SKUs
+                }
+            }
+        }
+    }
 
     // 3) SKUs sin resultado → null
     foreach ($skus as $sku) {
