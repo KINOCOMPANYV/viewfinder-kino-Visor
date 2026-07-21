@@ -260,26 +260,45 @@ if (!empty($pageRoots)) {
     $stmt->execute($fetchParams);
     $familyProducts = $stmt->fetchAll();
     
+    // Normaliza un código para comparar SKUs sin guiones/espacios/extensión.
+    $normCode = fn($s) => strtolower(str_replace(['-', ' ', '.'], '', preg_replace('/\.\w{2,4}$/i', '', (string)$s)));
+
+    // Código buscado (solo en búsquedas por un código puntual, no por nombre ni multi-código).
+    // Si coincide con el SKU de una variante, esa variante será la PRINCIPAL de la tarjeta.
+    $searchedNorm = (!$isMultiCode && $q !== '') ? $normCode($q) : '';
+
     foreach ($familyProducts as $p) {
         $family = !empty($p['parent_sku']) ? $p['parent_sku'] : extractRootSku($p['sku']);
-        
+
         // Solo procesar si el producto pertenece a una de las familias de esta página
         if (!in_array($family, $pageRoots)) continue;
 
         if (!isset($grouped[$family])) {
             $grouped[$family] = ['parent' => null, 'children' => []];
         }
-        
-        // Asignar el nodo padre: idealmente es la coincidencia exacta de SKU con la familia
-        if (empty($grouped[$family]['parent']) || $p['sku'] === $family) {
-            $grouped[$family]['parent'] = $p;
-        }
-        
+
         $grouped[$family]['children'][] = $p;
     }
-    
-    // Sort children so that the exact matches appear first
+
     foreach ($grouped as $family => &$group) {
+        // Elegir el nodo PRINCIPAL de la tarjeta por prioridad:
+        //   1) El código buscado (cuando se busca un código puntual) → sale ese código
+        //   2) El SKU que coincide con la raíz de familia (el padre real)
+        //   3) El primero disponible
+        $chosen = null;
+        if ($searchedNorm !== '') {
+            foreach ($group['children'] as $c) {
+                if ($normCode($c['sku']) === $searchedNorm) { $chosen = $c; break; }
+            }
+        }
+        if (!$chosen) {
+            foreach ($group['children'] as $c) {
+                if ($c['sku'] === $family) { $chosen = $c; break; }
+            }
+        }
+        $group['parent'] = $chosen ?: ($group['children'][0] ?? null);
+
+        // Ordenar variantes: las coincidencias con la búsqueda primero
         usort($group['children'], function($a, $b) use ($q) {
             if (empty($q)) return strcmp($a['sku'], $b['sku']);
             $scoreA = (stripos($a['sku'], $q) !== false || stripos($a['name'], $q) !== false) ? 1 : 0;
