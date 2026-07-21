@@ -512,8 +512,13 @@ if (!empty($pageRoots)) {
                                         <div class="children-row">
                                             <?php
                                             foreach ($children as $child):
-                                                // Fallback: si la variante no tiene portada propia, usar la de la familia
-                                                $childCover = ($child['cover_image_url'] ?? '') ?: $familyCover;
+                                                // Portada PROPIA de la variante. Si no tiene, se deja vacío
+                                                // (placeholder) y el cargador la resuelve con la foto real de
+                                                // ESTA variante vía /api/covers/batch.
+                                                // Antes se usaba $familyCover como fallback, pero eso hacía que
+                                                // varias variantes sin portada propia mostraran todas la MISMA
+                                                // foto del padre (fotos repetidas). Igual que en landing.php.
+                                                $childCover = $child['cover_image_url'] ?? '';
                                                 $childIsVideo = str_starts_with($childCover, '[VIDEO]');
                                                 if ($childIsVideo) $childCover = substr($childCover, 7);
                                             ?>
