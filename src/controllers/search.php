@@ -709,10 +709,16 @@ if (!empty($pageRoots)) {
                 }
             });
 
-            // Collect SKUs from child thumbnails with placeholders
+            // Collect SKUs from child thumbnails that need their REAL per-variant cover:
+            //   1) placeholder vacío (sin ninguna imagen)
+            //   2) fallback de familia (data-fallback="1") → muestra la portada de otra
+            //      variante/padre hasta que se resuelve la suya propia.
+            // Sin esto, las miniaturas con fallback solo se corregían al hacer click.
             document.querySelectorAll('.child-thumb').forEach(thumb => {
-                const ph = thumb.querySelector('.child-placeholder');
-                if (ph && thumb.dataset.sku) {
+                if (!thumb.dataset.sku) return;
+                const hasPlaceholder = thumb.querySelector('.child-placeholder');
+                const isFallback = thumb.dataset.fallback === '1';
+                if (hasPlaceholder || isFallback) {
                     const sku = thumb.dataset.sku;
                     if (!skuElements[sku]) skuElements[sku] = [];
                     skuElements[sku].push({ el: thumb, type: 'child' });
@@ -751,7 +757,7 @@ if (!empty($pageRoots)) {
                                     placeholder.replaceWith(img);
                                 }
                             } else {
-                                // child-thumb: replace placeholder with small image
+                                // child-thumb: puede tener placeholder vacío o una imagen de fallback
                                 const placeholder = entry.el.querySelector('.child-placeholder');
                                 if (placeholder) {
                                     const img = document.createElement('img');
@@ -761,6 +767,14 @@ if (!empty($pageRoots)) {
                                     img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
                                     img.onerror = () => { img.outerHTML = '<span class="child-placeholder">📷</span>'; };
                                     placeholder.replaceWith(img);
+                                    entry.el.dataset.fallback = '0';
+                                } else {
+                                    // Fallback de familia: reemplazar por la portada REAL de esta variante
+                                    const existing = entry.el.querySelector('img');
+                                    if (existing) {
+                                        existing.src = cover.url;
+                                        entry.el.dataset.fallback = '0';
+                                    }
                                 }
                             }
                         });
