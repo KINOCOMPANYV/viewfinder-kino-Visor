@@ -77,14 +77,16 @@ if (empty($products)) {
 // ("X6071.jpg") o empieza por el código seguido de un separador ("X6071-A.jpg",
 // "X6071 (2).jpg"). Es la misma regla de la galería y la búsqueda
 // (fileNameStartsWithSku). Lo que no cumple queda en la lista "sin código".
-// Claves: el SKU tal cual y sin ":"/"."/espacios (hoja "M:8392-1" ↔ foto "M8392-1.jpg").
+// Claves: el SKU tal cual y sus otras escrituras (skuNameVariants): "M:8392-1" ↔ "M8392-1.jpg" / "M-8392-1.jpg".
 $productIndex = [];
 foreach ($products as $prod) {
     $sku = cleanSkuDisplay(trim($prod['sku']));
     $productIndex[strtolower($sku)] ??= $prod;
 }
 foreach ($products as $prod) {
-    $productIndex[skuFileKey(cleanSkuDisplay(trim($prod['sku'])))] ??= $prod;
+    foreach (skuNameVariants(cleanSkuDisplay(trim($prod['sku']))) as $variant) {
+        $productIndex[$variant] ??= $prod;
+    }
 }
 unset($productIndex['']);
 

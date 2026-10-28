@@ -162,13 +162,14 @@ class DriveIndex
     private static function findByPrefix(PDO $db, string $sku): array
     {
         if ($sku === '') return [];
-        $files = self::findByExactPrefix($db, $sku);
-        // "M:8392-1" en la hoja, "M8392-1.jpg" en Drive
-        $key = skuFileKey($sku);
-        if (!$files && $key !== '' && $key !== strtolower($sku)) {
-            $files = self::findByExactPrefix($db, $key);
+        // "M:8392-1" en la hoja; "M8392-1.jpg" o "M-8392-1.jpg" en Drive
+        $files = [];
+        foreach (skuNameVariants($sku) as $variant) {
+            foreach (self::findByExactPrefix($db, $variant) as $f) {
+                $files[$f['id']] = $f;
+            }
         }
-        return $files;
+        return array_values($files);
     }
 
     private static function findByExactPrefix(PDO $db, string $sku): array

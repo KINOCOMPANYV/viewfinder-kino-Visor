@@ -21,6 +21,13 @@ $product = $stmt->fetch();
 $originalSku = $sku;
 $isVariant = false;
 if (!$product) {
+    // 0) Mismo código con otro separador: "/producto/M-8464-2" o "M8464-2" → "M:8464-2"
+    $variants = skuNameVariants($sku);
+    $stmt = $db->prepare("SELECT * FROM products WHERE sku IN (" . implode(',', array_fill(0, count($variants), '?')) . ") ORDER BY archived ASC LIMIT 1");
+    $stmt->execute($variants);
+    $product = $stmt->fetch();
+}
+if (!$product) {
     // 1) Intentar con el SKU raíz (padre)
     $rootSku = extractRootSku($sku);
     if ($rootSku !== $sku) {

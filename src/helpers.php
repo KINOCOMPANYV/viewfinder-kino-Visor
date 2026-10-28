@@ -212,6 +212,24 @@ function skuFileKey(string $sku): string
     return preg_replace('/[^a-z0-9-]/', '', strtolower($sku));
 }
 
+/**
+ * Formas en que se escribe el mismo código en un nombre de archivo (minúsculas).
+ * El separador entre el prefijo de letras y el número es libre: "M:8464-2", "M8464-2",
+ * "M-8464-2", "M 8464-2", "M.8464-2" y "M_8464-2" son el mismo código.
+ * @return string[] la primera es el SKU tal cual
+ */
+function skuNameVariants(string $sku): array
+{
+    $lower = strtolower(trim($sku));
+    $variants = [$lower, skuFileKey($lower)];
+    if (preg_match('/^([a-z]+)[:\-. _]?(\d.*)$/', $lower, $m)) {
+        foreach (['', '-', ':', ' ', '.', '_'] as $sep) {
+            $variants[] = $m[1] . $sep . $m[2];
+        }
+    }
+    return array_values(array_unique(array_filter($variants, 'strlen')));
+}
+
 function fileNameStartsWithSku(string $filename, string $sku): bool
 {
     $name = strtolower(pathinfo($filename, PATHINFO_FILENAME));
