@@ -24,13 +24,18 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/api/drive-folders` | inline en `index.php` | Álbumes JSON |
 | `/api/cron/sync-covers?token=` | `admin_sync_covers.php` | **Actualiza el índice de Drive** y asigna portada + álbum |
 | `/api/cron/precache-drive?token=` | `api_precache_drive.php` | Con índice activo = alias de `sync-covers` (compatibilidad con crons viejos) |
-| `/api/webhook/sheets` POST | `webhook_sheets.php` | Sync incremental desde Apps Script |
+| `/api/webhook/sheets` POST | `webhook_sheets.php` | Sync incremental desde Apps Script (misma regla que el sync completo) |
+| `/admin/products` (`?q=&estado=&marca=&categoria=`) | `admin_products.php` | Listado y activar/desactivar. Cambio: `POST /admin/products/active` (`ids` o `all=1` + filtros) |
+| `/admin/sync` | `templates/admin/sync.php` | Botones: hoja maestra (`POST /admin/sync-sheets`, `?dry_run=1`) y Drive (`/admin/media/sync-covers`) |
 | `/admin/folders` (`?id=`, `?q=`, `?ver=ocultas`) | `admin_folders.php` + `templates/admin/folders.php` | Mostrar/ocultar carpetas (cualquier nivel). Cambio: `POST /admin/folders/toggle` |
-| `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, media, álbumes, import, sheets, caché). Menú común: `templates/admin/partials/nav.php` |
+| `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, carpetas, media, sincronizar, álbumes, caché). Menú común: `templates/admin/partials/nav.php` |
 
 ## Tablas
-- `products`: `sku` (único), `parent_sku` (familia), `name`, `category`, `gender`, `cover_image_url`,
-  `album_id` (→ `albums.drive_id`), `archived`, `sheet_row` (orden de la hoja), `sheet_hash`.
+- `products`: `sku` (único), `parent_sku` (familia), datos de la hoja maestra (`name`, `color`, `category`, `gender`,
+  `movement`, `price_suggested`, `price_wholesale`, `stock`, `description`, `brand`, `case_material`, `strap_material`,
+  `sheet_status`), `cover_image_url`, `album_id` (→ `albums.drive_id`), `sheet_row` (orden de la hoja), `sheet_hash`,
+  `is_active` (interruptor del admin), `in_sheet` (está en la hoja) y `archived` (= oculto en el portal, calculado).
+  `status` es heredada y ya no se usa.
 - `albums`: carpetas de primer nivel bajo la raíz (`drive_id`, `name`, `icon_url`, `is_active`, `order_priority`).
 - `drive_index`: **copia local del árbol de la carpeta raíz** (archivos y carpetas): `file_id`, `name`, `name_stem`
   (sin extensión, indexado para `LIKE 'SKU%'`), `mime_type`, `is_folder`, `parent_id`, `album_id`, `is_public`, `synced_at`,
@@ -74,6 +79,15 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
   Se recalcula si está vacío, si apunta a un álbum fuera de la raíz actual, o con "forzar".
   Desempate: calidad del match (exacto 3 > prefijo 2 > flojo 1) → `scoreCoverCandidate` → orden por nombre (estable).
 
+## Productos: hoja maestra + activación del admin
+- **La hoja MAESTRA es la única fuente de datos** (`src/services/MasterSheet.php`, env `GOOGLE_SHEET_ID` y opcional
+  `GOOGLE_SHEET_GID`). Encabezados aceptados: SKU, NAME, COLOR, CATEGORY, GENDER, MOVEMENT, PRICE_SUGGESTED, PRICE, STOCK,
+  DESCRIPTION, BRAND, MATERIAL DE CAJA, MATERIAL PULSERA, STATUS/estado (también en español). Se guarda tal cual.
+- El sync completo marca `in_sheet = 0` lo que ya no está en la hoja (no borra). Si iba a ocultar más de la mitad, pide confirmar.
+- **Activar/desactivar es solo del admin** (`is_active`); la hoja nunca lo cambia. No hay borrado de productos.
+- `refreshProductVisibility()` (helpers) recalcula `archived = NOT (is_active AND in_sheet)`; todas las páginas públicas
+  filtran por `archived = 0`. La ficha de un producto oculto da 404 (salvo al admin).
+
 ## Carpetas: ocultar y portada
 - El admin apaga una carpeta en **Admin → Carpetas** → `folder_settings.hidden = 1` (en una de primer nivel también `albums.is_active = 0`).
 - `DriveIndex::refreshFolderState()` (tras cada sync y cada cambio) marca `drive_index.is_hidden = 1` en la carpeta y en todo
@@ -83,7 +97,7 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 
 ## Familias (padre ↔ variantes)
 - **Una sola regla**: `computeParentSkuMap()` (raíz candidata + mismo nombre exacto, con contexto de hermanos).
-  `recomputeParentSkus($db)` la aplica a todo el catálogo; la llaman el webhook de Sheets y la importación Excel.
+  `recomputeParentSkus($db)` la aplica a todo el catálogo; la llaman el sync de la hoja maestra, el webhook y los cambios de activación.
   El sync completo de Sheets la aplica sobre la hoja.
 - Agrupar tarjetas: `familyKey($row)` = `parent_sku` o `extractRootSku()` (inicio y búsqueda usan lo mismo).
 
