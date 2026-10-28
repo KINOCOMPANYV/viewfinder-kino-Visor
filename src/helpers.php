@@ -359,6 +359,56 @@ function recomputeParentSkus(PDO $db): int
 }
 
 /**
+ * Recalcula products.archived (= oculto en el portal) desde sus dos causas:
+ * el interruptor del admin (is_active) y estar en la hoja maestra (in_sheet).
+ * Las páginas públicas siguen filtrando por archived = 0. Rehace las familias si algo cambió.
+ * @return int productos cuyo estado visible cambió
+ */
+function refreshProductVisibility(PDO $db): int
+{
+    $changed = $db->exec(
+        "UPDATE products SET archived = IF(is_active = 1 AND in_sheet = 1, 0, 1)
+         WHERE archived <> IF(is_active = 1 AND in_sheet = 1, 0, 1)"
+    );
+    if ($changed) {
+        recomputeParentSkus($db);
+    }
+    return (int) $changed;
+}
+
+/**
+ * Filtros del listado de productos del admin → [WHERE sql, params].
+ * Los usan el listado (admin_products.php) y la activación masiva "todos los del filtro".
+ * $f: q (código o nombre), estado (activos|inactivos|fuera|sinfoto), marca, categoria.
+ */
+function adminProductFilter(array $f): array
+{
+    $where = ['1 = 1'];
+    $params = [];
+    $q = trim((string) ($f['q'] ?? ''));
+    if ($q !== '') {
+        $where[] = '(' . skuSearchSql('sku') . ' LIKE ? OR name LIKE ?)';
+        $params[] = '%' . addcslashes(skuSearchNorm($q), '%_\\') . '%';
+        $params[] = '%' . addcslashes($q, '%_\\') . '%';
+    }
+    switch ($f['estado'] ?? '') {
+        case 'activos':   $where[] = 'is_active = 1 AND in_sheet = 1'; break;
+        case 'inactivos': $where[] = 'is_active = 0'; break;
+        case 'fuera':     $where[] = 'in_sheet = 0'; break;
+        case 'sinfoto':   $where[] = "(cover_image_url IS NULL OR cover_image_url = '')"; break;
+    }
+    if (($f['marca'] ?? '') !== '') {
+        $where[] = 'brand = ?';
+        $params[] = $f['marca'];
+    }
+    if (($f['categoria'] ?? '') !== '') {
+        $where[] = 'category = ?';
+        $params[] = $f['categoria'];
+    }
+    return [implode(' AND ', $where), $params];
+}
+
+/**
  * Clave de familia de un producto para agrupar tarjetas (inicio y búsqueda):
  * parent_sku si lo tiene; si no, su raíz por patrón de SKU.
  */

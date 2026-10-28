@@ -545,7 +545,7 @@
         <div style="display:flex; gap:1rem; margin-bottom:2rem; flex-wrap:wrap;">
             <a href="/admin" class="btn btn-sm btn-secondary">📊 Dashboard</a>
             <a href="/admin/products" class="btn btn-sm btn-secondary">📦 Productos</a>
-            <a href="/admin/import" class="btn btn-sm btn-secondary">📥 Importar Excel</a>
+            <a href="/admin/sync" class="btn btn-sm btn-secondary">🔄 Hoja maestra</a>
             <a href="/admin/media" class="btn btn-sm btn-primary">🖼️ Media</a>
         </div>
 

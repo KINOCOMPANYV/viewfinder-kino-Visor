@@ -256,19 +256,20 @@ if ($uri === '/admin/products') {
     exit;
 }
 
-if ($uri === '/admin/import') {
+if ($uri === '/admin/sync') {
     requireAdmin();
-    if ($method === 'POST') {
-        include __DIR__ . '/src/controllers/admin_import.php';
-    } else {
-        include __DIR__ . '/templates/admin/import.php';
-    }
+    include __DIR__ . '/templates/admin/sync.php';
     exit;
 }
 
-if ($uri === '/admin/product/delete' && $method === 'POST') {
+// La importación por Excel se quitó: la hoja maestra es la única fuente
+if ($uri === '/admin/import') {
+    redirect('/admin/sync');
+}
+
+if ($uri === '/admin/products/active' && $method === 'POST') {
     requireAdmin();
-    include __DIR__ . '/src/controllers/admin_delete_product.php';
+    include __DIR__ . '/src/controllers/admin_products_active.php';
     exit;
 }
 
@@ -347,12 +348,6 @@ if ($uri === '/admin/folders/toggle' && $method === 'POST') {
 if ($uri === '/admin/albums') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_albums.php';
-    exit;
-}
-
-if ($uri === '/admin/product/update' && $method === 'POST') {
-    requireAdmin();
-    include __DIR__ . '/src/controllers/admin_product_update.php';
     exit;
 }
 

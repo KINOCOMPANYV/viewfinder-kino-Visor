@@ -6,7 +6,7 @@ $adminNavItems = [
     'products' => ['/admin/products', '📦 Productos'],
     'folders' => ['/admin/folders', '📂 Carpetas'],
     'media' => ['/admin/media', '🖼️ Media'],
-    'import' => ['/admin/import', '📥 Importar'],
+    'sync' => ['/admin/sync', '🔄 Sincronizar'],
 ];
 ?>
 <nav class="admin-nav">

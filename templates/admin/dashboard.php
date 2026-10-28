@@ -212,7 +212,7 @@ unset($_SESSION['cache_flash']);
         <div style="background: var(--color-surface); padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--color-border); margin: 2rem 0;">
             <h2 style="font-size:1.3rem; margin-bottom: 1.5rem; text-align: center;">⚡ Acciones Rápidas</h2>
             <div style="display:flex; flex-wrap:wrap; gap:1rem; justify-content:center;">
-                <a href="/admin/import" class="btn btn-primary" style="padding: 1rem 2rem; font-size:1.1rem;">📥 Importar Excel</a>
+                <a href="/admin/sync" class="btn btn-primary" style="padding: 1rem 2rem; font-size:1.1rem;">🔄 Sincronizar hoja maestra</a>
                 <a href="/admin/media" class="btn btn-secondary" style="padding: 1rem 2rem; font-size:1.1rem;">🖼️ Sincronizar Fotos (Drive)</a>
                 <a href="/" target="_blank" class="btn btn-secondary" style="padding: 1rem 2rem; font-size:1.1rem; background: var(--color-surface-2);">🌐 Abrir Tienda</a>
             </div>
