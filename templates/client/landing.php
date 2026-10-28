@@ -56,12 +56,11 @@
             // Carpetas de primer nivel de PRODUCTOS (las mantiene el sync de Drive), en el orden
             // de Drive: "1.POEDAGAR", "2.CURREN", ..., "17.NEPIC". Se abren como carpeta.
             $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY CAST(name AS UNSIGNED) = 0, CAST(name AS UNSIGNED), name ASC")->fetchAll();
-            // Sin ícono propio: primera foto de la carpeta (copia local de Drive)
+            // Sin ícono propio: foto al azar de la carpeta (copia local de Drive)
             if ($albums) {
                 try {
-                    $thumbStmt = $db->prepare(
-                        "SELECT file_id FROM drive_index WHERE album_id = ? AND is_folder = 0 AND mime_type LIKE 'image/%' ORDER BY name LIMIT 1"
-                    );
+                    // Foto al azar del contenido (la elige DriveIndex::refreshFolderState en cada sync)
+                    $thumbStmt = $db->prepare("SELECT cover_file_id FROM drive_index WHERE file_id = ? AND is_folder = 1");
                     foreach ($albums as &$al) {
                         if (empty($al['icon_url'])) {
                             $thumbStmt->execute([$al['drive_id']]);

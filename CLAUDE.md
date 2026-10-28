@@ -19,6 +19,9 @@ Así no hace falta abrir los archivos grandes para orientarte.
 - Carpeta raíz de Drive: env `GOOGLE_DRIVE_FOLDER_ID`. Subcarpetas de primer nivel = álbumes (marcas).
   Foto ↔ producto: el nombre del archivo empieza por el SKU (`skuMatchesFilename`, `findBySku`).
 - Variantes: `products.parent_sku` (familia). Raíz: `getFamilyRootSku()` → `extractRootSku()`.
+- Datos de productos: SOLO de la hoja maestra (`MasterSheet`). Activar/desactivar: SOLO el admin (`is_active`).
+  Público = `archived = 0` (lo calcula `refreshProductVisibility()`). No se borran productos.
+- Carpetas ocultas: `folder_settings` → `drive_index.is_hidden` (y `cover_file_id`) vía `DriveIndex::refreshFolderState()`.
 
 ## Archivos grandes (no leer enteros si no hace falta)
 `assets/css/style.css` (~3000 líneas), `templates/admin/media.php` (~1200), `src/controllers/product.php` (~1000),

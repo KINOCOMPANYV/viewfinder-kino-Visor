@@ -17,7 +17,7 @@ if ($tipo === 'archivos') {
     $rows = $db->query(
         "SELECT d.file_id, d.name, a.name AS album FROM drive_index d
          LEFT JOIN albums a ON a.drive_id = d.album_id
-         WHERE d.is_folder = 0 AND d.matched_sku IS NULL
+         WHERE d.is_folder = 0 AND d.is_hidden = 0 AND d.matched_sku IS NULL
            AND (d.mime_type LIKE 'image/%' OR d.mime_type LIKE 'video/%')
            AND (d.album_id IS NULL OR a.is_active = 1)
          ORDER BY a.name, d.name"

@@ -113,8 +113,16 @@ unset($item);
                 <div class="drive-folders-scroll">
                     <div class="drive-folders-grid">
                         <?php foreach ($subfolders as $sub): ?>
-                            <a href="/carpeta/<?= urlencode($sub['id']) ?>" class="drive-folder-chip" title="<?= e($sub['name']) ?>">
-                                <div class="folder-icon">📁</div>
+                            <a href="/carpeta/<?= urlencode($sub['id']) ?>" class="drive-folder-chip<?= !empty($sub['cover']) ? ' has-cover' : '' ?>" title="<?= e($sub['name']) ?>">
+                                <?php if (!empty($sub['cover'])): ?>
+                                    <div class="folder-cover">
+                                        <img src="<?= e($sub['cover']) ?>" alt="" loading="lazy"
+                                             onerror="this.parentNode.outerHTML='<div class=\'folder-icon\'>📁</div>'">
+                                        <span class="folder-cover-badge">📁</span>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="folder-icon">📁</div>
+                                <?php endif; ?>
                                 <div class="folder-name"><?= e($sub['name']) ?></div>
                             </a>
                         <?php endforeach; ?>

@@ -4,8 +4,8 @@ $db = getDB();
 // === Conteos principales (sincronizados con la BD real) ===
 $totalProducts = (int) $db->query("SELECT COUNT(*) FROM products")->fetchColumn();
 $activeProducts = (int) $db->query("SELECT COUNT(*) FROM products WHERE archived = 0")->fetchColumn();
-$archivedProducts = (int) $db->query("SELECT COUNT(*) FROM products WHERE archived = 1")->fetchColumn();
-$discontinuedProducts = (int) $db->query("SELECT COUNT(*) FROM products WHERE status = 'discontinued'")->fetchColumn();
+$archivedProducts = (int) $db->query("SELECT COUNT(*) FROM products WHERE is_active = 0")->fetchColumn();
+$discontinuedProducts = (int) $db->query("SELECT COUNT(*) FROM products WHERE in_sheet = 0")->fetchColumn();
 
 // Productos con portada vs sin portada
 $withCover = (int) $db->query("SELECT COUNT(*) FROM products WHERE cover_image_url IS NOT NULL AND cover_image_url != '' AND archived = 0")->fetchColumn();
@@ -96,13 +96,7 @@ unset($_SESSION['cache_flash']);
     </header>
 
     <main class="container" style="padding-top:2rem;">
-        <nav class="admin-nav">
-            <a href="/admin" class="active">📊 Dashboard</a>
-            <a href="/admin/products">📦 Productos</a>
-            <a href="/admin/import">📥 Importar Excel</a>
-            <a href="/admin/media">🖼️ Media</a>
-            <a href="/" target="_blank">🌐 Ver Portal</a>
-        </nav>
+        <?php $adminNav = 'dashboard'; include __DIR__ . '/partials/nav.php'; ?>
 
         <h1 style="font-size:1.5rem; margin-bottom:1.5rem;">Dashboard</h1>
 
@@ -118,13 +112,13 @@ unset($_SESSION['cache_flash']);
                 <div class="stat-value" style="color:var(--color-success);">
                     <?= number_format($activeProducts) ?>
                 </div>
-                <div class="stat-label">Activos</div>
+                <div class="stat-label">Visibles</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" style="color:var(--color-danger);">
                     <?= number_format($archivedProducts) ?>
                 </div>
-                <div class="stat-label">Archivados</div>
+                <div class="stat-label"><a href="/admin/products?estado=inactivos" style="color:inherit;">Desactivados</a></div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" style="font-size:1rem; color:var(--color-text-muted);">
@@ -158,7 +152,7 @@ unset($_SESSION['cache_flash']);
                 <div class="stat-value" style="color:#f87171;">
                     <?= number_format($discontinuedProducts) ?>
                 </div>
-                <div class="stat-label">⛔ Descontinuados</div>
+                <div class="stat-label"><a href="/admin/products?estado=fuera" style="color:inherit;">⛔ Fuera de la hoja</a></div>
             </div>
         </div>
 
@@ -218,8 +212,8 @@ unset($_SESSION['cache_flash']);
         <div style="background: var(--color-surface); padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--color-border); margin: 2rem 0;">
             <h2 style="font-size:1.3rem; margin-bottom: 1.5rem; text-align: center;">⚡ Acciones Rápidas</h2>
             <div style="display:flex; flex-wrap:wrap; gap:1rem; justify-content:center;">
-                <a href="/admin/import" class="btn btn-primary" style="padding: 1rem 2rem; font-size:1.1rem;">📥 Importar Excel</a>
-                <a href="/admin/media" class="btn btn-secondary" style="padding: 1rem 2rem; font-size:1.1rem;">🖼️ Sincronizar Fotos (Drive)</a>
+                <a href="/admin/sync" class="btn btn-primary" style="padding: 1rem 2rem; font-size:1.1rem;">🔄 Sincronizar hoja maestra</a>
+                <a href="/admin/folders" class="btn btn-secondary" style="padding: 1rem 2rem; font-size:1.1rem;">📂 Carpetas</a>
                 <a href="/" target="_blank" class="btn btn-secondary" style="padding: 1rem 2rem; font-size:1.1rem; background: var(--color-surface-2);">🌐 Abrir Tienda</a>
             </div>
         </div>

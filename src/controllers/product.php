@@ -80,6 +80,11 @@ if (!$product) {
     $product = $stmt->fetch();
 }
 
+// Desactivado en el admin o fuera de la hoja maestra: no se muestra al público
+if ($product && !empty($product['archived']) && !isAdminLoggedIn()) {
+    $product = null;
+}
+
 if (!$product) {
     http_response_code(404);
     include __DIR__ . '/../../templates/404.php';
@@ -262,6 +267,11 @@ $variants = $varStmt->fetchAll();
                                     <?= e($product['movement']) ?>
                                 </span></li>
                         <?php endif; ?>
+                        <?php foreach (['brand' => 'Marca', 'color' => 'Color', 'case_material' => 'Caja', 'strap_material' => 'Pulsera'] as $col => $label): ?>
+                            <?php if (!empty($product[$col])): ?>
+                                <li><span><?= $label ?></span><span><?= e($product[$col]) ?></span></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                     </ul>
 
                     <!-- Description -->
