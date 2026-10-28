@@ -42,6 +42,16 @@ if (!$folderId) {
     exit;
 }
 
+// Con el índice local activo las páginas ya no consultan Drive: no hay caché por SKU que
+// calentar. Este cron pasa a hacer lo mismo que /api/cron/sync-covers (refrescar el índice
+// y asignar portadas), así un cron ya programado sigue siendo útil.
+require_once __DIR__ . '/../services/DriveIndex.php';
+if (DriveIndex::isReady($db)) {
+    $_GET['token'] = $tokenProvided; // admin_sync_covers.php valida el token por query
+    include __DIR__ . '/admin_sync_covers.php';
+    exit;
+}
+
 // ── Obtener SKUs sin caché reciente ──────────────────────────────────────────
 // Selecciona productos activos cuyo SKU NO tiene una entrada en media_search_cache
 // con cached_at reciente (< $cacheTtlMin minutos). Orden aleatorio: si algún SKU falla

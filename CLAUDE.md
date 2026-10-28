@@ -11,8 +11,8 @@ Así no hace falta abrir los archivos grandes para orientarte.
 - Helpers compartidos: `src/helpers.php`. Drive (REST + OAuth sin SDK): `src/services/GoogleDriveService.php`.
 - Cambios de esquema SOLO en `migrations/NNN_nombre.sql` (se ejecutan al arrancar el contenedor con `migrate.php`).
   Nunca `ALTER TABLE` en una petición web.
-- Las páginas públicas NO deben llamar a la API de Drive en vivo. Leen MySQL (`products.cover_image_url`,
-  `media_search_cache`). Las llamadas a Drive van en admin/cron.
+- Las páginas públicas NO deben llamar a la API de Drive en vivo. Leen MySQL: `products.cover_image_url` y
+  `drive_index` (copia local del árbol de Drive, `src/services/DriveIndex.php`). Solo el sync (admin/cron) recorre Drive.
 - Portada guardada = `lh3Url($fileId)` → `https://lh3.googleusercontent.com/d/{fileId}=s400` (estable). Prefijo `[VIDEO]` = video;
   decodifica con `parseStoredCover()`.
   No guardes `thumbnailLink` de la API de Drive en `products`: caduca.

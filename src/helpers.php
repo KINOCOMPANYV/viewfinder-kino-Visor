@@ -198,6 +198,21 @@ function skuMatchesFilename(string $sku, string $filename): bool
 }
 
 /**
+ * Regla de coincidencia foto ↔ SKU usada al buscar media de un producto:
+ * el nombre (sin extensión) empieza con el SKU y lo que sigue es un separador
+ * (guion, punto, espacio, guion bajo) o nada. Evita que "1948" coincida con
+ * "1948O", "JR1948O" o "1948DG".
+ */
+function fileNameStartsWithSku(string $filename, string $sku): bool
+{
+    $name = strtolower(pathinfo($filename, PATHINFO_FILENAME));
+    $skuLower = strtolower($sku);
+    if (!str_starts_with($name, $skuLower)) return false;
+    $len = strlen($skuLower);
+    return strlen($name) === $len || !ctype_alnum($name[$len]);
+}
+
+/**
  * Extrae el SKU raíz (padre) de un código de variante.
  *
  * REGLA: Solo se considera "variante" un sufijo que sea EXCLUSIVAMENTE letras
@@ -443,23 +458,12 @@ function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $fo
     $rootFiles = $drive->findBySku($folderId, $rootSku);
     $driveFailed = $drive->lastRequestFailed;
 
+    $childFiles = [];
     if ($sku !== $rootSku) {
-        // Genéricos del padre (evita que el hijo A vea archivos del hijo B)
-        $parentOnly = array_filter($rootFiles, fn($f) => isGenericMediaForSku($rootSku, $f['name']));
-        // Específicos del hijo
         $childFiles = $drive->findBySku($folderId, $sku);
         $driveFailed = $driveFailed || $drive->lastRequestFailed;
-        $existingIds = array_column($childFiles, 'id');
-        $files = $childFiles;
-        foreach ($parentOnly as $pf) {
-            if (!in_array($pf['id'], $existingIds)) {
-                $files[] = $pf;
-            }
-        }
-    } else {
-        $files = $rootFiles;
     }
-    $files = array_values($files);
+    $files = combineFamilyFiles($sku, $rootSku, $rootFiles, $childFiles);
 
     // Si Drive falló y no hay archivos, no se cachea nada: sería un falso "sin foto"
     if (!$files && $driveFailed) {
@@ -484,26 +488,45 @@ function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $fo
         // tabla puede no existir aún
     }
 
-    if ($files) {
-        // Auto-asignar portada (mejor imagen, nunca video) si el producto no tiene
-        try {
-            $coverCheck = $db->prepare("SELECT id, cover_image_url FROM products WHERE sku = ? LIMIT 1");
-            $coverCheck->execute([$sku]);
-            $prodRow = $coverCheck->fetch();
-            if ($prodRow && empty($prodRow['cover_image_url'])) {
-                $imgOnly = array_filter($files, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
-                $bestImage = pickBestCoverFile($imgOnly);
-                if ($bestImage) {
-                    $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
-                       ->execute([lh3Url($bestImage['id']), $prodRow['id']]);
-                }
-            }
-        } catch (Exception $e) {
-            // ignorar errores de auto-cover
-        }
-    }
+    autoAssignCover($db, $sku, $files);
 
     return ['files' => $files, 'root_sku' => $rootSku, 'failed' => false];
+}
+
+/**
+ * Archivos que ve un SKU: si es variante, los suyos propios + los genéricos del
+ * padre (p. ej. "839-5.jpg"), sin los de sus hermanos. Si es raíz, los de la raíz.
+ */
+function combineFamilyFiles(string $sku, string $rootSku, array $rootFiles, array $childFiles): array
+{
+    if ($sku === $rootSku) {
+        return array_values($rootFiles);
+    }
+    $files = $childFiles;
+    $seen = array_flip(array_column($childFiles, 'id'));
+    foreach ($rootFiles as $rf) {
+        if (!isset($seen[$rf['id']]) && isGenericMediaForSku($rootSku, $rf['name'])) {
+            $files[] = $rf;
+        }
+    }
+    return array_values($files);
+}
+
+/**
+ * Si el producto aún no tiene portada, le asigna la mejor IMAGEN (nunca video)
+ * de $files, para que la próxima visita la pinte directo desde la BD.
+ */
+function autoAssignCover(PDO $db, string $sku, array $files): void
+{
+    $imgOnly = array_filter($files, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+    $bestImage = pickBestCoverFile($imgOnly);
+    if (!$bestImage) return;
+    try {
+        $db->prepare("UPDATE products SET cover_image_url = ? WHERE sku = ? AND (cover_image_url IS NULL OR cover_image_url = '')")
+           ->execute([lh3Url($bestImage['id']), $sku]);
+    } catch (Exception $e) {
+        // ignorar errores de auto-cover
+    }
 }
 
 /**

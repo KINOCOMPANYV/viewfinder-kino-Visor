@@ -3,9 +3,10 @@
 Objetivo: que navegar por el catálogo (inicio, búsqueda, ficha) solo lea MySQL y sirva imágenes ligeras de lh3.
 
 ## Reglas
-1. **Nada de Drive en vivo al navegar** si se puede evitar. Si un endpoint público necesita Drive, que sea
-   acotado (máx. 5 SKUs por petición en `/api/covers/batch`), con timeout y con el resultado en caché.
-2. **Caché negativa**: `fetchAndCacheMediaForSku()` guarda también el resultado vacío ("sin foto") para que ese SKU
+1. **Nada de Drive en vivo al navegar.** Las páginas y APIs públicas leen `drive_index` (ver ARQUITECTURA.md).
+   El único que recorre Drive es el sync (`admin_sync_covers.php` → `DriveIndex::sync`). El camino viejo
+   (Drive en vivo, máx. 5 SKUs por petición) solo corre si el índice está vacío.
+2. **Caché negativa** (camino viejo): `fetchAndCacheMediaForSku()` guarda también el resultado vacío ("sin foto") para que ese SKU
    no vuelva a consultar Drive en cada visita. Si Drive falló (`GoogleDriveService::$lastRequestFailed`), no se guarda.
 3. **URLs de imagen estables**: `https://lh3.googleusercontent.com/d/{id}=sNNN` (el archivo se hace público).
    No cachees `thumbnailLink` de la API de Drive: caduca en horas. Helpers: `lh3Url($id, $size)` construye,
@@ -26,12 +27,15 @@ Objetivo: que navegar por el catálogo (inicio, búsqueda, ficha) solo lea MySQL
 ## Vigencias de caché
 | Qué | Dónde | Vigencia |
 |---|---|---|
-| Portadas desde caché | `/api/covers/batch`, `product.php` | `COVER_CACHE_TTL_HOURS` (6 h) |
-| Galería de un SKU | `/api/media/{sku}` | 30 min |
-| Precache cron | `/api/cron/precache-drive` | refresca lo que tenga más de 2 h |
+| Índice de Drive | `drive_index` | hasta el próximo sync (cron `sync-covers`) |
+| Galería de un SKU | `/api/media/{sku}` | HTTP 60 s (índice) · 30 min (camino viejo) |
+| Portadas camino viejo | `/api/covers/batch`, `product.php` | `COVER_CACHE_TTL_HOURS` (6 h), "sin foto" 30 min |
 
 ## Pendiente / ideas
 - `visible_publico` vive en `drive_cache` (tabla de caché): limpiar esa caché conserva las filas ocultas,
   pero lo ideal es una tabla propia de visibilidad.
-- Índice local de Drive (sync único de la carpeta raíz a MySQL) para que `/api/media` y las portadas no llamen a Drive.
+- Unificar `drive_index` y `drive_cache` (hoy `filterHiddenFiles` hace una consulta aparte a `drive_cache`).
+- `admin_media.php` y `admin_sync_sheets.php` aún usan `listAllMediaFiles` (recorrido en vivo); podrían leer `drive_index`.
+- `/api/covers/batch` con índice hace ~4 consultas por SKU (máx. 50); se puede agrupar si hiciera falta.
+- Una vez que el índice esté siempre lleno, borrar el camino viejo (`media_search_cache`, `fetchAndCacheMediaForSku`).
 - Columna normalizada de SKU (sin guiones) indexada, para no usar `REPLACE(...) LIKE` (escaneo completo) en las búsquedas.

@@ -93,23 +93,32 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
 $storedCover = parseStoredCover($product['cover_image_url'] ?? '', 800);
 $serverCover = $storedCover['video'] ? ($product['cover_image_url'] ?? '') : $storedCover['url'];
 if (empty($serverCover)) {
-    try {
-        $cacheStmt = $db->prepare(
-            "SELECT files_json FROM media_search_cache 
-             WHERE sku = ? AND " . freshCoverCacheSql()
-        );
-        $cacheStmt->execute([$originalSku]);
-        $cacheRow = $cacheStmt->fetch();
-        if ($cacheRow) {
-            // Misma elección que las tarjetas (mejor imagen, sin archivos ocultos)
-            $cachedFiles = filterHiddenFiles($db, json_decode($cacheRow['files_json'], true) ?: []);
-            $cover = extractCoverFromFiles($cachedFiles);
-            if ($cover && !$cover['video']) {
-                $serverCover = coverUrlAtSize($cover['url'], 800);
+    // Archivos del SKU: índice local de Drive o, si aún no existe, la caché de búsquedas
+    require_once __DIR__ . '/../services/DriveIndex.php';
+    $knownFiles = null;
+    if (DriveIndex::isReady($db)) {
+        $knownFiles = DriveIndex::filesForSku($db, $originalSku)['files'];
+    } else {
+        try {
+            $cacheStmt = $db->prepare(
+                "SELECT files_json FROM media_search_cache
+                 WHERE sku = ? AND " . freshCoverCacheSql()
+            );
+            $cacheStmt->execute([$originalSku]);
+            $cacheRow = $cacheStmt->fetch();
+            if ($cacheRow) {
+                $knownFiles = json_decode($cacheRow['files_json'], true) ?: [];
             }
+        } catch (Exception $e) {
+            // tabla no existe aún, ignorar
         }
-    } catch (Exception $e) {
-        // tabla no existe aún, ignorar
+    }
+    if ($knownFiles) {
+        // Misma elección que las tarjetas (mejor imagen, sin archivos ocultos)
+        $cover = extractCoverFromFiles(filterHiddenFiles($db, $knownFiles));
+        if ($cover && !$cover['video']) {
+            $serverCover = coverUrlAtSize($cover['url'], 800);
+        }
     }
 }
 

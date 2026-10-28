@@ -3,7 +3,7 @@
  * Vista de Carpeta de Drive — muestra el contenido real de una carpeta.
  * GET /carpeta/{folderId}
  */
-require_once __DIR__ . '/../services/GoogleDriveService.php';
+require_once __DIR__ . '/../services/DriveIndex.php';
 
 $folderId = $_GET['folder_id'] ?? '';
 if (!$folderId) {
@@ -11,41 +11,51 @@ if (!$folderId) {
 }
 
 $db = getDB();
-$drive = new GoogleDriveService();
-$token = $drive->getValidToken($db);
 
 $folderName = 'Carpeta';
 $files = [];
 $subfolders = [];
+$driveAvailable = true; // false solo si hubo que ir a Drive y no hay conexión
 
-if ($token) {
-    // Obtener nombre de la carpeta
-    $meta = $drive->getFileMetadata($folderId, 'name');
-    if (!empty($meta['name'])) {
-        $folderName = $meta['name'];
+// 1) Con índice: solo BD (una carpeta fuera del índice se ve vacía, no se consulta Drive).
+// 2) Sin índice todavía (antes del primer sync): Drive en vivo como antes.
+if (DriveIndex::isReady($db)) {
+    $indexed = DriveIndex::folderContents($db, $folderId, env('GOOGLE_DRIVE_FOLDER_ID', ''));
+    if ($indexed !== null) {
+        $folderName = $indexed['name'];
+        $subfolders = $indexed['subfolders'];
+        $files = $indexed['files'];
     }
+} else {
+    $drive = new GoogleDriveService();
+    $driveAvailable = (bool) $drive->getValidToken($db);
+    if ($driveAvailable) {
+        $meta = $drive->getFileMetadata($folderId, 'name');
+        if (!empty($meta['name'])) {
+            $folderName = $meta['name'];
+        }
 
-    // Listar contenido de la carpeta
-    $result = $drive->listFiles($folderId);
-    $allItems = $result['files'] ?? [];
+        foreach ($drive->listFiles($folderId)['files'] ?? [] as $item) {
+            $mime = $item['mimeType'] ?? '';
+            if ($mime === 'application/vnd.google-apps.folder') {
+                $subfolders[] = $item;
+            } elseif (str_starts_with($mime, 'image/') || str_starts_with($mime, 'video/')) {
+                $files[] = $item;
+            }
+        }
 
-    foreach ($allItems as $item) {
-        $mime = $item['mimeType'] ?? '';
-        if ($mime === 'application/vnd.google-apps.folder') {
-            $subfolders[] = $item;
-        } elseif (str_starts_with($mime, 'image/') || str_starts_with($mime, 'video/')) {
-            // Generar thumbnail URL
-            $item['thumb'] = "https://lh3.googleusercontent.com/d/{$item['id']}=s400";
-            $item['isVideo'] = str_starts_with($mime, 'video/');
-            $files[] = $item;
+        // Hacer públicos los archivos en paralelo
+        if (!empty($files)) {
+            $drive->makePublicBatch(array_column($files, 'id'));
         }
     }
-
-    // Hacer públicos los archivos en paralelo
-    if (!empty($files)) {
-        $drive->makePublicBatch(array_column($files, 'id'));
-    }
 }
+
+foreach ($files as &$item) {
+    $item['thumb'] = lh3Url($item['id']);
+    $item['isVideo'] = str_starts_with($item['mimeType'] ?? '', 'video/');
+}
+unset($item);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -200,7 +210,7 @@ if ($token) {
             </div>
         <?php endif; ?>
 
-        <?php if (!$token): ?>
+        <?php if (!$driveAvailable): ?>
             <div class="empty-state fade-in" style="padding:3rem 0; text-align:center;">
                 <div class="empty-icon" style="font-size:3rem;">⚠️</div>
                 <h3 style="margin-top:1rem;">Drive no conectado</h3>

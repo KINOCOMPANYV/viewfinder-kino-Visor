@@ -366,7 +366,22 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     $db = getDB();
     $freshRequested = !empty($_GET['fresh']);
 
-    // filterHiddenFiles() ahora definida en src/helpers.php
+    // === Índice local de Drive (sin llamadas a Drive; las portadas las asigna el sync) ===
+    require_once __DIR__ . '/src/services/DriveIndex.php';
+    if (DriveIndex::isReady($db)) {
+        $result = DriveIndex::filesForSku($db, $sku);
+        $files = filterHiddenFiles($db, $result['files']);
+        header('Cache-Control: public, max-age=60');
+        jsonResponse([
+            'files' => $files,
+            'sku' => $sku,
+            'root_sku' => $result['root_sku'],
+            'is_variant' => ($sku !== $result['root_sku']),
+            'cached' => true,
+        ]);
+    }
+
+    // Sin índice todavía (antes del primer sync): caché + búsqueda en Drive
 
     // === CACHÉ: verificar si hay respuesta en caché (TTL 30 min) ===
     if (!$freshRequested) {
@@ -493,7 +508,7 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
 
     $input = json_decode(file_get_contents('php://input'), true);
-    $skus = array_slice(array_unique($input['skus'] ?? []), 0, 50); // max 50
+    $skus = array_slice(array_unique(array_map('strval', (array) ($input['skus'] ?? []))), 0, 50); // max 50
 
     if (empty($skus)) {
         jsonCachedResponse(['covers' => new \stdClass()], 300);
@@ -503,6 +518,26 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $folderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
     $covers = [];
     $uncachedSkus = [];
+
+    // Con índice local: todas las portadas salen de la BD, sin límite ni Drive.
+    // Además se auto-asignan, así la próxima visita ni siquiera llama a este endpoint.
+    require_once __DIR__ . '/src/services/DriveIndex.php';
+    if (DriveIndex::isReady($db)) {
+        // Una sola consulta para saber qué productos aún no tienen portada guardada
+        $in = implode(',', array_fill(0, count($skus), '?'));
+        $coverStmt = $db->prepare("SELECT sku, cover_image_url FROM products WHERE sku IN ($in)");
+        $coverStmt->execute($skus);
+        $storedCovers = $coverStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        foreach ($skus as $sku) {
+            $files = filterHiddenFiles($db, DriveIndex::filesForSku($db, $sku)['files']);
+            if (array_key_exists($sku, $storedCovers) && empty($storedCovers[$sku])) {
+                autoAssignCover($db, $sku, $files);
+            }
+            $covers[$sku] = extractCoverFromFiles($files);
+        }
+        jsonCachedResponse(['covers' => $covers], 300);
+    }
 
     // 1) Buscar en caché primero
     try {

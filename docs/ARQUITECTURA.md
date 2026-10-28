@@ -15,15 +15,15 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/` | `templates/client/landing.php` | Álbumes + "Productos recientes" (10 familias/página) |
 | `/buscar` (`?q=`, `?album=`, `?ajax=1`) | `src/controllers/search.php` | Grid de familias (20/página), multi-código, carpetas |
 | `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}` |
-| `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta de Drive en vivo |
+| `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada) |
 | `/api/search` | `src/controllers/api_search.php` | Autocomplete JSON |
 | `/api/batch-search` POST | `src/controllers/api_batch_search.php` | Búsqueda por lote (modal) |
-| `/api/covers/batch` POST | inline en `index.php` | Portadas para SKUs sin `cover_image_url` |
-| `/api/media/{sku}` | inline en `index.php` | Archivos de Drive de un SKU (galería) |
+| `/api/covers/batch` POST | inline en `index.php` | Portadas para SKUs sin `cover_image_url` (desde `drive_index`) |
+| `/api/media/{sku}` | inline en `index.php` | Archivos de un SKU para la galería (desde `drive_index`) |
 | `/api/download/{fileId}` | inline en `index.php` | Proxy de descarga autenticado |
 | `/api/drive-folders` | inline en `index.php` | Álbumes JSON |
-| `/api/cron/sync-covers?token=` | `admin_sync_covers.php` | Escanea álbumes y asigna portada + álbum |
-| `/api/cron/precache-drive?token=` | `api_precache_drive.php` | Calienta `media_search_cache` (30 SKUs/llamada) |
+| `/api/cron/sync-covers?token=` | `admin_sync_covers.php` | **Actualiza el índice de Drive** y asigna portada + álbum |
+| `/api/cron/precache-drive?token=` | `api_precache_drive.php` | Con índice activo = alias de `sync-covers` (compatibilidad con crons viejos) |
 | `/api/webhook/sheets` POST | `webhook_sheets.php` | Sync incremental desde Apps Script |
 | `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, media, álbumes, import, sheets, caché) |
 
@@ -31,22 +31,34 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 - `products`: `sku` (único), `parent_sku` (familia), `name`, `category`, `gender`, `cover_image_url`,
   `album_id` (→ `albums.drive_id`), `archived`, `sheet_row` (orden de la hoja), `sheet_hash`.
 - `albums`: carpetas de primer nivel bajo la raíz (`drive_id`, `name`, `icon_url`, `is_active`, `order_priority`).
-- `media_search_cache`: `sku` → `files_json` (resultado de buscar en Drive), `root_sku`, `cached_at`.
+- `drive_index`: **copia local del árbol de la carpeta raíz** (archivos y carpetas): `file_id`, `name`, `name_stem`
+  (sin extensión, indexado para `LIKE 'SKU%'`), `mime_type`, `is_folder`, `parent_id`, `album_id`, `is_public`, `synced_at`.
+  Lo llena `DriveIndex::sync()` (`src/services/DriveIndex.php`).
+- `media_search_cache`: `sku` → `files_json` (búsqueda en Drive). Solo se usa mientras `drive_index` está vacío.
 - `drive_cache`: hoy solo guarda la visibilidad por archivo (`visible_publico`) y subcarpetas para la búsqueda.
 - `google_tokens`: OAuth (último registro = activo; `getValidToken()` renueva solo).
 - Otras: `migrations`, `task_queue`, `media_assets` y `downloads_log` (heredadas, poco usadas).
 
+## Índice local de Drive (clave del rendimiento)
+- `DriveIndex::sync()` recorre la carpeta raíz por niveles (40 carpetas por consulta, `listChildrenOfMany`),
+  hace upsert en `drive_index`, borra lo que ya no existe y hace públicos solo los archivos nuevos (`is_public`).
+  Si Drive falla a mitad, no toca el índice.
+- Se ejecuta con el botón admin **Sincronizar portadas** y con el cron `/api/cron/sync-covers?token=CRON_SECRET`
+  (programarlo, p. ej. cada 30-60 min). Subir/borrar desde el admin actualiza el índice al momento.
+- `DriveIndex::filesForSku()` = misma regla que la búsqueda en Drive (`fileNameStartsWithSku` + familia con
+  `combineFamilyFiles`), pero en MySQL. Devuelve el formato de la API de Drive con `thumbnailLink` = lh3 por ID.
+- `DriveIndex::isReady()`: si la tabla está vacía (antes del primer sync) todo cae al camino viejo (Drive en vivo + caché).
+
 ## Flujo de portadas (cómo llega la foto a la tarjeta)
-1. **Guardada en BD** (camino rápido): `products.cover_image_url` = `https://lh3.googleusercontent.com/d/{id}=s400`.
+1. **Guardada en BD** (camino rápido): `products.cover_image_url` = `lh3Url($id)` (`…/d/{id}=s400`).
    Se pinta directo en el HTML (landing/search). Las 3 primeras con `loading=eager` y el resto `lazy`.
 2. **Sin portada** → placeholder 📷 y el JS llama `POST /api/covers/batch` con los SKUs que faltan.
-   Este endpoint lee `media_search_cache`; si no hay caché busca en Drive (`fetchAndCacheMediaForSku`) y,
-   si encuentra imagen, **auto-asigna** `cover_image_url` para la próxima visita.
-3. **Asignación masiva**: admin "Sincronizar portadas" o el cron `sync-covers` recorren cada álbum
-   (`listAlbumMediaRecursive`) y asignan portada y álbum por coincidencia de SKU en el nombre del archivo.
-   Puntaje: `scoreCoverCandidate()` (la imagen gana al video; "principal/cover/01/-1/f1" suman).
+   Con índice: sale de `drive_index` y se **auto-asigna** (`autoAssignCover`), así la próxima visita ya viene en el HTML.
+3. **Asignación masiva**: `admin_sync_covers.php` → sync del índice + match por SKU (`matchFileToProduct`, prefijo más
+   largo; el siguiente carácter no puede ser dígito). Puntaje: `scoreCoverCandidate()` (la imagen gana al video).
+   Solo álbumes activos + archivos sueltos en la raíz.
 4. **Ficha de producto**: la portada sale en el HTML con `<link rel=preload>` (=s800). La galería completa
-   llega por JS desde `/api/media/{sku}` (caché 30 min en `media_search_cache`).
+   llega por JS desde `/api/media/{sku}` (índice local; `Cache-Control` 60 s).
 
 Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600/800` vista principal, `=s1200` compartir.
 
