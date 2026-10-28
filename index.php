@@ -320,6 +320,12 @@ if ($uri === '/admin/media/sync-covers' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/media/sin-codigo.csv') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_media_report.php';
+    exit;
+}
+
 if ($uri === '/admin/media/visibility' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_media_visibility.php';

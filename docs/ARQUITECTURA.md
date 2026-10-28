@@ -54,8 +54,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
    Se pinta directo en el HTML (landing/search). Las 3 primeras con `loading=eager` y el resto `lazy`.
 2. **Sin portada** → placeholder 📷 y el JS llama `POST /api/covers/batch` con los SKUs que faltan.
    Con índice: sale de `drive_index` y se **auto-asigna** (`autoAssignCover`), así la próxima visita ya viene en el HTML.
-3. **Asignación masiva**: `admin_sync_covers.php` → sync del índice + match por SKU (`matchFileToProduct`, prefijo más
-   largo; el siguiente carácter no puede ser dígito). Puntaje: `scoreCoverCandidate()` (la imagen gana al video).
+3. **Asignación masiva**: `admin_sync_covers.php` → sync del índice + match por SKU (`matchFileToProduct`, ver "Coincidencia SKU ↔ archivo"). Puntaje: `scoreCoverCandidate()` (la imagen gana al video).
    Solo álbumes activos + archivos sueltos en la raíz.
 4. **Ficha de producto**: la portada sale en el HTML con `<link rel=preload>` (=s800). La galería completa
    llega por JS desde `/api/media/{sku}` (índice local; `Cache-Control` 60 s).
@@ -76,13 +75,14 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
   El sync completo de Sheets la aplica sobre la hoja.
 - Agrupar tarjetas: `familyKey($row)` = `parent_sku` o `extractRootSku()` (inicio y búsqueda usan lo mismo).
 
-## Coincidencia SKU ↔ archivo
-- `GoogleDriveService::findBySku()`: `name contains 'SKU'` en Drive + filtro estricto (después del SKU tiene que venir
-  un separador, no una letra ni un número).
-- `skuMatchesFilename()` / `matchFileToProduct()` (en sync-covers): prefijo; el siguiente carácter no puede ser un dígito.
-  En sync-covers las claves "fuertes" (SKU tal cual) siempre ganan a las "débiles" (raíz, sin prefijo de marca, sin espacios).
-  También es fuerte `skuFileKey()` (sin ":", "." ni espacios: hoja "M:8392-1" ↔ foto "M8392-1.jpg"). "Copia de …" se ignora.
-  Débil contra débil no cuenta: "CX21-2.jpg" sin prefijo (21-2) NO es "RP-21" sin prefijo (21).
+## Coincidencia SKU ↔ archivo (regla única, decidida por el dueño)
+- **La foto se llama como el código**: `X6071.jpg`, o el código + separador + lo que sea (`X6071-A.jpg`, `X6071 (2).jpg`).
+  Nada de coincidencias flojas (sin prefijo de marca, raíz, "Copia de", `V1` pegado). Gana el código más largo.
+- Misma regla en todos lados: `fileNameStartsWithSku()` (galería, `DriveIndex::findByPrefix`) y `matchFileToProduct()` (sync-covers).
+  `skuFileKey()` solo quita ":", "." y espacios del SKU (hoja "M:8392-1" ↔ foto "M8392-1.jpg").
+- Lo que no cumple queda en `drive_index.matched_sku = NULL` (migración 020) y se descarga para renombrar:
+  `/admin/media/sin-codigo.csv?tipo=archivos` y `?tipo=productos` (botones en Admin → Media).
+- "Reasignar TODAS" (forzado) quita portadas guardadas que son una foto del índice de OTRO código.
 - Variantes: `computeParentSkuMap()` agrupa por raíz candidata + mismo nombre → `parent_sku`.
   Un hijo ve sus archivos propios + los genéricos del padre (`isGenericMediaForSku`).
 
