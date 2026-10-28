@@ -18,10 +18,10 @@ $results = [];
 // 1) Match exacto de SKU
 $stmt = $db->prepare(
     "SELECT sku, name, category, cover_image_url, parent_sku FROM products 
-     WHERE archived = 0 AND REPLACE(REPLACE(sku, '-', ''), ' ', '') = ? 
+     WHERE archived = 0 AND " . skuSearchSql('sku') . " = ? 
      LIMIT 1"
 );
-$exactMatchNoDash = str_replace(['-', ' '], '', $qCleanForSku);
+$exactMatchNoDash = skuSearchNorm($qCleanForSku);
 $stmt->execute([$exactMatchNoDash]);
 $exact = $stmt->fetchAll();
 
@@ -36,11 +36,11 @@ if (empty($words)) {
     foreach ($words as $word) {
         $wordEscaped = addcslashes($word, '%_');
         $wordLike = "%{$wordEscaped}%";
-        $wordNoDash = str_replace('-', '', $word);
+        $wordNoDash = skuSearchNorm($word);
         $wordNoDashEscaped = addcslashes($wordNoDash, '%_');
         $wordLikeNoDash = "%{$wordNoDashEscaped}%";
 
-        $whereParts[] = "(REPLACE(REPLACE(p.sku, '-', ''), ' ', '') LIKE ? OR p.name LIKE ? OR a.name LIKE ?)";
+        $whereParts[] = "(" . skuSearchSql('p.sku') . " LIKE ? OR p.name LIKE ? OR p.category LIKE ?)";
         $params[] = $wordLikeNoDash;
         $params[] = $wordLike;
         $params[] = $wordLike;
@@ -52,15 +52,13 @@ $params[] = $qCleanForSku; // for p.sku != ?
 $stmt = $db->prepare(
     "SELECT p.sku, p.name, p.category, p.cover_image_url, p.parent_sku 
      FROM products p
-     LEFT JOIN albums a ON p.album_id = a.drive_id
      WHERE p.archived = 0 
        AND ($whereSql)
-       AND REPLACE(REPLACE(p.sku, '-', ''), ' ', '') != ?
+       AND " . skuSearchSql('p.sku') . " != ?
      ORDER BY p.sku ASC 
      LIMIT 30"
 );
 // El último parametro es el qCleanForSku sin guiones para evitar duplicar el match exacto
-$exactMatchNoDash = str_replace(['-', ' '], '', $qCleanForSku);
 $params[count($params)-1] = $exactMatchNoDash;
 
 $stmt->execute($params);

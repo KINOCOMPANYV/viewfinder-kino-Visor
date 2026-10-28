@@ -213,6 +213,21 @@ function skuFileKey(string $sku): string
 }
 
 /**
+ * Búsqueda de códigos sin importar "-", espacios, ":" ni ".": "M8363-3", "M:8363-3" y
+ * "m 8363 3" encuentran lo mismo. skuSearchSql() normaliza la columna en SQL y
+ * skuSearchNorm() el texto buscado, con la misma regla.
+ */
+function skuSearchSql(string $column): string
+{
+    return "REPLACE(REPLACE(REPLACE(REPLACE($column, '-', ''), ' ', ''), ':', ''), '.', '')";
+}
+
+function skuSearchNorm(string $text): string
+{
+    return str_replace(['-', ' ', ':', '.'], '', $text);
+}
+
+/**
  * Formas en que se escribe el mismo código en un nombre de archivo (minúsculas).
  * El separador entre el prefijo de letras y el número es libre: "M:8464-2", "M8464-2",
  * "M-8464-2", "M 8464-2", "M.8464-2" y "M_8464-2" son el mismo código.
