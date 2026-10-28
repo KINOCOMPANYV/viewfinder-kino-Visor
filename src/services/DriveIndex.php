@@ -162,6 +162,17 @@ class DriveIndex
     private static function findByPrefix(PDO $db, string $sku): array
     {
         if ($sku === '') return [];
+        $files = self::findByExactPrefix($db, $sku);
+        // "M:8392-1" en la hoja, "M8392-1.jpg" en Drive
+        $key = skuFileKey($sku);
+        if (!$files && $key !== '' && $key !== strtolower($sku)) {
+            $files = self::findByExactPrefix($db, $key);
+        }
+        return $files;
+    }
+
+    private static function findByExactPrefix(PDO $db, string $sku): array
+    {
         $stmt = $db->prepare(
             "SELECT file_id, name, mime_type, size FROM drive_index
              WHERE is_folder = 0 AND name_stem LIKE ? ORDER BY name ASC LIMIT 2000"

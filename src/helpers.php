@@ -203,6 +203,15 @@ function skuMatchesFilename(string $sku, string $filename): bool
  * (guion, punto, espacio, guion bajo) o nada. Evita que "1948" coincida con
  * "1948O", "JR1948O" o "1948DG".
  */
+/**
+ * SKU sin los signos que no se usan en los nombres de archivo: "M:8392-1" → "m8392-1",
+ * "NO.2305B-1" → "no2305b-1", "ETN56L -1" → "etn56l-1". Solo para comparar con nombres.
+ */
+function skuFileKey(string $sku): string
+{
+    return preg_replace('/[^a-z0-9-]/', '', strtolower($sku));
+}
+
 function fileNameStartsWithSku(string $filename, string $sku): bool
 {
     $name = strtolower(pathinfo($filename, PATHINFO_FILENAME));

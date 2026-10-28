@@ -87,6 +87,10 @@ foreach ($products as $prod) {
     $addKey(strtolower(cleanSkuDisplay(trim($prod['sku']))), $prod, true);
     $addKey(strtolower(trim($prod['sku'])), $prod, true);
 }
+// Sin ":"/"."/espacios: la hoja dice "M:8392-1" y la foto se llama "M8392-1.jpg"
+foreach ($products as $prod) {
+    $addKey(skuFileKey(cleanSkuDisplay(trim($prod['sku']))), $prod, true);
+}
 foreach ($products as $prod) {
     $skuLower = strtolower(cleanSkuDisplay(trim($prod['sku'])));
     $addKey(strtolower(extractRootSku($skuLower)), $prod, false);
@@ -128,7 +132,8 @@ $mediaFiles = $db->query(
  */
 function matchFileToProduct(array $file, array &$productIndex): ?array
 {
-    $baseName = strtolower(pathinfo($file['name'] ?? '', PATHINFO_FILENAME));
+    // "Copia de X.jpg" (duplicado en Drive) cuenta como "X.jpg"
+    $baseName = preg_replace('/^(copia de|copy of)\s+/', '', strtolower(pathinfo($file['name'] ?? '', PATHINFO_FILENAME)));
     // variación => ¿es el nombre real del archivo? (sin prefijo = floja)
     $variations = [$baseName => true];
     $variations += [str_replace(' ', '', $baseName) => true];
@@ -137,7 +142,7 @@ function matchFileToProduct(array $file, array &$productIndex): ?array
     $best = null;
     // Match exacto
     foreach ($variations as $v => $realName) {
-        if (isset($productIndex[$v])) {
+        if (isset($productIndex[$v]) && ($realName || $productIndex[$v]['strong'])) {
             $q = ($realName && $productIndex[$v]['strong']) ? 3 : 1;
             if (!$best || $q > $best[1]) $best = [$v, $q];
         }
@@ -150,9 +155,11 @@ function matchFileToProduct(array $file, array &$productIndex): ?array
     // vez de recorrer todo el índice por archivo). El carácter siguiente no puede
     // ser un dígito (evita 123-1 → 123-10).
     foreach ($variations as $v => $realName) {
+        $v = (string) $v; // un nombre solo de dígitos ("6603") llega como clave int
         for ($len = strlen($v) - 1; $len > 0; $len--) {
             $prefix = substr($v, 0, $len);
-            if (isset($productIndex[$prefix]) && !ctype_digit($v[$len])) {
+            // Marca distinta a cada lado ("CX21-2" sin prefijo vs "RP-21" sin prefijo) no cuenta
+            if (isset($productIndex[$prefix]) && !ctype_digit($v[$len]) && ($realName || $productIndex[$prefix]['strong'])) {
                 $q = ($realName && $productIndex[$prefix]['strong']) ? 2 : 1;
                 if (!$best || $q > $best[1]) $best = [$prefix, $q];
                 break;

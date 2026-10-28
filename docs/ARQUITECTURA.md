@@ -81,6 +81,8 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
   un separador, no una letra ni un número).
 - `skuMatchesFilename()` / `matchFileToProduct()` (en sync-covers): prefijo; el siguiente carácter no puede ser un dígito.
   En sync-covers las claves "fuertes" (SKU tal cual) siempre ganan a las "débiles" (raíz, sin prefijo de marca, sin espacios).
+  También es fuerte `skuFileKey()` (sin ":", "." ni espacios: hoja "M:8392-1" ↔ foto "M8392-1.jpg"). "Copia de …" se ignora.
+  Débil contra débil no cuenta: "CX21-2.jpg" sin prefijo (21-2) NO es "RP-21" sin prefijo (21).
 - Variantes: `computeParentSkuMap()` agrupa por raíz candidata + mismo nombre → `parent_sku`.
   Un hijo ve sus archivos propios + los genéricos del padre (`isGenericMediaForSku`).
 
