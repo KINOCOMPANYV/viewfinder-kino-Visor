@@ -16,6 +16,7 @@ $folderName = 'Carpeta';
 $files = [];
 $subfolders = [];
 $driveAvailable = true; // false solo si hubo que ir a Drive y no hay conexión
+$folderPath = []; // ruta desde la raíz, como la barra de Drive
 
 // 1) Con índice: solo BD (una carpeta fuera del índice se ve vacía, no se consulta Drive).
 // 2) Sin índice todavía (antes del primer sync): Drive en vivo como antes.
@@ -25,6 +26,7 @@ if (DriveIndex::isReady($db)) {
         $folderName = $indexed['name'];
         $subfolders = $indexed['subfolders'];
         $files = $indexed['files'];
+        $folderPath = DriveIndex::folderPath($db, $folderId, env('GOOGLE_DRIVE_FOLDER_ID', ''));
     }
 } else {
     $drive = new GoogleDriveService();
@@ -85,7 +87,11 @@ unset($item);
     <div style="background:var(--color-surface); border-bottom:1px solid var(--color-border); padding: 1.5rem 0;">
         <div class="container">
             <div style="font-size:0.85rem; color:var(--color-text-muted); margin-bottom:0.5rem;">
-                <a href="/" style="color:var(--color-primary);">Inicio</a> / <span><?= e($folderName) ?></span>
+                <a href="/" style="color:var(--color-primary);">Inicio</a>
+                <?php foreach (array_slice($folderPath, 0, -1) as $crumb): ?>
+                    / <a href="/carpeta/<?= urlencode($crumb['id']) ?>" style="color:var(--color-primary);"><?= e($crumb['name']) ?></a>
+                <?php endforeach; ?>
+                / <span><?= e($folderName) ?></span>
             </div>
             <h1 style="font-size:1.5rem; margin:0;">📂 <?= e($folderName) ?></h1>
             <p style="color:var(--color-text-muted); font-size:0.9rem; margin-top:0.25rem;">

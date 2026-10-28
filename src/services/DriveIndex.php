@@ -15,7 +15,7 @@ class DriveIndex
 {
     private const FOLDER_MIME = 'application/vnd.google-apps.folder';
     private const PARENTS_PER_QUERY = 40; // carpetas por consulta "'a' in parents or ..."
-    private const MAX_DEPTH = 8;
+    private const MAX_DEPTH = 20; // niveles de subcarpetas (marca > HOMBRE > CUERO > 836 > ...)
 
     /** true si el índice ya tiene datos (se llenó al menos una vez). Memo por petición. */
     public static function isReady(PDO $db): bool
@@ -205,6 +205,24 @@ class DriveIndex
             'webViewLink' => "https://drive.google.com/file/d/{$id}/view",
             'webContentLink' => "https://drive.google.com/uc?id={$id}&export=download",
         ];
+    }
+
+    /**
+     * Ruta de carpetas desde la raíz hasta $folderId (sin la raíz), como la barra de Drive:
+     * [['id' => ..., 'name' => '1.POEDAGAR'], ['id' => ..., 'name' => 'HOMBRE'], ...].
+     */
+    public static function folderPath(PDO $db, string $folderId, string $rootFolderId): array
+    {
+        $path = [];
+        $stmt = $db->prepare("SELECT file_id, name, parent_id FROM drive_index WHERE file_id = ? AND is_folder = 1");
+        for ($id = $folderId, $i = 0; $id !== '' && $id !== $rootFolderId && $i < self::MAX_DEPTH; $i++) {
+            $stmt->execute([$id]);
+            $row = $stmt->fetch();
+            if (!$row) break;
+            array_unshift($path, ['id' => $row['file_id'], 'name' => $row['name']]);
+            $id = (string) $row['parent_id'];
+        }
+        return $path;
     }
 
     /**
