@@ -437,15 +437,7 @@ if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
     }
 
     // 1) Get file metadata (name + mimeType)
-    $metaUrl = "https://www.googleapis.com/drive/v3/files/{$fileId}?fields=name,mimeType,size";
-    $ch = curl_init($metaUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
-    ]);
-    $metaJson = curl_exec($ch);
-    curl_close($ch);
-    $meta = json_decode($metaJson, true);
+    $meta = $drive->getFileMetadata($fileId, 'name,mimeType,size');
 
     if (empty($meta['name'])) {
         http_response_code(404);
@@ -517,7 +509,7 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $placeholders = implode(',', array_fill(0, count($skus), '?'));
         $cacheStmt = $db->prepare(
             "SELECT sku, files_json FROM media_search_cache 
-             WHERE sku IN ($placeholders) AND cached_at > NOW() - INTERVAL 10 MINUTE"
+             WHERE sku IN ($placeholders) AND " . freshCoverCacheSql()
         );
         $cacheStmt->execute($skus);
         $cached = $cacheStmt->fetchAll();

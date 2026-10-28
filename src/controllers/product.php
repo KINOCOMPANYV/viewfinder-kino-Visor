@@ -79,44 +79,38 @@ if (!$product) {
     exit;
 }
 
-// Precargar portada desde caché del server (evita esperar JS)
-// Upscale a =s800 para la vista de detalle (en catálogo se usa =s400)
-$serverCover = $product['cover_image_url'] ?? '';
-if ($serverCover && !str_starts_with($serverCover, '[VIDEO]')) {
-    $serverCover = preg_replace('/=s\d+$/', '=s800', $serverCover);
-}
-if (empty($serverCover)) {
-    try {
-        $cacheStmt = $db->prepare(
-            "SELECT files_json FROM media_search_cache 
-             WHERE sku = ? AND cached_at > NOW() - INTERVAL 10 MINUTE"
-        );
-        $cacheStmt->execute([$originalSku]);
-        $cacheRow = $cacheStmt->fetch();
-        if ($cacheRow) {
-            $cachedFiles = json_decode($cacheRow['files_json'], true) ?: [];
-            foreach ($cachedFiles as $cf) {
-                if (str_starts_with($cf['mimeType'] ?? '', 'image/')) {
-                    $thumb = $cf['thumbnailLink'] ?? '';
-                    $serverCover = $thumb
-                        ? preg_replace('/=s\d+/', '=s800', $thumb)
-                        : "https://lh3.googleusercontent.com/d/{$cf['id']}=s800";
-                    break;
-                }
-            }
-        }
-    } catch (Exception $e) {
-        // tabla no existe aún, ignorar
-    }
-}
-
-// ── Cache: ETag + Cache-Control para páginas de producto ──
+// ── Cache: ETag + Cache-Control (antes de cualquier consulta extra, así el 304 sale rápido) ──
 $productEtag = '"p-' . md5($product['sku'] . ($product['updated_at'] ?? '') . APP_VERSION) . '"';
 header("ETag: {$productEtag}");
 header('Cache-Control: private, max-age=60');
 if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $productEtag) {
     http_response_code(304);
     exit;
+}
+
+// Precargar portada desde caché del server (evita esperar JS)
+// Upscale a =s800 para la vista de detalle (en catálogo se usa =s400)
+$storedCover = parseStoredCover($product['cover_image_url'] ?? '', 800);
+$serverCover = $storedCover['video'] ? ($product['cover_image_url'] ?? '') : $storedCover['url'];
+if (empty($serverCover)) {
+    try {
+        $cacheStmt = $db->prepare(
+            "SELECT files_json FROM media_search_cache 
+             WHERE sku = ? AND " . freshCoverCacheSql()
+        );
+        $cacheStmt->execute([$originalSku]);
+        $cacheRow = $cacheStmt->fetch();
+        if ($cacheRow) {
+            // Misma elección que las tarjetas (mejor imagen, sin archivos ocultos)
+            $cachedFiles = filterHiddenFiles($db, json_decode($cacheRow['files_json'], true) ?: []);
+            $cover = extractCoverFromFiles($cachedFiles);
+            if ($cover && !$cover['video']) {
+                $serverCover = coverUrlAtSize($cover['url'], 800);
+            }
+        }
+    } catch (Exception $e) {
+        // tabla no existe aún, ignorar
+    }
 }
 
 // ── Buscar Variantes (Hermanos) ──
@@ -282,13 +276,8 @@ $variants = $varStmt->fetchAll();
                             ?>
                             <div class="variant-strip">
                                 <?php foreach ($variants as $v):
-                                    $vCover = ($v['cover_image_url'] ?: '') ?: $familyCover;
-                                    if (str_starts_with($vCover, '[VIDEO]')) {
-                                        // usar el thumbnail del video como imagen del chip
-                                        $vCover = substr($vCover, 7);
-                                    } elseif ($vCover) {
-                                        $vCover = preg_replace('/=s\d+$/', '=s150', $vCover);
-                                    }
+                                    // Si es video, se usa su fotograma de lh3 como imagen del chip
+                                    $vCover = parseStoredCover(($v['cover_image_url'] ?: '') ?: $familyCover, 150)['url'];
                                     $isActive = ($v['sku'] === $product['sku']);
                                 ?>
                                     <a href="/producto/<?= urlencode($v['sku']) ?>" 

@@ -23,8 +23,10 @@ try {
 
     // --- Drive Cache ---
     if ($type === 'drive_cache' || $type === 'all') {
-        $db->exec("DELETE FROM drive_cache");
-        $results[] = 'Drive Cache limpiada';
+        // Conservar las filas de archivos ocultos: ahí vive la marca visible_publico = 0
+        // (antes se borraba todo y las fotos ocultas volvían a ser públicas).
+        $db->exec("DELETE FROM drive_cache WHERE visible_publico <> 0");
+        $results[] = 'Drive Cache limpiada (se conservan las fotos ocultas)';
     }
 
     // --- ZIP Files Cache ---

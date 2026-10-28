@@ -20,15 +20,7 @@ $subfolders = [];
 
 if ($token) {
     // Obtener nombre de la carpeta
-    $metaUrl = "https://www.googleapis.com/drive/v3/files/{$folderId}?fields=name&supportsAllDrives=true";
-    $ch = curl_init($metaUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
-    ]);
-    $metaResp = curl_exec($ch);
-    curl_close($ch);
-    $meta = json_decode($metaResp, true);
+    $meta = $drive->getFileMetadata($folderId, 'name');
     if (!empty($meta['name'])) {
         $folderName = $meta['name'];
     }

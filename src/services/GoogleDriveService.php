@@ -12,6 +12,9 @@ class GoogleDriveService
     private ?string $accessToken = null;
     private ?string $refreshToken = null;
 
+    /** true si la última llamada GET a la API falló (red, timeout o error de Drive). */
+    public bool $lastRequestFailed = false;
+
     public function __construct()
     {
         $this->clientId = env('GOOGLE_CLIENT_ID', '');
@@ -256,7 +259,7 @@ class GoogleDriveService
      */
     public function findBySku(string $folderId, string $sku): array
     {
-        $skuEscaped = str_replace("'", "\\'", $sku);
+        $skuEscaped = str_replace(['\\', "'"], ['\\\\', "\\'"], $sku);
 
         // 1) Búsqueda GLOBAL — un solo API call que busca en TODAS las carpetas
         $query = "name contains '{$skuEscaped}' and trashed = false and mimeType != 'application/vnd.google-apps.folder'";
@@ -493,6 +496,7 @@ class GoogleDriveService
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => $body,
                 CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => 5,
                 CURLOPT_TIMEOUT => 10,
                 CURLOPT_HTTPHEADER => [
                     "Authorization: Bearer {$this->accessToken}",
@@ -569,13 +573,32 @@ class GoogleDriveService
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            // Sin timeout, una respuesta lenta de Google dejaba la página colgada
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_ENCODING => '', // acepta gzip
             CURLOPT_HTTPHEADER => [
                 "Authorization: Bearer {$this->accessToken}",
             ],
         ]);
         $response = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+        $this->lastRequestFailed = ($response === false || $code >= 400);
         return $response ?: '';
+    }
+
+    /**
+     * Metadatos de un archivo/carpeta (ej. $fields = 'name,mimeType,size'). null si falla.
+     */
+    public function getFileMetadata(string $fileId, string $fields): ?array
+    {
+        $url = "https://www.googleapis.com/drive/v3/files/{$fileId}?" . http_build_query([
+            'fields' => $fields,
+            'supportsAllDrives' => 'true',
+        ]);
+        $data = json_decode($this->httpGet($url), true);
+        return ($this->lastRequestFailed || !is_array($data)) ? null : $data;
     }
 
     /**
@@ -628,6 +651,8 @@ class GoogleDriveService
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => http_build_query($data),
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 15,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/x-www-form-urlencoded',
             ],

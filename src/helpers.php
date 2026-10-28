@@ -415,13 +415,25 @@ function getFamilyRootSku(PDO $db, string $sku): string
     return extractRootSku($sku);
 }
 
+/** Vigencia de media_search_cache para portadas (las URLs lh3 por ID no caducan). */
+const COVER_CACHE_TTL_HOURS = 6;
+/** Vigencia de un "sin foto" cacheado: corta, para que una foto recién subida aparezca pronto. */
+const EMPTY_CACHE_TTL_MINUTES = 30;
+
+/** Condición SQL de caché vigente en media_search_cache (portada con foto o "sin foto" reciente). */
+function freshCoverCacheSql(): string
+{
+    return "cached_at > NOW() - INTERVAL " . COVER_CACHE_TTL_HOURS . " HOUR
+            AND (files_json <> '[]' OR cached_at > NOW() - INTERVAL " . EMPTY_CACHE_TTL_MINUTES . " MINUTE)";
+}
+
 /**
  * Busca en Drive los archivos de un SKU (bidireccional padre↔hijo), los hace
- * públicos, guarda el resultado en media_search_cache y auto-asigna portada
+ * públicos, guarda el resultado en media_search_cache (incluido "sin foto") y auto-asigna portada
  * (imagen-primero) si el producto no tiene. Lógica compartida entre
  * /api/media, /api/covers/batch y el precache cron.
  *
- * @return array{files: array, root_sku: string}
+ * @return array{files: array, root_sku: string, failed: bool}
  */
 function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $folderId, string $sku): array
 {
@@ -429,12 +441,14 @@ function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $fo
 
     // 1) Buscar por el SKU raíz (trae padre + todos los hijos)
     $rootFiles = $drive->findBySku($folderId, $rootSku);
+    $driveFailed = $drive->lastRequestFailed;
 
     if ($sku !== $rootSku) {
         // Genéricos del padre (evita que el hijo A vea archivos del hijo B)
         $parentOnly = array_filter($rootFiles, fn($f) => isGenericMediaForSku($rootSku, $f['name']));
         // Específicos del hijo
         $childFiles = $drive->findBySku($folderId, $sku);
+        $driveFailed = $driveFailed || $drive->lastRequestFailed;
         $existingIds = array_column($childFiles, 'id');
         $files = $childFiles;
         foreach ($parentOnly as $pf) {
@@ -447,21 +461,30 @@ function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $fo
     }
     $files = array_values($files);
 
-    if (!empty($files)) {
+    // Si Drive falló y no hay archivos, no se cachea nada: sería un falso "sin foto"
+    if (!$files && $driveFailed) {
+        return ['files' => [], 'root_sku' => $rootSku, 'failed' => true];
+    }
+
+    if ($files) {
+        // Antes de cachear: las URLs lh3 por ID solo cargan si el archivo es público
         $drive->makePublicBatch(array_column($files, 'id'));
+    }
 
-        // Cachear resultado (no se cachean vacíos para evitar envenenamiento)
-        try {
-            $saveStmt = $db->prepare(
-                "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
-                 VALUES (?, ?, ?, NOW())
-                 ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
-            );
-            $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
-        } catch (Exception $e) {
-            // tabla puede no existir aún
-        }
+    // Cachear resultado. Los vacíos también se cachean ("sin foto"), así un SKU sin
+    // fotos no vuelve a consultar Drive en cada visita.
+    try {
+        $saveStmt = $db->prepare(
+            "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
+             VALUES (?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
+        );
+        $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
+    } catch (Exception $e) {
+        // tabla puede no existir aún
+    }
 
+    if ($files) {
         // Auto-asignar portada (mejor imagen, nunca video) si el producto no tiene
         try {
             $coverCheck = $db->prepare("SELECT id, cover_image_url FROM products WHERE sku = ? LIMIT 1");
@@ -472,7 +495,7 @@ function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $fo
                 $bestImage = pickBestCoverFile($imgOnly);
                 if ($bestImage) {
                     $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
-                       ->execute(["https://lh3.googleusercontent.com/d/{$bestImage['id']}=s400", $prodRow['id']]);
+                       ->execute([lh3Url($bestImage['id']), $prodRow['id']]);
                 }
             }
         } catch (Exception $e) {
@@ -480,7 +503,7 @@ function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $fo
         }
     }
 
-    return ['files' => $files, 'root_sku' => $rootSku];
+    return ['files' => $files, 'root_sku' => $rootSku, 'failed' => false];
 }
 
 /**
@@ -491,15 +514,50 @@ function extractCoverFromFiles(array $files): ?array
     $best = pickBestCoverFile($files);
     if (!$best) return null;
 
-    if (str_starts_with($best['mimeType'] ?? '', 'video/')) {
-        if (empty($best['thumbnailLink'])) return null;
-        return ['url' => preg_replace('/=s\d+/', '=s400', $best['thumbnailLink']), 'video' => true];
+    // URL estable por ID (el archivo ya es público; para videos lh3 da el fotograma).
+    // thumbnailLink de la API caduca en pocas horas: no sirve para respuestas cacheadas.
+    return [
+        'url' => lh3Url($best['id']),
+        'video' => str_starts_with($best['mimeType'] ?? '', 'video/'),
+    ];
+}
+
+/**
+ * Cambia el tamaño de una URL de lh3.googleusercontent.com (sufijo =sNNN).
+ * Ej: miniaturas de variantes a =s150 en vez de bajar la portada de 400px.
+ */
+function coverUrlAtSize(string $url, int $size): string
+{
+    if (!str_contains($url, 'googleusercontent.com/')) {
+        return $url;
     }
-    $thumb = $best['thumbnailLink'] ?? '';
-    $url = $thumb
-        ? preg_replace('/=s\d+/', '=s400', $thumb)
-        : "https://lh3.googleusercontent.com/d/{$best['id']}=s400";
-    return ['url' => $url, 'video' => false];
+    $resized = preg_replace('/=s\d+$/', "=s{$size}", $url, 1, $count);
+    if ($count) {
+        return $resized;
+    }
+    // Sin sufijo → se agrega; con otro sufijo (=w400, =s220-c…) se deja intacta
+    return str_contains(basename($url), '=') ? $url : $url . "=s{$size}";
+}
+
+/**
+ * URL estable de un archivo público de Drive a un tamaño dado (no caduca, a diferencia
+ * del thumbnailLink de la API). Es el formato que se guarda en products.cover_image_url.
+ */
+function lh3Url(string $fileId, int $size = 400): string
+{
+    return "https://lh3.googleusercontent.com/d/{$fileId}=s{$size}";
+}
+
+/**
+ * Decodifica un cover_image_url guardado: quita el prefijo "[VIDEO]" y ajusta el tamaño.
+ * @return array{url: string, video: bool}
+ */
+function parseStoredCover(?string $stored, int $size): array
+{
+    $stored = (string) $stored;
+    $isVideo = str_starts_with($stored, '[VIDEO]');
+    $url = $isVideo ? substr($stored, 7) : $stored;
+    return ['url' => $url !== '' ? coverUrlAtSize($url, $size) : '', 'video' => $isVideo];
 }
 
 /**
