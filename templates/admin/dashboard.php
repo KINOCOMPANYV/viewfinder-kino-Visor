@@ -100,7 +100,6 @@ unset($_SESSION['cache_flash']);
             <a href="/admin" class="active">📊 Dashboard</a>
             <a href="/admin/products">📦 Productos</a>
             <a href="/admin/import">📥 Importar Excel</a>
-            <a href="/admin/albums">🗂️ Álbumes</a>
             <a href="/admin/media">🖼️ Media</a>
             <a href="/" target="_blank">🌐 Ver Portal</a>
         </nav>
@@ -220,7 +219,6 @@ unset($_SESSION['cache_flash']);
             <h2 style="font-size:1.3rem; margin-bottom: 1.5rem; text-align: center;">⚡ Acciones Rápidas</h2>
             <div style="display:flex; flex-wrap:wrap; gap:1rem; justify-content:center;">
                 <a href="/admin/import" class="btn btn-primary" style="padding: 1rem 2rem; font-size:1.1rem;">📥 Importar Excel</a>
-                <a href="/admin/albums" class="btn btn-secondary" style="padding: 1rem 2rem; font-size:1.1rem;">🗂️ Ver Álbumes</a>
                 <a href="/admin/media" class="btn btn-secondary" style="padding: 1rem 2rem; font-size:1.1rem;">🖼️ Sincronizar Fotos (Drive)</a>
                 <a href="/" target="_blank" class="btn btn-secondary" style="padding: 1rem 2rem; font-size:1.1rem; background: var(--color-surface-2);">🌐 Abrir Tienda</a>
             </div>

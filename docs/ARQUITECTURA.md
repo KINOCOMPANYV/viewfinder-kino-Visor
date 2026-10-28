@@ -12,8 +12,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 ## Rutas (`index.php`)
 | Ruta | Archivo | Qué hace |
 |---|---|---|
-| `/` | `templates/client/landing.php` | Álbumes + "Productos recientes" (10 familias/página) |
-| `/buscar` (`?q=`, `?album=`, `?ajax=1`) | `src/controllers/search.php` | Grid de familias (20/página), multi-código, carpetas |
+| `/` | `templates/client/landing.php` | Carpetas de primer nivel (abren `/carpeta/{id}`) + "Productos recientes" (10 familias/página) |
+| `/buscar` (`?q=`, `?ajax=1`) | `src/controllers/search.php` | Grid de familias (20/página), multi-código, carpetas de `drive_index`. `?album=ID` (viejo) redirige a `/carpeta/ID` |
 | `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}` |
 | `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada) |
 | `/api/search` | `src/controllers/api_search.php` | Autocomplete JSON |
@@ -62,6 +62,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600/800` vista principal, `=s1200` compartir.
 
 ## Álbumes (marcas)
+- En la interfaz ya no hay "álbumes": se muestran como **carpetas** y se navegan como en Drive. La tabla `albums` sigue
+  existiendo como lista de carpetas de primer nivel (la mantiene el sync).
 - Álbum = carpeta de primer nivel de la raíz, salvo auxiliares (`isAlbumFolderName`: empieza por "_" o es "PORTADAS").
 - `DriveIndex::syncAlbums()` (en cada sync de portadas): crea las nuevas, renombra, y **desactiva** (no borra) las
   que ya no están bajo la raíz (`auto_disabled=1`, migración 019) y reactiva esas si vuelven. No reactiva lo que el admin desactivó.
@@ -74,6 +76,10 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
   `recomputeParentSkus($db)` la aplica a todo el catálogo; la llaman el webhook de Sheets y la importación Excel.
   El sync completo de Sheets la aplica sobre la hoja.
 - Agrupar tarjetas: `familyKey($row)` = `parent_sku` o `extractRootSku()` (inicio y búsqueda usan lo mismo).
+
+## Búsqueda
+- Código sin importar "-", espacios, ":" ni "." (`skuSearchSql()` / `skuSearchNorm()`): "M8363-3" encuentra "M:8363-3".
+- Resultados mientras se escribe (`assets/js/search.js`, `/buscar?ajax=1`); una búsqueda nueva cancela la anterior.
 
 ## Coincidencia SKU ↔ archivo (regla única, decidida por el dueño)
 - **La foto se llama como el código**: `X6071.jpg`, o el código + separador + lo que sea (`X6071-A.jpg`, `X6071 (2).jpg`).

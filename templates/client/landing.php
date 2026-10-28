@@ -53,8 +53,25 @@
         try {
             $db = getDB();
             $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
-            // Poedagar siempre primero, luego por prioridad y nombre
-            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY CASE WHEN LOWER(name) LIKE '%poedagar%' THEN 0 ELSE 1 END, order_priority DESC, name ASC")->fetchAll();
+            // Carpetas de primer nivel de PRODUCTOS (las mantiene el sync de Drive), en el orden
+            // de Drive: "1.POEDAGAR", "2.CURREN", ..., "17.NEPIC". Se abren como carpeta.
+            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY CAST(name AS UNSIGNED) = 0, CAST(name AS UNSIGNED), name ASC")->fetchAll();
+            // Sin ícono propio: primera foto de la carpeta (copia local de Drive)
+            if ($albums) {
+                try {
+                    $thumbStmt = $db->prepare(
+                        "SELECT file_id FROM drive_index WHERE album_id = ? AND is_folder = 0 AND mime_type LIKE 'image/%' ORDER BY name LIMIT 1"
+                    );
+                    foreach ($albums as &$al) {
+                        if (empty($al['icon_url'])) {
+                            $thumbStmt->execute([$al['drive_id']]);
+                            $tid = $thumbStmt->fetchColumn();
+                            if ($tid) $al['icon_url'] = lh3Url($tid, 200);
+                        }
+                    }
+                    unset($al);
+                } catch (\PDOException $e) { /* drive_index aún no existe */ }
+            }
         } catch (\PDOException $e) {
             // tabla albums aún no existe o DB apagada
         }
@@ -85,16 +102,16 @@
                 </div>
             </div>
 
-            <!-- ===== Álbumes (Tarjetas Horizontales) ===== -->
+            <!-- ===== Carpetas de primer nivel (se navegan como en Drive) ===== -->
             <?php if (!empty($albums)): ?>
             <div style="margin-bottom: 3rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                    <h2 style="font-size: 1.5rem; margin:0;">Explorar Colecciones</h2>
+                    <h2 style="font-size: 1.5rem; margin:0;">📂 Carpetas</h2>
                     <span style="color:var(--color-text-muted); font-size:0.9rem;"><?= $totalAlbums ?> carpetas</span>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;" id="horizontalAlbums">
                     <?php foreach ($albums as $idx => $sa):
-                        $href = '/buscar?album=' . urlencode($sa['drive_id']);
+                        $href = '/carpeta/' . urlencode($sa['drive_id']);
                         $hiddenClass = $idx >= 10 ? ' album-hidden' : '';
                     ?>
                     <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?>" title="<?= e($sa['name']) ?>" style="background:var(--color-surface); padding:0.75rem; border-radius:var(--radius); border:1px solid var(--color-border); flex-direction:column; text-align:center; transition: transform 0.2s; <?php if($idx>=10) echo 'display:none;'; ?>">
@@ -115,7 +132,7 @@
                 <?php if ($totalAlbums > 10): ?>
                 <div style="text-align:center; margin-top:1.5rem;">
                     <button class="btn btn-secondary" id="btnVerTodas" onclick="toggleAllAlbums()">
-                        📂 Mostrar más colecciones
+                        📂 Mostrar más carpetas
                     </button>
                 </div>
                 <script>
@@ -127,11 +144,11 @@
                     if (!showing && hidden[0]) {
                         // Mostrar todas
                         hidden.forEach(el => { el.style.display = 'flex'; });
-                        btn.innerHTML = '📁 Mostrar solo principales';
+                        btn.innerHTML = '📁 Mostrar menos';
                     } else {
                         // Ocultar extras
                         hidden.forEach(el => { el.style.display = 'none'; });
-                        btn.innerHTML = '📂 Mostrar más colecciones';
+                        btn.innerHTML = '📂 Mostrar más carpetas';
                     }
                 }
                 </script>
