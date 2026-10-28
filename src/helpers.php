@@ -291,6 +291,53 @@ function computeParentSkuMap(array $rowsBySku): array
 }
 
 /**
+ * Recalcula parent_sku de TODO el catálogo con computeParentSkuMap() y guarda
+ * solo los que cambian. Es el paso final de TODA escritura de catálogo (sync de
+ * Sheets, webhook e importación Excel), así las familias quedan iguales sin
+ * importar cuál corrió de último, y los hermanos de un SKU nuevo se actualizan.
+ * @return int productos cuyo parent_sku cambió
+ */
+function recomputeParentSkus(PDO $db): int
+{
+    // Solo productos activos: un archivado no debe juntar (ni partir) una familia visible
+    $rows = $db->query("SELECT sku, name, parent_sku FROM products WHERE archived = 0")->fetchAll(PDO::FETCH_ASSOC);
+    $bySku = [];
+    foreach ($rows as $r) {
+        $bySku[$r['sku']] = $r;
+    }
+    $changed = 0;
+    $upd = $db->prepare("UPDATE products SET parent_sku = ? WHERE sku = ?");
+    foreach (computeParentSkuMap($bySku) as $sku => $parent) {
+        if (($bySku[$sku]['parent_sku'] ?: null) !== $parent) {
+            $upd->execute([$parent, $sku]);
+            $changed++;
+        }
+    }
+    return $changed;
+}
+
+/**
+ * Clave de familia de un producto para agrupar tarjetas (inicio y búsqueda):
+ * parent_sku si lo tiene; si no, su raíz por patrón de SKU.
+ */
+function familyKey(array $product): string
+{
+    return !empty($product['parent_sku'])
+        ? $product['parent_sku']
+        : extractRootSku($product['sku']);
+}
+
+/**
+ * ¿Una carpeta de primer nivel de Drive debe ser álbum (marca)?
+ * No lo son las auxiliares: las que empiezan por "_" (ej. "_INDICE") ni "PORTADAS".
+ */
+function isAlbumFolderName(string $name): bool
+{
+    $name = trim($name);
+    return $name !== '' && !str_starts_with($name, '_') && strcasecmp($name, 'PORTADAS') !== 0;
+}
+
+/**
  * Verifica si un nombre de archivo es la portada GENÉRICA del código.
  * (Ej: archivo "839-5.jpg" es genérica para "839-5", pero "839-5-1.jpg" es específica).
  * 

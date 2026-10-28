@@ -109,6 +109,11 @@ class DriveIndex
             $level = $next;
         }
 
+        // Raíz vacía o equivocada (permiso perdido, ID mal puesto): no vaciar el índice
+        if (!$rows) {
+            return ['ok' => false, 'error' => 'La carpeta raíz de Drive aparece vacía; no se tocó el índice. Revisa GOOGLE_DRIVE_FOLDER_ID y los permisos.'] + $stats;
+        }
+
         foreach (array_chunk($rows, 500) as $chunk) {
             $db->prepare(
                 "INSERT INTO drive_index (file_id, name, name_stem, mime_type, is_folder, parent_id, album_id, size, synced_at)
@@ -217,6 +222,63 @@ class DriveIndex
             }
         }
         return ['name' => $name, 'subfolders' => $subfolders, 'files' => $files];
+    }
+
+    /**
+     * Alinea la tabla albums con las carpetas de primer nivel de la raíz:
+     * crea las nuevas, actualiza nombres y DESACTIVA (sin borrar) las que ya no
+     * están bajo la raíz (p. ej. de una carpeta raíz anterior) o no son marcas
+     * ("_INDICE", "PORTADAS"). Reactiva solo lo que el propio sync desactivó
+     * (auto_disabled); lo que el admin desactivó a mano se respeta.
+     * Llamar solo después de un sync() exitoso.
+     * @return array{added: int, deactivated: int, album_ids: string[]}
+     */
+    public static function syncAlbums(PDO $db, string $rootFolderId): array
+    {
+        $stmt = $db->prepare("SELECT file_id, name FROM drive_index WHERE is_folder = 1 AND parent_id = ?");
+        $stmt->execute([$rootFolderId]);
+        $valid = [];
+        foreach ($stmt->fetchAll() as $f) {
+            if (isAlbumFolderName($f['name'])) {
+                $valid[$f['file_id']] = $f['name'];
+            }
+        }
+
+        // Raíz mal configurada o vacía: no desactivar nada (evita apagar todos los álbumes)
+        if (!$valid) {
+            return ['added' => 0, 'deactivated' => 0, 'album_ids' => []];
+        }
+
+        $existing = [];
+        foreach ($db->query("SELECT drive_id, is_active, auto_disabled FROM albums")->fetchAll() as $a) {
+            $existing[$a['drive_id']] = $a;
+        }
+        $added = 0;
+        $ins = $db->prepare("INSERT INTO albums (drive_id, name) VALUES (?, ?)");
+        $ren = $db->prepare("UPDATE albums SET name = ? WHERE drive_id = ? AND name <> ?");
+        $back = $db->prepare("UPDATE albums SET is_active = 1, auto_disabled = 0 WHERE drive_id = ?");
+        foreach ($valid as $id => $name) {
+            if (!isset($existing[$id])) {
+                $ins->execute([$id, $name]);
+                $added++;
+                continue;
+            }
+            $ren->execute([$name, $id, $name]);
+            if ($existing[$id]['auto_disabled']) {
+                $back->execute([$id]); // volvió a la raíz: se reactiva (solo si lo apagó el sync)
+            }
+        }
+
+        $deactivated = 0;
+        $off = $db->prepare("UPDATE albums SET is_active = 0, auto_disabled = 1 WHERE drive_id = ?");
+        foreach ($existing as $id => $a) {
+            if ($a['is_active'] && !isset($valid[$id])) {
+                $off->execute([$id]);
+                $deactivated++;
+            }
+        }
+
+        return ['added' => $added, 'deactivated' => $deactivated, 'album_ids' => array_keys($valid)];
     }
 
     /** Registra en el índice un archivo recién subido desde el admin (sin esperar al próximo sync). */

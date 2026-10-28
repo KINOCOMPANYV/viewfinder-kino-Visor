@@ -186,7 +186,7 @@
                 : "ORDER BY {$orderCol} DESC";
 
             $skuRows = $db->query(
-                "SELECT sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
+                "SELECT sku, parent_sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
                  FROM products 
                  WHERE archived = 0 
                  {$orderClause}"
@@ -196,8 +196,7 @@
             $familyMap = [];      // family -> [skus]
             $familyMaxRow = [];   // family -> max sheet_row
             foreach ($skuRows as $rowIdx => $row) {
-                $skuClean = cleanSkuDisplay($row['sku']);
-                $family = extractRootSku($skuClean);
+                $family = familyKey($row); // misma regla de familia que la búsqueda
             
             // Usar posición invertida para que Poedagar (que viene primero en la query) tenga el número más alto
             $effectiveRow = count($skuRows) - $rowIdx;
@@ -235,8 +234,8 @@
             if (!empty($pageSkus)) {
                 $placeholders = implode(',', array_fill(0, count($pageSkus), '?'));
                 $selectCols = $hasSheetRow
-                    ? 'id, sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
-                    : 'id, sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
+                    ? 'id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
+                    : 'id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
                 
                 $stmt = $db->prepare(
                     "SELECT {$selectCols} 
@@ -247,23 +246,17 @@
                 $stmt->execute($pageSkus);
                 $pageProducts = $stmt->fetchAll();
 
+                // Agrupar por familia (sin duplicados por SKU)
+                $members = [];
                 foreach ($pageProducts as $p) {
-                    $skuClean = cleanSkuDisplay($p['sku']);
-                    $family = extractRootSku($skuClean);
-                    
-                    if (!isset($grouped[$family])) {
-                        $grouped[$family] = ['parent' => $p, 'children' => []];
-                    } else {
-                        if ($p['sku'] !== $grouped[$family]['parent']['sku']) {
-                            $exists = false;
-                            foreach ($grouped[$family]['children'] as $c) {
-                                if ($c['sku'] === $p['sku']) { $exists = true; break; }
-                            }
-                            if (!$exists) {
-                                $grouped[$family]['children'][] = $p;
-                            }
-                        }
-                    }
+                    $members[familyKey($p)][$p['sku']] = $p;
+                }
+                // Principal de la tarjeta: el SKU que ES la raíz de la familia (el padre
+                // real, igual que en la búsqueda); si no existe, el más reciente.
+                foreach ($members as $family => $bySku) {
+                    $parent = $bySku[$family] ?? reset($bySku);
+                    unset($bySku[$parent['sku']]);
+                    $grouped[$family] = ['parent' => $parent, 'children' => array_values($bySku)];
                 }
             }
         }

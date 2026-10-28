@@ -194,10 +194,10 @@ if (!$isMultiCode && $q !== '') {
     $matchedFolders = array_values($folderMap);
 }
 
-// Identificar familias (parents) de todos los matches usando parent_sku / extractRootSku
+// Identificar familias (parents) de todos los matches (familyKey: parent_sku o raíz del SKU)
 $rootsFound = [];
 foreach ($allMatches as $m) {
-    $family = !empty($m['parent_sku']) ? $m['parent_sku'] : extractRootSku($m['sku']);
+    $family = familyKey($m);
     $rootsFound[$family] = true;
 }
 $parentOrder = array_keys($rootsFound);
@@ -240,7 +240,7 @@ if (!empty($pageRoots)) {
     $searchedNorm = (!$isMultiCode && $q !== '') ? $normCode($q) : '';
 
     foreach ($familyProducts as $p) {
-        $family = !empty($p['parent_sku']) ? $p['parent_sku'] : extractRootSku($p['sku']);
+        $family = familyKey($p);
 
         // Solo procesar si el producto pertenece a una de las familias de esta página
         if (!in_array($family, $pageRoots)) continue;

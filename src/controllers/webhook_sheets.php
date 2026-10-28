@@ -209,6 +209,14 @@ if (!empty($rowsToUpdate)) {
             $updated++;
         }
 
+        // Hermanos: si llegó un SKU nuevo de una familia, los demás miembros también
+        // deben quedar con el mismo parent_sku (antes la familia quedaba partida)
+        try {
+            recomputeParentSkus($db);
+        } catch (\PDOException $e) {
+            // las filas ya se guardaron; el próximo sync recalcula las familias
+        }
+
         // Invalidar caché de media_search_cache para estos SKUs
         if (!empty($skus)) {
             $ph = implode(',', array_fill(0, count($skus), '?'));

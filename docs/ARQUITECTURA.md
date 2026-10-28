@@ -42,7 +42,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 ## Índice local de Drive (clave del rendimiento)
 - `DriveIndex::sync()` recorre la carpeta raíz por niveles (40 carpetas por consulta, `listChildrenOfMany`),
   hace upsert en `drive_index`, borra lo que ya no existe y hace públicos solo los archivos nuevos (`is_public`).
-  Si Drive falla a mitad, no toca el índice.
+  Si Drive falla a mitad, o la raíz sale vacía (ID o permisos mal), no toca el índice ni los álbumes.
 - Se ejecuta con el botón admin **Sincronizar portadas** y con el cron `/api/cron/sync-covers?token=CRON_SECRET`
   (programarlo, p. ej. cada 30-60 min). Subir/borrar desde el admin actualiza el índice al momento.
 - `DriveIndex::filesForSku()` = misma regla que la búsqueda en Drive (`fileNameStartsWithSku` + familia con
@@ -62,10 +62,25 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 
 Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600/800` vista principal, `=s1200` compartir.
 
+## Álbumes (marcas)
+- Álbum = carpeta de primer nivel de la raíz, salvo auxiliares (`isAlbumFolderName`: empieza por "_" o es "PORTADAS").
+- `DriveIndex::syncAlbums()` (en cada sync de portadas): crea las nuevas, renombra, y **desactiva** (no borra) las
+  que ya no están bajo la raíz (`auto_disabled=1`, migración 019) y reactiva esas si vuelven. No reactiva lo que el admin desactivó.
+- Álbum de un producto = álbum del mejor archivo que coincide con su SKU (archivos sueltos en la raíz no cuentan).
+  Se recalcula si está vacío, si apunta a un álbum fuera de la raíz actual, o con "forzar".
+  Desempate: calidad del match (exacto 3 > prefijo 2 > flojo 1) → `scoreCoverCandidate` → orden por nombre (estable).
+
+## Familias (padre ↔ variantes)
+- **Una sola regla**: `computeParentSkuMap()` (raíz candidata + mismo nombre exacto, con contexto de hermanos).
+  `recomputeParentSkus($db)` la aplica a todo el catálogo; la llaman el webhook de Sheets y la importación Excel.
+  El sync completo de Sheets la aplica sobre la hoja.
+- Agrupar tarjetas: `familyKey($row)` = `parent_sku` o `extractRootSku()` (inicio y búsqueda usan lo mismo).
+
 ## Coincidencia SKU ↔ archivo
 - `GoogleDriveService::findBySku()`: `name contains 'SKU'` en Drive + filtro estricto (después del SKU tiene que venir
   un separador, no una letra ni un número).
 - `skuMatchesFilename()` / `matchFileToProduct()` (en sync-covers): prefijo; el siguiente carácter no puede ser un dígito.
+  En sync-covers las claves "fuertes" (SKU tal cual) siempre ganan a las "débiles" (raíz, sin prefijo de marca, sin espacios).
 - Variantes: `computeParentSkuMap()` agrupa por raíz candidata + mismo nombre → `parent_sku`.
   Un hijo ve sus archivos propios + los genéricos del padre (`isGenericMediaForSku`).
 
