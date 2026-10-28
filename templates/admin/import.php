@@ -34,12 +34,7 @@ unset($_SESSION['auto_assign_covers']);
     </header>
 
     <main class="container" style="padding-top:2rem;">
-        <nav class="admin-nav">
-            <a href="/admin">📊 Dashboard</a>
-            <a href="/admin/products">📦 Productos</a>
-            <a href="/admin/import" class="active">📥 Importar Excel</a>
-            <a href="/" target="_blank">🌐 Ver Portal</a>
-        </nav>
+        <?php $adminNav = 'import'; include __DIR__ . '/partials/nav.php'; ?>
 
         <?php if (isset($_SESSION['flash_error'])): ?>
             <div class="alert alert-error">

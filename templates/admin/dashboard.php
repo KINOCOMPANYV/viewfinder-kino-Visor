@@ -96,13 +96,7 @@ unset($_SESSION['cache_flash']);
     </header>
 
     <main class="container" style="padding-top:2rem;">
-        <nav class="admin-nav">
-            <a href="/admin" class="active">📊 Dashboard</a>
-            <a href="/admin/products">📦 Productos</a>
-            <a href="/admin/import">📥 Importar Excel</a>
-            <a href="/admin/media">🖼️ Media</a>
-            <a href="/" target="_blank">🌐 Ver Portal</a>
-        </nav>
+        <?php $adminNav = 'dashboard'; include __DIR__ . '/partials/nav.php'; ?>
 
         <h1 style="font-size:1.5rem; margin-bottom:1.5rem;">Dashboard</h1>
 

@@ -145,17 +145,14 @@ if ($q === '' && !$isMultiCode) {
 }
 
 // Carpetas de Drive cuyo nombre coincide (cualquier nivel), desde la copia local (drive_index).
-// La miniatura es la primera foto de la carpeta.
+// La miniatura es una foto al azar de su contenido (cover_file_id). Las ocultas no salen.
 $matchedFolders = [];
 if (!$isMultiCode && $q !== '') {
     try {
         $folderStmt = $db->prepare(
-            "SELECT f.file_id AS id, f.name,
-                    (SELECT c.file_id FROM drive_index c
-                     WHERE c.parent_id = f.file_id AND c.is_folder = 0 AND c.mime_type LIKE 'image/%'
-                     ORDER BY c.name LIMIT 1) AS thumb_id
+            "SELECT f.file_id AS id, f.name, f.cover_file_id AS thumb_id
              FROM drive_index f
-             WHERE f.is_folder = 1 AND f.name LIKE ?
+             WHERE f.is_folder = 1 AND f.is_hidden = 0 AND f.name LIKE ?
              ORDER BY f.name ASC LIMIT 20"
         );
         $folderStmt->execute(['%' . addcslashes($q, '%_') . '%']);

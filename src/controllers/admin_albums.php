@@ -65,6 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         // Decisión manual del admin: deja de ser "desactivado por el sync"
         $stmt = $db->prepare("UPDATE albums SET is_active = ?, order_priority = ?, icon_url = ?, auto_disabled = 0 WHERE drive_id = ?");
         $stmt->execute([$isActive, $order, $iconUrl, $driveId]);
+        // Mismo interruptor que Admin → Carpetas (oculta la carpeta y su contenido)
+        try {
+            require_once __DIR__ . '/../services/DriveIndex.php';
+            DriveIndex::setFolderHidden($db, $driveId, !$isActive);
+        } catch (\PDOException $e) { /* migración 021 pendiente */ }
 
         $_SESSION['flash'] = 'Álbum actualizado correctamente.';
         redirect('/admin/albums');

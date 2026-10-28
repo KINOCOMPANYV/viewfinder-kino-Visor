@@ -92,13 +92,7 @@
     </header>
 
     <main class="container" style="padding-top:2rem;">
-        <nav class="admin-nav">
-            <a href="/admin">📊 Dashboard</a>
-            <a href="/admin/products">📦 Productos</a>
-            <a href="/admin/import">📥 Importar</a>
-            <a href="/admin/albums" class="active">🗂️ Álbumes</a>
-            <a href="/admin/media">🖼️ Media</a>
-        </nav>
+        <?php $adminNav = ''; include __DIR__ . '/partials/nav.php'; ?>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
             <h1>🗂️ Gestión de Álbumes (Carpetas de Drive)</h1>

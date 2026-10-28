@@ -25,15 +25,18 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/api/cron/sync-covers?token=` | `admin_sync_covers.php` | **Actualiza el índice de Drive** y asigna portada + álbum |
 | `/api/cron/precache-drive?token=` | `api_precache_drive.php` | Con índice activo = alias de `sync-covers` (compatibilidad con crons viejos) |
 | `/api/webhook/sheets` POST | `webhook_sheets.php` | Sync incremental desde Apps Script |
-| `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, media, álbumes, import, sheets, caché) |
+| `/admin/folders` (`?id=`, `?q=`, `?ver=ocultas`) | `admin_folders.php` + `templates/admin/folders.php` | Mostrar/ocultar carpetas (cualquier nivel). Cambio: `POST /admin/folders/toggle` |
+| `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, media, álbumes, import, sheets, caché). Menú común: `templates/admin/partials/nav.php` |
 
 ## Tablas
 - `products`: `sku` (único), `parent_sku` (familia), `name`, `category`, `gender`, `cover_image_url`,
   `album_id` (→ `albums.drive_id`), `archived`, `sheet_row` (orden de la hoja), `sheet_hash`.
 - `albums`: carpetas de primer nivel bajo la raíz (`drive_id`, `name`, `icon_url`, `is_active`, `order_priority`).
 - `drive_index`: **copia local del árbol de la carpeta raíz** (archivos y carpetas): `file_id`, `name`, `name_stem`
-  (sin extensión, indexado para `LIKE 'SKU%'`), `mime_type`, `is_folder`, `parent_id`, `album_id`, `is_public`, `synced_at`.
+  (sin extensión, indexado para `LIKE 'SKU%'`), `mime_type`, `is_folder`, `parent_id`, `album_id`, `is_public`, `synced_at`,
+  `is_hidden` y `cover_file_id` (migración 021, ver "Carpetas: ocultar y portada").
   Lo llena `DriveIndex::sync()` (`src/services/DriveIndex.php`).
+- `folder_settings`: `folder_id` → `hidden` (decisión del admin; sobrevive a los syncs).
 - `media_search_cache`: `sku` → `files_json` (búsqueda en Drive). Solo se usa mientras `drive_index` está vacío.
 - `drive_cache`: hoy solo guarda la visibilidad por archivo (`visible_publico`) y subcarpetas para la búsqueda.
 - `google_tokens`: OAuth (último registro = activo; `getValidToken()` renueva solo).
@@ -70,6 +73,13 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - Álbum de un producto = álbum del mejor archivo que coincide con su SKU (archivos sueltos en la raíz no cuentan).
   Se recalcula si está vacío, si apunta a un álbum fuera de la raíz actual, o con "forzar".
   Desempate: calidad del match (exacto 3 > prefijo 2 > flojo 1) → `scoreCoverCandidate` → orden por nombre (estable).
+
+## Carpetas: ocultar y portada
+- El admin apaga una carpeta en **Admin → Carpetas** → `folder_settings.hidden = 1` (en una de primer nivel también `albums.is_active = 0`).
+- `DriveIndex::refreshFolderState()` (tras cada sync y cada cambio) marca `drive_index.is_hidden = 1` en la carpeta y en todo
+  lo que tiene dentro, y elige para cada carpeta una foto **al azar** (pública, no oculta) de todo su contenido → `cover_file_id`.
+  También vacía las portadas de productos que eran una foto oculta (el visor elige otra visible).
+- Todo lo público filtra `is_hidden = 0`: `/carpeta/{id}`, carpetas de la búsqueda, galería (`filesForSku`) y el sync de portadas.
 
 ## Familias (padre ↔ variantes)
 - **Una sola regla**: `computeParentSkuMap()` (raíz candidata + mismo nombre exacto, con contexto de hermanos).

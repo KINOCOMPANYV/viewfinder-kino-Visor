@@ -176,7 +176,7 @@ class DriveIndex
     {
         $stmt = $db->prepare(
             "SELECT file_id, name, mime_type, size FROM drive_index
-             WHERE is_folder = 0 AND name_stem LIKE ? ORDER BY name ASC LIMIT 2000"
+             WHERE is_folder = 0 AND is_hidden = 0 AND name_stem LIKE ? ORDER BY name ASC LIMIT 2000"
         );
         $stmt->execute([addcslashes($sku, '%_\\') . '%']);
 
@@ -226,27 +226,35 @@ class DriveIndex
     }
 
     /**
-     * Contenido directo de una carpeta desde el índice (para /carpeta/{id}).
-     * @return array{name: string, subfolders: array, files: array}|null null si la carpeta no está indexada
+     * Contenido directo de una carpeta desde el índice (para /carpeta/{id}), sin lo oculto.
+     * Cada subcarpeta trae 'cover' (URL lh3 de una foto al azar de su contenido, o '').
+     * @return array{name: string, subfolders: array, files: array}|null null si la carpeta no está indexada o está oculta
      */
     public static function folderContents(PDO $db, string $folderId, string $rootFolderId): ?array
     {
         if ($folderId === $rootFolderId) {
             $name = 'Colecciones'; // la raíz no es fila del índice, solo sus hijos
         } else {
-            $stmt = $db->prepare("SELECT name FROM drive_index WHERE file_id = ? AND is_folder = 1");
+            $stmt = $db->prepare("SELECT name FROM drive_index WHERE file_id = ? AND is_folder = 1 AND is_hidden = 0");
             $stmt->execute([$folderId]);
             $name = $stmt->fetchColumn();
             if ($name === false) return null;
         }
 
-        $stmt = $db->prepare("SELECT file_id, name, mime_type, size, is_folder FROM drive_index WHERE parent_id = ? ORDER BY name ASC");
+        $stmt = $db->prepare(
+            "SELECT file_id, name, mime_type, size, is_folder, cover_file_id FROM drive_index
+             WHERE parent_id = ? AND is_hidden = 0 ORDER BY name ASC"
+        );
         $stmt->execute([$folderId]);
         $subfolders = [];
         $files = [];
         foreach ($stmt->fetchAll() as $r) {
             if ($r['is_folder']) {
-                $subfolders[] = ['id' => $r['file_id'], 'name' => $r['name']];
+                $subfolders[] = [
+                    'id' => $r['file_id'],
+                    'name' => $r['name'],
+                    'cover' => $r['cover_file_id'] ? lh3Url($r['cover_file_id'], 300) : '',
+                ];
             } elseif (str_starts_with($r['mime_type'], 'image/') || str_starts_with($r['mime_type'], 'video/')) {
                 $files[] = self::toApiFile($r);
             }
@@ -316,16 +324,17 @@ class DriveIndex
     {
         if (!self::isReady($db)) return;
         try {
-            $stmt = $db->prepare("SELECT album_id FROM drive_index WHERE file_id = ?");
+            $stmt = $db->prepare("SELECT album_id, is_hidden FROM drive_index WHERE file_id = ?");
             $stmt->execute([$parentId]);
-            $album = $stmt->fetchColumn();
+            $parent = $stmt->fetch() ?: ['album_id' => null, 'is_hidden' => 0];
             $db->prepare(
-                "INSERT INTO drive_index (file_id, name, name_stem, mime_type, is_folder, parent_id, album_id, size, is_public, synced_at)
-                 VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, NOW(6))
+                "INSERT INTO drive_index (file_id, name, name_stem, mime_type, is_folder, parent_id, album_id, size, is_public, is_hidden, synced_at)
+                 VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, NOW(6))
                  ON DUPLICATE KEY UPDATE name = VALUES(name), name_stem = VALUES(name_stem), is_public = VALUES(is_public)"
             )->execute([
                 $file['id'], $file['name'], mb_substr(pathinfo($file['name'], PATHINFO_FILENAME), 0, 191),
-                $file['mimeType'] ?? '', $parentId, $album === false ? null : $album, (int) ($file['size'] ?? 0), $isPublic ? 1 : 0,
+                $file['mimeType'] ?? '', $parentId, $parent['album_id'], (int) ($file['size'] ?? 0), $isPublic ? 1 : 0,
+                (int) $parent['is_hidden'],
             ]);
         } catch (\PDOException $e) {
             // el próximo sync lo recoge
@@ -340,5 +349,121 @@ class DriveIndex
         } catch (\PDOException $e) {
             // tabla puede no existir aún
         }
+    }
+
+    /**
+     * Recalcula, solo con la BD, el estado de las carpetas:
+     * - is_hidden: 1 para cada carpeta oculta en el admin (folder_settings, o álbum apagado)
+     *   y para todo lo que tiene dentro, a cualquier nivel.
+     * - cover_file_id: una foto al azar (pública, no oculta) de todo el contenido de cada carpeta.
+     * Quita además las portadas de productos que apuntan a una foto que quedó oculta.
+     * Llamar después de cada sync() y de cada cambio de visibilidad.
+     * @return array{hidden: int, covers: int, product_covers_cleared: int}
+     */
+    public static function refreshFolderState(PDO $db): array
+    {
+        $stats = ['hidden' => 0, 'covers' => 0, 'product_covers_cleared' => 0];
+        try {
+            $seeds = array_flip($db->query("SELECT folder_id FROM folder_settings WHERE hidden = 1")->fetchAll(PDO::FETCH_COLUMN));
+            // Álbum apagado a mano en el admin = carpeta de primer nivel oculta
+            foreach ($db->query("SELECT drive_id FROM albums WHERE is_active = 0 AND auto_disabled = 0")->fetchAll(PDO::FETCH_COLUMN) as $id) {
+                $seeds[$id] = true;
+            }
+            $rows = $db->query("SELECT file_id, parent_id, is_folder, mime_type, is_public, is_hidden, cover_file_id FROM drive_index")
+                       ->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            return $stats; // migración 021 aún no aplicada
+        }
+
+        $parentOf = [];
+        foreach ($rows as $r) {
+            $parentOf[$r['file_id']] = (string) $r['parent_id'];
+        }
+
+        // Una carpeta está oculta si ella o alguna superior está en $seeds (memo por carpeta)
+        $hiddenMemo = [];
+        $isHidden = function (string $id) use (&$hiddenMemo, $seeds, $parentOf): bool {
+            $chain = [];
+            $result = false;
+            for ($i = 0; $id !== '' && $i < self::MAX_DEPTH; $i++) {
+                if (isset($hiddenMemo[$id])) { $result = $hiddenMemo[$id]; break; }
+                if (isset($seeds[$id])) { $result = true; $chain[] = $id; break; }
+                $chain[] = $id;
+                $id = $parentOf[$id] ?? '';
+            }
+            foreach ($chain as $c) $hiddenMemo[$c] = $result;
+            return $result;
+        };
+
+        $newHidden = [];
+        $count = [];  // carpeta → fotos vistas (muestreo al azar de una sola pasada)
+        $cover = [];
+        foreach ($rows as $r) {
+            $id = $r['file_id'];
+            $hidden = $r['is_folder'] ? $isHidden($id) : $isHidden((string) $r['parent_id']);
+            $newHidden[$id] = $hidden ? 1 : 0;
+            if ($hidden || $r['is_folder'] || !$r['is_public'] || !str_starts_with($r['mime_type'], 'image/')) continue;
+
+            // La foto cuenta para su carpeta y todas las superiores
+            for ($f = (string) $r['parent_id'], $i = 0; isset($parentOf[$f]) && $i < self::MAX_DEPTH; $f = $parentOf[$f], $i++) {
+                $count[$f] = ($count[$f] ?? 0) + 1;
+                if (mt_rand(1, $count[$f]) === 1) $cover[$f] = $id;
+            }
+        }
+
+        // Guardar solo lo que cambió
+        $toHide = $toShow = $coverRows = [];
+        foreach ($rows as $r) {
+            $id = $r['file_id'];
+            if ((int) $r['is_hidden'] !== $newHidden[$id]) {
+                if ($newHidden[$id]) $toHide[] = $id; else $toShow[] = $id;
+            }
+            if ($r['is_folder'] && ($cover[$id] ?? null) !== $r['cover_file_id']) {
+                $coverRows[$id] = $cover[$id] ?? null;
+            }
+        }
+        foreach ([1 => $toHide, 0 => $toShow] as $value => $ids) {
+            foreach (array_chunk($ids, 500) as $chunk) {
+                $db->prepare("UPDATE drive_index SET is_hidden = {$value} WHERE file_id IN (" . implode(',', array_fill(0, count($chunk), '?')) . ")")
+                   ->execute($chunk);
+            }
+        }
+        foreach (array_chunk($coverRows, 500, true) as $chunk) {
+            $params = [];
+            foreach ($chunk as $folder => $file) { $params[] = $folder; $params[] = $file; }
+            $params = array_merge($params, array_keys($chunk));
+            $db->prepare(
+                "UPDATE drive_index SET cover_file_id = CASE file_id " . str_repeat('WHEN ? THEN ? ', count($chunk)) . "END
+                 WHERE file_id IN (" . implode(',', array_fill(0, count($chunk), '?')) . ")"
+            )->execute($params);
+        }
+        $stats['hidden'] = count(array_filter($newHidden));
+        $stats['covers'] = count($cover);
+
+        // Portadas guardadas que son una foto oculta: se vacían y el visor elige otra visible
+        $hiddenFiles = array_filter($newHidden);
+        if ($hiddenFiles) {
+            $clear = $db->prepare("UPDATE products SET cover_image_url = '' WHERE id = ?");
+            foreach ($db->query("SELECT id, cover_image_url FROM products WHERE cover_image_url LIKE '%googleusercontent.com/d/%'")->fetchAll() as $p) {
+                if (preg_match('#/d/([A-Za-z0-9_-]+)#', $p['cover_image_url'], $m) && isset($hiddenFiles[$m[1]])) {
+                    $clear->execute([$p['id']]);
+                    $stats['product_covers_cleared']++;
+                }
+            }
+        }
+        return $stats;
+    }
+
+    /** Guarda la decisión del admin de mostrar u ocultar una carpeta y recalcula el estado. */
+    public static function setFolderHidden(PDO $db, string $folderId, bool $hidden): array
+    {
+        $db->prepare(
+            "INSERT INTO folder_settings (folder_id, hidden) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE hidden = VALUES(hidden)"
+        )->execute([$folderId, $hidden ? 1 : 0]);
+        // Carpeta de primer nivel: la portada de inicio lee albums.is_active
+        $db->prepare("UPDATE albums SET is_active = ?, auto_disabled = 0 WHERE drive_id = ?")
+           ->execute([$hidden ? 0 : 1, $folderId]);
+        return self::refreshFolderState($db);
     }
 }

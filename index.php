@@ -332,6 +332,18 @@ if ($uri === '/admin/media/visibility' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/folders') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_folders.php';
+    exit;
+}
+
+if ($uri === '/admin/folders/toggle' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_folder_toggle.php';
+    exit;
+}
+
 if ($uri === '/admin/albums') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_albums.php';

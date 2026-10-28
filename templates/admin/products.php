@@ -19,13 +19,6 @@
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         /* Inline edit */
-        /* Toggle switch */
-        .toggle-switch { position:relative; display:inline-block; width:36px; height:20px; cursor:pointer; }
-        .toggle-switch input { opacity:0; width:0; height:0; }
-        .toggle-slider { position:absolute; inset:0; background:#444; border-radius:20px; transition:0.3s; }
-        .toggle-slider::before { content:''; position:absolute; height:14px; width:14px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.3s; }
-        .toggle-switch input:checked + .toggle-slider { background:var(--color-success, #22c55e); }
-        .toggle-switch input:checked + .toggle-slider::before { transform:translateX(16px); }
         .editable {
             cursor: pointer;
             padding: 0.25rem 0.4rem;
@@ -83,62 +76,6 @@
             pointer-events: none;
         }
 
-        /* Toast */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .toast {
-            padding: 0.7rem 1.2rem;
-            border-radius: var(--radius-sm);
-            color: #fff;
-            font-weight: 600;
-            font-size: 0.8rem;
-            animation: toast-in 0.3s ease, toast-out 0.3s ease 3.7s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            max-width: 320px;
-        }
-
-        .toast.success {
-            background: #27ae60;
-        }
-
-        .toast.error {
-            background: #e74c3c;
-        }
-
-        .toast.info {
-            background: #2980b9;
-        }
-
-        @keyframes toast-in {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes toast-out {
-            from {
-                opacity: 1;
-            }
-
-            to {
-                opacity: 0;
-            }
-        }
-
         .edit-hint {
             text-align: center;
             font-size: 0.75rem;
@@ -161,12 +98,7 @@
     </header>
 
     <main class="container" style="padding-top:2rem;">
-        <nav class="admin-nav">
-            <a href="/admin">📊 Dashboard</a>
-            <a href="/admin/products" class="active">📦 Productos</a>
-            <a href="/admin/import">📥 Importar Excel</a>
-            <a href="/" target="_blank">🌐 Ver Portal</a>
-        </nav>
+        <?php $adminNav = 'products'; include __DIR__ . '/partials/nav.php'; ?>
 
         <?php if (isset($_SESSION['flash_success'])): ?>
             <div class="alert alert-success">

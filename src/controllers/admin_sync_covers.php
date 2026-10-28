@@ -100,13 +100,15 @@ $validAlbumSet = array_flip($albumSync['album_ids']);
 // Sin álbumes válidos (raíz equivocada o vacía) no se toca el álbum de ningún producto
 $albumsKnown = !empty($validAlbumSet);
 $activeAlbumSet = array_flip($db->query("SELECT drive_id FROM albums WHERE is_active = 1")->fetchAll(PDO::FETCH_COLUMN));
+// Carpetas ocultas en el admin + foto al azar de cada carpeta
+$folderState = DriveIndex::refreshFolderState($db);
 
 // ============================================================
 // 3) Archivos media del índice (orden estable para que los empates no cambien)
 // ============================================================
 $mediaFiles = $db->query(
     "SELECT file_id AS id, name, mime_type AS mimeType, album_id FROM drive_index
-     WHERE is_folder = 0 AND (mime_type LIKE 'image/%' OR mime_type LIKE 'video/%')
+     WHERE is_folder = 0 AND is_hidden = 0 AND (mime_type LIKE 'image/%' OR mime_type LIKE 'video/%')
      ORDER BY name ASC, file_id ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
@@ -266,6 +268,7 @@ echo json_encode([
     'drive_files_indexed' => $totalDriveFiles,
     'strategy' => 'drive-index',
     'index' => $indexStats,
+    'folders' => $folderState,
     'albums' => ['added' => $albumSync['added'], 'deactivated' => $albumSync['deactivated'], 'products_fixed' => $albumsFixed],
     'errors' => $errors,
     'unmapped_files' => $unmappedFiles,
