@@ -159,6 +159,7 @@ class GoogleDriveService
             'includeItemsFromAllDrives' => 'true',
         ]);
 
+        $files = $this->filterToRootFolder($files, $rootFolderId);
         if (!empty($files)) {
             return ['files' => $files, 'strategy' => 'global'];
         }
@@ -170,6 +171,7 @@ class GoogleDriveService
             'corpora' => 'allDrives',
         ]);
 
+        $files = $this->filterToRootFolder($files, $rootFolderId);
         if (!empty($files)) {
             return ['files' => $files, 'strategy' => 'allDrives'];
         }
@@ -222,7 +224,7 @@ class GoogleDriveService
      * Lista archivos media recursivamente dentro de una carpeta específica.
      * Fallback para cuando la búsqueda global no funciona.
      */
-    private function listMediaFilesRecursive(string $folderId, int $depth = 0, int $maxDepth = 3): array
+    private function listMediaFilesRecursive(string $folderId, int $depth = 0, int $maxDepth = 6): array
     {
         if ($depth >= $maxDepth) return [];
 
@@ -272,7 +274,7 @@ class GoogleDriveService
         $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
         $response = $this->httpGet($url);
         $data = json_decode($response, true) ?: [];
-        $files = $data['files'] ?? [];
+        $files = $this->filterToRootFolder($data['files'] ?? [], $folderId);
 
         // Post-filtro estricto: el nombre del archivo debe comenzar con el SKU exacto
         // seguido de un separador (guion, punto, espacio, underscore) o fin del nombre base.
@@ -291,6 +293,94 @@ class GoogleDriveService
         });
 
         return array_values($filtered);
+    }
+
+    /**
+     * Deja solo los archivos que están dentro de la carpeta raíz configurada
+     * (GOOGLE_DRIVE_FOLDER_ID), en cualquier nivel de profundidad.
+     * Evita que la búsqueda global mezcle fotos de otras carpetas del Drive.
+     * Si no se puede leer el árbol de carpetas, devuelve los archivos sin filtrar.
+     */
+    private function filterToRootFolder(array $files, ?string $rootFolderId): array
+    {
+        if (empty($rootFolderId) || empty($files))
+            return $files;
+
+        $allowed = $this->getFolderIdsUnderRoot($rootFolderId);
+        if ($allowed === null)
+            return $files;
+
+        return array_values(array_filter($files, function ($f) use ($allowed) {
+            foreach ($f['parents'] ?? [] as $parentId) {
+                if (isset($allowed[$parentId]))
+                    return true;
+            }
+            return false;
+        }));
+    }
+
+    /**
+     * IDs de la carpeta raíz y todas sus subcarpetas (como set id => true).
+     * Una búsqueda global de carpetas (pocas llamadas) + recorrido en memoria.
+     * Se cachea en el proceso y en disco 10 min para no repetirlo en cada SKU.
+     * Retorna null si la API falla.
+     */
+    private function getFolderIdsUnderRoot(string $rootFolderId): ?array
+    {
+        static $memo = [];
+        if (isset($memo[$rootFolderId]))
+            return $memo[$rootFolderId];
+
+        $cacheFile = sys_get_temp_dir() . '/drive_tree_' . md5($rootFolderId) . '.json';
+        if (is_file($cacheFile) && (time() - filemtime($cacheFile)) < 600) {
+            $cached = json_decode((string) file_get_contents($cacheFile), true);
+            if (is_array($cached)) {
+                return $memo[$rootFolderId] = $cached;
+            }
+        }
+
+        // Mapa padre → hijos de todas las carpetas visibles para la cuenta
+        $children = [];
+        $token = '';
+        do {
+            $params = [
+                'q' => "mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+                'fields' => 'nextPageToken,files(id,parents)',
+                'pageSize' => 1000,
+                'supportsAllDrives' => 'true',
+                'includeItemsFromAllDrives' => 'true',
+            ];
+            if ($token)
+                $params['pageToken'] = $token;
+
+            $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query($params);
+            $data = json_decode($this->httpGet($url), true);
+            if (!is_array($data) || isset($data['error']))
+                return null;
+
+            foreach ($data['files'] ?? [] as $folder) {
+                foreach ($folder['parents'] ?? [] as $parentId) {
+                    $children[$parentId][] = $folder['id'];
+                }
+            }
+            $token = $data['nextPageToken'] ?? '';
+        } while (!empty($token));
+
+        // Recorrido desde la raíz
+        $allowed = [$rootFolderId => true];
+        $queue = [$rootFolderId];
+        while ($queue) {
+            $current = array_shift($queue);
+            foreach ($children[$current] ?? [] as $childId) {
+                if (!isset($allowed[$childId])) {
+                    $allowed[$childId] = true;
+                    $queue[] = $childId;
+                }
+            }
+        }
+
+        @file_put_contents($cacheFile, json_encode($allowed));
+        return $memo[$rootFolderId] = $allowed;
     }
 
     /**
