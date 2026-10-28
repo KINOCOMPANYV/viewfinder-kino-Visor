@@ -21,6 +21,13 @@ $product = $stmt->fetch();
 $originalSku = $sku;
 $isVariant = false;
 if (!$product) {
+    // 0) Mismo código con otro separador: "/producto/M-8464-2" o "M8464-2" → "M:8464-2"
+    $variants = skuNameVariants($sku);
+    $stmt = $db->prepare("SELECT * FROM products WHERE sku IN (" . implode(',', array_fill(0, count($variants), '?')) . ") ORDER BY archived ASC LIMIT 1");
+    $stmt->execute($variants);
+    $product = $stmt->fetch();
+}
+if (!$product) {
     // 1) Intentar con el SKU raíz (padre)
     $rootSku = extractRootSku($sku);
     if ($rootSku !== $sku) {
@@ -79,44 +86,47 @@ if (!$product) {
     exit;
 }
 
-// Precargar portada desde caché del server (evita esperar JS)
-// Upscale a =s800 para la vista de detalle (en catálogo se usa =s400)
-$serverCover = $product['cover_image_url'] ?? '';
-if ($serverCover && !str_starts_with($serverCover, '[VIDEO]')) {
-    $serverCover = preg_replace('/=s\d+$/', '=s800', $serverCover);
-}
-if (empty($serverCover)) {
-    try {
-        $cacheStmt = $db->prepare(
-            "SELECT files_json FROM media_search_cache 
-             WHERE sku = ? AND cached_at > NOW() - INTERVAL 10 MINUTE"
-        );
-        $cacheStmt->execute([$originalSku]);
-        $cacheRow = $cacheStmt->fetch();
-        if ($cacheRow) {
-            $cachedFiles = json_decode($cacheRow['files_json'], true) ?: [];
-            foreach ($cachedFiles as $cf) {
-                if (str_starts_with($cf['mimeType'] ?? '', 'image/')) {
-                    $thumb = $cf['thumbnailLink'] ?? '';
-                    $serverCover = $thumb
-                        ? preg_replace('/=s\d+/', '=s800', $thumb)
-                        : "https://lh3.googleusercontent.com/d/{$cf['id']}=s800";
-                    break;
-                }
-            }
-        }
-    } catch (Exception $e) {
-        // tabla no existe aún, ignorar
-    }
-}
-
-// ── Cache: ETag + Cache-Control para páginas de producto ──
+// ── Cache: ETag + Cache-Control (antes de cualquier consulta extra, así el 304 sale rápido) ──
 $productEtag = '"p-' . md5($product['sku'] . ($product['updated_at'] ?? '') . APP_VERSION) . '"';
 header("ETag: {$productEtag}");
 header('Cache-Control: private, max-age=60');
 if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $productEtag) {
     http_response_code(304);
     exit;
+}
+
+// Precargar portada desde caché del server (evita esperar JS)
+// Upscale a =s800 para la vista de detalle (en catálogo se usa =s400)
+$storedCover = parseStoredCover($product['cover_image_url'] ?? '', 800);
+$serverCover = $storedCover['video'] ? ($product['cover_image_url'] ?? '') : $storedCover['url'];
+if (empty($serverCover)) {
+    // Archivos del SKU: índice local de Drive o, si aún no existe, la caché de búsquedas
+    require_once __DIR__ . '/../services/DriveIndex.php';
+    $knownFiles = null;
+    if (DriveIndex::isReady($db)) {
+        $knownFiles = DriveIndex::filesForSku($db, $originalSku)['files'];
+    } else {
+        try {
+            $cacheStmt = $db->prepare(
+                "SELECT files_json FROM media_search_cache
+                 WHERE sku = ? AND " . freshCoverCacheSql()
+            );
+            $cacheStmt->execute([$originalSku]);
+            $cacheRow = $cacheStmt->fetch();
+            if ($cacheRow) {
+                $knownFiles = json_decode($cacheRow['files_json'], true) ?: [];
+            }
+        } catch (Exception $e) {
+            // tabla no existe aún, ignorar
+        }
+    }
+    if ($knownFiles) {
+        // Misma elección que las tarjetas (mejor imagen, sin archivos ocultos)
+        $cover = extractCoverFromFiles(filterHiddenFiles($db, $knownFiles));
+        if ($cover && !$cover['video']) {
+            $serverCover = coverUrlAtSize($cover['url'], 800);
+        }
+    }
 }
 
 // ── Buscar Variantes (Hermanos) ──
@@ -282,13 +292,8 @@ $variants = $varStmt->fetchAll();
                             ?>
                             <div class="variant-strip">
                                 <?php foreach ($variants as $v):
-                                    $vCover = ($v['cover_image_url'] ?: '') ?: $familyCover;
-                                    if (str_starts_with($vCover, '[VIDEO]')) {
-                                        // usar el thumbnail del video como imagen del chip
-                                        $vCover = substr($vCover, 7);
-                                    } elseif ($vCover) {
-                                        $vCover = preg_replace('/=s\d+$/', '=s150', $vCover);
-                                    }
+                                    // Si es video, se usa su fotograma de lh3 como imagen del chip
+                                    $vCover = parseStoredCover(($v['cover_image_url'] ?: '') ?: $familyCover, 150)['url'];
                                     $isActive = ($v['sku'] === $product['sku']);
                                 ?>
                                     <a href="/producto/<?= urlencode($v['sku']) ?>" 

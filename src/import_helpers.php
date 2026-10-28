@@ -120,7 +120,8 @@ function processRow(PDO $db, array $data, int $rowNum, int &$inserted, int &$upd
     // Posición en la hoja de cálculo
     $sheetRow = intval($data['_sheet_row'] ?? 0);
 
-    // Calcular SKU raíz (padre) si es una variante
+    // Padre provisional: al terminar la importación, recomputeParentSkus() lo
+    // recalcula para todo el catálogo con la regla única (ver helpers.php)
     $rootSku = extractRootSku($sku);
     $parentSku = ($rootSku !== $sku) ? $rootSku : null;
 

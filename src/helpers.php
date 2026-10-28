@@ -198,6 +198,48 @@ function skuMatchesFilename(string $sku, string $filename): bool
 }
 
 /**
+ * Regla de coincidencia foto ↔ SKU usada al buscar media de un producto:
+ * el nombre (sin extensión) empieza con el SKU y lo que sigue es un separador
+ * (guion, punto, espacio, guion bajo) o nada. Evita que "1948" coincida con
+ * "1948O", "JR1948O" o "1948DG".
+ */
+/**
+ * SKU sin los signos que no se usan en los nombres de archivo: "M:8392-1" → "m8392-1",
+ * "NO.2305B-1" → "no2305b-1", "ETN56L -1" → "etn56l-1". Solo para comparar con nombres.
+ */
+function skuFileKey(string $sku): string
+{
+    return preg_replace('/[^a-z0-9-]/', '', strtolower($sku));
+}
+
+/**
+ * Formas en que se escribe el mismo código en un nombre de archivo (minúsculas).
+ * El separador entre el prefijo de letras y el número es libre: "M:8464-2", "M8464-2",
+ * "M-8464-2", "M 8464-2", "M.8464-2" y "M_8464-2" son el mismo código.
+ * @return string[] la primera es el SKU tal cual
+ */
+function skuNameVariants(string $sku): array
+{
+    $lower = strtolower(trim($sku));
+    $variants = [$lower, skuFileKey($lower)];
+    if (preg_match('/^([a-z]+)[:\-. _]?(\d.*)$/', $lower, $m)) {
+        foreach (['', '-', ':', ' ', '.', '_'] as $sep) {
+            $variants[] = $m[1] . $sep . $m[2];
+        }
+    }
+    return array_values(array_unique(array_filter($variants, 'strlen')));
+}
+
+function fileNameStartsWithSku(string $filename, string $sku): bool
+{
+    $name = strtolower(pathinfo($filename, PATHINFO_FILENAME));
+    $skuLower = strtolower($sku);
+    if (!str_starts_with($name, $skuLower)) return false;
+    $len = strlen($skuLower);
+    return strlen($name) === $len || !ctype_alnum($name[$len]);
+}
+
+/**
  * Extrae el SKU raíz (padre) de un código de variante.
  *
  * REGLA: Solo se considera "variante" un sufijo que sea EXCLUSIVAMENTE letras
@@ -273,6 +315,53 @@ function computeParentSkuMap(array $rowsBySku): array
         $parentMap[$sku] = (count($siblings) > 1) ? $root : null;
     }
     return $parentMap;
+}
+
+/**
+ * Recalcula parent_sku de TODO el catálogo con computeParentSkuMap() y guarda
+ * solo los que cambian. Es el paso final de TODA escritura de catálogo (sync de
+ * Sheets, webhook e importación Excel), así las familias quedan iguales sin
+ * importar cuál corrió de último, y los hermanos de un SKU nuevo se actualizan.
+ * @return int productos cuyo parent_sku cambió
+ */
+function recomputeParentSkus(PDO $db): int
+{
+    // Solo productos activos: un archivado no debe juntar (ni partir) una familia visible
+    $rows = $db->query("SELECT sku, name, parent_sku FROM products WHERE archived = 0")->fetchAll(PDO::FETCH_ASSOC);
+    $bySku = [];
+    foreach ($rows as $r) {
+        $bySku[$r['sku']] = $r;
+    }
+    $changed = 0;
+    $upd = $db->prepare("UPDATE products SET parent_sku = ? WHERE sku = ?");
+    foreach (computeParentSkuMap($bySku) as $sku => $parent) {
+        if (($bySku[$sku]['parent_sku'] ?: null) !== $parent) {
+            $upd->execute([$parent, $sku]);
+            $changed++;
+        }
+    }
+    return $changed;
+}
+
+/**
+ * Clave de familia de un producto para agrupar tarjetas (inicio y búsqueda):
+ * parent_sku si lo tiene; si no, su raíz por patrón de SKU.
+ */
+function familyKey(array $product): string
+{
+    return !empty($product['parent_sku'])
+        ? $product['parent_sku']
+        : extractRootSku($product['sku']);
+}
+
+/**
+ * ¿Una carpeta de primer nivel de Drive debe ser álbum (marca)?
+ * No lo son las auxiliares: las que empiezan por "_" (ej. "_INDICE") ni "PORTADAS".
+ */
+function isAlbumFolderName(string $name): bool
+{
+    $name = trim($name);
+    return $name !== '' && !str_starts_with($name, '_') && strcasecmp($name, 'PORTADAS') !== 0;
 }
 
 /**
@@ -415,13 +504,25 @@ function getFamilyRootSku(PDO $db, string $sku): string
     return extractRootSku($sku);
 }
 
+/** Vigencia de media_search_cache para portadas (las URLs lh3 por ID no caducan). */
+const COVER_CACHE_TTL_HOURS = 6;
+/** Vigencia de un "sin foto" cacheado: corta, para que una foto recién subida aparezca pronto. */
+const EMPTY_CACHE_TTL_MINUTES = 30;
+
+/** Condición SQL de caché vigente en media_search_cache (portada con foto o "sin foto" reciente). */
+function freshCoverCacheSql(): string
+{
+    return "cached_at > NOW() - INTERVAL " . COVER_CACHE_TTL_HOURS . " HOUR
+            AND (files_json <> '[]' OR cached_at > NOW() - INTERVAL " . EMPTY_CACHE_TTL_MINUTES . " MINUTE)";
+}
+
 /**
  * Busca en Drive los archivos de un SKU (bidireccional padre↔hijo), los hace
- * públicos, guarda el resultado en media_search_cache y auto-asigna portada
+ * públicos, guarda el resultado en media_search_cache (incluido "sin foto") y auto-asigna portada
  * (imagen-primero) si el producto no tiene. Lógica compartida entre
  * /api/media, /api/covers/batch y el precache cron.
  *
- * @return array{files: array, root_sku: string}
+ * @return array{files: array, root_sku: string, failed: bool}
  */
 function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $folderId, string $sku): array
 {
@@ -429,58 +530,77 @@ function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $fo
 
     // 1) Buscar por el SKU raíz (trae padre + todos los hijos)
     $rootFiles = $drive->findBySku($folderId, $rootSku);
+    $driveFailed = $drive->lastRequestFailed;
 
+    $childFiles = [];
     if ($sku !== $rootSku) {
-        // Genéricos del padre (evita que el hijo A vea archivos del hijo B)
-        $parentOnly = array_filter($rootFiles, fn($f) => isGenericMediaForSku($rootSku, $f['name']));
-        // Específicos del hijo
         $childFiles = $drive->findBySku($folderId, $sku);
-        $existingIds = array_column($childFiles, 'id');
-        $files = $childFiles;
-        foreach ($parentOnly as $pf) {
-            if (!in_array($pf['id'], $existingIds)) {
-                $files[] = $pf;
-            }
-        }
-    } else {
-        $files = $rootFiles;
+        $driveFailed = $driveFailed || $drive->lastRequestFailed;
     }
-    $files = array_values($files);
+    $files = combineFamilyFiles($sku, $rootSku, $rootFiles, $childFiles);
 
-    if (!empty($files)) {
+    // Si Drive falló y no hay archivos, no se cachea nada: sería un falso "sin foto"
+    if (!$files && $driveFailed) {
+        return ['files' => [], 'root_sku' => $rootSku, 'failed' => true];
+    }
+
+    if ($files) {
+        // Antes de cachear: las URLs lh3 por ID solo cargan si el archivo es público
         $drive->makePublicBatch(array_column($files, 'id'));
-
-        // Cachear resultado (no se cachean vacíos para evitar envenenamiento)
-        try {
-            $saveStmt = $db->prepare(
-                "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
-                 VALUES (?, ?, ?, NOW())
-                 ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
-            );
-            $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
-        } catch (Exception $e) {
-            // tabla puede no existir aún
-        }
-
-        // Auto-asignar portada (mejor imagen, nunca video) si el producto no tiene
-        try {
-            $coverCheck = $db->prepare("SELECT id, cover_image_url FROM products WHERE sku = ? LIMIT 1");
-            $coverCheck->execute([$sku]);
-            $prodRow = $coverCheck->fetch();
-            if ($prodRow && empty($prodRow['cover_image_url'])) {
-                $imgOnly = array_filter($files, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
-                $bestImage = pickBestCoverFile($imgOnly);
-                if ($bestImage) {
-                    $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
-                       ->execute(["https://lh3.googleusercontent.com/d/{$bestImage['id']}=s400", $prodRow['id']]);
-                }
-            }
-        } catch (Exception $e) {
-            // ignorar errores de auto-cover
-        }
     }
 
-    return ['files' => $files, 'root_sku' => $rootSku];
+    // Cachear resultado. Los vacíos también se cachean ("sin foto"), así un SKU sin
+    // fotos no vuelve a consultar Drive en cada visita.
+    try {
+        $saveStmt = $db->prepare(
+            "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
+             VALUES (?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE root_sku = VALUES(root_sku), files_json = VALUES(files_json), cached_at = NOW()"
+        );
+        $saveStmt->execute([$sku, $rootSku, json_encode($files)]);
+    } catch (Exception $e) {
+        // tabla puede no existir aún
+    }
+
+    autoAssignCover($db, $sku, $files);
+
+    return ['files' => $files, 'root_sku' => $rootSku, 'failed' => false];
+}
+
+/**
+ * Archivos que ve un SKU: si es variante, los suyos propios + los genéricos del
+ * padre (p. ej. "839-5.jpg"), sin los de sus hermanos. Si es raíz, los de la raíz.
+ */
+function combineFamilyFiles(string $sku, string $rootSku, array $rootFiles, array $childFiles): array
+{
+    if ($sku === $rootSku) {
+        return array_values($rootFiles);
+    }
+    $files = $childFiles;
+    $seen = array_flip(array_column($childFiles, 'id'));
+    foreach ($rootFiles as $rf) {
+        if (!isset($seen[$rf['id']]) && isGenericMediaForSku($rootSku, $rf['name'])) {
+            $files[] = $rf;
+        }
+    }
+    return array_values($files);
+}
+
+/**
+ * Si el producto aún no tiene portada, le asigna la mejor IMAGEN (nunca video)
+ * de $files, para que la próxima visita la pinte directo desde la BD.
+ */
+function autoAssignCover(PDO $db, string $sku, array $files): void
+{
+    $imgOnly = array_filter($files, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
+    $bestImage = pickBestCoverFile($imgOnly);
+    if (!$bestImage) return;
+    try {
+        $db->prepare("UPDATE products SET cover_image_url = ? WHERE sku = ? AND (cover_image_url IS NULL OR cover_image_url = '')")
+           ->execute([lh3Url($bestImage['id']), $sku]);
+    } catch (Exception $e) {
+        // ignorar errores de auto-cover
+    }
 }
 
 /**
@@ -491,15 +611,50 @@ function extractCoverFromFiles(array $files): ?array
     $best = pickBestCoverFile($files);
     if (!$best) return null;
 
-    if (str_starts_with($best['mimeType'] ?? '', 'video/')) {
-        if (empty($best['thumbnailLink'])) return null;
-        return ['url' => preg_replace('/=s\d+/', '=s400', $best['thumbnailLink']), 'video' => true];
+    // URL estable por ID (el archivo ya es público; para videos lh3 da el fotograma).
+    // thumbnailLink de la API caduca en pocas horas: no sirve para respuestas cacheadas.
+    return [
+        'url' => lh3Url($best['id']),
+        'video' => str_starts_with($best['mimeType'] ?? '', 'video/'),
+    ];
+}
+
+/**
+ * Cambia el tamaño de una URL de lh3.googleusercontent.com (sufijo =sNNN).
+ * Ej: miniaturas de variantes a =s150 en vez de bajar la portada de 400px.
+ */
+function coverUrlAtSize(string $url, int $size): string
+{
+    if (!str_contains($url, 'googleusercontent.com/')) {
+        return $url;
     }
-    $thumb = $best['thumbnailLink'] ?? '';
-    $url = $thumb
-        ? preg_replace('/=s\d+/', '=s400', $thumb)
-        : "https://lh3.googleusercontent.com/d/{$best['id']}=s400";
-    return ['url' => $url, 'video' => false];
+    $resized = preg_replace('/=s\d+$/', "=s{$size}", $url, 1, $count);
+    if ($count) {
+        return $resized;
+    }
+    // Sin sufijo → se agrega; con otro sufijo (=w400, =s220-c…) se deja intacta
+    return str_contains(basename($url), '=') ? $url : $url . "=s{$size}";
+}
+
+/**
+ * URL estable de un archivo público de Drive a un tamaño dado (no caduca, a diferencia
+ * del thumbnailLink de la API). Es el formato que se guarda en products.cover_image_url.
+ */
+function lh3Url(string $fileId, int $size = 400): string
+{
+    return "https://lh3.googleusercontent.com/d/{$fileId}=s{$size}";
+}
+
+/**
+ * Decodifica un cover_image_url guardado: quita el prefijo "[VIDEO]" y ajusta el tamaño.
+ * @return array{url: string, video: bool}
+ */
+function parseStoredCover(?string $stored, int $size): array
+{
+    $stored = (string) $stored;
+    $isVideo = str_starts_with($stored, '[VIDEO]');
+    $url = $isVideo ? substr($stored, 7) : $stored;
+    return ['url' => $url !== '' ? coverUrlAtSize($url, $size) : '', 'video' => $isVideo];
 }
 
 /**

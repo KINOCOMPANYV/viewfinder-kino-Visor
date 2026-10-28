@@ -186,7 +186,7 @@
                 : "ORDER BY {$orderCol} DESC";
 
             $skuRows = $db->query(
-                "SELECT sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
+                "SELECT sku, parent_sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
                  FROM products 
                  WHERE archived = 0 
                  {$orderClause}"
@@ -196,8 +196,7 @@
             $familyMap = [];      // family -> [skus]
             $familyMaxRow = [];   // family -> max sheet_row
             foreach ($skuRows as $rowIdx => $row) {
-                $skuClean = cleanSkuDisplay($row['sku']);
-                $family = extractRootSku($skuClean);
+                $family = familyKey($row); // misma regla de familia que la búsqueda
             
             // Usar posición invertida para que Poedagar (que viene primero en la query) tenga el número más alto
             $effectiveRow = count($skuRows) - $rowIdx;
@@ -235,8 +234,8 @@
             if (!empty($pageSkus)) {
                 $placeholders = implode(',', array_fill(0, count($pageSkus), '?'));
                 $selectCols = $hasSheetRow
-                    ? 'id, sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
-                    : 'id, sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
+                    ? 'id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
+                    : 'id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
                 
                 $stmt = $db->prepare(
                     "SELECT {$selectCols} 
@@ -247,23 +246,17 @@
                 $stmt->execute($pageSkus);
                 $pageProducts = $stmt->fetchAll();
 
+                // Agrupar por familia (sin duplicados por SKU)
+                $members = [];
                 foreach ($pageProducts as $p) {
-                    $skuClean = cleanSkuDisplay($p['sku']);
-                    $family = extractRootSku($skuClean);
-                    
-                    if (!isset($grouped[$family])) {
-                        $grouped[$family] = ['parent' => $p, 'children' => []];
-                    } else {
-                        if ($p['sku'] !== $grouped[$family]['parent']['sku']) {
-                            $exists = false;
-                            foreach ($grouped[$family]['children'] as $c) {
-                                if ($c['sku'] === $p['sku']) { $exists = true; break; }
-                            }
-                            if (!$exists) {
-                                $grouped[$family]['children'][] = $p;
-                            }
-                        }
-                    }
+                    $members[familyKey($p)][$p['sku']] = $p;
+                }
+                // Principal de la tarjeta: el SKU que ES la raíz de la familia (el padre
+                // real, igual que en la búsqueda); si no existe, el más reciente.
+                foreach ($members as $family => $bySku) {
+                    $parent = $bySku[$family] ?? reset($bySku);
+                    unset($bySku[$parent['sku']]);
+                    $grouped[$family] = ['parent' => $parent, 'children' => array_values($bySku)];
                 }
             }
         }
@@ -329,9 +322,7 @@
                                         <div class="children-row">
                                             <?php
                                             foreach ($children as $child):
-                                                $childCover = $child['cover_image_url'] ?? '';
-                                                $childIsVideo = str_starts_with($childCover, '[VIDEO]');
-                                                if ($childIsVideo) $childCover = substr($childCover, 7);
+                                                $childCover = parseStoredCover($child['cover_image_url'] ?? '', 150)['url'];
                                             ?>
                                                 <div class="child-thumb" style="cursor:pointer;"
                                                     title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
@@ -476,67 +467,6 @@ KV-1003
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
     <script>
         // Folders now use parent-grid layout (no horizontal scroll)
-    </script>
-    <script>
-        // Lazy-load covers from Drive for products without cover_image_url
-        document.addEventListener('DOMContentLoaded', () => {
-            const placeholders = document.querySelectorAll('.cover-placeholder');
-            if (placeholders.length === 0) return;
-
-            // Collect SKUs that need covers
-            const skuElements = {};
-            placeholders.forEach(ph => {
-                const cardImage = ph.closest('.card-image');
-                if (cardImage && cardImage.dataset.sku) {
-                    const sku = cardImage.dataset.sku;
-                    if (!skuElements[sku]) skuElements[sku] = [];
-                    skuElements[sku].push(cardImage);
-                }
-                // Also check child thumbnails
-                const childThumb = ph.closest('.child-thumb');
-                if (childThumb && childThumb.dataset.sku) {
-                    const sku = childThumb.dataset.sku;
-                    if (!skuElements[sku]) skuElements[sku] = [];
-                    skuElements[sku].push(childThumb);
-                }
-            });
-
-            const allSkus = Object.keys(skuElements);
-            if (allSkus.length === 0) return;
-
-            // Fetch in batches of 50
-            const batchSize = 50;
-            for (let i = 0; i < allSkus.length; i += batchSize) {
-                const batch = allSkus.slice(i, i + batchSize);
-                fetch('/api/covers/batch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ skus: batch })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    const covers = data.covers || {};
-                    Object.entries(covers).forEach(([sku, cover]) => {
-                        if (!cover || !cover.url) return;
-                        const elements = skuElements[sku] || [];
-                        elements.forEach(el => {
-                            const placeholder = el.querySelector('.cover-placeholder, .child-placeholder');
-                            if (placeholder) {
-                                const img = document.createElement('img');
-                                img.src = cover.url;
-                                img.alt = sku;
-                                img.loading = 'lazy';
-                                img.className = 'img-fade-in';
-                                img.onload = () => img.classList.add('loaded');
-                                img.onerror = () => { img.outerHTML = '<div class="cover-placeholder">📷</div>'; };
-                                placeholder.replaceWith(img);
-                            }
-                        });
-                    });
-                })
-                .catch(() => {}); // Silent fail — placeholders remain
-            }
-        });
     </script>
 
     <!-- Batch Search JS -->
@@ -955,8 +885,7 @@ KV-1003
 
     <!-- Autocomplete JS -->
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
-    <!-- QR Scanner (html5-qrcode CDN, solo carga bajo demanda en qr-scanner.js) -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+    <!-- QR Scanner: qr-scanner.js descarga html5-qrcode solo al abrir el escáner -->
     <script src="/assets/js/qr-scanner.js?v=<?= APP_VERSION ?>" defer></script>
     <?php include __DIR__ . '/../partials/loading_overlay.php'; ?>
 </body>

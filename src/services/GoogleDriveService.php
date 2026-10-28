@@ -12,6 +12,9 @@ class GoogleDriveService
     private ?string $accessToken = null;
     private ?string $refreshToken = null;
 
+    /** true si la última llamada GET a la API falló (red, timeout o error de Drive). */
+    public bool $lastRequestFailed = false;
+
     public function __construct()
     {
         $this->clientId = env('GOOGLE_CLIENT_ID', '');
@@ -256,7 +259,7 @@ class GoogleDriveService
      */
     public function findBySku(string $folderId, string $sku): array
     {
-        $skuEscaped = str_replace("'", "\\'", $sku);
+        $skuEscaped = str_replace(['\\', "'"], ['\\\\', "\\'"], $sku);
 
         // 1) Búsqueda GLOBAL — un solo API call que busca en TODAS las carpetas
         $query = "name contains '{$skuEscaped}' and trashed = false and mimeType != 'application/vnd.google-apps.folder'";
@@ -274,23 +277,8 @@ class GoogleDriveService
         $data = json_decode($response, true) ?: [];
         $files = $data['files'] ?? [];
 
-        // Post-filtro estricto: el nombre del archivo debe comenzar con el SKU exacto
-        // seguido de un separador (guion, punto, espacio, underscore) o fin del nombre base.
-        // Esto evita que "1948" coincida con "1948O", "JR1948O", "1948DG", etc.
-        $skuLower = strtolower($sku);
-        $skuLen = strlen($sku);
-        $filtered = array_filter($files, function($f) use ($skuLower, $skuLen) {
-            $name = strtolower(pathinfo($f['name'] ?? '', PATHINFO_FILENAME));
-            // El nombre debe comenzar con el SKU exacto
-            if (strpos($name, $skuLower) !== 0) return false;
-            // Si el nombre es exactamente el SKU, OK
-            if (strlen($name) === $skuLen) return true;
-            // El carácter después del SKU debe ser un separador, no alfanumérico
-            $nextChar = $name[$skuLen];
-            return !ctype_alnum($nextChar);
-        });
-
-        return array_values($filtered);
+        // Post-filtro estricto (ver fileNameStartsWithSku en helpers.php)
+        return array_values(array_filter($files, fn($f) => fileNameStartsWithSku($f['name'] ?? '', $sku)));
     }
 
     /**
@@ -476,54 +464,97 @@ class GoogleDriveService
     /**
      * Hace públicos múltiples archivos en paralelo usando curl_multi.
      * Mucho más rápido que llamar makePublic() N veces secuencialmente.
+     * @return int cantidad de archivos que quedaron públicos
      */
     public function makePublicBatch(array $fileIds): int
     {
-        if (empty($fileIds))
-            return 0;
+        return count($this->makePublicMany($fileIds));
+    }
 
-        $mh = curl_multi_init();
-        $handles = [];
+    /**
+     * Igual que makePublicBatch() pero devuelve los IDs que quedaron públicos.
+     * Va en tandas de $concurrency peticiones simultáneas (con miles de archivos,
+     * abrir todas las conexiones a la vez agota sockets y cuota de Drive).
+     * @return string[]
+     */
+    public function makePublicMany(array $fileIds, int $concurrency = 20): array
+    {
+        $ok = [];
         $body = json_encode(['role' => 'reader', 'type' => 'anyone']);
 
-        foreach ($fileIds as $fileId) {
-            $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions?supportsAllDrives=true";
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $body,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 10,
-                CURLOPT_HTTPHEADER => [
-                    "Authorization: Bearer {$this->accessToken}",
-                    "Content-Type: application/json",
-                ],
-            ]);
-            curl_multi_add_handle($mh, $ch);
-            $handles[] = $ch;
-        }
-
-        // Ejecutar todas las peticiones en paralelo
-        $running = null;
-        do {
-            curl_multi_exec($mh, $running);
-            if ($running > 0) {
-                curl_multi_select($mh, 0.5);
+        foreach (array_chunk(array_values(array_unique($fileIds)), $concurrency) as $chunk) {
+            $mh = curl_multi_init();
+            $handles = [];
+            foreach ($chunk as $fileId) {
+                $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions?supportsAllDrives=true";
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $body,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_CONNECTTIMEOUT => 5,
+                    CURLOPT_TIMEOUT => 10,
+                    CURLOPT_HTTPHEADER => [
+                        "Authorization: Bearer {$this->accessToken}",
+                        "Content-Type: application/json",
+                    ],
+                ]);
+                curl_multi_add_handle($mh, $ch);
+                $handles[$fileId] = $ch;
             }
-        } while ($running > 0);
 
-        // Contar éxitos
-        $success = 0;
-        foreach ($handles as $ch) {
-            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            if ($code === 200)
-                $success++;
-            curl_multi_remove_handle($mh, $ch);
-            curl_close($ch);
+            $running = null;
+            do {
+                curl_multi_exec($mh, $running);
+                if ($running > 0) {
+                    curl_multi_select($mh, 0.5);
+                }
+            } while ($running > 0);
+
+            foreach ($handles as $fileId => $ch) {
+                if (curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200) {
+                    $ok[] = $fileId;
+                }
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+            }
+            curl_multi_close($mh);
         }
-        curl_multi_close($mh);
 
-        return $success;
+        return $ok;
+    }
+
+    /**
+     * Lista el contenido directo de VARIAS carpetas con una sola consulta
+     * ("'a' in parents or 'b' in parents ..."), paginando. Para recorrer un árbol
+     * entero con pocas llamadas. Retorna null si alguna página falla.
+     */
+    public function listChildrenOfMany(array $folderIds): ?array
+    {
+        $parents = implode(' or ', array_map(fn($id) => "'{$id}' in parents", $folderIds));
+        $all = [];
+        $token = '';
+        do {
+            $params = [
+                'q' => "({$parents}) and trashed = false",
+                'fields' => 'nextPageToken,files(id,name,mimeType,size,parents)',
+                'pageSize' => 1000,
+                'supportsAllDrives' => 'true',
+                'includeItemsFromAllDrives' => 'true',
+                'corpora' => 'allDrives',
+            ];
+            if ($token)
+                $params['pageToken'] = $token;
+
+            $data = json_decode($this->httpGet('https://www.googleapis.com/drive/v3/files?' . http_build_query($params)), true);
+            if ($this->lastRequestFailed || !is_array($data))
+                return null;
+
+            $all = array_merge($all, $data['files'] ?? []);
+            $token = $data['nextPageToken'] ?? '';
+        } while ($token !== '');
+
+        return $all;
     }
 
     /**
@@ -569,13 +600,32 @@ class GoogleDriveService
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            // Sin timeout, una respuesta lenta de Google dejaba la página colgada
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_ENCODING => '', // acepta gzip
             CURLOPT_HTTPHEADER => [
                 "Authorization: Bearer {$this->accessToken}",
             ],
         ]);
         $response = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+        $this->lastRequestFailed = ($response === false || $code >= 400);
         return $response ?: '';
+    }
+
+    /**
+     * Metadatos de un archivo/carpeta (ej. $fields = 'name,mimeType,size'). null si falla.
+     */
+    public function getFileMetadata(string $fileId, string $fields): ?array
+    {
+        $url = "https://www.googleapis.com/drive/v3/files/{$fileId}?" . http_build_query([
+            'fields' => $fields,
+            'supportsAllDrives' => 'true',
+        ]);
+        $data = json_decode($this->httpGet($url), true);
+        return ($this->lastRequestFailed || !is_array($data)) ? null : $data;
     }
 
     /**
@@ -628,6 +678,8 @@ class GoogleDriveService
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => http_build_query($data),
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 15,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/x-www-form-urlencoded',
             ],

@@ -1,3 +1,2 @@
--- Agregar columna sheet_hash para sincronización inteligente
--- Almacena MD5 del contenido de la fila en Sheets para detectar cambios
-ALTER TABLE products ADD COLUMN IF NOT EXISTS sheet_hash VARCHAR(32) DEFAULT NULL;
+-- Hash por fila para detectar cambios en el sync de Sheets.
+ALTER TABLE products ADD COLUMN sheet_hash VARCHAR(32) DEFAULT NULL;

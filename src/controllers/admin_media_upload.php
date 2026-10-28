@@ -2,7 +2,7 @@
 /**
  * Admin Media Upload — Sube archivos a Google Drive y enlaza con productos por SKU.
  */
-require_once __DIR__ . '/../services/GoogleDriveService.php';
+require_once __DIR__ . '/../services/DriveIndex.php';
 
 $db = getDB();
 
@@ -57,7 +57,8 @@ for ($i = 0; $i < count($files['name']); $i++) {
 
     if ($result && !empty($result['id'])) {
         // Hacer el archivo público para que se pueda ver
-        $drive->makePublic($result['id']);
+        $isPublic = $drive->makePublic($result['id']);
+        DriveIndex::addUploadedFile($db, $result + ['mimeType' => $mimeType, 'size' => $files['size'][$i] ?? 0], $folderId, $isPublic);
         $uploaded++;
 
         // --- Enlazar con producto por SKU ---

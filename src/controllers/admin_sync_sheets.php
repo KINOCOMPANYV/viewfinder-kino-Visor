@@ -291,6 +291,11 @@ if (!empty($sheetSkus)) {
     }
 }
 
+// Familias: regla única sobre el catálogo activo (misma que webhook e importación Excel)
+if (!$dryRun) {
+    recomputeParentSkus($db);
+}
+
 // ============================================================
 // PASO 5: Auto-asignar portadas desde Drive (pre-index completo)
 // ============================================================

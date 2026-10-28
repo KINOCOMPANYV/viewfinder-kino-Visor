@@ -134,6 +134,12 @@ $_SESSION['import_results'] = [
     'total' => $rowNum,
 ];
 
+// Familias con la misma regla que Sheets (raíz + mismo nombre, con contexto de hermanos);
+// processRow() solo deja un valor provisional por fila.
+if ($inserted > 0 || $updated > 0) {
+    recomputeParentSkus($db);
+}
+
 // Flag para auto-asignar portadas después de importar
 if ($inserted > 0 || $updated > 0) {
     $_SESSION['auto_assign_covers'] = true;

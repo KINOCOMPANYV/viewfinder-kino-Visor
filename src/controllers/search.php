@@ -21,11 +21,6 @@ $db = getDB();
 $sidebarAlbums = [];
 $totalAlbums = 0;
 try {
-    // Self-healing: asegurar que existe la columna is_active en albums heredada de versiones previas
-    try {
-        $db->exec("ALTER TABLE albums ADD COLUMN is_active TINYINT(1) DEFAULT 1");
-    } catch (\PDOException $e) { /* Columna ya existe */ }
-
     $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
     $sidebarStmt = $db->prepare(
         "SELECT drive_id, name, icon_url FROM albums WHERE is_active = 1 ORDER BY CASE WHEN LOWER(name) LIKE '%poedagar%' THEN 0 ELSE 1 END, order_priority DESC, name ASC"
@@ -34,30 +29,7 @@ try {
     $sidebarAlbums = $sidebarStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (\PDOException $e) { /* tabla no existe aún */ }
 
-// Verificar si existe la columna album_id
-$hasAlbumId = false;
-try {
-    $db->query("SELECT album_id FROM products LIMIT 1");
-    $hasAlbumId = true;
-} catch (\PDOException $e) { /* columna no existe aún */ }
-
-// Si no existe album_id, ignorar filtro por álbum
-if (!$hasAlbumId) $albumId = '';
-
-// Self-healing: asegurar que existe la columna parent_sku
-try {
-    $db->exec("ALTER TABLE products ADD COLUMN parent_sku VARCHAR(50) DEFAULT NULL");
-    $db->exec("CREATE INDEX idx_parent_sku ON products (parent_sku)");
-} catch (\PDOException $e) { /* Columna ya existe */ }
-
-// Verificar si parent_sku está disponible para usarla en SELECTs
-$hasParentSku = false;
-try {
-    $db->query("SELECT parent_sku FROM products LIMIT 1");
-    $hasParentSku = true;
-} catch (\PDOException $e) { /* columna no disponible */ }
-$selectParentSku = $hasParentSku ? ', parent_sku' : '';
-$selectPParentSku = $hasParentSku ? ', p.parent_sku' : '';
+// album_id y parent_sku están garantizadas por migrations/017_ensure_runtime_columns.sql
 
 // Detectar si es búsqueda multi-código (comas o saltos de línea)
 $isMultiCode = (strpos($q, ',') !== false || strpos($q, "\n") !== false || strpos($q, "\r") !== false);
@@ -94,7 +66,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url{$selectParentSku}
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url, parent_sku
          FROM products WHERE $where
          ORDER BY name ASC"
     );
@@ -121,7 +93,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url{$selectParentSku} 
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url, parent_sku 
          FROM products 
          WHERE archived = 0 AND ($whereOr)
          GROUP BY sku
@@ -176,7 +148,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url{$selectPParentSku} 
+        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
          FROM products p
          LEFT JOIN albums a ON p.album_id = a.drive_id
          WHERE $whereSimple
@@ -222,10 +194,10 @@ if (!$isMultiCode && $q !== '') {
     $matchedFolders = array_values($folderMap);
 }
 
-// Identificar familias (parents) de todos los matches usando parent_sku / extractRootSku
+// Identificar familias (parents) de todos los matches (familyKey: parent_sku o raíz del SKU)
 $rootsFound = [];
 foreach ($allMatches as $m) {
-    $family = !empty($m['parent_sku']) ? $m['parent_sku'] : extractRootSku($m['sku']);
+    $family = familyKey($m);
     $rootsFound[$family] = true;
 }
 $parentOrder = array_keys($rootsFound);
@@ -268,7 +240,7 @@ if (!empty($pageRoots)) {
     $searchedNorm = (!$isMultiCode && $q !== '') ? $normCode($q) : '';
 
     foreach ($familyProducts as $p) {
-        $family = !empty($p['parent_sku']) ? $p['parent_sku'] : extractRootSku($p['sku']);
+        $family = familyKey($p);
 
         // Solo procesar si el producto pertenece a una de las familias de esta página
         if (!in_array($family, $pageRoots)) continue;
@@ -537,9 +509,7 @@ if (!empty($pageRoots)) {
                                                 // Antes se usaba $familyCover como fallback, pero eso hacía que
                                                 // varias variantes sin portada propia mostraran todas la MISMA
                                                 // foto del padre (fotos repetidas). Igual que en landing.php.
-                                                $childCover = $child['cover_image_url'] ?? '';
-                                                $childIsVideo = str_starts_with($childCover, '[VIDEO]');
-                                                if ($childIsVideo) $childCover = substr($childCover, 7);
+                                                $childCover = parseStoredCover($child['cover_image_url'] ?? '', 150)['url'];
                                             ?>
                                                 <div class="child-thumb" style="cursor:pointer;"
                                                     title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
