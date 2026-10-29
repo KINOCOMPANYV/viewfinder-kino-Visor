@@ -3087,3 +3087,116 @@ textarea.form-input {
     }
 }
 
+
+/* ============================================================
+   Móvil (todas las páginas). Va al final para ganar a lo anterior.
+   Objetivo: nada se sale de la pantalla, botones de tamaño dedo (≥40-44 px)
+   y campos a 16 px para que iOS no haga zoom al escribir.
+   ============================================================ */
+
+/* Ningún elemento suelto debe crear scroll horizontal (clip no rompe position:sticky) */
+html, body { overflow-x: clip; }
+img, video, iframe { max-width: 100%; }
+
+/* Paginación del inicio: "Siguiente »" y "Página 1 de 2" no caben en la caja fija de 36 px */
+.pagination .page-btn,
+.pagination .page-info,
+.pagination .page-dots {
+    width: auto;
+    height: auto;
+    border: none;
+    min-width: 40px;
+    min-height: 40px;
+}
+.pagination .page-btn { border: 1px solid var(--color-border); padding: 0 0.85rem; }
+.pagination .page-btn.active { border-color: var(--color-primary); }
+.pagination .page-info { min-width: 0; white-space: nowrap; }
+
+/* Ficha: el botón "Copiar" (arriba a la derecha) no tapa el texto de la descripción */
+.product-detail .description-box { padding-top: 3.25rem; }
+
+@media (max-width: 768px) {
+    /* Menú del admin: una sola fila deslizable en vez de 3 filas */
+    .admin-nav {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        margin: 0 -0.75rem 1.5rem;
+        padding: 0 0.75rem 0.25rem;
+    }
+    .admin-nav::-webkit-scrollbar { display: none; }
+
+    /* Ficha en una columna: la foto principal no ocupa más que la pantalla (tablet) */
+    .product-detail .main-image { max-height: min(70vh, 560px); }
+    .admin-nav a { flex-shrink: 0; white-space: nowrap; min-height: 44px; display: inline-flex; align-items: center; }
+
+    /* Dashboard: 2 tarjetas por fila y desglose en una columna */
+    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+    .stat-card { padding: 1rem; }
+    .stat-card .stat-value { font-size: 1.6rem; }
+    .stat-card .stat-label { font-size: 0.7rem; }
+    .dash-two-col { grid-template-columns: 1fr !important; gap: 1rem !important; }
+
+    /* Tablas del admin: se desplazan dentro de su caja */
+    .table th, .table td { padding: 0.6rem 0.7rem; }
+
+    /* Formularios de búsqueda del admin a lo ancho */
+    .admin-search-form { width: 100%; }
+    .admin-search-form .form-input { flex: 1 1 100%; width: 100% !important; }
+    .admin-search-form .btn { flex: 1; justify-content: center; }
+
+    /* Admin → Carpetas: el nombre completo en 2 líneas, el interruptor a la derecha */
+    .folder-admin-row { align-items: flex-start; }
+    .folder-admin-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
+    .folder-admin-state { width: auto; max-width: 5.5rem; flex-shrink: 0; }
+
+    /* Dashboard: acciones rápidas a lo ancho */
+    .dash-actions { flex-direction: column; align-items: stretch; }
+    .dash-actions .btn { justify-content: center; }
+
+    /* Inicio: carpetas de 2 en 2 (el estilo en línea pone 200 px mínimo) */
+    #horizontalAlbums { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.75rem !important; }
+    #horizontalAlbums .sidebar-album-name { font-size: 0.8rem !important; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 640px) {
+    /* Campos a 16 px: iOS no amplía la página al tocarlos */
+    input:not([type=checkbox]):not([type=radio]),
+    select,
+    textarea,
+    .form-input,
+    .search-box input,
+    .search-box textarea { font-size: 16px !important; }
+
+    /* Botones y enlaces de acción con tamaño cómodo para el dedo */
+    .btn, .btn-sm { min-height: 44px; justify-content: center; }
+    .header .btn-sm { min-height: 40px; }
+    .btn-whatsapp { min-height: 40px; font-size: 0.78rem; }
+    .btn-ver { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-copy { min-height: 36px; }
+    .logo { min-height: 40px; }
+
+    /* Buscador: el texto de ayuda en una línea y el botón a todo el ancho */
+    .search-box textarea::placeholder,
+    .search-box input::placeholder {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .search-box .search-btn { width: 100%; min-height: 48px; font-size: 1rem; }
+    #btnQrScan { min-width: 44px; min-height: 44px; margin: 0.25rem auto 0; display: block; }
+
+    .product-detail .description-box p { font-size: 0.9rem; }
+
+    /* Títulos largos no rompen la página */
+    h1, h2, h3, .card-name, .card-sku { overflow-wrap: anywhere; }
+
+    /* Avisos emergentes a lo ancho, abajo */
+    .toast-container { left: 0.75rem; right: 0.75rem; }
+}
+
+/* Tablet: 3 tarjetas por fila en vez de 2 tarjetas gigantes */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .parent-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+}

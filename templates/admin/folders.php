@@ -23,9 +23,9 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
             <h1 style="font-size:1.5rem;">Carpetas</h1>
-            <form action="/admin/folders" method="GET" style="display:flex; gap:0.5rem;">
+            <form action="/admin/folders" method="GET" class="admin-search-form" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                 <input type="text" name="q" value="<?= e($q) ?>" placeholder="Buscar carpeta..." class="form-input"
-                    style="width:220px; padding:0.5rem 0.75rem; font-size:0.85rem;">
+                    style="width:220px; max-width:100%; padding:0.5rem 0.75rem; font-size:0.85rem;">
                 <button type="submit" class="btn btn-sm btn-primary">Buscar</button>
                 <a href="/admin/folders?ver=ocultas" class="btn btn-sm btn-secondary">🙈 Ocultas (<?= $hiddenCount ?>)</a>
             </form>
