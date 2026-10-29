@@ -216,7 +216,7 @@ $variants = $varStmt->fetchAll();
                             data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
                         <?php if ($serverCover): ?>
                             <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
-                                decoding="async" style="cursor:pointer;" onclick="downloadMainImage()">
+                                decoding="async" style="cursor:zoom-in;" onclick="openMainLightbox()">
                         <?php else: ?>
                             <div class="cover-skeleton"
                                 style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
@@ -379,6 +379,7 @@ $variants = $varStmt->fetchAll();
         </div>
     </footer>
 
+    <script src="/assets/js/lightbox.js?v=<?= APP_VERSION ?>"></script>
     <script>
         const SKU = '<?= e($product['sku']) ?>';
         const SEARCH_SKU = '<?= e($originalSku) ?>'; // SKU original para búsqueda bidireccional
@@ -509,8 +510,9 @@ $variants = $varStmt->fetchAll();
             imgEl.alt = PRODUCT_NAME;
             imgEl.style.opacity = '0';
             imgEl.style.transition = 'opacity 0.4s ease';
-            imgEl.onclick = () => downloadMainImage();
+            imgEl.onclick = () => openMainLightbox();
             imgEl.onload = () => {
+                Lightbox.preload(fileId || url); // versión grande lista para el clic
                 container.innerHTML = '';
                 container.appendChild(imgEl);
                 requestAnimationFrame(() => imgEl.style.opacity = '1');
@@ -721,6 +723,8 @@ $variants = $varStmt->fetchAll();
             const grid = document.getElementById('galleryGrid');
             gallery.style.display = 'block';
             allGalleryFiles = files;
+            // Las primeras fotos en grande quedan en caché mientras el usuario mira la ficha
+            files.filter(f => (f.mimeType || '').startsWith('image/')).slice(0, 4).forEach(f => Lightbox.preload(f.id));
 
             // Build thumbnail strip
             const strip = document.getElementById('thumbStrip');
@@ -936,7 +940,7 @@ $variants = $varStmt->fetchAll();
                     currentCover = imageUrl;
                     // Update main image
                     const mainImg = document.querySelector('.main-image');
-                    mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}" style="cursor:pointer;" onclick="downloadMainImage()">`;
+                    mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}" style="cursor:zoom-in;" onclick="openMainLightbox()">`;
 
                     // Reset all cover buttons
                     document.querySelectorAll('.btn-set-cover').forEach(b => {
@@ -1031,6 +1035,26 @@ $variants = $varStmt->fetchAll();
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeVideoModal(e, true);
         });
+
+        // Abre en grande la foto principal; con galería cargada se puede pasar entre todas las fotos
+        function openMainLightbox() {
+            const mainImg = document.querySelector('#mainCover img');
+            const images = allGalleryFiles
+                .filter(f => (f.mimeType || '').startsWith('image/'))
+                .map(f => ({ id: f.id, name: f.name, src: (f.thumbnailLink || '').replace(/=s\d+/, '=s600') }));
+            let start = images.findIndex(it => it.id === currentMainFileId);
+            if (start < 0 && mainImg) {
+                // Portada guardada (aún sin galería o sin id conocido): buscarla por id en la URL
+                const m = (mainImg.currentSrc || mainImg.src).match(/\/d\/([A-Za-z0-9_-]+)/);
+                start = m ? images.findIndex(it => it.id === m[1]) : -1;
+                if (start < 0) {
+                    images.unshift({ id: m ? m[1] : null, name: PRODUCT_NAME, src: mainImg.currentSrc || mainImg.src });
+                    start = 0;
+                }
+            }
+            if (mainImg) images[start].src = mainImg.currentSrc || mainImg.src; // ya está en caché: se ve al instante
+            Lightbox.open(images, Math.max(0, start));
+        }
 
         // Download the current main image
         function downloadMainImage() {

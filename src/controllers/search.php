@@ -195,7 +195,7 @@ if (!empty($pageRoots)) {
     $stmt = $db->prepare(
         "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
          FROM products p
-         WHERE {$whereOr}
+         WHERE p.archived = 0 AND ({$whereOr})
          ORDER BY p.sku ASC"
     );
     $stmt->execute($fetchParams);

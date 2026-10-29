@@ -629,3 +629,49 @@
 .variant-chip-link:hover .variant-sku-pop {
     opacity: 1;
 }
+
+/* ===== Foto en grande (assets/js/lightbox.js) ===== */
+.lightbox {
+    position: fixed; inset: 0; z-index: 10000;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(5, 5, 10, 0.94);
+    -webkit-tap-highlight-color: transparent;
+}
+.lightbox.open { display: flex; }
+html.lightbox-lock, html.lightbox-lock body { overflow: hidden; }
+.lightbox-stage {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    padding: 3.5rem 4rem; box-sizing: border-box; overflow: hidden;
+}
+.lightbox-img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+    cursor: zoom-in; user-select: none; -webkit-user-drag: none;
+    transition: transform 0.25s ease;
+    border-radius: 6px;
+}
+.lightbox-img.zoomed { transform: scale(2.5); cursor: zoom-out; }
+.lightbox.is-zoomed .lightbox-stage { padding: 0; }
+.lightbox-btn {
+    position: absolute; z-index: 2; border: none; cursor: pointer;
+    background: rgba(255, 255, 255, 0.12); color: #fff;
+    width: 44px; height: 44px; border-radius: 50%;
+    font-size: 1.6rem; line-height: 44px; text-align: center; padding: 0;
+    transition: background 0.2s;
+}
+.lightbox-btn:hover { background: rgba(255, 255, 255, 0.25); }
+.lightbox-close { top: 12px; right: 12px; font-size: 1.1rem; }
+.lightbox-prev { left: 12px; top: 50%; transform: translateY(-50%); }
+.lightbox-next { right: 12px; top: 50%; transform: translateY(-50%); }
+.lightbox.single .lightbox-prev, .lightbox.single .lightbox-next,
+.lightbox.is-zoomed .lightbox-prev, .lightbox.is-zoomed .lightbox-next { display: none; }
+.lightbox-bar {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    display: flex; justify-content: space-between; gap: 1rem;
+    padding: 0.75rem 1rem; font-size: 0.8rem; color: rgba(255, 255, 255, 0.75);
+    pointer-events: none;
+}
+.lightbox.is-zoomed .lightbox-bar { display: none; }
+@media (max-width: 640px) {
+    .lightbox-stage { padding: 3.5rem 0.5rem; }
+    .lightbox-prev, .lightbox-next { top: auto; bottom: 48px; transform: none; }
+}
