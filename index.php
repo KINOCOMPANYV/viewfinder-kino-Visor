@@ -262,6 +262,12 @@ if ($uri === '/admin/sync') {
     exit;
 }
 
+if ($uri === '/admin/photo-check') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_photo_check.php';
+    exit;
+}
+
 // La importación por Excel se quitó: la hoja maestra es la única fuente
 if ($uri === '/admin/import') {
     redirect('/admin/sync');
