@@ -134,36 +134,65 @@ if (empty($serverCover)) {
     }
 }
 
-// ── Buscar Variantes (Hermanos) ──
+// ── Buscar Variantes (familia) ──
+// Se busca por el dato guardado (parent_sku) Y por el código base, así la familia sale aunque
+// parent_sku esté viejo: "1416-1" → 1416, 1416-1, 1416-2… (misma regla que computeParentSkuMap).
 $variants = [];
-$rootForVariants = !empty($product['parent_sku']) ? $product['parent_sku'] : extractRootSku($product['sku']);
-
-// Buscar siempre con las 3 condiciones combinadas:
-// 1) parent_sku = root  (cuando la BD está populada con parent_sku)
-// 2) sku = root         (el producto padre exacto)
-// 3) sku LIKE root-%    (los hijos por patrón de SKU)
-// Esto funciona tanto si parent_sku está poblado como si no.
+$familyParent = !empty($product['parent_sku']) ? $product['parent_sku'] : extractRootSku($product['sku']);
+$numericBase = null;
+foreach ([$familyParent, $product['sku']] as $code) {
+    if (preg_match('/^(.+)[-_]\d+$/', $code, $m) && !preg_match('/^\d{1,2}$/', $m[1])) {
+        $numericBase = $m[1];
+        break;
+    }
+}
+$likeEsc = fn(string $s) => addcslashes($s, '%_\\');
+$conds = ['parent_sku = ?', 'sku = ?', 'sku LIKE ?'];
+$params = [$familyParent, $familyParent, $likeEsc($familyParent) . '-%'];
+if ($numericBase !== null) {
+    $conds[] = 'sku = ?';
+    $conds[] = 'sku LIKE ?';
+    $params[] = $numericBase;
+    $params[] = $likeEsc($numericBase) . '-%';
+}
 try {
     $varStmt = $db->prepare(
-        "SELECT id, sku, name, cover_image_url 
-         FROM products 
-         WHERE archived = 0
-           AND (parent_sku = ? OR sku = ? OR sku LIKE ?)
-         ORDER BY sku ASC"
+        "SELECT id, sku, name, color, parent_sku, cover_image_url
+         FROM products
+         WHERE archived = 0 AND (" . implode(' OR ', $conds) . ")
+         ORDER BY sku ASC LIMIT 200"
     );
-    $varStmt->execute([$rootForVariants, $rootForVariants, $rootForVariants . '-%']);
+    $varStmt->execute($params);
+    $variants = $varStmt->fetchAll();
 } catch (\PDOException $e) {
-    // Fallback por si la columna parent_sku aún no existe
-    $varStmt = $db->prepare(
-        "SELECT id, sku, name, cover_image_url 
-         FROM products 
-         WHERE archived = 0
-           AND (sku = ? OR sku LIKE ?)
-         ORDER BY sku ASC"
-    );
-    $varStmt->execute([$rootForVariants, $rootForVariants . '-%']);
+    error_log('Variantes de ' . $product['sku'] . ': ' . $e->getMessage());
 }
-$variants = $varStmt->fetchAll();
+// "1416-1-%" o "1416-%" también traen códigos de otra familia ("1416-1A", "1416-10B"): quedarse con los de esta
+$variants = array_values(array_filter($variants, function ($v) use ($product, $familyParent, $numericBase) {
+    $sku = $v['sku'];
+    if ($sku === $product['sku'] || $sku === $familyParent || ($v['parent_sku'] ?? '') === $familyParent) return true;
+    if ($numericBase !== null && ($sku === $numericBase || preg_match('/^' . preg_quote($numericBase, '/') . '[-_]\d+$/', $sku))) return true;
+    return str_starts_with($sku, $familyParent . '-') && extractRootSku($sku) === $familyParent;
+}));
+// Orden natural: 1416-2 antes que 1416-10
+usort($variants, fn($a, $b) => strnatcasecmp($a['sku'], $b['sku']));
+require_once __DIR__ . '/../services/DriveIndex.php';
+// Miniatura de cada variante: su portada; si no tiene, su primera foto en la copia local de Drive
+// o la foto genérica de la familia ("M8363.jpg" vale para todas)
+$indexReady = count($variants) > 1 && DriveIndex::isReady($db);
+$familyThumb = null;
+foreach ($variants as &$v) {
+    $v['thumb'] = '';
+    if (!empty($v['cover_image_url'])) {
+        $v['thumb'] = parseStoredCover($v['cover_image_url'], 200)['url'];
+    } elseif ($indexReady && ($fid = DriveIndex::firstImageIdForSku($db, $v['sku']))) {
+        $v['thumb'] = lh3Url($fid, 200);
+    } elseif ($indexReady && $numericBase !== null) {
+        $familyThumb ??= DriveIndex::firstImageIdForSku($db, $numericBase) ?? '';
+        if ($familyThumb !== '') $v['thumb'] = lh3Url($familyThumb, 200);
+    }
+}
+unset($v);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -291,30 +320,25 @@ $variants = $varStmt->fetchAll();
                     <?php if (count($variants) > 1): ?>
                         <div class="product-variants-section">
                             <h3>Variantes Disponibles (<?= count($variants) ?>)</h3>
-                            <?php
-                            // Portada de familia para variantes sin portada propia
-                            $familyCover = $product['cover_image_url'] ?: '';
-                            if (!$familyCover) {
-                                foreach ($variants as $fv) {
-                                    if (!empty($fv['cover_image_url'])) { $familyCover = $fv['cover_image_url']; break; }
-                                }
-                            }
-                            ?>
                             <div class="variant-strip">
                                 <?php foreach ($variants as $v):
-                                    // Si es video, se usa su fotograma de lh3 como imagen del chip
-                                    $vCover = parseStoredCover(($v['cover_image_url'] ?: '') ?: $familyCover, 150)['url'];
                                     $isActive = ($v['sku'] === $product['sku']);
+                                    $vLabel = trim($v['color'] ?? '');
                                 ?>
-                                    <a href="/producto/<?= urlencode($v['sku']) ?>" 
-                                       class="variant-chip-link <?= $isActive ? 'active' : '' ?>" 
+                                    <a href="/producto/<?= urlencode($v['sku']) ?>"
+                                       class="variant-chip-link <?= $isActive ? 'active' : '' ?>"
+                                       <?= $isActive ? 'aria-current="page"' : '' ?>
                                        title="<?= e($v['sku']) ?> - <?= e($v['name']) ?>">
-                                        <?php if ($vCover): ?>
-                                            <img src="<?= e($vCover) ?>" alt="<?= e($v['sku']) ?>" loading="lazy">
-                                        <?php else: ?>
-                                            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📷</div>
-                                        <?php endif; ?>
-                                        <div class="variant-sku-pop"><?= e($v['sku']) ?></div>
+                                        <span class="variant-thumb">
+                                            <?php if ($v['thumb']): ?>
+                                                <img src="<?= e($v['thumb']) ?>" alt="<?= e($v['sku']) ?>" loading="lazy"
+                                                     onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'variant-noimg',textContent:'📷'}))">
+                                            <?php else: ?>
+                                                <span class="variant-noimg">📷</span>
+                                            <?php endif; ?>
+                                        </span>
+                                        <span class="variant-sku"><?= e($v['sku']) ?></span>
+                                        <?php if ($vLabel !== ''): ?><span class="variant-color"><?= e($vLabel) ?></span><?php endif; ?>
                                     </a>
                                 <?php endforeach; ?>
                             </div>

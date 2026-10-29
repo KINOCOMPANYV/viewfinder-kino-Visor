@@ -160,6 +160,15 @@ class DriveIndex
         return ['files' => combineFamilyFiles($sku, $base, $baseFiles, $childFiles), 'root_sku' => $rootSku];
     }
 
+    /** Primera foto propia de un SKU en el índice (miniatura de variante sin portada), o null. */
+    public static function firstImageIdForSku(PDO $db, string $sku): ?string
+    {
+        foreach (self::findByPrefix($db, $sku) as $f) {
+            if (str_starts_with($f['mimeType'], 'image/')) return $f['id'];
+        }
+        return null;
+    }
+
     /** Archivos cuyo nombre empieza con el SKU (índice idx_stem + regla fileNameStartsWithSku). */
     private static function findByPrefix(PDO $db, string $sku): array
     {

@@ -103,6 +103,9 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - Fotos genéricas de la familia = archivo con el nombre de la base ("M8363.jpg"): `familyMediaBase()` + `combineFamilyFiles()`.
   `recomputeParentSkus($db)` la aplica a todo el catálogo; la llaman el sync de la hoja maestra, el webhook y los cambios de activación.
   El sync completo de Sheets la aplica sobre la hoja.
+- Ficha (`product.php`): "Variantes Disponibles" busca la familia por `parent_sku` Y por la base numérica
+  (1416-1 → 1416-*), así sale aunque `parent_sku` esté viejo. Miniatura = portada, o su foto en `drive_index`
+  (`DriveIndex::firstImageIdForSku`), o la foto genérica de la base.
 - Agrupar tarjetas: `familyKey($row)` = `parent_sku` o `extractRootSku()` (inicio y búsqueda usan lo mismo).
 
 ## Búsqueda
