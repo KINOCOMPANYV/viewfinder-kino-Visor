@@ -56,9 +56,7 @@ if (!$dryRun) {
 $visibilityChanged = 0;
 if (!$dryRun) {
     $visibilityChanged = refreshProductVisibility($db);
-    if ($stats['inserted'] || $stats['updated']) {
-        recomputeParentSkus($db); // familias con los nombres nuevos
-    }
+    recomputeParentSkus($db); // siempre: aplica también cambios de la regla de familias
 }
 $inactive = (int) $db->query("SELECT COUNT(*) FROM products WHERE is_active = 0")->fetchColumn();
 

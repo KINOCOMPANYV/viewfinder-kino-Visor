@@ -64,7 +64,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
    Con índice: sale de `drive_index` y se **auto-asigna** (`autoAssignCover`), así la próxima visita ya viene en el HTML.
 3. **Asignación masiva**: `admin_sync_covers.php` → sync del índice + match por SKU (`matchFileToProduct`, ver "Coincidencia SKU ↔ archivo"). Puntaje: `scoreCoverCandidate()` (la imagen gana al video).
    Solo álbumes activos + archivos sueltos en la raíz.
-4. **Ficha de producto**: la portada sale en el HTML con `<link rel=preload>` (=s800). La galería completa
+4. **Ficha de producto**: la portada sale en el HTML con `<link rel=preload>` (=s800). Clic = foto en grande
+   (`assets/js/lightbox.js`, =s1600, precargada en segundo plano: portada + 4 primeras fotos + vecinas). La galería completa
    llega por JS desde `/api/media/{sku}` (índice local; `Cache-Control` 60 s).
 
 Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600/800` vista principal, `=s1200` compartir.
@@ -96,7 +97,10 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - Todo lo público filtra `is_hidden = 0`: `/carpeta/{id}`, carpetas de la búsqueda, galería (`filesForSku`) y el sync de portadas.
 
 ## Familias (padre ↔ variantes)
-- **Una sola regla**: `computeParentSkuMap()` (raíz candidata + mismo nombre exacto, con contexto de hermanos).
+- **Una sola regla**: `computeParentSkuMap()`. Variantes numéricas "BASE-N" → padre "BASE-1" aunque cambie el nombre
+  (sin -1: el número más bajo, `FAMILY_PARENT_FALLBACK_LOWEST`). El padre tiene su propio código como `parent_sku`.
+  Bases de 1-2 cifras ("3-68", "7-152") no se agrupan. Sufijos con letras ("PZH002-B"): raíz + mismo nombre exacto.
+- Fotos genéricas de la familia = archivo con el nombre de la base ("M8363.jpg"): `familyMediaBase()` + `combineFamilyFiles()`.
   `recomputeParentSkus($db)` la aplica a todo el catálogo; la llaman el sync de la hoja maestra, el webhook y los cambios de activación.
   El sync completo de Sheets la aplica sobre la hoja.
 - Agrupar tarjetas: `familyKey($row)` = `parent_sku` o `extractRootSku()` (inicio y búsqueda usan lo mismo).

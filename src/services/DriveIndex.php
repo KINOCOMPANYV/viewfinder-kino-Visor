@@ -153,9 +153,11 @@ class DriveIndex
     public static function filesForSku(PDO $db, string $sku): array
     {
         $rootSku = getFamilyRootSku($db, $sku);
-        $rootFiles = self::findByPrefix($db, $rootSku);
-        $childFiles = $sku !== $rootSku ? self::findByPrefix($db, $sku) : [];
-        return ['files' => combineFamilyFiles($sku, $rootSku, $rootFiles, $childFiles), 'root_sku' => $rootSku];
+        // Fotos genéricas de la familia: "M8363.jpg" (base), no las del padre "M8363-1"
+        $base = familyMediaBase($db, $rootSku);
+        $baseFiles = self::findByPrefix($db, $base);
+        $childFiles = $sku !== $base ? self::findByPrefix($db, $sku) : [];
+        return ['files' => combineFamilyFiles($sku, $base, $baseFiles, $childFiles), 'root_sku' => $rootSku];
     }
 
     /** Archivos cuyo nombre empieza con el SKU (índice idx_stem + regla fileNameStartsWithSku). */

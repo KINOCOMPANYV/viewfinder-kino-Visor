@@ -303,33 +303,95 @@ function extractCandidateRootSku(string $code): string
 }
 
 /**
- * Recalcula parent_sku para un conjunto de filas (sku => ['sku'=>, 'name'=>, ...]),
- * agrupando por SKU raíz candidato + nombre EXACTO. Solo se asigna parent_sku
- * cuando hay 2+ SKUs distintos que comparten raíz y nombre — así "992-1/2/3/4"
- * (mismo nombre) se agrupan, pero "839-5" y "839-10" (nombres distintos) no.
+ * Si una familia numérica no tiene código "-1", el padre es su número más bajo
+ * (CHA-105-3 es el padre de CHA-105-4…). false = esas variantes quedan sueltas.
+ */
+const FAMILY_PARENT_FALLBACK_LOWEST = true;
+
+/**
+ * Recalcula parent_sku para un conjunto de filas (sku => ['sku'=>, 'name'=>, ...]).
+ *
+ * Regla (decidida por el dueño):
+ * - Variantes numéricas "BASE-N": el padre es "BASE-1" (o el número más bajo si no hay -1,
+ *   ver FAMILY_PARENT_FALLBACK_LOWEST), aunque los nombres cambien por el color.
+ *   "M:8363-2", "M:8363-3"… → "M:8363-1". El padre lleva su propio código como parent_sku.
+ *   Si "BASE" también es un producto, entra a la familia. No se agrupan bases que son
+ *   solo un número de 1-2 cifras ("3-68", "7-152", "8-10"): son productos distintos.
+ * - Sufijos con letras ("PZH002-B", "X6071-A"): raíz sin sufijo + mismo nombre exacto (regla anterior).
+ * Una familia necesita 2+ códigos.
  *
  * @param array<string,array{sku:string,name:string}> $rowsBySku
  * @return array<string,?string> mapa sku => parent_sku (o null si no tiene familia)
  */
 function computeParentSkuMap(array $rowsBySku): array
 {
-    $groups = [];
-    foreach ($rowsBySku as $sku => $row) {
-        $root = extractCandidateRootSku($sku);
-        if ($root === $sku)
-            continue; // sin sufijo separable, no puede tener padre
-        $name = trim($row['name'] ?? '');
-        $groups[$root][$name][] = $sku;
+    $parentMap = array_fill_keys(array_map('strval', array_keys($rowsBySku)), null);
+
+    // 1) Familias numéricas: BASE => [N => sku]
+    $numeric = [];
+    foreach ($parentMap as $sku => $_) {
+        if (preg_match('/^(.+)[-_](\d+)$/', $sku, $m) && !preg_match('/^\d{1,2}$/', $m[1])) {
+            $numeric[$m[1]][(int) $m[2]] = $sku;
+        }
+    }
+    foreach ($numeric as $base => $members) {
+        $baseIsProduct = array_key_exists($base, $parentMap);
+        if (count($members) + ($baseIsProduct ? 1 : 0) < 2) continue;
+        if (isset($members[1])) {
+            $parent = $members[1];
+        } elseif (FAMILY_PARENT_FALLBACK_LOWEST) {
+            $parent = $members[min(array_keys($members))];
+        } else {
+            continue;
+        }
+        foreach ($members as $sku) {
+            $parentMap[$sku] = $parent;
+        }
+        if ($baseIsProduct && $parentMap[$base] === null) {
+            $parentMap[$base] = $parent;
+        }
     }
 
-    $parentMap = [];
+    // 2) Sufijos con letras: raíz candidata + nombre exacto
+    $groups = [];
     foreach ($rowsBySku as $sku => $row) {
+        $sku = (string) $sku;
+        if ($parentMap[$sku] !== null) continue;
         $root = extractCandidateRootSku($sku);
-        $name = trim($row['name'] ?? '');
-        $siblings = $groups[$root][$name] ?? [$sku];
-        $parentMap[$sku] = (count($siblings) > 1) ? $root : null;
+        if ($root === $sku || preg_match('/^\d+$/', substr($sku, strlen($root) + 1)))
+            continue; // sin sufijo de letras
+        $groups[$root][trim($row['name'] ?? '')][] = $sku;
+    }
+    foreach ($groups as $root => $byName) {
+        foreach ($byName as $skus) {
+            if (count($skus) < 2) continue;
+            foreach ($skus as $sku) {
+                $parentMap[$sku] = $root;
+            }
+        }
     }
     return $parentMap;
+}
+
+/**
+ * Código base de una familia para sus fotos genéricas ("M8363.jpg" vale para todas las variantes).
+ * Familia numérica (el padre "M:8363-1" es su propio parent_sku) → "M:8363"; en otro caso, el mismo padre.
+ */
+function familyMediaBase(PDO $db, string $parent): string
+{
+    if (!preg_match('/^(.+)[-_]\d+$/', $parent, $m)) {
+        return $parent;
+    }
+    try {
+        $stmt = $db->prepare("SELECT parent_sku FROM products WHERE sku = ? LIMIT 1");
+        $stmt->execute([$parent]);
+        if ($stmt->fetchColumn() === $parent) {
+            return $m[1];
+        }
+    } catch (\PDOException $e) {
+        // columna parent_sku puede no existir aún
+    }
+    return $parent;
 }
 
 /**
@@ -442,8 +504,9 @@ function isGenericMediaForSku(string $sku, string $filename): bool
     
     // Quitar sufijos de duplicados de Drive " (1)", " (2)", etc.
     $nameOnly = preg_replace('/\s*\(\d+\)$/', '', $nameOnly);
-    
-    return $nameOnly === $skuLower;
+
+    // "M:8363" en la hoja = "M8363.jpg" / "M-8363.jpg" en Drive
+    return $nameOnly === $skuLower || in_array($nameOnly, skuNameVariants($sku), true);
 }
 
 /**
@@ -592,17 +655,18 @@ function freshCoverCacheSql(): string
 function fetchAndCacheMediaForSku(PDO $db, GoogleDriveService $drive, string $folderId, string $sku): array
 {
     $rootSku = getFamilyRootSku($db, $sku);
+    $base = familyMediaBase($db, $rootSku); // "M:8363" para la familia de "M:8363-1"
 
-    // 1) Buscar por el SKU raíz (trae padre + todos los hijos)
-    $rootFiles = $drive->findBySku($folderId, $rootSku);
+    // 1) Buscar por la base de la familia (trae padre + todos los hijos)
+    $rootFiles = $drive->findBySku($folderId, $base);
     $driveFailed = $drive->lastRequestFailed;
 
     $childFiles = [];
-    if ($sku !== $rootSku) {
+    if ($sku !== $base) {
         $childFiles = $drive->findBySku($folderId, $sku);
         $driveFailed = $driveFailed || $drive->lastRequestFailed;
     }
-    $files = combineFamilyFiles($sku, $rootSku, $rootFiles, $childFiles);
+    $files = combineFamilyFiles($sku, $base, $rootFiles, $childFiles);
 
     // Si Drive falló y no hay archivos, no se cachea nada: sería un falso "sin foto"
     if (!$files && $driveFailed) {
