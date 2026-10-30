@@ -516,6 +516,22 @@
                 opacity: 0;
             }
         }
+        /* Móvil: archivos de 2 en 2, barra de filtros a lo ancho */
+        @media (max-width: 640px) {
+            .drive-status { flex-wrap: wrap; padding: 1rem; }
+            .drive-status .btn-google { margin-left: 0 !important; width: 100%; text-align: center; }
+            .media-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+            .media-stat { padding: 0.75rem 0.5rem; }
+            .media-stat .number { font-size: 1.5rem; }
+            .media-stat .label { font-size: 0.7rem; }
+            .file-grid, .folder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+            .file-card .thumbnail, .file-card .video-thumb { height: 120px; }
+            .media-toolbar input[type=text] { min-width: 0; flex-basis: 100%; font-size: 16px; }
+            .media-toolbar select { flex: 1; font-size: 16px; }
+            .upload-zone { padding: 1.25rem; }
+            .toast-container { left: 0.75rem; right: 0.75rem; }
+            .toast { max-width: none; }
+        }
     </style>
 </head>
 
@@ -527,7 +543,7 @@
         </div>
     </header>
 
-    <main class="container fade-in" style="padding: 2rem 0;">
+    <main class="container fade-in" style="padding-top:2rem; padding-bottom:2rem;">
 
         <!-- Flash Messages -->
         <?php if (!empty($_SESSION['flash_success'])): ?>
@@ -541,13 +557,7 @@
             </div>
             <?php unset($_SESSION['flash_error']); endif; ?>
 
-        <!-- Nav Admin -->
-        <div style="display:flex; gap:1rem; margin-bottom:2rem; flex-wrap:wrap;">
-            <a href="/admin" class="btn btn-sm btn-secondary">📊 Dashboard</a>
-            <a href="/admin/products" class="btn btn-sm btn-secondary">📦 Productos</a>
-            <a href="/admin/sync" class="btn btn-sm btn-secondary">🔄 Hoja maestra</a>
-            <a href="/admin/media" class="btn btn-sm btn-primary">🖼️ Media</a>
-        </div>
+        <?php $adminNav = 'media'; include __DIR__ . '/partials/nav.php'; ?>
 
         <h1>🖼️ Gestión de Media</h1>
         <p style="color:var(--color-text-muted); margin-bottom:2rem;">

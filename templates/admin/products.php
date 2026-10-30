@@ -24,6 +24,33 @@
         .tag-out { font-size:0.7rem; color:#fbbf24; }
         .cell-muted { color:var(--color-text-muted); font-size:0.8rem; }
         .prod-table th, .prod-table td { padding:0.5rem 0.6rem; vertical-align:middle; }
+        .only-mobile { display:none; }
+        /* Móvil: cada fila es una tarjeta (casilla · foto · código/nombre · interruptor) */
+        @media (max-width: 900px) {
+            .prod-filters .form-input { flex:1 1 100%; width:100%; min-width:0 !important; font-size:16px; }
+            .prod-filters .btn { flex:1; min-height:44px; justify-content:center; }
+            .bulk-bar { top:var(--header-h, 56px); }
+            .bulk-bar .bulk-spacer { display:none; }
+            .bulk-bar .btn { flex:1; min-height:44px; justify-content:center; }
+            .bulk-bar #bulkCount { flex-basis:100%; }
+            .prod-tabs a { padding:0.55rem 0.9rem; }
+            .prod-table thead tr { display:flex; align-items:center; gap:0.5rem; }
+            .prod-table thead th { display:none; }
+            .prod-table thead th:first-child { display:block; background:none; }
+            .prod-table thead th:first-child::after { content:' Marcar esta página'; font-size:0.8rem; text-transform:none; letter-spacing:0; font-weight:500; }
+            .prod-table tbody tr { display:grid; grid-template-columns:28px 48px minmax(0,1fr) auto; column-gap:0.6rem; align-items:center;
+                padding:0.6rem 0.5rem; border-top:1px solid var(--color-border); }
+            .prod-table tbody td { padding:0; border:none; }
+            .prod-table .c-check { grid-row:1 / span 2; }
+            .prod-table .c-thumb { grid-row:1 / span 2; }
+            .prod-table .c-sku { grid-column:3; grid-row:1; }
+            .prod-table .c-name { grid-column:3; grid-row:2; font-size:0.85rem; line-height:1.3; }
+            .prod-table .c-active { grid-column:4; grid-row:1 / span 2; }
+            .prod-table .c-meta { display:none; }
+            .prod-table .only-mobile { display:block; margin-top:0.15rem; font-size:0.75rem; }
+            .prod-table input[type=checkbox] { width:22px; height:22px; }
+            .prod-thumb { width:48px; height:48px; }
+        }
     </style>
 </head>
 
@@ -94,7 +121,7 @@
                 <button type="button" class="link" id="bulkAllBtn" onclick="selectAllFilter()" style="display:none;">
                     Seleccionar los <?= number_format($total) ?> del filtro
                 </button>
-                <span style="flex:1;"></span>
+                <span class="bulk-spacer" style="flex:1;"></span>
                 <button type="button" class="btn btn-sm btn-primary" onclick="bulkSet(1)">✅ Activar</button>
                 <button type="button" class="btn btn-sm btn-secondary" onclick="bulkSet(0)">⏸️ Desactivar</button>
             </div>
@@ -121,25 +148,28 @@
                             $visible = $p['is_active'] && $p['in_sheet'];
                         ?>
                             <tr data-id="<?= (int) $p['id'] ?>" class="<?= $visible ? '' : 'is-off' ?>">
-                                <td><input type="checkbox" class="row-check" value="<?= (int) $p['id'] ?>" onchange="updateBulk()"></td>
-                                <td>
+                                <td class="c-check"><input type="checkbox" class="row-check" value="<?= (int) $p['id'] ?>" onchange="updateBulk()"></td>
+                                <td class="c-thumb">
                                     <?php if ($cover['url']): ?>
                                         <img class="prod-thumb" src="<?= e($cover['url']) ?>" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'prod-thumb\'>📷</div>'">
                                     <?php else: ?>
                                         <div class="prod-thumb">📷</div>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td class="c-sku">
                                     <a href="/producto/<?= urlencode($p['sku']) ?>" target="_blank" style="color:var(--color-primary); font-weight:600; font-family:monospace;"><?= e($p['sku']) ?></a>
                                     <?php if (!$p['in_sheet']): ?><div class="tag-out">No está en la hoja</div><?php endif; ?>
                                 </td>
-                                <td><?= e($p['name']) ?></td>
-                                <td class="cell-muted"><?= e($p['brand']) ?: '—' ?></td>
-                                <td class="cell-muted"><?= e($p['color']) ?: '—' ?></td>
-                                <td class="cell-muted"><?= e($p['category']) ?: '—' ?></td>
-                                <td class="cell-muted"><?= $p['price_suggested'] > 0 ? '$' . number_format((float) $p['price_suggested'], 0, ',', '.') : '—' ?></td>
-                                <td class="cell-muted"><?= (int) $p['stock'] ?></td>
-                                <td style="text-align:center;">
+                                <td class="c-name">
+                                    <?= e($p['name']) ?>
+                                    <div class="cell-muted only-mobile"><?= e(implode(' · ', array_filter([$p['brand'], $p['color'], $p['price_suggested'] > 0 ? '$' . number_format((float) $p['price_suggested'], 0, ',', '.') : '', 'Stock ' . (int) $p['stock']]))) ?></div>
+                                </td>
+                                <td class="cell-muted c-meta"><?= e($p['brand']) ?: '—' ?></td>
+                                <td class="cell-muted c-meta"><?= e($p['color']) ?: '—' ?></td>
+                                <td class="cell-muted c-meta"><?= e($p['category']) ?: '—' ?></td>
+                                <td class="cell-muted c-meta"><?= $p['price_suggested'] > 0 ? '$' . number_format((float) $p['price_suggested'], 0, ',', '.') : '—' ?></td>
+                                <td class="cell-muted c-meta"><?= (int) $p['stock'] ?></td>
+                                <td class="c-active" style="text-align:center;">
                                     <label class="toggle-switch" title="<?= $p['is_active'] ? 'Activo' : 'Desactivado' ?>">
                                         <input type="checkbox" <?= $p['is_active'] ? 'checked' : '' ?> onchange="toggleOne(this)">
                                         <span class="toggle-slider"></span>
