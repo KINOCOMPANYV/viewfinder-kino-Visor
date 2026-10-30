@@ -160,7 +160,7 @@
         <!-- Recent / Featured Products -->
         <div id="searchResultsContainer">
         <?php
-        $perPage = 10;
+        $perPage = 60;
         $currentPage = max(1, intval($_GET['page'] ?? 1));
         
         $db = null;
