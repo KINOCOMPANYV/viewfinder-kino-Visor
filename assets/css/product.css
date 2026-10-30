@@ -580,28 +580,26 @@
 
 .variant-chip-link {
     flex-shrink: 0;
-    width: 60px;
-    height: 60px;
+    width: 92px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    text-decoration: none;
+    color: var(--color-text-muted);
+}
+
+.variant-chip-link .variant-thumb {
+    width: 92px;
+    height: 92px;
     border-radius: var(--radius);
     overflow: hidden;
     border: 2px solid var(--color-border);
-    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     background: var(--color-surface-2);
-    position: relative;
-    text-decoration: none;
-}
-
-.variant-chip-link:hover {
-    transform: translateY(-2px) scale(1.05);
-    border-color: var(--color-primary);
-    box-shadow: 0 4px 12px rgba(201, 168, 76, 0.3);
-}
-
-.variant-chip-link.active {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px var(--color-primary-glow);
-    cursor: default;
-    background: var(--color-primary-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .variant-chip-link img {
@@ -611,23 +609,38 @@
     display: block;
 }
 
-.variant-chip-link .variant-sku-pop {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0,0,0,0.7);
-    color: #fff;
-    font-size: 0.55rem;
-    padding: 1px 2px;
-    text-align: center;
-    font-weight: 700;
-    opacity: 0;
-    transition: opacity 0.2s;
+.variant-chip-link .variant-noimg { font-size: 1.5rem; }
+
+.variant-chip-link:hover .variant-thumb {
+    transform: translateY(-2px) scale(1.04);
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 12px rgba(201, 168, 76, 0.3);
 }
 
-.variant-chip-link:hover .variant-sku-pop {
-    opacity: 1;
+.variant-chip-link.active .variant-thumb {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-glow);
+}
+
+.variant-chip-link.active { cursor: default; color: var(--color-primary); }
+
+.variant-chip-link .variant-sku {
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: center;
+    word-break: break-all;
+}
+
+.variant-chip-link .variant-color {
+    font-size: 0.65rem;
+    line-height: 1.1;
+    text-align: center;
+    opacity: 0.8;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ===== Foto en grande (assets/js/lightbox.js) ===== */

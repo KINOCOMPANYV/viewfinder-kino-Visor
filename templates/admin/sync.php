@@ -77,6 +77,17 @@ $sheetId = env('GOOGLE_SHEET_ID', '');
             </div>
             <div class="sync-result" id="driveResult"></div>
         </section>
+
+        <section class="sync-card">
+            <h2>🔎 ¿Por qué no sale la foto?</h2>
+            <p>Escribe un código y verás sus fotos en Drive, dónde están y qué las oculta.</p>
+            <form class="sync-actions" onsubmit="checkPhoto(event)">
+                <input type="text" id="photoSku" class="form-input" placeholder="Ej: 1514G-12" required
+                       style="flex:1; min-width:160px; padding:0.55rem 0.75rem; border-radius:8px; border:1px solid var(--color-border); background:var(--color-surface-2, #16161f); color:inherit;">
+                <button class="btn btn-primary" type="submit">Revisar</button>
+            </form>
+            <div class="sync-result" id="photoResult"></div>
+        </section>
     </main>
 
     <script>
@@ -134,6 +145,38 @@ $sheetId = env('GOOGLE_SHEET_ID', '');
             }
             btn.disabled = false;
             btn.innerHTML = label;
+        }
+
+        async function checkPhoto(ev) {
+            ev.preventDefault();
+            const sku = document.getElementById('photoSku').value.trim();
+            if (!sku) return;
+            showResult('photoResult', '', '⏳ Revisando...');
+            try {
+                const res = await fetch('/admin/photo-check?sku=' + encodeURIComponent(sku));
+                const data = await res.json();
+                if (data.error) return showResult('photoResult', 'error', '❌ ' + esc(data.error));
+                const p = data.product;
+                let html = p
+                    ? `<strong>${esc(data.sku)}</strong> · ${esc(p.name || '')}<div style="margin-top:0.3rem; color:var(--color-text-muted);">`
+                      + `${p.active ? '✅ Activo' : '⏸️ Desactivado'} · ${p.in_sheet ? 'en la hoja' : 'no está en la hoja'} · familia: ${esc(p.parent_sku || '—')} · `
+                      + `${p.has_cover ? 'tiene portada' : 'sin portada'} · la ficha muestra <strong>${data.visible_count}</strong> archivo(s)</div>`
+                    : `<strong>${esc(data.sku)}</strong>`;
+                if (data.problem) html += `<div style="margin-top:0.5rem;">⚠️ ${esc(data.problem)}</div>`;
+                if (data.files.length) {
+                    html += '<ul style="margin:0.6rem 0 0; padding-left:1.1rem;">' + data.files.map(f =>
+                        `<li style="margin-bottom:0.35rem;">${f.image ? '🖼️' : '🎥'} <a href="https://drive.google.com/file/d/${esc(f.id)}/view" target="_blank" rel="noopener" style="color:var(--color-primary);">${esc(f.name)}</a>`
+                        + `<div style="font-size:0.8rem; color:var(--color-text-muted);">${esc(f.path || '(raíz)')}</div>`
+                        + (f.problem ? `<div style="font-size:0.85rem; color:#fbbf24;">🚫 ${esc(f.problem)}`
+                            + (f.switch_folder_id ? ` · <a href="/admin/folders?id=${encodeURIComponent(f.switch_folder_id)}" style="color:var(--color-primary);">ir a la carpeta</a>` : '') + '</div>'
+                          : '<div style="font-size:0.85rem; color:#4ade80;">✅ Se muestra</div>')
+                        + '</li>').join('') + '</ul>';
+                }
+                if (data.last_drive_sync) html += `<div style="margin-top:0.5rem; font-size:0.8rem; color:var(--color-text-muted);">Copia de Drive: ${esc(data.last_drive_sync)}</div>`;
+                showResult('photoResult', data.problem ? 'warn' : 'ok', html);
+            } catch (e) {
+                showResult('photoResult', 'error', '❌ ' + esc(e.message));
+            }
         }
 
         async function syncDrive(force, btn) {
