@@ -3205,7 +3205,8 @@ img, video, iframe { max-width: 100%; }
    Catálogo denso: tarjetas en grilla, sin scroll lateral.
    Va al final para ganar a las reglas de tablet/móvil de arriba.
    ============================================================ */
-.container { max-width: 1680px; }
+/* Solo las páginas con grilla de productos usan el ancho extra (la ficha sigue a 1200px) */
+body:has(.parent-grid) .container { max-width: 1680px; }
 
 .parent-grid,
 .parent-grid[style] {
@@ -3278,4 +3279,20 @@ img, video, iframe { max-width: 100%; }
     .children-row { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); }
     .parent-card .card-actions { margin: auto 0.45rem 0.4rem; }
     .parent-card .card-wa-btn { font-size: 0.68rem !important; padding: 0.3rem 0.4rem !important; min-height: 32px; }
+}
+
+/* Ficha: sin foto (o mientras carga) no deja un bloque vacío gigante */
+.product-detail .main-image:not(:has(img)) {
+    aspect-ratio: auto;
+    min-height: 180px;
+    height: 180px;
+    font-size: 2.5rem;
+}
+.product-detail .main-image:has(.cover-skeleton) .cover-skeleton { min-height: 0 !important; }
+
+/* Ficha en el celular: la foto se ve entera y deja ver el nombre debajo */
+@media (max-width: 768px) {
+    .product-detail { padding-top: 1rem; }
+    .product-detail .main-image { max-height: 60vh; }
+    .product-detail .detail-grid { gap: 1rem; }
 }
