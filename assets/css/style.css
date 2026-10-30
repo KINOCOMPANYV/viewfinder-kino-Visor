@@ -3261,3 +3261,21 @@ img, video, iframe { max-width: 100%; }
     flex-wrap: wrap;
     overflow-x: visible;
 }
+
+/* Foto completa (sin recortar) para ver bien el producto */
+.parent-card .card-image img { object-fit: contain; }
+
+/* Móvil: 2 columnas con fotos grandes, todo lo demás compacto */
+@media (max-width: 640px) {
+    .container { padding: 0 0.5rem; }
+    .parent-grid,
+    .parent-grid[style] {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.4rem !important;
+    }
+    .parent-card .card-body { padding: 0.35rem 0.45rem 0.4rem !important; }
+    .parent-card .card-name { font-size: 0.72rem !important; }
+    .children-row { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); }
+    .parent-card .card-actions { margin: auto 0.45rem 0.4rem; }
+    .parent-card .card-wa-btn { font-size: 0.68rem !important; padding: 0.3rem 0.4rem !important; min-height: 32px; }
+}
