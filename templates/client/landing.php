@@ -166,6 +166,7 @@
         $db = null;
         $pageRoots = [];
         $totalParents = 0;
+        $totalSkus = 0;
         $totalPages = 1;
         $grouped = [];
 
@@ -207,6 +208,7 @@
                  WHERE archived = 0 
                  {$orderClause}"
             )->fetchAll();
+            $totalSkus = count($skuRows); // códigos visibles (cada variante cuenta)
 
             // Agrupar SKUs por familia
             $familyMap = [];      // family -> [skus]
@@ -286,7 +288,7 @@
         <?php if (!empty($pageRoots)): ?>
             <div class="section-header-landing">
                 <h2>Productos recientes</h2>
-                <span class="product-count"><?= $totalParents ?> referencias</span>
+                <span class="product-count" title="Cada tarjeta agrupa una familia (el código -1 y sus variantes)"><?= number_format($totalSkus, 0, ',', '.') ?> referencias · <?= number_format($totalParents, 0, ',', '.') ?> familias</span>
             </div>
 
             <div class="parent-grid">
