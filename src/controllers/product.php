@@ -177,19 +177,16 @@ $variants = array_values(array_filter($variants, function ($v) use ($product, $f
 // Orden natural: 1416-2 antes que 1416-10
 usort($variants, fn($a, $b) => strnatcasecmp($a['sku'], $b['sku']));
 require_once __DIR__ . '/../services/DriveIndex.php';
-// Miniatura de cada variante: su portada; si no tiene, su primera foto en la copia local de Drive
-// o la foto genérica de la familia ("M8363.jpg" vale para todas)
+// Miniatura de cada variante: su portada (la pone DriveIndex::relink: foto propia > foto genérica
+// de la familia "M8363.jpg"); si aún no tiene, la misma elección desde el índice. Nunca la de un hermano.
 $indexReady = count($variants) > 1 && DriveIndex::isReady($db);
-$familyThumb = null;
 foreach ($variants as &$v) {
     $v['thumb'] = '';
     if (!empty($v['cover_image_url'])) {
         $v['thumb'] = parseStoredCover($v['cover_image_url'], 200)['url'];
-    } elseif ($indexReady && ($fid = DriveIndex::firstImageIdForSku($db, $v['sku']))) {
-        $v['thumb'] = lh3Url($fid, 200);
-    } elseif ($indexReady && $numericBase !== null) {
-        $familyThumb ??= DriveIndex::firstImageIdForSku($db, $numericBase) ?? '';
-        if ($familyThumb !== '') $v['thumb'] = lh3Url($familyThumb, 200);
+    } elseif ($indexReady) {
+        $imgs = array_filter(DriveIndex::filesForSku($db, $v['sku'])['files'], fn($f) => str_starts_with($f['mimeType'], 'image/'));
+        if ($best = pickBestCoverFile($imgs)) $v['thumb'] = lh3Url($best['id'], 200);
     }
 }
 unset($v);

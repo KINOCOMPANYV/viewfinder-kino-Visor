@@ -9,6 +9,7 @@
  * Un SKU enviado que ya no está en la hoja queda fuera del portal (in_sheet = 0).
  */
 require_once __DIR__ . '/../services/MasterSheet.php';
+require_once __DIR__ . '/../services/DriveIndex.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -61,6 +62,7 @@ try {
     refreshProductVisibility($db);
     // Un SKU nuevo de una familia también cambia a sus hermanos
     recomputeParentSkus($db);
+    DriveIndex::relink($db);
 } catch (\Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => 'DB error: ' . $e->getMessage()]);

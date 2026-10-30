@@ -32,7 +32,7 @@ foreach ($db->query("SELECT drive_id FROM albums WHERE is_active = 0 AND auto_di
 
 // Archivos cuyo nombre es el código (o código + separador), con sus otras escrituras
 $files = [];
-$like = $db->prepare("SELECT file_id, name, mime_type, parent_id, is_hidden, is_public FROM drive_index
+$like = $db->prepare("SELECT file_id, name, mime_type, parent_id, is_hidden, is_public, matched_sku FROM drive_index
                       WHERE is_folder = 0 AND name_stem LIKE ? ORDER BY name ASC LIMIT 200");
 foreach (skuNameVariants($code) as $variant) {
     $like->execute([addcslashes($variant, '%_\\') . '%']);
@@ -65,11 +65,14 @@ foreach ($files as $id => $f) {
     elseif ((int) $f['is_hidden']) $reason = 'Oculta por una carpeta superior (pulsa "Sincronizar portadas" para recalcular)';
     elseif (isset($fileHidden[$id])) $reason = 'Foto ocultada en Admin → Media';
     elseif (!(int) $f['is_public']) $reason = 'Drive no la dejó hacer pública (revisa permisos de la carpeta)';
+    elseif ($f['matched_sku'] === null) $reason = 'Aún no está enlazada (pulsa "Sincronizar portadas")';
+    elseif ($f['matched_sku'] !== $code) $reason = 'Enlazada a otro código: ' . $f['matched_sku'];
     $out[] = [
         'id' => $id,
         'name' => $f['name'],
         'image' => str_starts_with($f['mime_type'], 'image/'),
         'path' => implode(' / ', array_column($path, 'name')),
+        'linked_to' => $f['matched_sku'],
         'switch_folder_id' => $hiddenBy ? $hiddenParent : null,
         'problem' => $reason,
     ];

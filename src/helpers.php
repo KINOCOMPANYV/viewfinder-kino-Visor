@@ -379,19 +379,83 @@ function computeParentSkuMap(array $rowsBySku): array
  */
 function familyMediaBase(PDO $db, string $parent): string
 {
-    if (!preg_match('/^(.+)[-_]\d+$/', $parent, $m)) {
+    if (!preg_match('/^(.+)[-_]\d+$/', $parent)) {
         return $parent;
     }
     try {
         $stmt = $db->prepare("SELECT parent_sku FROM products WHERE sku = ? LIMIT 1");
         $stmt->execute([$parent]);
-        if ($stmt->fetchColumn() === $parent) {
-            return $m[1];
-        }
+        return familyMediaBaseFrom($parent, $stmt->fetchColumn() ?: null);
     } catch (\PDOException $e) {
         // columna parent_sku puede no existir aún
     }
     return $parent;
+}
+
+/** familyMediaBase() sin BD: $rootParent = parent_sku del padre. */
+function familyMediaBaseFrom(string $root, ?string $rootParent): string
+{
+    return preg_match('/^(.+)[-_]\d+$/', $root, $m) && $rootParent === $root ? $m[1] : $root;
+}
+
+/**
+ * Base de fotos genéricas de un producto, en memoria (misma regla que
+ * getFamilyRootSku() + familyMediaBase()). $parentOf = mapa sku => parent_sku.
+ */
+function productMediaBase(string $sku, array $parentOf): string
+{
+    $root = trim((string) ($parentOf[$sku] ?? ''));
+    if ($root === '') {
+        $root = extractRootSku($sku);
+    }
+    return familyMediaBaseFrom($root, $parentOf[$root] ?? null);
+}
+
+/**
+ * Índice para matchFileToProduct(): cada escritura del código (skuNameVariants) => SKU.
+ * Si dos códigos chocan gana el primero de $skus (pasar los activos primero).
+ * @param string[] $skus
+ * @return array<string,string>
+ */
+function skuMatchIndex(array $skus): array
+{
+    $index = [];
+    foreach ($skus as $sku) {
+        $clean = cleanSkuDisplay(trim((string) $sku));
+        if ($clean !== '') $index[strtolower($clean)] ??= (string) $sku;
+    }
+    foreach ($skus as $sku) {
+        foreach (skuNameVariants(cleanSkuDisplay(trim((string) $sku))) as $variant) {
+            $index[$variant] ??= (string) $sku;
+        }
+    }
+    unset($index['']);
+    return $index;
+}
+
+/**
+ * REGLA ÚNICA foto ↔ código: el nombre del archivo es el código ("X6071.jpg") o el código
+ * + separador + lo que sea ("X6071-A.jpg", "X6071 (2).jpg"). Gana el código más largo:
+ * "839-5-A.jpg" es de "839-5" aunque exista "839". "993-3V1.mp4" no es de nadie.
+ * @param array<string,string> $index de skuMatchIndex()
+ * @return array{0:string,1:int}|null [SKU, calidad] (3 = nombre igual al código, 2 = código + sufijo)
+ */
+function matchFileToProduct(string $filename, array $index): ?array
+{
+    $name = strtolower(trim(pathinfo($filename, PATHINFO_FILENAME)));
+    for ($len = strlen($name); $len > 0; $len--) {
+        $prefix = substr($name, 0, $len);
+        if (!isset($index[$prefix])) continue;
+        if ($len === strlen($name)) return [$index[$prefix], 3];
+        if (!ctype_alnum($name[$len])) return [$index[$prefix], 2];
+    }
+    return null;
+}
+
+/** Nombre de archivo para comparar con la base de una familia: sin extensión ni " (2)" de Drive. */
+function genericMediaStem(string $filename): string
+{
+    return trim(preg_replace('/\s*\(\d+\)$/', '', strtolower(trim(pathinfo($filename, PATHINFO_FILENAME)))));
 }
 
 /**
@@ -499,14 +563,9 @@ function isAlbumFolderName(string $name): bool
  */
 function isGenericMediaForSku(string $sku, string $filename): bool
 {
-    $nameOnly = strtolower(pathinfo($filename, PATHINFO_FILENAME));
-    $skuLower = strtolower($sku);
-    
-    // Quitar sufijos de duplicados de Drive " (1)", " (2)", etc.
-    $nameOnly = preg_replace('/\s*\(\d+\)$/', '', $nameOnly);
-
-    // "M:8363" en la hoja = "M8363.jpg" / "M-8363.jpg" en Drive
-    return $nameOnly === $skuLower || in_array($nameOnly, skuNameVariants($sku), true);
+    // Sin " (1)", " (2)" de Drive. "M:8363" en la hoja = "M8363.jpg" / "M-8363.jpg" en Drive
+    $nameOnly = genericMediaStem($filename);
+    return $nameOnly === strtolower($sku) || in_array($nameOnly, skuNameVariants($sku), true);
 }
 
 /**

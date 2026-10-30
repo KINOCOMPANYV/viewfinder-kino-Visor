@@ -33,8 +33,7 @@ $linked = 0;
 $errors = [];
 $files = $_FILES['media_files'];
 
-// Cargar todos los productos una sola vez (fuera del loop)
-$allProducts = $db->query("SELECT id, sku, cover_image_url FROM products")->fetchAll(PDO::FETCH_ASSOC);
+$uploadedIds = [];
 
 for ($i = 0; $i < count($files['name']); $i++) {
     if ($files['error'][$i] !== UPLOAD_ERR_OK) {
@@ -60,55 +59,29 @@ for ($i = 0; $i < count($files['name']); $i++) {
         $isPublic = $drive->makePublic($result['id']);
         DriveIndex::addUploadedFile($db, $result + ['mimeType' => $mimeType, 'size' => $files['size'][$i] ?? 0], $folderId, $isPublic);
         $uploaded++;
-
-        // --- Enlazar con producto por SKU ---
-        $driveUrl = "https://lh3.googleusercontent.com/d/{$result['id']}";
-        $matchedProduct = null;
-
-        foreach ($allProducts as $prod) {
-            if (skuMatchesFilename($prod['sku'], $filename)) {
-                $matchedProduct = $prod;
-                break;
-            }
-        }
-
-        if ($matchedProduct) {
-            try {
-                // Insertar en media_assets
-                $mediaType = str_starts_with($mimeType, 'video/') ? 'video' : 'image';
-                $insertMedia = $db->prepare(
-                    "INSERT INTO media_assets (product_id, type, filename, storage_path, file_size)
-                     VALUES (?, ?, ?, ?, ?)"
-                );
-                $insertMedia->execute([
-                    $matchedProduct['id'],
-                    $mediaType,
-                    $filename,
-                    $driveUrl,
-                    $files['size'][$i] ?? 0
-                ]);
-
-                // Actualizar cover_image_url si está vacía y es imagen
-                if ($mediaType === 'image' && empty($matchedProduct['cover_image_url'])) {
-                    $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
-                        ->execute([$driveUrl, $matchedProduct['id']]);
-                }
-
-                $linked++;
-            } catch (\Exception $e) {
-                // No bloquear la subida si falla el enlace
-                $errors[] = "{$filename}: subido pero no se pudo enlazar ({$e->getMessage()})";
-            }
-        }
+        $uploadedIds[] = $result['id'];
     } else {
         $errMsg = $result['error']['message'] ?? 'error desconocido';
         $errors[] = "{$filename}: {$errMsg}";
     }
 }
 
+// Enlazar con la regla única del visor (nombre = código) y recalcular portadas
+if ($uploadedIds) {
+    DriveIndex::relink($db);
+    try {
+        $q = $db->prepare("SELECT COUNT(*) FROM drive_index WHERE matched_sku IS NOT NULL AND file_id IN (" . implode(',', array_fill(0, count($uploadedIds), '?')) . ")");
+        $q->execute($uploadedIds);
+        $linked = (int) $q->fetchColumn();
+    } catch (\PDOException $e) { /* índice aún no creado */ }
+}
+
 $msg = "✅ {$uploaded} archivo(s) subido(s) a Google Drive.";
 if ($linked > 0) {
     $msg .= " 🔗 {$linked} enlazado(s) con productos.";
+}
+if ($uploaded > $linked && DriveIndex::isReady($db)) {
+    $msg .= ' ⚠️ ' . ($uploaded - $linked) . ' con nombre que no es un código (renómbralos como el código).';
 }
 $_SESSION['flash_success'] = $msg;
 if (!empty($errors)) {

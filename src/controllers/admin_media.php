@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/DriveIndex.php';
 /**
  * Admin Media — Gestión de archivos en Google Drive.
  * Muestra galería con navegación de carpetas, permite subir y sincronizar.
@@ -81,7 +82,16 @@ foreach ($allProducts as $prod) {
 
 // Enlazados: usar pre-index global (una sola llamada API) con caché de sesión
 $linkedCount = 0;
-if ($isConnected && !empty($rootFolderId)) {
+// Índice listo: el mismo enlace que usa el visor (drive_index.matched_sku, DriveIndex::relink)
+$productMatchIndex = skuMatchIndex(array_keys($productsBySku));
+if (DriveIndex::isReady($db)) {
+    try {
+        $linkedCount = (int) $db->query(
+            "SELECT COUNT(*) FROM products p
+             WHERE EXISTS (SELECT 1 FROM drive_index d WHERE d.matched_sku = p.sku AND d.is_hidden = 0)"
+        )->fetchColumn();
+    } catch (\PDOException $e) { /* migración 020 aún no aplicada */ }
+} elseif ($isConnected && !empty($rootFolderId)) {
     // Caché en sesión (5 min TTL) para evitar re-indexar Drive en cada carga
     $cacheKey = 'media_linked_count_cache';
     $cacheTimeKey = 'media_linked_count_time';

@@ -9,6 +9,7 @@
  * - Las portadas las pone "Sincronizar portadas" (Drive), no esta sincronización.
  */
 require_once __DIR__ . '/../services/MasterSheet.php';
+require_once __DIR__ . '/../services/DriveIndex.php';
 
 $csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
 if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
@@ -57,6 +58,7 @@ $visibilityChanged = 0;
 if (!$dryRun) {
     $visibilityChanged = refreshProductVisibility($db);
     recomputeParentSkus($db); // siempre: aplica también cambios de la regla de familias
+    DriveIndex::relink($db);  // códigos nuevos o familias nuevas: fotos y portadas al momento
 }
 $inactive = (int) $db->query("SELECT COUNT(*) FROM products WHERE is_active = 0")->fetchColumn();
 
