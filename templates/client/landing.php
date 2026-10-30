@@ -298,7 +298,12 @@
                     $parent = $group['parent'];
                     $children = $group['children'];
                     $childCount = count($children);
+                    // Igual que la búsqueda: si el padre no tiene foto, la tarjeta usa la de una variante
                     $coverUrl = $parent['cover_image_url'] ?? '';
+                    foreach ($children as $c) {
+                        if ($coverUrl) break;
+                        $coverUrl = $c['cover_image_url'] ?? '';
+                    }
                     $isVideo = str_starts_with($coverUrl, '[VIDEO]');
                     if ($isVideo) $coverUrl = substr($coverUrl, 7);
                 ?>

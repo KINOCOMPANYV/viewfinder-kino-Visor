@@ -54,8 +54,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
   Si Drive falla a mitad, o la raíz sale vacía (ID o permisos mal), no toca el índice ni los álbumes.
 - Se ejecuta con el botón admin **Sincronizar portadas** y con el cron `/api/cron/sync-covers?token=CRON_SECRET`
   (programarlo, p. ej. cada 30-60 min). Subir/borrar desde el admin actualiza el índice al momento.
-- `DriveIndex::filesForSku()` = misma regla que la búsqueda en Drive (`fileNameStartsWithSku` + familia con
-  `combineFamilyFiles`), pero en MySQL. Devuelve el formato de la API de Drive con `thumbnailLink` = lh3 por ID.
+- `DriveIndex::filesForSku()` = archivos con `matched_sku` = el código + los genéricos de su familia (`matched_sku` = base,
+  nombre = base). Solo MySQL. Devuelve el formato de la API de Drive con `thumbnailLink` = lh3 por ID.
 - `DriveIndex::isReady()`: si la tabla está vacía (antes del primer sync) todo cae al camino viejo (Drive en vivo + caché).
 
 ## Flujo de portadas (cómo llega la foto a la tarjeta)
@@ -63,8 +63,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
    Se pinta directo en el HTML (landing/search). Las 3 primeras con `loading=eager` y el resto `lazy`.
 2. **Sin portada** → placeholder 📷 y el JS llama `POST /api/covers/batch` con los SKUs que faltan.
    Con índice: sale de `drive_index` y se **auto-asigna** (`autoAssignCover`), así la próxima visita ya viene en el HTML.
-3. **Asignación masiva**: `admin_sync_covers.php` → sync del índice + match por SKU (`matchFileToProduct`, ver "Coincidencia SKU ↔ archivo"). Puntaje: `scoreCoverCandidate()` (la imagen gana al video).
-   Solo álbumes activos + archivos sueltos en la raíz.
+3. **Asignación**: `DriveIndex::relink()` (ver "Enlace único foto ↔ producto") recalcula la portada de TODOS los productos.
 4. **Ficha de producto**: la portada sale en el HTML con `<link rel=preload>` (=s800). Clic = foto en grande
    (`assets/js/lightbox.js`, =s1600, precargada en segundo plano: portada + 4 primeras fotos + vecinas). La galería completa
    llega por JS desde `/api/media/{sku}` (índice local; `Cache-Control` 60 s).
@@ -105,8 +104,8 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
   `recomputeParentSkus($db)` la aplica a todo el catálogo; la llaman el sync de la hoja maestra, el webhook y los cambios de activación.
   El sync completo de Sheets la aplica sobre la hoja.
 - Ficha (`product.php`): "Variantes Disponibles" busca la familia por `parent_sku` Y por la base numérica
-  (1416-1 → 1416-*), así sale aunque `parent_sku` esté viejo. Miniatura = portada, o su foto en `drive_index`
-  (`DriveIndex::firstImageIdForSku`), o la foto genérica de la base.
+  (1416-1 → 1416-*), así sale aunque `parent_sku` esté viejo. Miniatura = portada, o lo mismo desde `filesForSku`
+  (propia o genérica de la familia; nunca la de un hermano).
 - Agrupar tarjetas: `familyKey($row)` = `parent_sku` o `extractRootSku()` (inicio y búsqueda usan lo mismo).
 
 ## Búsqueda
@@ -119,9 +118,20 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - Misma regla en todos lados: `fileNameStartsWithSku()` (galería, `DriveIndex::findByPrefix`) y `matchFileToProduct()` (sync-covers).
   `skuNameVariants()`: el separador entre el prefijo de letras y el número es libre ("M:8464-2" = "M8464-2" = "M-8464-2").
   Se usa en el sync, en la galería y en `/producto/{sku}` ("/producto/M-8464-2" abre "M:8464-2").
+- Implementación única: `skuMatchIndex()` + `matchFileToProduct()` (helpers). La usan `DriveIndex::relink()` y Admin → Media.
 - Lo que no cumple queda en `drive_index.matched_sku = NULL` (migración 020) y se descarga para renombrar:
   `/admin/media/sin-codigo.csv?tipo=archivos` y `?tipo=productos` (botones en Admin → Media).
-- "Reasignar TODAS" (forzado) quita portadas guardadas que son una foto del índice de OTRO código.
+- "Reasignar TODAS" (forzado) además cambia las portadas elegidas a mano por la mejor.
+
+## Enlace único foto ↔ producto (`DriveIndex::relink`, solo BD)
+1. Cada archivo visible del índice → código con `matchFileToProduct()` contra TODOS los productos (también ocultos,
+   para que su foto no se pegue a un código más corto). Si se llama como la base de una familia que no es producto
+   ("993.jpg", "M8363 (2).jpg") → `matched_sku` = esa base (foto de toda la familia). Se guarda en `drive_index.matched_sku`.
+2. Portada de cada producto: foto propia > foto de la familia > video propio > video de la familia > vacía.
+   Se respeta una elegida a mano del mismo nivel; se quitan las viejas (otra raíz, otro código, ocultas, borradas).
+3. Se llama tras: sync de portadas, ocultar/mostrar carpeta, subir/borrar en Media, sync de la hoja, webhook y activar/desactivar.
+- Lo leen: galería (`filesForSku`), `/api/covers/batch`, miniaturas de la ficha, Admin → Media y "¿Por qué no sale la foto?".
+- Tarjeta (inicio y búsqueda): si el padre no tiene foto, usa la portada de una variante.
 - Variantes: `computeParentSkuMap()` agrupa por raíz candidata + mismo nombre → `parent_sku`.
   Un hijo ve sus archivos propios + los genéricos del padre (`isGenericMediaForSku`).
 

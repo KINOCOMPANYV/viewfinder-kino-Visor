@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/DriveIndex.php';
 /**
  * Admin — Activar o desactivar productos (nunca se borran).
  * POST /admin/products/active  (header X-CSRF-TOKEN)
@@ -32,6 +33,7 @@ if (($_POST['all'] ?? '') === '1') {
 }
 
 refreshProductVisibility($db);
+DriveIndex::relink($db); // las familias pueden cambiar: fotos genéricas y portadas
 
 jsonResponse([
     'ok' => true,

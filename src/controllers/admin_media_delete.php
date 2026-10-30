@@ -26,6 +26,7 @@ if (empty($fileId)) {
 
 if ($drive->deleteFile($fileId)) {
     DriveIndex::removeFile($db, $fileId);
+    DriveIndex::relink($db); // si era una portada, el producto toma otra foto suya
     $_SESSION['flash_success'] = '✅ Archivo eliminado de Drive.';
 } else {
     $_SESSION['flash_error'] = 'Error al eliminar el archivo.';

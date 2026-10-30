@@ -785,17 +785,15 @@
                         $skuMatch = '';
                         $matchedProductId = 0;
                         $matchedCover = '';
-                        foreach ($productsBySku as $sku => $prod) {
-                            if (skuMatchesFilename($sku, $file['name'])) {
-                                $skuMatch = $sku;
-                                $matchedProductId = $prod['id'];
-                                $matchedCover = $prod['cover_image_url'];
-                                break;
-                            }
+                        // Misma regla que el visor (matchFileToProduct)
+                        if ($fileMatch = matchFileToProduct($file['name'], $productMatchIndex)) {
+                            $skuMatch = $fileMatch[0];
+                            $matchedProductId = $productsBySku[$skuMatch]['id'];
+                            $matchedCover = (string) $productsBySku[$skuMatch]['cover_image_url'];
                         }
 
-                        $driveImageUrl = "https://lh3.googleusercontent.com/d/{$file['id']}";
-                        $isCover = ($isImage && $skuMatch && $matchedCover === $driveImageUrl);
+                        $driveImageUrl = lh3Url($file['id']);
+                        $isCover = ($isImage && $skuMatch && str_contains($matchedCover, "/d/{$file['id']}="));
                         ?>
                         <div class="file-card <?= $file['visible_publico'] ? '' : 'vis-off' ?>"
                             data-name="<?= e(strtolower($file['name'])) ?>" data-sku="<?= e(strtolower($skuMatch)) ?>"
@@ -974,7 +972,7 @@
             btn.textContent = '⏳...';
             btn.disabled = true;
 
-            const imageUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+            const imageUrl = `https://lh3.googleusercontent.com/d/${fileId}=s400`; // mismo formato que lh3Url()
             const form = new FormData();
             form.append('product_id', productId);
             form.append('image_url', imageUrl);

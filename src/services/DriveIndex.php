@@ -145,59 +145,189 @@ class DriveIndex
     }
 
     /**
-     * Fotos/videos de un SKU desde el índice, con la misma regla de familia que
-     * fetchAndCacheMediaForSku() (variante = propios + genéricos del padre).
+     * Fotos/videos de un SKU desde el índice: los enlazados a su código (drive_index.matched_sku,
+     * lo escribe relink()) + las genéricas de su familia ("M8363.jpg"), sin las de sus hermanos.
      * Mismo formato que la API de Drive (id, name, mimeType, size, thumbnailLink...).
      * @return array{files: array, root_sku: string}
      */
     public static function filesForSku(PDO $db, string $sku): array
     {
+        $sku = self::productSku($db, $sku);
         $rootSku = getFamilyRootSku($db, $sku);
         // Fotos genéricas de la familia: "M8363.jpg" (base), no las del padre "M8363-1"
         $base = familyMediaBase($db, $rootSku);
-        $baseFiles = self::findByPrefix($db, $base);
-        $childFiles = $sku !== $base ? self::findByPrefix($db, $sku) : [];
-        return ['files' => combineFamilyFiles($sku, $base, $baseFiles, $childFiles), 'root_sku' => $rootSku];
-    }
-
-    /** Primera foto propia de un SKU en el índice (miniatura de variante sin portada), o null. */
-    public static function firstImageIdForSku(PDO $db, string $sku): ?string
-    {
-        foreach (self::findByPrefix($db, $sku) as $f) {
-            if (str_starts_with($f['mimeType'], 'image/')) return $f['id'];
-        }
-        return null;
-    }
-
-    /** Archivos cuyo nombre empieza con el SKU (índice idx_stem + regla fileNameStartsWithSku). */
-    private static function findByPrefix(PDO $db, string $sku): array
-    {
-        if ($sku === '') return [];
-        // "M:8392-1" en la hoja; "M8392-1.jpg" o "M-8392-1.jpg" en Drive
-        $files = [];
-        foreach (skuNameVariants($sku) as $variant) {
-            foreach (self::findByExactPrefix($db, $variant) as $f) {
-                $files[$f['id']] = $f;
+        $byKey = self::linkedFiles($db, array_unique([$sku, $base]));
+        $files = $byKey[$sku] ?? [];
+        if ($base !== $sku) {
+            foreach ($byKey[$base] ?? [] as $f) {
+                if (isGenericMediaForSku($base, $f['name'])) $files[] = $f;
             }
         }
-        return array_values($files);
+        return ['files' => $files, 'root_sku' => $rootSku];
     }
 
-    private static function findByExactPrefix(PDO $db, string $sku): array
+    /** "M-8464-2" o "m8464-2" → "M:8464-2" si ese es el código guardado; si no, el mismo texto. */
+    private static function productSku(PDO $db, string $sku): string
     {
+        $names = skuNameVariants($sku);
+        if (!$names) return $sku;
+        $stmt = $db->prepare("SELECT sku FROM products WHERE sku IN (" . implode(',', array_fill(0, count($names), '?')) . ")
+                              ORDER BY sku = ? DESC, archived ASC LIMIT 1");
+        $stmt->execute(array_merge($names, [$sku]));
+        return $stmt->fetchColumn() ?: $sku;
+    }
+
+    /** Archivos visibles enlazados a cada código: [codigo => [archivo API, ...]]. */
+    private static function linkedFiles(PDO $db, array $keys): array
+    {
+        $keys = array_values(array_filter($keys, 'strlen'));
+        if (!$keys) return [];
         $stmt = $db->prepare(
-            "SELECT file_id, name, mime_type, size FROM drive_index
-             WHERE is_folder = 0 AND is_hidden = 0 AND name_stem LIKE ? ORDER BY name ASC LIMIT 2000"
+            "SELECT file_id, name, mime_type, size, matched_sku FROM drive_index
+             WHERE is_folder = 0 AND is_hidden = 0 AND matched_sku IN (" . implode(',', array_fill(0, count($keys), '?')) . ")
+             ORDER BY name ASC, file_id ASC"
         );
-        $stmt->execute([addcslashes($sku, '%_\\') . '%']);
-
-        $files = [];
+        $stmt->execute($keys);
+        $out = [];
         foreach ($stmt->fetchAll() as $r) {
-            if (fileNameStartsWithSku($r['name'], $sku)) {
-                $files[] = self::toApiFile($r);
+            $out[$r['matched_sku']][] = self::toApiFile($r);
+        }
+        return $out;
+    }
+
+    /**
+     * EL ÚNICO ENLACE foto ↔ producto. Solo BD (no llama a Drive). Para cada archivo visible del
+     * índice decide de qué código es (matchFileToProduct) o si es la foto genérica de una familia
+     * (se llama como la base: "993.jpg"), y lo guarda en drive_index.matched_sku.
+     * Después recalcula la portada de TODOS los productos:
+     *   foto propia > foto de la familia > video propio > video de la familia > sin portada.
+     * Se respeta la portada elegida a mano si es una de esas fotos del mismo nivel ($force = no).
+     * Se quitan portadas viejas: de otra carpeta raíz, de otro código o de un archivo oculto/borrado.
+     * Llamar tras cada sync de Drive, cambio de carpetas, subida/borrado y sync de la hoja.
+     * @return array{ok: bool, files: int, linked: int, family: int, unlinked: string[], covers_set: int,
+     *               covers_cleared: int, without_photo: int, album_of: array<string,string>}
+     */
+    public static function relink(PDO $db, bool $force = false): array
+    {
+        $stats = ['ok' => false, 'files' => 0, 'linked' => 0, 'family' => 0, 'unlinked' => [],
+                  'covers_set' => 0, 'covers_cleared' => 0, 'without_photo' => 0, 'album_of' => []];
+        if (!self::isReady($db)) return $stats;
+        try {
+            // Todos los productos (también los ocultos): así la foto de uno desactivado no se
+            // le pega a otro código más corto. Los visibles ganan si dos códigos chocan.
+            $products = $db->query("SELECT id, sku, parent_sku, cover_image_url FROM products ORDER BY archived ASC, id ASC")
+                           ->fetchAll(PDO::FETCH_ASSOC);
+            $files = $db->query(
+                "SELECT file_id AS id, name, mime_type AS mimeType, album_id FROM drive_index
+                 WHERE is_folder = 0 AND is_hidden = 0 AND (mime_type LIKE 'image/%' OR mime_type LIKE 'video/%')
+                 ORDER BY name ASC, file_id ASC"
+            )->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            return $stats; // migración 020/021 aún no aplicada
+        }
+        $stats['files'] = count($files);
+
+        $productIndex = skuMatchIndex(array_column($products, 'sku'));
+        $parentOf = array_column($products, 'parent_sku', 'sku');
+
+        // Bases de familia que no son un producto ("993" para 993-1…993-4)
+        $baseOf = [];
+        $baseIndex = [];
+        foreach ($products as $p) {
+            $base = productMediaBase($p['sku'], $parentOf);
+            $baseOf[$p['sku']] = $base;
+            if ($base === $p['sku']) continue;
+            foreach (skuNameVariants($base) as $v) {
+                if (!isset($productIndex[$v])) $baseIndex[$v] ??= $base;
             }
         }
-        return $files;
+
+        // 1) Cada archivo → código (o base de familia)
+        $byKey = [];   // código => [archivo + quality]
+        $linkOf = [];  // file_id => código
+        foreach ($files as $f) {
+            $match = matchFileToProduct($f['name'], $productIndex);
+            $stem = genericMediaStem($f['name']);
+            if ((!$match || $match[1] < 3) && isset($baseIndex[$stem])) {
+                $match = [$baseIndex[$stem], 3]; // "993.jpg": foto de toda la familia
+                $stats['family']++;
+            }
+            if (!$match) {
+                $stats['unlinked'][] = $f['name'];
+                continue;
+            }
+            $f['quality'] = $match[1];
+            $byKey[$match[0]][] = $f;
+            $linkOf[$f['id']] = $match[0];
+        }
+        $stats['linked'] = count($linkOf);
+
+        // 2) Guardar el enlace (lo leen la galería, las miniaturas y las listas "sin código")
+        $byLink = [];
+        foreach ($linkOf as $fileId => $key) $byLink[$key][] = $fileId;
+        $db->beginTransaction();
+        try {
+            $db->exec("UPDATE drive_index SET matched_sku = NULL WHERE matched_sku IS NOT NULL");
+            foreach ($byLink as $key => $ids) {
+                foreach (array_chunk($ids, 500) as $chunk) {
+                    $db->prepare("UPDATE drive_index SET matched_sku = ? WHERE file_id IN (" . implode(',', array_fill(0, count($chunk), '?')) . ")")
+                       ->execute(array_merge([$key], $chunk));
+                }
+            }
+            $db->commit();
+        } catch (\PDOException $e) {
+            $db->rollBack();
+            return $stats;
+        }
+
+        // 3) Portada de cada producto
+        $setCover = $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?");
+        foreach ($products as $p) {
+            $sku = $p['sku'];
+            $base = $baseOf[$sku];
+            $cands = []; // file_id => [nivel, calidad, puntaje, archivo]
+            foreach ($byKey[$sku] ?? [] as $f) {
+                $isImage = str_starts_with($f['mimeType'], 'image/');
+                $cands[$f['id']] = [$isImage ? 4 : 2, $f['quality'], scoreCoverCandidate($f), $f];
+                if ($f['album_id'] !== null) {
+                    $best = $stats['album_of'][$sku] ?? null;
+                    if ($best === null || [$f['quality'], scoreCoverCandidate($f)] > $best[0]) {
+                        $stats['album_of'][$sku] = [[$f['quality'], scoreCoverCandidate($f)], $f['album_id']];
+                    }
+                }
+            }
+            if ($base !== $sku) {
+                foreach ($byKey[$base] ?? [] as $f) {
+                    if (isset($cands[$f['id']]) || !isGenericMediaForSku($base, $f['name'])) continue;
+                    $cands[$f['id']] = [str_starts_with($f['mimeType'], 'image/') ? 3 : 1, $f['quality'], scoreCoverCandidate($f), $f];
+                }
+            }
+
+            $best = null;
+            foreach ($cands as $c) {
+                if ($best === null || array_slice($c, 0, 3) > array_slice($best, 0, 3)) $best = $c;
+            }
+
+            $current = (string) $p['cover_image_url'];
+            $currentId = preg_match('#/d/([\w-]+)#', $current, $m) ? $m[1] : null;
+            if ($best === null) {
+                $stats['without_photo']++;
+                $newCover = null;
+            } elseif (!$force && $currentId !== null && isset($cands[$currentId]) && $cands[$currentId][0] === $best[0]) {
+                continue; // elegida a mano entre las del mismo nivel: se respeta
+            } else {
+                $file = $best[3];
+                $newCover = str_starts_with($file['mimeType'], 'video/')
+                    ? "[VIDEO]https://lh3.googleusercontent.com/d/{$file['id']}"
+                    : lh3Url($file['id']);
+            }
+            if ($newCover === ($current !== '' ? $current : null)) continue;
+            $setCover->execute([$newCover, $p['id']]);
+            $newCover === null ? $stats['covers_cleared']++ : $stats['covers_set']++;
+        }
+        $stats['album_of'] = array_map(fn($a) => $a[1], $stats['album_of']);
+        $stats['ok'] = true;
+        return $stats;
     }
 
     /**
@@ -475,6 +605,9 @@ class DriveIndex
         // Carpeta de primer nivel: la portada de inicio lee albums.is_active
         $db->prepare("UPDATE albums SET is_active = ?, auto_disabled = 0 WHERE drive_id = ?")
            ->execute([$hidden ? 0 : 1, $folderId]);
-        return self::refreshFolderState($db);
+        $stats = self::refreshFolderState($db);
+        // Las fotos que se ocultan/muestran cambian el enlace y las portadas
+        $link = self::relink($db);
+        return $stats + ['covers_set' => $link['covers_set'], 'covers_cleared' => $link['covers_cleared']];
     }
 }
