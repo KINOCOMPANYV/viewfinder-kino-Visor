@@ -452,6 +452,21 @@ function matchFileToProduct(string $filename, array $index): ?array
     return null;
 }
 
+/**
+ * Código de producto que propone un nombre de archivo para los productos "solo Drive", o null.
+ * "C9081BL-2.png" → "C9081BL-2"; "X-1 (2).jpg" → "X-1"; "503B-77-V1.mp4" → "503B-77".
+ * No valen: sin números, nombres de cámara/WhatsApp ("IMG_1234"), fechas, números de 1-2 cifras.
+ */
+function driveCodeFromName(string $filename): ?string
+{
+    $stem = genericMediaStem($filename);
+    $stem = preg_replace('/[-_ ][vf]\d{1,2}$/', '', $stem); // "-V1" video, "-F2" foto
+    if (!preg_match('/^[a-z0-9][a-z0-9:.\-_]{2,39}$/', $stem) || !preg_match('/\d/', $stem)) return null;
+    if (preg_match('/^(img|dsc|dscn|vid|pxl|mvimg|screenshot|captura|photo|image|imagen|foto|video|copia|copy|whatsapp|wa\d)/', $stem)) return null;
+    if (preg_match('/^\d{4}[-_.]?\d{2}[-_.]?\d{2}/', $stem) || preg_match('/^\d{1,2}$/', $stem)) return null;
+    return strtoupper($stem);
+}
+
 /** Nombre de archivo para comparar con la base de una familia: sin extensión ni " (2)" de Drive. */
 function genericMediaStem(string $filename): string
 {
@@ -486,15 +501,16 @@ function recomputeParentSkus(PDO $db): int
 
 /**
  * Recalcula products.archived (= oculto en el portal) desde sus dos causas:
- * el interruptor del admin (is_active) y estar en la hoja maestra (in_sheet).
+ * el interruptor del admin (is_active) y estar en la hoja maestra (in_sheet) o tener foto en Drive
+ * con su código aunque no esté en la hoja (from_drive, lo pone DriveIndex::relink).
  * Las páginas públicas siguen filtrando por archived = 0. Rehace las familias si algo cambió.
  * @return int productos cuyo estado visible cambió
  */
 function refreshProductVisibility(PDO $db): int
 {
     $changed = $db->exec(
-        "UPDATE products SET archived = IF(is_active = 1 AND in_sheet = 1, 0, 1)
-         WHERE archived <> IF(is_active = 1 AND in_sheet = 1, 0, 1)"
+        "UPDATE products SET archived = IF(is_active = 1 AND (in_sheet = 1 OR from_drive = 1), 0, 1)
+         WHERE archived <> IF(is_active = 1 AND (in_sheet = 1 OR from_drive = 1), 0, 1)"
     );
     if ($changed) {
         recomputeParentSkus($db);
@@ -518,7 +534,7 @@ function adminProductFilter(array $f): array
         $params[] = '%' . addcslashes($q, '%_\\') . '%';
     }
     switch ($f['estado'] ?? '') {
-        case 'activos':   $where[] = 'is_active = 1 AND in_sheet = 1'; break;
+        case 'activos':   $where[] = 'is_active = 1 AND (in_sheet = 1 OR from_drive = 1)'; break;
         case 'inactivos': $where[] = 'is_active = 0'; break;
         case 'fuera':     $where[] = 'in_sheet = 0'; break;
         case 'sinfoto':   $where[] = "(cover_image_url IS NULL OR cover_image_url = '')"; break;

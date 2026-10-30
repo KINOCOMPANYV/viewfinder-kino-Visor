@@ -209,57 +209,38 @@ class DriveIndex
      */
     public static function relink(PDO $db, bool $force = false): array
     {
-        $stats = ['ok' => false, 'files' => 0, 'linked' => 0, 'family' => 0, 'unlinked' => [],
+        $stats = ['ok' => false, 'files' => 0, 'linked' => 0, 'family' => 0, 'unlinked' => [], 'drive_products' => 0,
                   'covers_set' => 0, 'covers_cleared' => 0, 'without_photo' => 0, 'album_of' => []];
         if (!self::isReady($db)) return $stats;
+        $productsSql = "SELECT id, sku, parent_sku, cover_image_url, in_sheet, from_drive FROM products ORDER BY archived ASC, id ASC";
         try {
             // Todos los productos (también los ocultos): así la foto de uno desactivado no se
             // le pega a otro código más corto. Los visibles ganan si dos códigos chocan.
-            $products = $db->query("SELECT id, sku, parent_sku, cover_image_url FROM products ORDER BY archived ASC, id ASC")
-                           ->fetchAll(PDO::FETCH_ASSOC);
+            $products = $db->query($productsSql)->fetchAll(PDO::FETCH_ASSOC);
             $files = $db->query(
-                "SELECT file_id AS id, name, mime_type AS mimeType, album_id FROM drive_index
+                "SELECT file_id AS id, name, mime_type AS mimeType, album_id, parent_id FROM drive_index
                  WHERE is_folder = 0 AND is_hidden = 0 AND (mime_type LIKE 'image/%' OR mime_type LIKE 'video/%')
                  ORDER BY name ASC, file_id ASC"
             )->fetchAll(PDO::FETCH_ASSOC);
         } catch (\PDOException $e) {
-            return $stats; // migración 020/021 aún no aplicada
+            return $stats; // migración 020/021/024 aún no aplicada
         }
         $stats['files'] = count($files);
 
-        $productIndex = skuMatchIndex(array_column($products, 'sku'));
-        $parentOf = array_column($products, 'parent_sku', 'sku');
-
-        // Bases de familia que no son un producto ("993" para 993-1…993-4)
-        $baseOf = [];
-        $baseIndex = [];
-        foreach ($products as $p) {
-            $base = productMediaBase($p['sku'], $parentOf);
-            $baseOf[$p['sku']] = $base;
-            if ($base === $p['sku']) continue;
-            foreach (skuNameVariants($base) as $v) {
-                if (!isset($productIndex[$v])) $baseIndex[$v] ??= $base;
-            }
+        // 0) Productos "solo Drive": fotos con nombre de código que no está en la hoja
+        $drive = self::syncDriveProducts($db, $products, $files);
+        $stats['drive_products'] = $drive['visible'];
+        if ($drive['changed']) {
+            $products = $db->query($productsSql)->fetchAll(PDO::FETCH_ASSOC);
         }
 
         // 1) Cada archivo → código (o base de familia)
-        $byKey = [];   // código => [archivo + quality]
-        $linkOf = [];  // file_id => código
-        foreach ($files as $f) {
-            $match = matchFileToProduct($f['name'], $productIndex);
-            $stem = genericMediaStem($f['name']);
-            if ((!$match || $match[1] < 3) && isset($baseIndex[$stem])) {
-                $match = [$baseIndex[$stem], 3]; // "993.jpg": foto de toda la familia
-                $stats['family']++;
-            }
-            if (!$match) {
-                $stats['unlinked'][] = $f['name'];
-                continue;
-            }
-            $f['quality'] = $match[1];
-            $byKey[$match[0]][] = $f;
-            $linkOf[$f['id']] = $match[0];
-        }
+        $m = self::matchFiles($products, $files);
+        $byKey = $m['by_key'];   // código => [archivo + quality]
+        $linkOf = $m['link_of']; // file_id => código
+        $baseOf = $m['base_of'];
+        $stats['family'] = $m['family'];
+        $stats['unlinked'] = array_column($m['unlinked'], 'name');
         $stats['linked'] = count($linkOf);
 
         // 2) Guardar el enlace (lo leen la galería, las miniaturas y las listas "sin código")
@@ -328,6 +309,130 @@ class DriveIndex
         $stats['album_of'] = array_map(fn($a) => $a[1], $stats['album_of']);
         $stats['ok'] = true;
         return $stats;
+    }
+
+    /**
+     * Enlaza archivos con códigos (regla única matchFileToProduct + fotos genéricas de familia).
+     * @return array{by_key: array, link_of: array, base_of: array, unlinked: array, family: int}
+     */
+    private static function matchFiles(array $products, array $files): array
+    {
+        $productIndex = skuMatchIndex(array_column($products, 'sku'));
+        $parentOf = array_column($products, 'parent_sku', 'sku');
+
+        // Bases de familia que no son un producto ("993" para 993-1…993-4)
+        $baseOf = [];
+        $baseIndex = [];
+        foreach ($products as $p) {
+            $base = productMediaBase($p['sku'], $parentOf);
+            $baseOf[$p['sku']] = $base;
+            if ($base === $p['sku']) continue;
+            foreach (skuNameVariants($base) as $v) {
+                if (!isset($productIndex[$v])) $baseIndex[$v] ??= $base;
+            }
+        }
+
+        $out = ['by_key' => [], 'link_of' => [], 'base_of' => $baseOf, 'unlinked' => [], 'family' => 0];
+        foreach ($files as $f) {
+            $match = matchFileToProduct($f['name'], $productIndex);
+            $stem = genericMediaStem($f['name']);
+            if ((!$match || $match[1] < 3) && isset($baseIndex[$stem])) {
+                $match = [$baseIndex[$stem], 3]; // "993.jpg": foto de toda la familia
+                $out['family']++;
+            }
+            if (!$match) {
+                $out['unlinked'][] = $f;
+                continue;
+            }
+            $f['quality'] = $match[1];
+            $out['by_key'][$match[0]][] = $f;
+            $out['link_of'][$f['id']] = $match[0];
+        }
+        return $out;
+    }
+
+    /**
+     * Productos "solo Drive" (decisión del dueño, 2026-10-30): si una foto se llama como un código
+     * (driveCodeFromName) que no está en la hoja maestra, se crea el producto (nombre = código,
+     * marca = carpeta de primer nivel) con from_drive = 1 para que salga en el visor. Sin foto ya no
+     * cuenta (from_drive = 0, queda oculto; nunca se borra). No cuentan fotos dentro de carpetas
+     * "DESACTIVADOS". Cuando el código entra a la hoja, la hoja pone los datos.
+     * @return array{changed: bool, visible: int}
+     */
+    private static function syncDriveProducts(PDO $db, array $products, array $files): array
+    {
+        $out = ['changed' => false, 'visible' => 0];
+        $enabled = env('DRIVE_PRODUCTS', '1') !== '0'; // DRIVE_PRODUCTS=0 en Railway lo apaga
+        // Productos reales = los de la hoja (también los que salieron de ella: siguen ocultos)
+        $real = array_values(array_filter($products, fn($p) => !(int) $p['from_drive'] || (int) $p['in_sheet']));
+        $unlinked = self::matchFiles($real, $files)['unlinked'];
+
+        $folders = [];
+        foreach ($db->query("SELECT file_id, name, parent_id FROM drive_index WHERE is_folder = 1")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $folders[$r['file_id']] = $r;
+        }
+        $inDisabledFolder = function (string $folderId) use ($folders): bool {
+            for ($i = 0; isset($folders[$folderId]) && $i < self::MAX_DEPTH; $i++) {
+                if (preg_match('/desactivad|descontinuad/i', $folders[$folderId]['name'])) return true;
+                $folderId = (string) $folders[$folderId]['parent_id'];
+            }
+            return false;
+        };
+
+        // Código de cada archivo; "X-1-A.jpg" va a "X-1" solo si "X-1" también es un código de foto
+        $stems = [];
+        foreach ($enabled ? $unlinked : [] as $f) {
+            // Archivos de diseño (.psd) no se ven en el visor: no crean producto
+            if (str_contains($f['mimeType'], 'photoshop') || $inDisabledFolder((string) $f['parent_id'])) continue;
+            $code = driveCodeFromName($f['name']);
+            if ($code !== null) $stems[$code] ??= $f['album_id'];
+        }
+        $codes = [];
+        foreach ($stems as $code => $album) {
+            $root = preg_replace('/[-_ ][A-Z]{1,2}$/', '', $code);
+            $codes[isset($stems[$root]) ? $root : $code] ??= $album;
+        }
+
+        $brandOf = [];
+        foreach ($db->query("SELECT drive_id, name FROM albums")->fetchAll(PDO::FETCH_ASSOC) as $a) {
+            $brandOf[$a['drive_id']] = mb_substr(trim(preg_replace('/^\d+\s*\.\s*/', '', $a['name'])), 0, 100);
+        }
+
+        $current = [];
+        $existing = [];
+        foreach ($products as $p) {
+            if ((int) $p['from_drive']) $current[$p['sku']] = true;
+            $existing[strtolower($p['sku'])] = true;
+        }
+        $insert = $db->prepare(
+            "INSERT INTO products (sku, name, brand, category, from_drive, in_sheet, archived) VALUES (?, ?, ?, ?, 1, 0, 0)"
+        );
+        $mark = $db->prepare("UPDATE products SET from_drive = 1 WHERE sku = ?");
+        foreach ($codes as $code => $album) {
+            $code = (string) $code;
+            if (!isset($current[$code])) {
+                if (isset($existing[strtolower($code)])) {
+                    $mark->execute([$code]);
+                } else {
+                    $brand = $brandOf[$album] ?? '';
+                    $insert->execute([$code, $code, $brand, $brand]);
+                }
+                $out['changed'] = true;
+            }
+            unset($current[$code]);
+        }
+        // Ya no tienen foto (o entraron a la hoja): dejan de ser "solo Drive"
+        foreach (array_chunk(array_keys($current), 500) as $chunk) {
+            $db->prepare("UPDATE products SET from_drive = 0 WHERE sku IN (" . implode(',', array_fill(0, count($chunk), '?')) . ")")
+               ->execute($chunk);
+            $out['changed'] = true;
+        }
+        if ($out['changed']) {
+            refreshProductVisibility($db);
+            recomputeParentSkus($db); // las variantes nuevas forman familia (-1 = padre)
+        }
+        $out['visible'] = count($codes);
+        return $out;
     }
 
     /**

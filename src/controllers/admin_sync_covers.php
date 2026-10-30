@@ -120,6 +120,7 @@ echo json_encode([
     'ok' => true,
     'assigned' => $assigned,
     'family_files' => $link['family'],
+    'drive_products' => $link['drive_products'],
     'without_photo' => $link['without_photo'],
     'total' => count($products),
     'remaining' => $remaining,
@@ -137,6 +138,7 @@ echo json_encode([
         . ($albumSync['added'] || $albumSync['deactivated']
             ? "📂 Álbumes: {$albumSync['added']} nuevos, {$albumSync['deactivated']} desactivados (ya no están en la carpeta raíz). "
             : '')
+        . ($link['drive_products'] ? "🆕 {$link['drive_products']} producto(s) solo de Drive (foto con código que no está en la hoja). " : '')
         . ($albumsFixed ? "🔁 {$albumsFixed} producto(s) con álbum corregido. " : '')
         . ($coversCleared ? "🧹 {$coversCleared} portada(s) quitadas (foto vieja, oculta o de otro código, y no hay otra). " : '')
         . (count($unmappedFiles) ? '📋 ' . count($unmappedFiles) . ' archivo(s) con nombre que no es un código (descarga la lista). ' : '')
