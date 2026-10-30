@@ -145,7 +145,7 @@
                     <tbody>
                         <?php foreach ($products as $p):
                             $cover = parseStoredCover($p['cover_image_url'], 120);
-                            $visible = $p['is_active'] && $p['in_sheet'];
+                            $visible = $p['is_active'] && ($p['in_sheet'] || $p['from_drive']);
                         ?>
                             <tr data-id="<?= (int) $p['id'] ?>" class="<?= $visible ? '' : 'is-off' ?>">
                                 <td class="c-check"><input type="checkbox" class="row-check" value="<?= (int) $p['id'] ?>" onchange="updateBulk()"></td>
@@ -158,7 +158,7 @@
                                 </td>
                                 <td class="c-sku">
                                     <a href="/producto/<?= urlencode($p['sku']) ?>" target="_blank" style="color:var(--color-primary); font-weight:600; font-family:monospace;"><?= e($p['sku']) ?></a>
-                                    <?php if (!$p['in_sheet']): ?><div class="tag-out">No está en la hoja</div><?php endif; ?>
+                                    <?php if (!$p['in_sheet']): ?><div class="tag-out"><?= $p['from_drive'] ? 'Solo Drive (falta en la hoja)' : 'No está en la hoja' ?></div><?php endif; ?>
                                 </td>
                                 <td class="c-name">
                                     <?= e($p['name']) ?>

@@ -89,7 +89,7 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
   DESCRIPTION, BRAND, MATERIAL DE CAJA, MATERIAL PULSERA, STATUS/estado (también en español). Se guarda tal cual.
 - El sync completo marca `in_sheet = 0` lo que ya no está en la hoja (no borra). Si iba a ocultar más de la mitad, pide confirmar.
 - **Activar/desactivar es solo del admin** (`is_active`); la hoja nunca lo cambia. No hay borrado de productos.
-- `refreshProductVisibility()` (helpers) recalcula `archived = NOT (is_active AND in_sheet)`; todas las páginas públicas
+- `refreshProductVisibility()` (helpers) recalcula `archived = NOT (is_active AND (in_sheet OR from_drive))`; todas las páginas públicas
   filtran por `archived = 0`. La ficha de un producto oculto da 404 (salvo al admin).
 
 ## Carpetas: ocultar y portada
@@ -132,6 +132,10 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
    ("993.jpg", "M8363 (2).jpg") → `matched_sku` = esa base (foto de toda la familia). Se guarda en `drive_index.matched_sku`.
 2. Portada de cada producto: foto propia > foto de la familia > video propio > video de la familia > vacía.
    Se respeta una elegida a mano del mismo nivel; se quitan las viejas (otra raíz, otro código, ocultas, borradas).
+   Antes del paso 1: **productos "solo Drive"** (migración 024, `from_drive`): una foto cuyo nombre es un código
+   (`driveCodeFromName`) que no está en la hoja crea el producto (nombre = código, marca = carpeta de primer nivel).
+   "X-1-A.jpg" va a "X-1" si también hay "X-1.jpg"; "-V1"/"-F2" se quitan. No cuentan `IMG_…`, WhatsApp, `.psd`
+   ni fotos en carpetas "DESACTIVADOS". Sin foto → `from_drive = 0` (oculto, no se borra). `DRIVE_PRODUCTS=0` lo apaga.
 3. Se llama tras: sync de portadas, ocultar/mostrar carpeta, subir/borrar en Media, sync de la hoja, webhook y activar/desactivar.
 - Lo leen: galería (`filesForSku`), `/api/covers/batch`, miniaturas de la ficha, Admin → Media y "¿Por qué no sale la foto?".
 - Tarjeta (inicio y búsqueda): si el padre no tiene foto, usa la portada de una variante.

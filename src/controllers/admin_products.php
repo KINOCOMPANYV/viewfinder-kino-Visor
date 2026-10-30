@@ -22,7 +22,7 @@ $page = min($page, $totalPages);
 
 $stmt = $db->prepare(
     "SELECT id, sku, name, brand, color, category, price_suggested, stock, cover_image_url,
-            is_active, in_sheet, sheet_status
+            is_active, in_sheet, from_drive, sheet_status
      FROM products WHERE {$where}
      ORDER BY in_sheet DESC, sheet_row ASC, sku ASC LIMIT {$perPage} OFFSET " . (($page - 1) * $perPage)
 );
@@ -31,7 +31,7 @@ $products = $stmt->fetchAll();
 
 $summary = $db->query(
     "SELECT COUNT(*) AS total,
-            SUM(is_active = 1 AND in_sheet = 1) AS visibles,
+            SUM(is_active = 1 AND (in_sheet = 1 OR from_drive = 1)) AS visibles,
             SUM(is_active = 0) AS inactivos,
             SUM(in_sheet = 0) AS fuera
      FROM products"
