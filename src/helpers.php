@@ -948,3 +948,19 @@ function whatsappShareHref(string $title, string $url): string
 {
     return 'https://wa.me/?text=' . rawurlencode("*{$title}*\n{$url}");
 }
+
+/**
+ * Botones "WhatsApp" + "Descargar" de un archivo (tarjetas y carpetas). Los maneja assets/js/media_actions.js.
+ * $url = página a la que lleva el enlace compartido (ficha del producto). Al hacer clic se usa la foto que
+ * muestra la tarjeta en ese momento (portada cargada después por JS, variante elegida); $fileId es el respaldo.
+ */
+function mediaActionButtons(string $fileId, string $fileName, string $title, string $url): string
+{
+    $data = 'data-file-id="' . e($fileId) . '" data-name="' . e($fileName) . '" data-title="' . e($title) . '" data-url="' . e($url) . '"';
+    return '<div class="media-actions">'
+        . '<button type="button" class="media-btn media-btn-wa" data-media-action="wa" ' . $data . ' title="Enviar por WhatsApp">'
+        . '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21c5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.8 14.03c-.25.69-1.44 1.32-2.01 1.41-.51.08-1.16.11-1.87-.12-.43-.14-.98-.32-1.69-.63-2.98-1.29-4.93-4.29-5.08-4.49-.15-.2-1.21-1.61-1.21-3.07 0-1.46.77-2.18 1.04-2.48.27-.3.59-.37.79-.37h.57c.18.01.43-.07.67.51.25.6.84 2.06.92 2.21.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.17-.31.39-.45.52-.15.15-.3.31-.13.61.17.3.77 1.27 1.65 2.06 1.14 1.01 2.09 1.33 2.39 1.48.3.15.47.12.64-.07.17-.2.74-.87.94-1.16.2-.3.4-.25.67-.15.27.1 1.73.82 2.03.97.3.15.5.22.57.35.08.12.08.72-.17 1.41z"/></svg>'
+        . '<span>WhatsApp</span></button>'
+        . '<button type="button" class="media-btn media-btn-dl" data-media-action="dl" ' . $data . ' title="Descargar">⬇️<span>Descargar</span></button>'
+        . '</div>';
+}

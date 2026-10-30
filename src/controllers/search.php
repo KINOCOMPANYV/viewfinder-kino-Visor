@@ -495,6 +495,7 @@ if (!empty($pageRoots)) {
                                 <?php endif; ?>
                             </div>
                         </div>
+                        <?= mediaActionButtons((string) driveIdFromUrl($coverUrl), $p['sku'], $p['sku'] . ' — ' . $p['name'], '/producto/' . rawurlencode($p['sku'])) ?>
                         <!-- Checkbox FUERA de la imagen -->
                         <label class="search-check-footer" style="border-top: 1px solid var(--color-border); margin-top: auto; border-radius: 0 0 var(--radius) var(--radius);">
                             <input type="checkbox" class="search-card-check" 
@@ -753,6 +754,7 @@ if (!empty($pageRoots)) {
             card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
             thumbEl.style.boxShadow = 'var(--glow-accent)';
             if (skuText) skuText.textContent = skuLabel;
+            if (window.KinoMedia) KinoMedia.retarget(card, skuLabel, '/producto/' + skuEnc);
 
             function setMain(url) {
                 const mainImg = mainImgContainer.querySelector('img');
@@ -833,6 +835,7 @@ if (!empty($pageRoots)) {
             });
         });
     </script>
+    <script src="/assets/js/media_actions.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/category-filters.js?v=<?= APP_VERSION ?>"></script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>

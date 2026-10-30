@@ -45,7 +45,11 @@
             <button class="lightbox-btn lightbox-prev" aria-label="Anterior">‹</button>
             <div class="lightbox-stage"><img class="lightbox-img" alt=""></div>
             <button class="lightbox-btn lightbox-next" aria-label="Siguiente">›</button>
-            <div class="lightbox-bar"><span class="lightbox-name"></span><span class="lightbox-count"></span></div>`;
+            <div class="lightbox-bar"><span class="lightbox-name"></span><span class="lightbox-count"></span></div>
+            <div class="lightbox-actions">
+                <button type="button" class="media-btn media-btn-wa" data-media-action="wa">WhatsApp</button>
+                <button type="button" class="media-btn media-btn-dl" data-media-action="dl">⬇️ Descargar</button>
+            </div>`;
         document.body.appendChild(root);
 
         const img = root.querySelector('.lightbox-img');
@@ -114,6 +118,15 @@
         }
 
         root.querySelector('.lightbox-name').textContent = item.name || '';
+        // WhatsApp / Descargar de la foto que se está viendo (los maneja media_actions.js)
+        const share = window.LIGHTBOX_SHARE || {};
+        root.querySelectorAll('.lightbox-actions [data-media-action]').forEach((b) => {
+            b.dataset.fileId = item.id || '';
+            b.dataset.name = item.name || '';
+            b.dataset.title = share.title || document.title;
+            b.dataset.url = share.url || location.href;
+            b.hidden = !item.id;
+        });
         root.querySelector('.lightbox-count').textContent = items.length > 1 ? `${index + 1} / ${items.length}` : '';
         root.classList.toggle('single', items.length < 2);
 

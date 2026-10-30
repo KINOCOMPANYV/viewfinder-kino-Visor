@@ -149,7 +149,11 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - `og:image` = `/og/{fileId}.jpg` (propio dominio): baja la foto de lh3 una vez, la deja cuadrada de 600 px con fondo
   blanco, JPEG ≤ 250 KB, y la guarda en `storage/og_cache/`. Solo archivos de `drive_index` no ocultos. Si lh3 falla, redirige a lh3.
 - Botón "Compartir por WhatsApp" (`templates/partials/share_whatsapp.php`) en ficha y carpeta: abre `wa.me` con título + enlace.
-- Enviar fotos (tarjetas, galería, foto principal): en el celular manda los archivos con el código, nombre y enlace como pie de foto.
+- **WhatsApp + Descargar siempre visibles** en cada foto: tarjetas de inicio y búsqueda, tarjetas de carpeta, foto principal
+  de la ficha y visor grande. Marcado `data-media-action="wa|dl"` (`mediaActionButtons()` en helpers) y un solo script,
+  `assets/js/media_actions.js`: usa la foto que muestra la tarjeta en ese momento. WhatsApp en el celular manda el archivo con
+  código, nombre y enlace como pie; en el computador abre `wa.me` con el enlace. Descargar = `/api/download/{id}`.
+- Galería de la ficha: elegir varias fotos y enviarlas juntas (con el mismo pie de foto).
 
 ## Caché HTTP
 - Assets (`.htaccess`): 1 año `immutable`; se invalida con `?v=APP_VERSION`.

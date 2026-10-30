@@ -227,14 +227,7 @@ $shareDesc = implode(' · ', array_filter([
                             </div>
                         </div>
                         <div class="card-body" style="padding-top:0;">
-                            <div class="card-actions" style="margin-top:0.5rem; justify-content:space-between;">
-                                <a href="/api/download/<?= e($file['id']) ?>" class="btn-ver" style="flex:1;text-align:center;font-size:0.7rem;padding:0.4rem;">
-                                    ⬇️ Original
-                                </a>
-                                <a href="<?= e($file['webViewLink'] ?? '#') ?>" target="_blank" rel="noopener" class="btn-ver" style="font-size:0.7rem;padding:0.4rem;" title="Abrir en Drive">
-                                    🔗 Drive
-                                </a>
-                            </div>
+                            <?= mediaActionButtons($file['id'], $file['name'] ?? '', $rootSku, '/producto/' . rawurlencode($rootSku)) ?>
                         </div>
                     </div>
                 <?php $idx++; endforeach; ?>
@@ -268,6 +261,7 @@ $shareDesc = implode(' · ', array_filter([
 
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
+    <script src="/assets/js/media_actions.js?v=<?= APP_VERSION ?>"></script>
     <script>
         function previewVariant(thumbEl, skuEnc, skuLabel) {
             const card = thumbEl.closest('.parent-card');
@@ -294,6 +288,7 @@ $shareDesc = implode(' · ', array_filter([
 
             const skuText = card.querySelector('.dynamic-card-sku');
             if (skuText) skuText.textContent = skuLabel;
+            if (window.KinoMedia) KinoMedia.retarget(card, skuLabel, '/producto/' + skuEnc);
 
             card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
             thumbEl.style.boxShadow = 'var(--glow-accent)';

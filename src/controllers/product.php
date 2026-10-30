@@ -191,6 +191,7 @@ foreach ($variants as &$v) {
 }
 unset($v);
 ?>
+<?php $serverCoverId = driveIdFromUrl($serverCover); ?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -215,7 +216,7 @@ unset($v);
         'description' => $shareDesc,
         'url' => $shareUrl,
         'type' => 'product',
-        'image_id' => driveIdFromUrl($serverCover) ?? driveIdFromUrl($product['cover_image_url'] ?? ''),
+        'image_id' => $serverCoverId ?? driveIdFromUrl($product['cover_image_url'] ?? ''),
     ]);
     ?>
     <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
@@ -271,10 +272,10 @@ unset($v);
                     </div>
                     <div class="main-image-info" id="mainImageInfo">
                         <span class="main-image-name" id="mainImageName"></span>
-                        <button class="main-image-download" id="mainImageDownload" onclick="downloadMainImage()" style="display:none;">
+                        <button class="main-image-download" id="mainImageDownload" onclick="downloadMainImage()"<?= $serverCoverId ? '' : ' style="display:none;"' ?>>
                             ⬇️ Descargar imagen
                         </button>
-                        <button class="main-image-wa" id="mainImageWaShare" onclick="shareMainImageWa()" style="display:none;">
+                        <button class="main-image-wa" id="mainImageWaShare" onclick="shareMainImageWa()">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                             WhatsApp
                         </button>
@@ -419,11 +420,14 @@ unset($v);
     </footer>
 
     <script src="/assets/js/lightbox.js?v=<?= APP_VERSION ?>"></script>
+    <script src="/assets/js/media_actions.js?v=<?= APP_VERSION ?>"></script>
     <script>
         const SKU = '<?= e($product['sku']) ?>';
         const SEARCH_SKU = '<?= e($originalSku) ?>'; // SKU original para búsqueda bidireccional
         const PRODUCT_NAME = '<?= e(addslashes($product['name'])) ?>';
         const SHARE_URL = <?= json_encode($shareUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?>;
+        // Botones WhatsApp/Descargar del visor grande
+        window.LIGHTBOX_SHARE = { title: <?= json_encode($shareTitle, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>, url: SHARE_URL };
         const PRODUCT_ID = <?= intval($product['id']) ?>;
         const IS_ADMIN = <?= isAdminLoggedIn() ? 'true' : 'false' ?>;
         const IS_VARIANT = <?= $isVariant ? 'true' : 'false' ?>;
@@ -556,7 +560,11 @@ unset($v);
                 container.innerHTML = '';
                 container.appendChild(imgEl);
                 requestAnimationFrame(() => imgEl.style.opacity = '1');
-                // Update tracking vars and info bar
+                // Update tracking vars and info bar (portada guardada: el id va en la URL de lh3)
+                if (!fileId) {
+                    const m = String(url).match(/\/d\/([A-Za-z0-9_-]{10,})/);
+                    fileId = m ? m[1] : null;
+                }
                 if (fileId) {
                     currentMainFileId = fileId;
                     currentMainFileName = fileName || '';
@@ -634,7 +642,9 @@ unset($v);
                     </div>`;
                 // Update info bar
                 document.getElementById('mainImageName').textContent = f.name;
-                document.getElementById('mainImageDownload').style.display = 'none';
+                currentMainFileId = f.id;
+                currentMainFileName = f.name || '';
+                document.getElementById('mainImageDownload').style.display = '';
             } else {
                 const url = f.thumbnailLink
                     ? f.thumbnailLink.replace(/=s\d+/, '=s600')
@@ -1006,7 +1016,7 @@ unset($v);
 
         // Init
         loadMedia();
-        let currentMainFileId = null;
+        let currentMainFileId = <?= json_encode($serverCoverId) ?>;
         let currentMainFileName = '';
 
         // === Botón volver dinámico ===
@@ -1042,7 +1052,11 @@ unset($v);
 
         // === Compartir imagen principal por WhatsApp ===
         async function shareMainImageWa() {
-            if (!currentMainFileId) return;
+            if (!currentMainFileId) {
+                // Sin foto todavía: se manda el enlace (WhatsApp arma la vista previa)
+                window.open('https://wa.me/?text=' + encodeURIComponent('*' + SKU + ' — ' + PRODUCT_NAME + '*\n' + SHARE_URL), '_blank');
+                return;
+            }
             const imgUrl = 'https://lh3.googleusercontent.com/d/' + currentMainFileId + '=s1200';
             const productUrl = SHARE_URL;
             const text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n🔗 Ver producto: ' + productUrl;
