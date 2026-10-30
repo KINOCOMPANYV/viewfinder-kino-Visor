@@ -1,21 +1,19 @@
 <?php
 /**
- * Admin Sync Covers — Auto-asignar portadas y álbumes a productos.
- * POST /admin/media/sync-covers
+ * Admin Sync Covers — Índice de Drive + auto-asignar portadas y álbumes.
+ * POST /admin/media/sync-covers   ·   GET /api/cron/sync-covers?token=CRON_SECRET
  *
- * ESTRATEGIA DIRECTA (v2):
- *   1) Obtener todos los álbumes (carpetas de primer nivel en Drive)
- *   2) Para cada álbum, listar TODOS sus archivos (incluida recursión en subcarpetas)
- *   3) Matchear archivos con productos por SKU
- *   4) Asignar cover_image_url Y album_id directamente
- *
- * Esta estrategia es 100% confiable porque no depende del campo "parents"
- * de la API de Google Drive, sino que recorre cada carpeta conocida.
+ * ESTRATEGIA (v3, índice local):
+ *   1) DriveIndex::sync() recorre la carpeta raíz completa y la guarda en drive_index
+ *      (pocas llamadas a Drive; hace públicos los archivos nuevos)
+ *   2) Matchear los archivos del índice con productos por SKU (en memoria)
+ *   3) Asignar cover_image_url Y album_id
+ * Las páginas públicas leen drive_index, así que este es el ÚNICO lugar que recorre Drive.
  */
-require_once __DIR__ . '/../services/GoogleDriveService.php';
+require_once __DIR__ . '/../services/DriveIndex.php';
 
 header('Content-Type: application/json');
-set_time_limit(300);
+set_time_limit(600);
 
 $db = getDB();
 
@@ -50,6 +48,15 @@ if (empty($rootFolderId)) {
 }
 
 // ============================================================
+// 0) Actualizar el índice local de Drive
+// ============================================================
+$indexStats = DriveIndex::sync($db, $drive, $rootFolderId);
+if (!$indexStats['ok']) {
+    echo json_encode(['ok' => false, 'error' => $indexStats['error'], 'index' => $indexStats]);
+    exit;
+}
+
+// ============================================================
 // 1) Cargar TODOS los productos para el índice de coincidencia
 // ============================================================
 $products = $db->query(
@@ -66,265 +73,179 @@ if (empty($products)) {
     exit;
 }
 
-// Construir índice de productos por SKU (limpio, sin extensión y sin prefijo)
+// Regla única: la foto se enlaza SOLO si su nombre es el código del producto
+// ("X6071.jpg") o empieza por el código seguido de un separador ("X6071-A.jpg",
+// "X6071 (2).jpg"). Es la misma regla de la galería y la búsqueda
+// (fileNameStartsWithSku). Lo que no cumple queda en la lista "sin código".
+// Claves: el SKU tal cual y sus otras escrituras (skuNameVariants): "M:8392-1" ↔ "M8392-1.jpg" / "M-8392-1.jpg".
 $productIndex = [];
 foreach ($products as $prod) {
-    $sku = trim($prod['sku']);
-    // Indexar el SKU original (limpio sin extensión)
-    $skuClean = preg_replace('/\.\w{2,4}$/i', '', $sku);
-    $skuLower = strtolower($skuClean);
-    
-    if (!isset($productIndex[$skuLower])) {
-        $productIndex[$skuLower] = $prod;
-    }
-    
-    // También indexar con extensión por si acaso
-    $skuWithExt = strtolower($sku);
-    if ($skuWithExt !== $skuLower && !isset($productIndex[$skuWithExt])) {
-        $productIndex[$skuWithExt] = $prod;
-    }
-    
-    // También indexar el SKU raíz (sin sufijos de color/variante)
-    $rootSku = strtolower(extractRootSku($skuClean));
-    if ($rootSku !== $skuLower && !isset($productIndex[$rootSku])) {
-        $productIndex[$rootSku] = $prod;
-    }
-    
-    // También indexar sin prefijo de marca (ej: KNM-8845 → 8845)
-    $noPrefijo = strtolower(extractSkuWithoutPrefix($skuClean));
-    if ($noPrefijo !== $skuLower && !isset($productIndex[$noPrefijo])) {
-        $productIndex[$noPrefijo] = $prod;
-    }
-    
-    // También indexar sin espacios
-    $noSpace = str_replace(' ', '', $skuLower);
-    if ($noSpace !== $skuLower && !isset($productIndex[$noSpace])) {
-        $productIndex[$noSpace] = $prod;
+    $sku = cleanSkuDisplay(trim($prod['sku']));
+    $productIndex[strtolower($sku)] ??= $prod;
+}
+foreach ($products as $prod) {
+    foreach (skuNameVariants(cleanSkuDisplay(trim($prod['sku']))) as $variant) {
+        $productIndex[$variant] ??= $prod;
     }
 }
-
-// Ordenar el índice por longitud de SKU descendente
-// Esto garantiza que el match más específico (más largo) gane sobre prefijos cortos.
-// Ej: "839-5V1" debe matchear antes que "839-5".
-uksort($productIndex, function ($a, $b) {
-    return strlen($b) - strlen($a);
-});
+unset($productIndex['']);
 
 // ============================================================
-// 2) Obtener todos los álbumes (carpetas de primer nivel)
+// 2) Álbumes = carpetas de primer nivel de la raíz actual (sin "_INDICE"/"PORTADAS").
+//    Los de una raíz anterior se desactivan; el álbum de un producto que apunte
+//    a uno de esos se recalcula.
 // ============================================================
-$albums = $db->query("SELECT drive_id, name FROM albums WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
-
-if (empty($albums)) {
-    // Si no hay álbumes, sincronizar desde Drive primero
-    $rootResult = $drive->listFiles($rootFolderId);
-    foreach ($rootResult['files'] as $item) {
-        if (($item['mimeType'] ?? '') === 'application/vnd.google-apps.folder') {
-            $check = $db->prepare("SELECT drive_id FROM albums WHERE drive_id = ?");
-            $check->execute([$item['id']]);
-            if (!$check->fetch()) {
-                $ins = $db->prepare("INSERT INTO albums (drive_id, name) VALUES (?, ?)");
-                $ins->execute([$item['id'], $item['name']]);
-            }
-        }
-    }
-    $albums = $db->query("SELECT drive_id, name FROM albums WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
-}
-
-// La raíz no se agrega como álbum para evitar duplicar el procesamiento recursivo de todas las subcarpetas.
+$albumSync = DriveIndex::syncAlbums($db, $rootFolderId);
+$validAlbumSet = array_flip($albumSync['album_ids']);
+// Sin álbumes válidos (raíz equivocada o vacía) no se toca el álbum de ningún producto
+$albumsKnown = !empty($validAlbumSet);
+$activeAlbumSet = array_flip($db->query("SELECT drive_id FROM albums WHERE is_active = 1")->fetchAll(PDO::FETCH_COLUMN));
+// Carpetas ocultas en el admin + foto al azar de cada carpeta
+$folderState = DriveIndex::refreshFolderState($db);
 
 // ============================================================
-// 3) Buscar archivos sueltos en la carpeta raíz
+// 3) Archivos media del índice (orden estable para que los empates no cambien)
 // ============================================================
-$rootFilesOnly = [];
-try {
-    $rootResult = $drive->listFiles($rootFolderId);
-    $items = $rootResult['files'] ?? [];
-    foreach ($items as $item) {
-        $mime = $item['mimeType'] ?? '';
-        if (str_starts_with($mime, 'image/') || str_starts_with($mime, 'video/')) {
-            $rootFilesOnly[] = $item;
-        }
-    }
-} catch (Exception $e) {}
-
-if (!empty($rootFilesOnly)) {
-    // Simulamos que la raíz es un álbum más, pero pasamos los archivos ya listados
-    // para no hacer recursión en subcarpetas de la raíz (que ya son los demás álbumes).
-    $albums[] = [
-        'drive_id' => $rootFolderId,
-        'name' => 'Raíz (Archivos sueltos)',
-        '_files' => $rootFilesOnly
-    ];
-}
+$mediaFiles = $db->query(
+    "SELECT file_id AS id, name, mime_type AS mimeType, album_id FROM drive_index
+     WHERE is_folder = 0 AND is_hidden = 0 AND (mime_type LIKE 'image/%' OR mime_type LIKE 'video/%')
+     ORDER BY name ASC, file_id ASC"
+)->fetchAll(PDO::FETCH_ASSOC);
 
 // ============================================================
-// 4) Para cada álbum, listar archivos y matchear con productos
+// 4) Matchear archivos con productos
 // ============================================================
 // El puntaje de candidatos a portada vive en scoreCoverCandidate() (src/helpers.php):
 // imagen siempre gana a video, y se prefieren nombres "principal/cover/01/-1/f1".
 
 /**
- * Matchea un archivo con un producto del índice.
- * Retorna el SKU del producto que matchea, o null.
+ * Producto cuyo código es el nombre del archivo (o su inicio + separador).
+ * Retorna [clave, calidad] o null. Calidad: 3 = nombre igual al código, 2 = código + sufijo.
+ * Gana el código más largo: "839-5-A.jpg" es de "839-5" aunque exista "839".
  */
-function matchFileToProduct(array $file, array &$productIndex): ?string
+function matchFileToProduct(array $file, array &$productIndex): ?array
 {
-    $baseName = strtolower(pathinfo($file['name'] ?? '', PATHINFO_FILENAME));
-    $noSpaceName = str_replace(' ', '', $baseName);
-    $noPrefixName = strtolower(extractSkuWithoutPrefix($baseName));
-    
-    $variations = array_unique([$baseName, $noSpaceName, $noPrefixName]);
-
-    // Match exacto
-    foreach ($variations as $v) {
-        if (isset($productIndex[$v])) {
-            return $v;
-        }
+    $name = strtolower(trim(pathinfo($file['name'] ?? '', PATHINFO_FILENAME)));
+    for ($len = strlen($name); $len > 0; $len--) {
+        $prefix = substr($name, 0, $len);
+        if (!isset($productIndex[$prefix])) continue;
+        if ($len === strlen($name)) return [$prefix, 3];
+        if (!ctype_alnum($name[$len])) return [$prefix, 2];
     }
-    
-    // Match por prefijo: buscar si algún SKU del índice es prefijo del nombre del archivo
-    foreach ($variations as $v) {
-        foreach ($productIndex as $skuKey => $prod) {
-            if (strpos($v, $skuKey) === 0) {
-                // Verificar que el siguiente carácter no sea un dígito (evitar 123-1 -> 123-10)
-                $nextPos = strlen($skuKey);
-                if ($nextPos >= strlen($v)) {
-                    return $skuKey; // Match exacto con nombre completo
-                }
-                $nextChar = $v[$nextPos];
-                if (!ctype_digit($nextChar)) {
-                    return $skuKey;
-                }
-            }
-        }
-    }
-    
     return null;
+}
+
+/** ¿El candidato $a es mejor que $b? Calidad, luego puntaje de portada; empate → se queda el primero (orden estable). */
+function betterCandidate(array $a, ?array $b): bool
+{
+    return $b === null || [$a['quality'], $a['score']] > [$b['quality'], $b['score']];
 }
 
 $assigned = 0;
 $assignedVideos = 0;
-$albumsProcessed = 0;
 $totalDriveFiles = 0;
 $errors = [];
 $unmappedFiles = []; // Track files that matched no products
-$fileIdsToPublish = [];
-$updatesQueue = []; // id => ['url' => ..., 'album_id' => ...]
-$candidates = []; // prodId => ['file'=>..., 'album_id'=>..., 'score'=>..., 'needs_cover'=>..., 'needs_album'=>...]
+$coverCand = []; // prodId => mejor archivo para portada (cualquier carpeta)
+$albumCand = []; // prodId => mejor archivo dentro de un álbum (define la marca)
+$prodById = [];
+$fileOwner = []; // file_id => id del producto (para la lista "sin código" y limpiar portadas ajenas)
 
-foreach ($albums as $album) {
-    try {
-        if (isset($album['_files'])) {
-            $albumFiles = $album['_files'];
-        } else {
-            // Listar TODOS los archivos dentro de este álbum (incluye subcarpetas)
-            $albumFiles = listAlbumMediaRecursive($drive, $album['drive_id']);
-        }
-        $albumsProcessed++;
-        $totalDriveFiles += count($albumFiles);
+$albumsProcessed = count($activeAlbumSet);
+foreach ($mediaFiles as $file) {
+    $albumId = $file['album_id'] ?? null;
+    if ($albumId !== null && !isset($activeAlbumSet[$albumId])) {
+        continue; // álbum desactivado o carpeta auxiliar ("_INDICE")
+    }
+    $totalDriveFiles++;
 
-        foreach ($albumFiles as $file) {
-            $isMedia = str_starts_with($file['mimeType'] ?? '', 'image/') || str_starts_with($file['mimeType'] ?? '', 'video/');
-            if (!$isMedia) continue;
+    $match = matchFileToProduct($file, $productIndex);
+    if (!$match) {
+        $unmappedFiles[] = $file['name'];
+        continue;
+    }
 
-            $matchedSku = matchFileToProduct($file, $productIndex);
-            if (!$matchedSku) {
-                $unmappedFiles[] = $file['name'];
-                continue;
-            }
+    $prod = $productIndex[$match[0]];
+    $fileOwner[$file['id']] = $prod['id'];
+    $prodId = $prod['id'];
+    $prodById[$prodId] = $prod;
 
-            $prod = $productIndex[$matchedSku];
-            $prodId = $prod['id'];
-
-            // Solo asignar portada si el producto no tiene una (o si es modo forzado)
-            $needsCover = $forceReassign || empty($prod['cover_image_url']);
-            $needsAlbum = $forceReassign || empty($prod['album_id']);
-
-            if (!$needsCover && !$needsAlbum) continue;
-
-            // Guardar el MEJOR candidato por producto en vez del primero que aparezca:
-            // una imagen siempre gana a un video (antes el primer match podía ser un
-            // video y la portada quedaba siendo el primer cuadro = logo de la marca).
-            $score = scoreCoverCandidate($file);
-            if (!isset($candidates[$prodId]) || $score > $candidates[$prodId]['score']) {
-                $candidates[$prodId] = [
-                    'file' => $file,
-                    'album_id' => $album['drive_id'],
-                    'score' => $score,
-                    'needs_cover' => $needsCover,
-                    'needs_album' => $needsAlbum,
-                ];
-            }
-        }
-    } catch (Exception $e) {
-        $errors[] = "Álbum {$album['name']}: {$e->getMessage()}";
+    // Guardar el MEJOR candidato por producto: primero la calidad del match (exacto
+    // gana a flojo), luego el puntaje (una imagen siempre gana a un video).
+    $cand = ['file' => $file, 'album_id' => $albumId, 'quality' => $match[1], 'score' => scoreCoverCandidate($file)];
+    if (betterCandidate($cand, $coverCand[$prodId] ?? null)) {
+        $coverCand[$prodId] = $cand;
+    }
+    // Archivos sueltos en la raíz no definen marca
+    if ($albumId !== null && betterCandidate($cand, $albumCand[$prodId] ?? null)) {
+        $albumCand[$prodId] = $cand;
     }
 }
 
-// Construir la cola de updates a partir del mejor candidato de cada producto
-foreach ($candidates as $prodId => $cand) {
-    $file = $cand['file'];
-    $isVideo = str_starts_with($file['mimeType'] ?? '', 'video/');
+// ============================================================
+// 5) Actualizar DB
+// ============================================================
+// Portada: solo si no tiene (o modo forzado). Álbum: si no tiene, si apunta a un
+// álbum que ya no existe bajo la raíz, o en modo forzado.
+$updateStmt = $db->prepare(
+    "UPDATE products SET cover_image_url = COALESCE(?, cover_image_url), album_id = IF(?, ?, album_id) WHERE id = ?"
+);
+$clearAlbum = $db->prepare("UPDATE products SET album_id = NULL WHERE id = ?");
+$clearCover = $db->prepare("UPDATE products SET cover_image_url = NULL WHERE id = ?");
+$coversCleared = 0;
+$indexedMedia = array_flip(array_column($mediaFiles, 'id'));
+$albumsFixed = 0;
+
+foreach ($products as $prod) {
+    $prodId = $prod['id'];
+    $needsCover = $forceReassign || empty($prod['cover_image_url']);
+    // album_id = raíz (asignado antes a fotos sueltas) no es marca pero no se borra si no hay otra
+    $albumIsValid = !empty($prod['album_id']) && (!$albumsKnown || isset($validAlbumSet[$prod['album_id']]));
+    $albumIsStale = !empty($prod['album_id']) && !$albumIsValid && $prod['album_id'] !== $rootFolderId;
+    $needsAlbum = $forceReassign || !$albumIsValid;
 
     $coverUrl = null;
-    if ($cand['needs_cover']) {
-        $coverUrl = $isVideo
-            ? "[VIDEO]https://lh3.googleusercontent.com/d/{$file['id']}"
-            : "https://lh3.googleusercontent.com/d/{$file['id']}=s400";
-        $fileIdsToPublish[] = $file['id'];
+    if ($needsCover && isset($coverCand[$prodId])) {
+        $file = $coverCand[$prodId]['file'];
+        $isVideo = str_starts_with($file['mimeType'] ?? '', 'video/');
+        $coverUrl = $isVideo ? "[VIDEO]https://lh3.googleusercontent.com/d/{$file['id']}" : lh3Url($file['id']);
         if ($isVideo) $assignedVideos++;
     }
+    $newAlbum = ($needsAlbum && isset($albumCand[$prodId])) ? $albumCand[$prodId]['album_id'] : null;
 
-    $updatesQueue[$prodId] = [
-        'url' => $coverUrl,
-        'album_id' => $cand['album_id'],
-        'id' => $prodId
-    ];
-    $assigned++;
-}
-
-/**
- * Lista todos los archivos media recursivamente dentro de una carpeta.
- */
-function listAlbumMediaRecursive(GoogleDriveService $drive, string $folderId, int $depth = 0, int $maxDepth = 3): array
-{
-    if ($depth >= $maxDepth) return [];
-    
-    $allMedia = [];
-    $result = $drive->listFiles($folderId);
-    $items = $result['files'] ?? [];
-    
-    foreach ($items as $item) {
-        $mime = $item['mimeType'] ?? '';
-        if ($mime === 'application/vnd.google-apps.folder') {
-            $subFiles = listAlbumMediaRecursive($drive, $item['id'], $depth + 1, $maxDepth);
-            $allMedia = array_merge($allMedia, $subFiles);
-        } elseif (str_starts_with($mime, 'image/') || str_starts_with($mime, 'video/')) {
-            $allMedia[] = $item;
-        }
+    // Forzado: si la portada guardada es una foto del índice que NO es de este código
+    // (regla vieja más floja), se quita. Portadas fuera del índice no se tocan.
+    if ($forceReassign && $coverUrl === null && !empty($prod['cover_image_url'])
+        && preg_match('#/d/([\w-]+)#', $prod['cover_image_url'], $cm)
+        && isset($indexedMedia[$cm[1]]) && ($fileOwner[$cm[1]] ?? null) !== $prodId) {
+        $clearCover->execute([$prodId]);
+        $coversCleared++;
     }
-    
-    return $allMedia;
+
+    // En modo forzado se recalcula todo, pero solo cuenta/escribe lo que cambia
+    if ($coverUrl === $prod['cover_image_url']) $coverUrl = null;
+    if ($newAlbum === $prod['album_id']) $newAlbum = null;
+
+    if ($coverUrl !== null || $newAlbum !== null) {
+        $updateStmt->execute([$coverUrl, $newAlbum !== null ? 1 : 0, $newAlbum, $prodId]);
+        $assigned++;
+        if ($newAlbum !== null) $albumsFixed++;
+    } elseif ($albumIsStale && !isset($albumCand[$prodId])) {
+        // Apunta a un álbum de una raíz anterior y no hay foto en la actual
+        $clearAlbum->execute([$prodId]);
+        $albumsFixed++;
+    }
 }
 
-// ============================================================
-// 4) Hacer públicos en batch
-// ============================================================
-if (!empty($fileIdsToPublish)) {
-    $drive->makePublicBatch($fileIdsToPublish);
+// Guardar a qué código quedó enlazado cada archivo (lista "sin código" del admin)
+$skuById = array_column($products, 'sku', 'id');
+$db->beginTransaction();
+$db->exec("UPDATE drive_index SET matched_sku = NULL WHERE matched_sku IS NOT NULL");
+$setMatch = $db->prepare("UPDATE drive_index SET matched_sku = ? WHERE file_id = ?");
+foreach ($fileOwner as $fileId => $prodId) {
+    $setMatch->execute([$skuById[$prodId], $fileId]);
 }
-
-// ============================================================
-// 5) Actualizar DB en lote
-// ============================================================
-$updateStmt = $db->prepare(
-    "UPDATE products SET cover_image_url = COALESCE(?, cover_image_url), album_id = COALESCE(?, album_id) WHERE id = ?"
-);
-
-foreach ($updatesQueue as $upd) {
-    $updateStmt->execute([$upd['url'], $upd['album_id'], $upd['id']]);
-}
+$db->commit();
 
 // Contar cuántos productos faltan realmente por portada al final
 $productsMissing = $db->query(
@@ -345,14 +266,25 @@ echo json_encode([
     'remaining' => $remaining,
     'albums_processed' => $albumsProcessed,
     'drive_files_indexed' => $totalDriveFiles,
-    'strategy' => 'direct-album-scan',
+    'strategy' => 'drive-index',
+    'index' => $indexStats,
+    'folders' => $folderState,
+    'albums' => ['added' => $albumSync['added'], 'deactivated' => $albumSync['deactivated'], 'products_fixed' => $albumsFixed],
     'errors' => $errors,
     'unmapped_files' => $unmappedFiles,
-    'message' => $assigned > 0
+    'covers_cleared' => $coversCleared,
+    'message' => "🗂️ Índice de Drive: {$indexStats['files']} archivos en {$indexStats['folders']} carpetas"
+        . ($indexStats['made_public'] ? ", {$indexStats['made_public']} hechos públicos" : '') . ". "
+        . ($albumSync['added'] || $albumSync['deactivated']
+            ? "📂 Álbumes: {$albumSync['added']} nuevos, {$albumSync['deactivated']} desactivados (ya no están en la carpeta raíz). "
+            : '')
+        . ($albumsFixed ? "🔁 {$albumsFixed} producto(s) con álbum corregido. " : '')
+        . ($coversCleared ? "🧹 {$coversCleared} portada(s) quitadas por no ser de su código. " : '')
+        . (count($unmappedFiles) ? '📋 ' . count($unmappedFiles) . ' archivo(s) con nombre que no es un código (descarga la lista). ' : '')
+        . ($assigned > 0
         ? "⭐ {$assigned} producto(s) actualizado(s). "
           . "Escaneamos {$albumsProcessed} álbumes con {$totalDriveFiles} archivos en Drive. "
           . ($remaining > 0 ? "Quedan {$remaining} sin asignar." : '¡Todos los productos tienen portada y álbum!')
-        : "No se encontraron coincidencias para " . count($products) . " productos. "
-          . "Escaneamos {$albumsProcessed} álbumes con {$totalDriveFiles} archivos. "
-          . "Verifica que los archivos contengan el código del producto (SKU) en su nombre."
+        : ($remaining == 0 ? '✅ Todo al día: no hubo cambios.' : "No hubo portadas nuevas. {$remaining} producto(s) siguen sin foto o sin álbum: "
+          . "ninguna foto se llama como su código."))
 ]);

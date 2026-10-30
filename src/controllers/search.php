@@ -8,56 +8,17 @@ $isAjax = isset($_GET['ajax']) && $_GET['ajax'] === '1';
 if ($isAjax) {
     ob_start();
 }
-$albumId = trim($_GET['album'] ?? '');
+// Los álbumes ya no se usan: un enlace viejo /buscar?album=ID abre esa carpeta
+if (!empty($_GET['album'])) {
+    redirect('/carpeta/' . rawurlencode($_GET['album']));
+}
 $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 20;
 $offset = ($page - 1) * $perPage;
 
 $db = getDB();
 
-// ============================================================
-// Álbumes para el sidebar de filtros
-// ============================================================
-$sidebarAlbums = [];
-$totalAlbums = 0;
-try {
-    // Self-healing: asegurar que existe la columna is_active en albums heredada de versiones previas
-    try {
-        $db->exec("ALTER TABLE albums ADD COLUMN is_active TINYINT(1) DEFAULT 1");
-    } catch (\PDOException $e) { /* Columna ya existe */ }
-
-    $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
-    $sidebarStmt = $db->prepare(
-        "SELECT drive_id, name, icon_url FROM albums WHERE is_active = 1 ORDER BY CASE WHEN LOWER(name) LIKE '%poedagar%' THEN 0 ELSE 1 END, order_priority DESC, name ASC"
-    );
-    $sidebarStmt->execute();
-    $sidebarAlbums = $sidebarStmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (\PDOException $e) { /* tabla no existe aún */ }
-
-// Verificar si existe la columna album_id
-$hasAlbumId = false;
-try {
-    $db->query("SELECT album_id FROM products LIMIT 1");
-    $hasAlbumId = true;
-} catch (\PDOException $e) { /* columna no existe aún */ }
-
-// Si no existe album_id, ignorar filtro por álbum
-if (!$hasAlbumId) $albumId = '';
-
-// Self-healing: asegurar que existe la columna parent_sku
-try {
-    $db->exec("ALTER TABLE products ADD COLUMN parent_sku VARCHAR(50) DEFAULT NULL");
-    $db->exec("CREATE INDEX idx_parent_sku ON products (parent_sku)");
-} catch (\PDOException $e) { /* Columna ya existe */ }
-
-// Verificar si parent_sku está disponible para usarla en SELECTs
-$hasParentSku = false;
-try {
-    $db->query("SELECT parent_sku FROM products LIMIT 1");
-    $hasParentSku = true;
-} catch (\PDOException $e) { /* columna no disponible */ }
-$selectParentSku = $hasParentSku ? ', parent_sku' : '';
-$selectPParentSku = $hasParentSku ? ', p.parent_sku' : '';
+// album_id y parent_sku están garantizadas por migrations/017_ensure_runtime_columns.sql
 
 // Detectar si es búsqueda multi-código (comas o saltos de línea)
 $isMultiCode = (strpos($q, ',') !== false || strpos($q, "\n") !== false || strpos($q, "\r") !== false);
@@ -81,20 +42,16 @@ if ($isMultiCode && $q !== '') {
 }
 
 if ($q === '' && !$isMultiCode) {
-    // Sin query: mostrar productos del álbum o todos
+    // Sin query: mostrar todos
     $where = "archived = 0";
     $params = [];
-    if ($albumId) {
-        $where .= " AND album_id = ?";
-        $params[] = $albumId;
-    }
 
     $countStmt = $db->prepare("SELECT COUNT(*) FROM products WHERE $where");
     $countStmt->execute($params);
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url{$selectParentSku}
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url, parent_sku
          FROM products WHERE $where
          ORDER BY name ASC"
     );
@@ -121,7 +78,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url{$selectParentSku} 
+        "SELECT sku, name, category, gender, price_suggested, cover_image_url, parent_sku 
          FROM products 
          WHERE archived = 0 AND ($whereOr)
          GROUP BY sku
@@ -133,7 +90,7 @@ if ($q === '' && !$isMultiCode) {
     // Sin paginación para multi-código
     $perPage = max($total, 1);
 } else {
-    // Con query simple: buscar por LIKE extendido (+ albums) y multipalabra
+    // Con query simple: código (sin importar "-", " ", ":", "."), nombre o categoría; multipalabra
     $qCleanForSku = preg_replace('/\.\w{2,4}$/i', '', $q);
     $words = array_filter(preg_split('/\s+/', trim($qCleanForSku)));
     
@@ -147,85 +104,69 @@ if ($q === '' && !$isMultiCode) {
             $wordEscaped = addcslashes($word, '%_');
             $wordLike = "%{$wordEscaped}%";
             
-            // Eliminar guiones para tolerancia en SKU
-            $wordNoDash = str_replace('-', '', $word);
+            // "M8363-3" encuentra "M:8363-3"
+            $wordNoDash = skuSearchNorm($word);
             $wordNoDashEscaped = addcslashes($wordNoDash, '%_');
             $wordLikeNoDash = "%{$wordNoDashEscaped}%";
 
             // Para cada palabra, buscar en los distintos campos
-            $whereSimpleParts[] = "(REPLACE(REPLACE(p.sku, '-', ''), ' ', '') LIKE ? OR p.name LIKE ? OR p.category LIKE ? OR a.name LIKE ?)";
+            $whereSimpleParts[] = "(" . skuSearchSql('p.sku') . " LIKE ? OR p.name LIKE ? OR p.category LIKE ?)";
             $paramsBase[] = $wordLikeNoDash;
-            $paramsBase[] = $wordLike;
             $paramsBase[] = $wordLike;
             $paramsBase[] = $wordLike;
         }
         $whereSimple = "p.archived = 0 AND (" . implode(' AND ', $whereSimpleParts) . ")";
     }
     
-    if ($albumId) {
-        $whereSimple .= " AND p.album_id = ?";
-        $paramsBase[] = $albumId;
-    }
-
     $countStmt = $db->prepare(
-        "SELECT COUNT(DISTINCT p.sku) FROM products p
-         LEFT JOIN albums a ON p.album_id = a.drive_id
-         WHERE $whereSimple"
+        "SELECT COUNT(DISTINCT p.sku) FROM products p WHERE $whereSimple"
     );
     $countStmt->execute($paramsBase);
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url{$selectPParentSku} 
+        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
          FROM products p
-         LEFT JOIN albums a ON p.album_id = a.drive_id
          WHERE $whereSimple
          GROUP BY p.sku
          ORDER BY 
-            CASE WHEN REPLACE(REPLACE(p.sku, '-', ''), ' ', '') = ? THEN 0
-                 WHEN REPLACE(REPLACE(p.sku, '-', ''), ' ', '') LIKE ? THEN 1
+            CASE WHEN " . skuSearchSql('p.sku') . " = ? THEN 0
+                 WHEN " . skuSearchSql('p.sku') . " LIKE ? THEN 1
                  ELSE 2 END,
             p.name ASC"
     );
-    $qCleanEscaped = addcslashes(str_replace(['-', ' '], '', $qCleanForSku), '%_');
+    $qCleanEscaped = addcslashes(skuSearchNorm($qCleanForSku), '%_');
     $startsWith = "{$qCleanEscaped}%";
-    $exactMatch = str_replace(['-', ' '], '', $qCleanForSku);
+    $exactMatch = skuSearchNorm($qCleanForSku);
     
     $finalParams = array_merge($paramsBase, [$exactMatch, $startsWith]);
     $stmt->execute($finalParams);
     $allMatches = $stmt->fetchAll();
 }
 
-// Fetch matched folders (Albums and Subfolders) if single query
+// Carpetas de Drive cuyo nombre coincide (cualquier nivel), desde la copia local (drive_index).
+// La miniatura es una foto al azar de su contenido (cover_file_id). Las ocultas no salen.
 $matchedFolders = [];
 if (!$isMultiCode && $q !== '') {
-    $like = "%{$q}%";
-    
-    // 1. Fetch top-level Albums
-    $albumStmt = $db->prepare("SELECT drive_id as id, name, icon_url FROM albums WHERE is_active = 1 AND name LIKE ? ORDER BY name ASC LIMIT 20");
-    $albumStmt->execute([$like]);
-    $matchedAlbums = $albumStmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // 2. Fetch cached Subfolders from drive_cache
-    $matchedSubfolders = [];
     try {
-        $subStmt = $db->prepare("SELECT file_id as id, file_name as name, thumbnail_link as icon_url FROM drive_cache WHERE mime_type = 'application/vnd.google-apps.folder' AND file_name LIKE ? ORDER BY file_name ASC LIMIT 20");
-        $subStmt->execute([$like]);
-        $matchedSubfolders = $subStmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (\PDOException $e) { /* might not exist yet */ }
-    
-    // Merge and deduplicate by ID
-    $folderMap = [];
-    foreach ($matchedAlbums as $a) $folderMap[$a['id']] = $a;
-    foreach ($matchedSubfolders as $s) $folderMap[$s['id']] = $s;
-    
-    $matchedFolders = array_values($folderMap);
+        $folderStmt = $db->prepare(
+            "SELECT f.file_id AS id, f.name, f.cover_file_id AS thumb_id
+             FROM drive_index f
+             WHERE f.is_folder = 1 AND f.is_hidden = 0 AND f.name LIKE ?
+             ORDER BY f.name ASC LIMIT 20"
+        );
+        $folderStmt->execute(['%' . addcslashes($q, '%_') . '%']);
+        foreach ($folderStmt->fetchAll(PDO::FETCH_ASSOC) as $f) {
+            $f['icon_url'] = $f['thumb_id'] ? lh3Url($f['thumb_id'], 400) : '';
+            $matchedFolders[] = $f;
+        }
+    } catch (\PDOException $e) { /* drive_index aún no existe */ }
 }
 
-// Identificar familias (parents) de todos los matches usando parent_sku / extractRootSku
+// Identificar familias (parents) de todos los matches (familyKey: parent_sku o raíz del SKU)
 $rootsFound = [];
 foreach ($allMatches as $m) {
-    $family = !empty($m['parent_sku']) ? $m['parent_sku'] : extractRootSku($m['sku']);
+    $family = familyKey($m);
     $rootsFound[$family] = true;
 }
 $parentOrder = array_keys($rootsFound);
@@ -254,7 +195,7 @@ if (!empty($pageRoots)) {
     $stmt = $db->prepare(
         "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
          FROM products p
-         WHERE {$whereOr}
+         WHERE p.archived = 0 AND ({$whereOr})
          ORDER BY p.sku ASC"
     );
     $stmt->execute($fetchParams);
@@ -268,7 +209,7 @@ if (!empty($pageRoots)) {
     $searchedNorm = (!$isMultiCode && $q !== '') ? $normCode($q) : '';
 
     foreach ($familyProducts as $p) {
-        $family = !empty($p['parent_sku']) ? $p['parent_sku'] : extractRootSku($p['sku']);
+        $family = familyKey($p);
 
         // Solo procesar si el producto pertenece a una de las familias de esta página
         if (!in_array($family, $pageRoots)) continue;
@@ -338,19 +279,6 @@ if (!empty($pageRoots)) {
         </div>
     </header>
 
-    <?php if ($albumId): 
-        $albumName = $db->prepare("SELECT name FROM albums WHERE drive_id = ?");
-        $albumName->execute([$albumId]);
-        $albumTitle = $albumName->fetchColumn() ?: 'Álbum';
-    ?>
-    <div style="background:var(--color-surface); border-bottom:1px solid var(--color-border); padding: 1.5rem 0;">
-        <div class="container">
-            <h1 style="font-size:1.5rem; margin:0;">📂 <?= e($albumTitle) ?></h1>
-            <p style="color:var(--color-text-muted); font-size:0.9rem; margin-top:0.25rem;">Mostrando productos de esta colección</p>
-        </div>
-    </div>
-    <?php endif; ?>
-
     <section class="container search-layout" style="padding-top:2rem;">
 
         <!-- ===== MAIN: Búsqueda + Resultados ===== -->
@@ -359,9 +287,6 @@ if (!empty($pageRoots)) {
         <div class="search-box" style="max-width:800px; margin: 0 auto 1.5rem auto;">
             <span class="search-icon">🔍</span>
             <form action="/buscar" method="GET" id="searchForm" style="width:100%;">
-                <?php if ($albumId): ?>
-                    <input type="hidden" name="album" value="<?= e($albumId) ?>">
-                <?php endif; ?>
                 <textarea name="q" id="searchInput" rows="1"
                     placeholder="Buscar por SKU, referencia o nombre..."
                     autocomplete="off"><?= e($q) ?></textarea>
@@ -397,11 +322,8 @@ if (!empty($pageRoots)) {
                 <?= $totalParents ?> resultado<?= $totalParents !== 1 ? 's' : '' ?> para "<strong style="color:var(--color-text)">
                     <?= e($q) ?>
                 </strong>"
-                <?php if ($albumId && isset($albumTitle)): ?>
-                    <span style="color:var(--color-primary); font-size:0.82rem;"> · en <?= e($albumTitle) ?></span>
-                <?php endif; ?>
             <?php else: ?>
-                <?= $totalParents ?> colección(es)<?php if ($albumId && isset($albumTitle)): ?> · <span style="color:var(--color-primary)"><?= e($albumTitle) ?></span><?php endif; ?>
+                <?= $totalParents ?> colección(es)
             <?php endif; ?>
         </p>
 
@@ -537,9 +459,7 @@ if (!empty($pageRoots)) {
                                                 // Antes se usaba $familyCover como fallback, pero eso hacía que
                                                 // varias variantes sin portada propia mostraran todas la MISMA
                                                 // foto del padre (fotos repetidas). Igual que en landing.php.
-                                                $childCover = $child['cover_image_url'] ?? '';
-                                                $childIsVideo = str_starts_with($childCover, '[VIDEO]');
-                                                if ($childIsVideo) $childCover = substr($childCover, 7);
+                                                $childCover = parseStoredCover($child['cover_image_url'] ?? '', 150)['url'];
                                             ?>
                                                 <div class="child-thumb" style="cursor:pointer;"
                                                     title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
@@ -583,7 +503,6 @@ if (!empty($pageRoots)) {
                     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                         <?php
                         $params = ['q' => $q, 'page' => $i];
-                        if ($albumId) $params['album'] = $albumId;
                         $url = '/buscar?' . http_build_query($params);
                         ?>
                         <?php if ($i === $page): ?>

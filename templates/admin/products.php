@@ -5,149 +5,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Productos · Viewfinder Admin</title>
-    <style>
-        body {
-            background: #0a0a0f;
-            color: #e8e8f0
-        }
-    </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print"
-        onload="this.media='all'">
+    <style>body{background:#0a0a0f;color:#e8e8f0}</style>
+    <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
-        /* Inline edit */
-        /* Toggle switch */
-        .toggle-switch { position:relative; display:inline-block; width:36px; height:20px; cursor:pointer; }
-        .toggle-switch input { opacity:0; width:0; height:0; }
-        .toggle-slider { position:absolute; inset:0; background:#444; border-radius:20px; transition:0.3s; }
-        .toggle-slider::before { content:''; position:absolute; height:14px; width:14px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.3s; }
-        .toggle-switch input:checked + .toggle-slider { background:var(--color-success, #22c55e); }
-        .toggle-switch input:checked + .toggle-slider::before { transform:translateX(16px); }
-        .editable {
-            cursor: pointer;
-            padding: 0.25rem 0.4rem;
-            border-radius: 4px;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .editable:hover {
-            background: rgba(201, 168, 76, 0.1);
-            outline: 1px dashed rgba(201, 168, 76, 0.4);
-        }
-
-        .editable::after {
-            content: '✏️';
-            font-size: 0.6rem;
-            position: absolute;
-            top: -2px;
-            right: -4px;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .editable:hover::after {
-            opacity: 1;
-        }
-
-        .edit-input {
-            background: var(--color-surface-2);
-            border: 1.5px solid var(--color-primary);
-            color: var(--color-text);
-            padding: 0.3rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-family: var(--font);
-            width: 100%;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.2);
-        }
-
-        .edit-select {
-            background: var(--color-surface-2);
-            border: 1.5px solid var(--color-primary);
-            color: var(--color-text);
-            padding: 0.3rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-family: var(--font);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.2);
-        }
-
-        .saving {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
-        /* Toast */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .toast {
-            padding: 0.7rem 1.2rem;
-            border-radius: var(--radius-sm);
-            color: #fff;
-            font-weight: 600;
-            font-size: 0.8rem;
-            animation: toast-in 0.3s ease, toast-out 0.3s ease 3.7s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            max-width: 320px;
-        }
-
-        .toast.success {
-            background: #27ae60;
-        }
-
-        .toast.error {
-            background: #e74c3c;
-        }
-
-        .toast.info {
-            background: #2980b9;
-        }
-
-        @keyframes toast-in {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes toast-out {
-            from {
-                opacity: 1;
-            }
-
-            to {
-                opacity: 0;
-            }
-        }
-
-        .edit-hint {
-            text-align: center;
-            font-size: 0.75rem;
-            color: var(--color-text-dim);
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            background: rgba(201, 168, 76, 0.05);
-            border-radius: var(--radius-sm);
-            border: 1px dashed rgba(201, 168, 76, 0.2);
+        .prod-filters { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; }
+        .prod-filters .form-input { padding:0.5rem 0.75rem; font-size:0.85rem; width:auto; }
+        .prod-tabs { display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:1rem; }
+        .prod-tabs a { padding:0.35rem 0.8rem; border-radius:999px; font-size:0.8rem; border:1px solid var(--color-border); color:var(--color-text-muted); text-decoration:none; }
+        .prod-tabs a.active, .prod-tabs a:hover { border-color:var(--color-primary); color:var(--color-primary); }
+        .bulk-bar { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;
+            padding:0.6rem 0.9rem; margin-bottom:0.75rem; background:var(--color-surface-2); border:1px solid var(--color-border); border-radius:var(--radius); font-size:0.85rem; }
+        .bulk-bar .muted { color:var(--color-text-muted); }
+        .bulk-bar .link { background:none; border:none; color:var(--color-primary); cursor:pointer; text-decoration:underline; font-size:0.85rem; padding:0; }
+        .prod-thumb { width:44px; height:44px; border-radius:6px; object-fit:cover; background:var(--color-surface-2); display:flex; align-items:center; justify-content:center; }
+        tr.is-off td { opacity:0.55; }
+        tr.is-off td:first-child, tr.is-off td:last-child { opacity:1; }
+        .tag-out { font-size:0.7rem; color:#fbbf24; }
+        .cell-muted { color:var(--color-text-muted); font-size:0.8rem; }
+        .prod-table th, .prod-table td { padding:0.5rem 0.6rem; vertical-align:middle; }
+        .only-mobile { display:none; }
+        /* Móvil: cada fila es una tarjeta (casilla · foto · código/nombre · interruptor) */
+        @media (max-width: 900px) {
+            .prod-filters .form-input { flex:1 1 100%; width:100%; min-width:0 !important; font-size:16px; }
+            .prod-filters .btn { flex:1; min-height:44px; justify-content:center; }
+            .bulk-bar { top:var(--header-h, 56px); }
+            .bulk-bar .bulk-spacer { display:none; }
+            .bulk-bar .btn { flex:1; min-height:44px; justify-content:center; }
+            .bulk-bar #bulkCount { flex-basis:100%; }
+            .prod-tabs a { padding:0.55rem 0.9rem; }
+            .prod-table thead tr { display:flex; align-items:center; gap:0.5rem; }
+            .prod-table thead th { display:none; }
+            .prod-table thead th:first-child { display:block; background:none; }
+            .prod-table thead th:first-child::after { content:' Marcar esta página'; font-size:0.8rem; text-transform:none; letter-spacing:0; font-weight:500; }
+            .prod-table tbody tr { display:grid; grid-template-columns:28px 48px minmax(0,1fr) auto; column-gap:0.6rem; align-items:center;
+                padding:0.6rem 0.5rem; border-top:1px solid var(--color-border); }
+            .prod-table tbody td { padding:0; border:none; }
+            .prod-table .c-check { grid-row:1 / span 2; }
+            .prod-table .c-thumb { grid-row:1 / span 2; }
+            .prod-table .c-sku { grid-column:3; grid-row:1; }
+            .prod-table .c-name { grid-column:3; grid-row:2; font-size:0.85rem; line-height:1.3; }
+            .prod-table .c-active { grid-column:4; grid-row:1 / span 2; }
+            .prod-table .c-meta { display:none; }
+            .prod-table .only-mobile { display:block; margin-top:0.15rem; font-size:0.75rem; }
+            .prod-table input[type=checkbox] { width:22px; height:22px; }
+            .prod-thumb { width:48px; height:48px; }
         }
     </style>
 </head>
@@ -160,110 +62,118 @@
         </div>
     </header>
 
-    <main class="container" style="padding-top:2rem;">
-        <nav class="admin-nav">
-            <a href="/admin">📊 Dashboard</a>
-            <a href="/admin/products" class="active">📦 Productos</a>
-            <a href="/admin/import">📥 Importar Excel</a>
-            <a href="/" target="_blank">🌐 Ver Portal</a>
-        </nav>
+    <main class="container" style="padding-top:2rem; padding-bottom:3rem;">
+        <?php $adminNav = 'products'; include __DIR__ . '/partials/nav.php'; ?>
 
-        <?php if (isset($_SESSION['flash_success'])): ?>
-            <div class="alert alert-success">
-                <?= e($_SESSION['flash_success']) ?>
-            </div>
-            <?php unset($_SESSION['flash_success']); ?>
-        <?php endif; ?>
-        <?php if (isset($_SESSION['flash_error'])): ?>
-            <div class="alert alert-error">
-                <?= e($_SESSION['flash_error']) ?>
-            </div>
-            <?php unset($_SESSION['flash_error']); ?>
-        <?php endif; ?>
-
-        <div
-            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
-            <h1 style="font-size:1.5rem;">Productos <span style="color:var(--color-text-dim); font-size:0.9rem;">(
-                    <?= $total ?>)
-                </span></h1>
-            <form action="/admin/products" method="GET" style="display:flex; gap:0.5rem;">
-                <input type="text" name="q" value="<?= e($q) ?>" placeholder="Buscar SKU o nombre..." class="form-input"
-                    style="width:250px; padding:0.5rem 0.75rem; font-size:0.85rem;">
-                <button type="submit" class="btn btn-sm btn-primary">Buscar</button>
-            </form>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+            <h1 style="font-size:1.5rem;">Productos</h1>
+            <span class="cell-muted">Los datos vienen de la hoja maestra (<a href="/admin/sync" style="color:var(--color-primary);">sincronizar</a>). Aquí solo se activa o desactiva.</span>
         </div>
 
-        <?php if (!empty($products)): ?>
-            <div class="edit-hint">
-                💡 Haz clic en cualquier campo para editarlo. Los cambios se guardan en la BD y en Google Sheets.
+        <?php
+        $baseFilters = array_filter($filters, fn($v) => $v !== '');
+        $tabUrl = fn(string $estado) => '/admin/products?' . http_build_query(array_filter(['estado' => $estado] + $baseFilters, fn($v) => $v !== ''));
+        $tabs = [
+            '' => ['Todos', $summary['total']],
+            'activos' => ['Visibles', $summary['visibles']],
+            'inactivos' => ['Desactivados', $summary['inactivos']],
+            'fuera' => ['Fuera de la hoja', $summary['fuera']],
+            'sinfoto' => ['Sin foto', null],
+        ];
+        ?>
+        <div class="prod-tabs">
+            <?php foreach ($tabs as $key => [$label, $n]): ?>
+                <a href="<?= e($tabUrl($key)) ?>" class="<?= $filters['estado'] === $key ? 'active' : '' ?>">
+                    <?= $label ?><?= $n !== null ? ' (' . number_format((int) $n) . ')' : '' ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+
+        <form action="/admin/products" method="GET" class="prod-filters">
+            <input type="hidden" name="estado" value="<?= e($filters['estado']) ?>">
+            <input type="text" name="q" value="<?= e($filters['q']) ?>" placeholder="Código o nombre..." class="form-input" style="min-width:200px;">
+            <select name="marca" class="form-input" onchange="this.form.submit()">
+                <option value="">Todas las marcas</option>
+                <?php foreach ($brands as $b): ?>
+                    <option value="<?= e($b['brand']) ?>" <?= $filters['marca'] === $b['brand'] ? 'selected' : '' ?>><?= e($b['brand']) ?> (<?= $b['n'] ?>)</option>
+                <?php endforeach; ?>
+            </select>
+            <select name="categoria" class="form-input" onchange="this.form.submit()">
+                <option value="">Todas las categorías</option>
+                <?php foreach ($categories as $c): ?>
+                    <option value="<?= e($c['category']) ?>" <?= $filters['categoria'] === $c['category'] ? 'selected' : '' ?>><?= e($c['category']) ?> (<?= $c['n'] ?>)</option>
+                <?php endforeach; ?>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Buscar</button>
+            <?php if ($baseFilters): ?><a href="/admin/products" class="btn btn-sm btn-secondary">Limpiar</a><?php endif; ?>
+        </form>
+
+        <?php if (empty($products)): ?>
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <h3>Sin productos</h3>
+                <p><?= $summary['total'] ? 'Ningún producto coincide con el filtro.' : 'Sincroniza la hoja maestra para traer el catálogo.' ?></p>
+                <?php if (!$summary['total']): ?><a href="/admin/sync" class="btn btn-primary" style="margin-top:1rem;">🔄 Sincronizar</a><?php endif; ?>
             </div>
+        <?php else: ?>
+            <div class="bulk-bar">
+                <span id="bulkCount" class="muted">Marca productos para activarlos o desactivarlos juntos.</span>
+                <button type="button" class="link" id="bulkAllBtn" onclick="selectAllFilter()" style="display:none;">
+                    Seleccionar los <?= number_format($total) ?> del filtro
+                </button>
+                <span class="bulk-spacer" style="flex:1;"></span>
+                <button type="button" class="btn btn-sm btn-primary" onclick="bulkSet(1)">✅ Activar</button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="bulkSet(0)">⏸️ Desactivar</button>
+            </div>
+
             <div class="table-wrapper">
-                <table class="table">
+                <table class="table prod-table">
                     <thead>
                         <tr>
-                            <th>SKU</th>
+                            <th style="width:32px;"><input type="checkbox" id="checkPage" onchange="checkPage(this.checked)" title="Seleccionar esta página"></th>
+                            <th style="width:56px;"></th>
+                            <th>Código</th>
                             <th>Nombre</th>
+                            <th>Marca</th>
+                            <th>Color</th>
                             <th>Categoría</th>
-                            <th>Género</th>
                             <th>Precio</th>
-                            <th>Activo</th>
-                            <th>Actualizado</th>
-                            <th>Acciones</th>
+                            <th>Stock</th>
+                            <th style="text-align:center;">Activo</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($products as $p): ?>
-                            <tr data-id="<?= $p['id'] ?>">
-                                <td><a href="/producto/<?= e($p['sku']) ?>" target="_blank" style="font-weight:600;">
-                                        <?= e($p['sku']) ?>
-                                    </a></td>
-                                <td>
-                                    <span class="editable" data-field="name" data-value="<?= e($p['name']) ?>"
-                                        onclick="startEdit(this)">
-                                        <?= e(truncate($p['name'], 40)) ?>
-                                    </span>
+                        <?php foreach ($products as $p):
+                            $cover = parseStoredCover($p['cover_image_url'], 120);
+                            $visible = $p['is_active'] && $p['in_sheet'];
+                        ?>
+                            <tr data-id="<?= (int) $p['id'] ?>" class="<?= $visible ? '' : 'is-off' ?>">
+                                <td class="c-check"><input type="checkbox" class="row-check" value="<?= (int) $p['id'] ?>" onchange="updateBulk()"></td>
+                                <td class="c-thumb">
+                                    <?php if ($cover['url']): ?>
+                                        <img class="prod-thumb" src="<?= e($cover['url']) ?>" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'prod-thumb\'>📷</div>'">
+                                    <?php else: ?>
+                                        <div class="prod-thumb">📷</div>
+                                    <?php endif; ?>
                                 </td>
-                                <td>
-                                    <span class="editable" data-field="category" data-value="<?= e($p['category']) ?>"
-                                        onclick="startEdit(this)">
-                                        <?= e($p['category']) ?>
-                                    </span>
+                                <td class="c-sku">
+                                    <a href="/producto/<?= urlencode($p['sku']) ?>" target="_blank" style="color:var(--color-primary); font-weight:600; font-family:monospace;"><?= e($p['sku']) ?></a>
+                                    <?php if (!$p['in_sheet']): ?><div class="tag-out">No está en la hoja</div><?php endif; ?>
                                 </td>
-                                <td>
-                                    <span class="editable" data-field="gender" data-value="<?= e($p['gender']) ?>"
-                                        data-type="select" data-options="Hombre,Mujer,Unisex" onclick="startEdit(this)">
-                                        <?= e(ucfirst($p['gender'])) ?>
-                                    </span>
+                                <td class="c-name">
+                                    <?= e($p['name']) ?>
+                                    <div class="cell-muted only-mobile"><?= e(implode(' · ', array_filter([$p['brand'], $p['color'], $p['price_suggested'] > 0 ? '$' . number_format((float) $p['price_suggested'], 0, ',', '.') : '', 'Stock ' . (int) $p['stock']]))) ?></div>
                                 </td>
-                                <td>
-                                    <span class="editable" data-field="price_suggested"
-                                        data-value="<?= e($p['price_suggested']) ?>" data-type="number"
-                                        onclick="startEdit(this)">
-                                        <?= $p['price_suggested'] > 0 ? formatPrice($p['price_suggested']) : '—' ?>
-                                    </span>
-                                </td>
-                                <td style="text-align:center;">
-                                    <label class="toggle-switch"
-                                        title="<?= $p['archived'] ? 'Archivado (oculto)' : 'Activo (visible)' ?>">
-                                        <input type="checkbox" <?= $p['archived'] ? '' : 'checked' ?>
-                                            onchange="toggleArchived(this, <?= $p['id'] ?>)">
+                                <td class="cell-muted c-meta"><?= e($p['brand']) ?: '—' ?></td>
+                                <td class="cell-muted c-meta"><?= e($p['color']) ?: '—' ?></td>
+                                <td class="cell-muted c-meta"><?= e($p['category']) ?: '—' ?></td>
+                                <td class="cell-muted c-meta"><?= $p['price_suggested'] > 0 ? '$' . number_format((float) $p['price_suggested'], 0, ',', '.') : '—' ?></td>
+                                <td class="cell-muted c-meta"><?= (int) $p['stock'] ?></td>
+                                <td class="c-active" style="text-align:center;">
+                                    <label class="toggle-switch" title="<?= $p['is_active'] ? 'Activo' : 'Desactivado' ?>">
+                                        <input type="checkbox" <?= $p['is_active'] ? 'checked' : '' ?> onchange="toggleOne(this)">
                                         <span class="toggle-slider"></span>
                                     </label>
-                                </td>
-                                <td style="color:var(--color-text-dim); font-size:0.8rem;">
-                                    <?= date('d/m/y', strtotime($p['updated_at'])) ?>
-                                </td>
-                                <td>
-                                    <form method="POST" action="/admin/product/delete"
-                                        onsubmit="return confirm('¿Eliminar producto <?= e($p['sku']) ?>?')"
-                                        style="display:inline;">
-                                        <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
-                                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                                        <button type="submit" class="btn btn-sm btn-danger"
-                                            style="padding:0.3rem 0.6rem; font-size:0.7rem;">
-                                            🗑
-                                        </button>
-                                    </form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -271,235 +181,128 @@
                 </table>
             </div>
 
-            <!-- Pagination -->
             <?php if ($totalPages > 1): ?>
                 <div class="pagination">
-                    <?php for ($i = 1; $i <= min($totalPages, 20); $i++): ?>
-                        <?php $url = '/admin/products?' . http_build_query(['q' => $q, 'page' => $i]); ?>
-                        <?php if ($i === $page): ?>
-                            <span class="current">
-                                <?= $i ?>
-                            </span>
+                    <?php
+                    $pages = array_unique(array_filter(
+                        [1, $page - 2, $page - 1, $page, $page + 1, $page + 2, $totalPages],
+                        fn($n) => $n >= 1 && $n <= $totalPages
+                    ));
+                    sort($pages);
+                    $prev = 0;
+                    foreach ($pages as $i):
+                        if ($i - $prev > 1): ?><span>…</span><?php endif;
+                        $prev = $i;
+                        $url = '/admin/products?' . http_build_query($baseFilters + ['page' => $i]);
+                        if ($i === $page): ?>
+                            <span class="current"><?= $i ?></span>
                         <?php else: ?>
-                            <a href="<?= $url ?>">
-                                <?= $i ?>
-                            </a>
-                        <?php endif; ?>
-                    <?php endfor; ?>
+                            <a href="<?= e($url) ?>"><?= $i ?></a>
+                        <?php endif;
+                    endforeach; ?>
                 </div>
             <?php endif; ?>
-        <?php else: ?>
-            <div class="empty-state">
-                <div class="empty-icon">📦</div>
-                <h3>Sin productos</h3>
-                <p>Importa tu catálogo desde un archivo Excel.</p>
-                <a href="/admin/import" class="btn btn-primary" style="margin-top:1rem;">📥 Importar Excel</a>
-            </div>
         <?php endif; ?>
     </main>
-
-    <footer class="footer">
-        <div class="container">
-            <p>Viewfinder Admin Panel · v1.0</p>
-        </div>
-    </footer>
 
     <div class="toast-container" id="toast-container"></div>
 
     <script>
         const CSRF = '<?= csrfToken() ?>';
-        let activeEdit = null;
-        let ignoreBlur = false;
+        const FILTERS = <?= json_encode($filters, JSON_UNESCAPED_UNICODE) ?>;
+        const TOTAL = <?= (int) $total ?>;
+        let allFilter = false; // true = la acción va a todos los del filtro, no solo a los marcados
 
         function showToast(msg, type = 'success') {
-            const container = document.getElementById('toast-container');
             const t = document.createElement('div');
             t.className = `toast ${type}`;
             t.textContent = msg;
-            container.appendChild(t);
+            document.getElementById('toast-container').appendChild(t);
             setTimeout(() => t.remove(), 4000);
         }
 
-        function startEdit(el) {
-            // Don't re-trigger if already editing this cell
-            if (activeEdit === el) return;
-            if (activeEdit) cancelEdit();
+        function checkedIds() {
+            return [...document.querySelectorAll('.row-check:checked')].map(c => c.value);
+        }
 
-            const field = el.dataset.field;
-            const value = el.dataset.value;
-            const type = el.dataset.type || 'text';
-            const options = el.dataset.options || '';
-
-            el.dataset.original = el.innerHTML;
-            activeEdit = el;
-
-            // Remove onclick while editing
-            el.removeAttribute('onclick');
-
-            let input;
-            if (type === 'select') {
-                input = document.createElement('select');
-                input.className = 'edit-select';
-                input.style.minWidth = '100px';
-                options.split(',').forEach(opt => {
-                    const o = document.createElement('option');
-                    o.value = opt.trim();
-                    o.textContent = opt.trim();
-                    if (opt.trim().toLowerCase() === value.toLowerCase()) o.selected = true;
-                    input.appendChild(o);
-                });
-                input.addEventListener('change', () => {
-                    saveEdit(el, input.value);
-                });
-                input.addEventListener('blur', () => {
-                    setTimeout(() => {
-                        if (activeEdit === el) cancelEdit();
-                    }, 200);
-                });
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') cancelEdit();
-                });
+        function updateBulk() {
+            const n = checkedIds().length;
+            const all = document.querySelectorAll('.row-check').length;
+            const label = document.getElementById('bulkCount');
+            const allBtn = document.getElementById('bulkAllBtn');
+            if (allFilter) {
+                label.textContent = `Seleccionados los ${TOTAL.toLocaleString('es-CO')} productos del filtro.`;
+                allBtn.style.display = 'none';
             } else {
-                input = document.createElement('input');
-                input.className = 'edit-input';
-                input.type = type === 'number' ? 'number' : 'text';
-                input.value = value;
-                input.style.minWidth = '120px';
-                if (type === 'number') {
-                    input.step = '0.01';
-                    input.style.minWidth = '80px';
-                }
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        saveEdit(el, input.value);
-                    }
-                    if (e.key === 'Escape') cancelEdit();
-                });
-                input.addEventListener('blur', () => {
-                    // Small delay to check if we're still editing
-                    setTimeout(() => {
-                        if (activeEdit === el) {
-                            saveEdit(el, input.value);
-                        }
-                    }, 150);
-                });
+                label.textContent = n ? `${n} seleccionado${n === 1 ? '' : 's'}.` : 'Marca productos para activarlos o desactivarlos juntos.';
+                allBtn.style.display = (n === all && TOTAL > all) ? '' : 'none';
             }
-
-            // Stop click from propagating (prevents outsideClick)
-            input.addEventListener('click', (e) => e.stopPropagation());
-            input.addEventListener('mousedown', (e) => e.stopPropagation());
-
-            el.innerHTML = '';
-            el.appendChild(input);
-            input.focus();
-            // For text inputs, put cursor at end
-            if (input.type === 'text') {
-                input.setSelectionRange(input.value.length, input.value.length);
-            }
+            document.getElementById('checkPage').checked = n > 0 && n === all;
         }
 
-        function cancelEdit() {
-            if (activeEdit) {
-                const el = activeEdit;
-                el.innerHTML = el.dataset.original;
-                el.setAttribute('onclick', 'startEdit(this)');
-                activeEdit = null;
-            }
+        function checkPage(on) {
+            document.querySelectorAll('.row-check').forEach(c => c.checked = on);
+            allFilter = false;
+            updateBulk();
         }
 
-        async function saveEdit(el, newValue) {
-            const field = el.dataset.field;
-            const oldValue = el.dataset.value;
-            const row = el.closest('tr');
-            const id = row.dataset.id;
+        function selectAllFilter() {
+            allFilter = true;
+            updateBulk();
+        }
 
-            if (newValue === oldValue) {
-                cancelEdit();
-                return;
+        async function setActive(active, body) {
+            body.append('active', active ? '1' : '0');
+            const resp = await fetch('/admin/products/active', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF },
+                body
+            });
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || 'Error al guardar');
+            return data;
+        }
+
+        async function bulkSet(active) {
+            const body = new FormData();
+            let count;
+            if (allFilter) {
+                body.append('all', '1');
+                Object.entries(FILTERS).forEach(([k, v]) => body.append(k, v));
+                count = TOTAL;
+            } else {
+                const ids = checkedIds();
+                if (!ids.length) { showToast('Marca al menos un producto', 'info'); return; }
+                body.append('ids', ids.join(','));
+                count = ids.length;
             }
-
-            activeEdit = null; // Prevent blur from re-triggering
-            el.classList.add('saving');
-            el.innerHTML = '⏳';
-
-            const form = new FormData();
-            form.append('id', id);
-            form.append('field', field);
-            form.append('value', newValue);
-
+            if (count > 50 && !confirm(`¿${active ? 'Activar' : 'Desactivar'} ${count.toLocaleString('es-CO')} productos?`)) return;
             try {
-                const resp = await fetch('/admin/product/update', {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': CSRF },
-                    body: form
-                });
-                const data = await resp.json();
-
-                if (data.ok) {
-                    el.dataset.value = newValue;
-
-                    // Render display value
-                    if (field === 'archived') {
-                        // Toggle is handled separately
-                        void (0);
-                    } else if (field === 'price_suggested') {
-                        const num = parseFloat(newValue);
-                        el.textContent = num > 0 ? '$' + num.toLocaleString() : '—';
-                    } else if (field === 'gender') {
-                        el.textContent = newValue.charAt(0).toUpperCase() + newValue.slice(1);
-                    } else {
-                        el.textContent = newValue;
-                    }
-
-                    let msg = '✅ Guardado';
-                    if (data.sheets_updated) {
-                        msg += ' + Google Sheets actualizado';
-                    } else if (data.sheets_error) {
-                        msg += ' (Sheets: ' + data.sheets_error + ')';
-                    }
-                    showToast(msg);
-                } else {
-                    el.innerHTML = el.dataset.original;
-                    showToast(data.error || 'Error al guardar', 'error');
-                }
+                const data = await setActive(active, body);
+                showToast(data.message);
+                setTimeout(() => location.reload(), 600);
             } catch (e) {
-                el.innerHTML = el.dataset.original;
-                showToast('Error de conexión', 'error');
+                showToast(e.message || 'Error de conexión', 'error');
             }
-
-            el.classList.remove('saving');
-            el.setAttribute('onclick', 'startEdit(this)');
         }
-        async function toggleArchived(checkbox, productId) {
-            const archived = checkbox.checked ? 0 : 1;
-            const label = checkbox.closest('.toggle-switch');
-            label.style.opacity = '0.5';
 
-            const form = new FormData();
-            form.append('id', productId);
-            form.append('field', 'archived');
-            form.append('value', archived);
-
+        async function toggleOne(checkbox) {
+            const row = checkbox.closest('tr');
+            const active = checkbox.checked;
+            checkbox.disabled = true;
+            const body = new FormData();
+            body.append('ids', row.dataset.id);
             try {
-                const resp = await fetch('/admin/product/update', {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': CSRF },
-                    body: form
-                });
-                const data = await resp.json();
-                if (data.ok) {
-                    label.title = archived ? 'Archivado (oculto)' : 'Activo (visible)';
-                    showToast(archived ? '📦 Producto archivado' : '✅ Producto activo');
-                } else {
-                    checkbox.checked = !checkbox.checked;
-                    showToast(data.error || 'Error al guardar', 'error');
-                }
+                const data = await setActive(active, body);
+                const outOfSheet = !!row.querySelector('.tag-out');
+                row.classList.toggle('is-off', !active || outOfSheet);
+                checkbox.closest('.toggle-switch').title = active ? 'Activo' : 'Desactivado';
+                showToast(data.message);
             } catch (e) {
-                checkbox.checked = !checkbox.checked;
-                showToast('Error de conexión', 'error');
+                checkbox.checked = !active;
+                showToast(e.message || 'Error de conexión', 'error');
             }
-            label.style.opacity = '1';
+            checkbox.disabled = false;
         }
     </script>
 </body>

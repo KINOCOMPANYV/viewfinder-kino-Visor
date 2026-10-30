@@ -25,9 +25,8 @@
         }
     } catch(e) {}
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const albumFilter = urlParams.get('album');
     let debounceTimer;
+    let liveRequest = null; // búsqueda en curso: se cancela si el usuario sigue escribiendo
     let activeIndex = -1;
 
     if (!input || !dropdown) return;
@@ -69,16 +68,19 @@
         }
 
         debounceTimer = setTimeout(() => {
-            const albumParam = albumFilter ? '&album=' + encodeURIComponent(albumFilter) : '';
-            
             const resultsContainer = document.getElementById('searchResultsContainer');
             if (resultsContainer) {
                 resultsContainer.style.opacity = '0.5';
-                fetch('/buscar?ajax=1&q=' + encodeURIComponent(q) + albumParam)
+                // Solo cuenta la última búsqueda: una respuesta vieja no pisa a la nueva
+                if (liveRequest) liveRequest.abort();
+                liveRequest = new AbortController();
+                fetch('/buscar?ajax=1&q=' + encodeURIComponent(q), { signal: liveRequest.signal })
                     .then(r => r.text())
                     .then(html => {
                         resultsContainer.innerHTML = html;
                         resultsContainer.style.opacity = '1';
+                        // La URL refleja la búsqueda (volver atrás / compartir el enlace)
+                        try { history.replaceState(null, '', '/buscar?q=' + encodeURIComponent(q)); sessionStorage.setItem('lastSearch', window.location.href); } catch (e) {}
                         
                         // Hide dropdown
                         dropdown.classList.remove('active');
@@ -101,8 +103,8 @@
                             document.dispatchEvent(new Event('DOMContentLoaded'));
                         }
                     })
-                    .catch(() => {
-                        resultsContainer.style.opacity = '1';
+                    .catch(err => {
+                        if (err.name !== 'AbortError') resultsContainer.style.opacity = '1';
                     });
             } else {
                 // If container not found, do normal autocomplete dropdown
@@ -133,7 +135,7 @@
                     })
                     .catch(() => dropdown.classList.remove('active'));
             }
-        }, 300);
+        }, 250);
     });
 
     // Keyboard navigation

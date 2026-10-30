@@ -2,7 +2,7 @@
 /**
  * Admin Media Delete — Elimina un archivo de Google Drive.
  */
-require_once __DIR__ . '/../services/GoogleDriveService.php';
+require_once __DIR__ . '/../services/DriveIndex.php';
 $db = getDB();
 
 if (!verifyCsrf()) {
@@ -25,6 +25,7 @@ if (empty($fileId)) {
 }
 
 if ($drive->deleteFile($fileId)) {
+    DriveIndex::removeFile($db, $fileId);
     $_SESSION['flash_success'] = '✅ Archivo eliminado de Drive.';
 } else {
     $_SESSION['flash_error'] = 'Error al eliminar el archivo.';

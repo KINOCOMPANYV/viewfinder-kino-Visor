@@ -53,8 +53,24 @@
         try {
             $db = getDB();
             $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
-            // Poedagar siempre primero, luego por prioridad y nombre
-            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY CASE WHEN LOWER(name) LIKE '%poedagar%' THEN 0 ELSE 1 END, order_priority DESC, name ASC")->fetchAll();
+            // Carpetas de primer nivel de PRODUCTOS (las mantiene el sync de Drive), en el orden
+            // de Drive: "1.POEDAGAR", "2.CURREN", ..., "17.NEPIC". Se abren como carpeta.
+            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY CAST(name AS UNSIGNED) = 0, CAST(name AS UNSIGNED), name ASC")->fetchAll();
+            // Sin ícono propio: foto al azar de la carpeta (copia local de Drive)
+            if ($albums) {
+                try {
+                    // Foto al azar del contenido (la elige DriveIndex::refreshFolderState en cada sync)
+                    $thumbStmt = $db->prepare("SELECT cover_file_id FROM drive_index WHERE file_id = ? AND is_folder = 1");
+                    foreach ($albums as &$al) {
+                        if (empty($al['icon_url'])) {
+                            $thumbStmt->execute([$al['drive_id']]);
+                            $tid = $thumbStmt->fetchColumn();
+                            if ($tid) $al['icon_url'] = lh3Url($tid, 200);
+                        }
+                    }
+                    unset($al);
+                } catch (\PDOException $e) { /* drive_index aún no existe */ }
+            }
         } catch (\PDOException $e) {
             // tabla albums aún no existe o DB apagada
         }
@@ -85,16 +101,16 @@
                 </div>
             </div>
 
-            <!-- ===== Álbumes (Tarjetas Horizontales) ===== -->
+            <!-- ===== Carpetas de primer nivel (se navegan como en Drive) ===== -->
             <?php if (!empty($albums)): ?>
             <div style="margin-bottom: 3rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                    <h2 style="font-size: 1.5rem; margin:0;">Explorar Colecciones</h2>
+                    <h2 style="font-size: 1.5rem; margin:0;">📂 Carpetas</h2>
                     <span style="color:var(--color-text-muted); font-size:0.9rem;"><?= $totalAlbums ?> carpetas</span>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;" id="horizontalAlbums">
                     <?php foreach ($albums as $idx => $sa):
-                        $href = '/buscar?album=' . urlencode($sa['drive_id']);
+                        $href = '/carpeta/' . urlencode($sa['drive_id']);
                         $hiddenClass = $idx >= 10 ? ' album-hidden' : '';
                     ?>
                     <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?>" title="<?= e($sa['name']) ?>" style="background:var(--color-surface); padding:0.75rem; border-radius:var(--radius); border:1px solid var(--color-border); flex-direction:column; text-align:center; transition: transform 0.2s; <?php if($idx>=10) echo 'display:none;'; ?>">
@@ -115,7 +131,7 @@
                 <?php if ($totalAlbums > 10): ?>
                 <div style="text-align:center; margin-top:1.5rem;">
                     <button class="btn btn-secondary" id="btnVerTodas" onclick="toggleAllAlbums()">
-                        📂 Mostrar más colecciones
+                        📂 Mostrar más carpetas
                     </button>
                 </div>
                 <script>
@@ -127,11 +143,11 @@
                     if (!showing && hidden[0]) {
                         // Mostrar todas
                         hidden.forEach(el => { el.style.display = 'flex'; });
-                        btn.innerHTML = '📁 Mostrar solo principales';
+                        btn.innerHTML = '📁 Mostrar menos';
                     } else {
                         // Ocultar extras
                         hidden.forEach(el => { el.style.display = 'none'; });
-                        btn.innerHTML = '📂 Mostrar más colecciones';
+                        btn.innerHTML = '📂 Mostrar más carpetas';
                     }
                 }
                 </script>
@@ -186,7 +202,7 @@
                 : "ORDER BY {$orderCol} DESC";
 
             $skuRows = $db->query(
-                "SELECT sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
+                "SELECT sku, parent_sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
                  FROM products 
                  WHERE archived = 0 
                  {$orderClause}"
@@ -196,8 +212,7 @@
             $familyMap = [];      // family -> [skus]
             $familyMaxRow = [];   // family -> max sheet_row
             foreach ($skuRows as $rowIdx => $row) {
-                $skuClean = cleanSkuDisplay($row['sku']);
-                $family = extractRootSku($skuClean);
+                $family = familyKey($row); // misma regla de familia que la búsqueda
             
             // Usar posición invertida para que Poedagar (que viene primero en la query) tenga el número más alto
             $effectiveRow = count($skuRows) - $rowIdx;
@@ -235,8 +250,8 @@
             if (!empty($pageSkus)) {
                 $placeholders = implode(',', array_fill(0, count($pageSkus), '?'));
                 $selectCols = $hasSheetRow
-                    ? 'id, sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
-                    : 'id, sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
+                    ? 'id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
+                    : 'id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
                 
                 $stmt = $db->prepare(
                     "SELECT {$selectCols} 
@@ -247,23 +262,17 @@
                 $stmt->execute($pageSkus);
                 $pageProducts = $stmt->fetchAll();
 
+                // Agrupar por familia (sin duplicados por SKU)
+                $members = [];
                 foreach ($pageProducts as $p) {
-                    $skuClean = cleanSkuDisplay($p['sku']);
-                    $family = extractRootSku($skuClean);
-                    
-                    if (!isset($grouped[$family])) {
-                        $grouped[$family] = ['parent' => $p, 'children' => []];
-                    } else {
-                        if ($p['sku'] !== $grouped[$family]['parent']['sku']) {
-                            $exists = false;
-                            foreach ($grouped[$family]['children'] as $c) {
-                                if ($c['sku'] === $p['sku']) { $exists = true; break; }
-                            }
-                            if (!$exists) {
-                                $grouped[$family]['children'][] = $p;
-                            }
-                        }
-                    }
+                    $members[familyKey($p)][$p['sku']] = $p;
+                }
+                // Principal de la tarjeta: el SKU que ES la raíz de la familia (el padre
+                // real, igual que en la búsqueda); si no existe, el más reciente.
+                foreach ($members as $family => $bySku) {
+                    $parent = $bySku[$family] ?? reset($bySku);
+                    unset($bySku[$parent['sku']]);
+                    $grouped[$family] = ['parent' => $parent, 'children' => array_values($bySku)];
                 }
             }
         }
@@ -329,9 +338,7 @@
                                         <div class="children-row">
                                             <?php
                                             foreach ($children as $child):
-                                                $childCover = $child['cover_image_url'] ?? '';
-                                                $childIsVideo = str_starts_with($childCover, '[VIDEO]');
-                                                if ($childIsVideo) $childCover = substr($childCover, 7);
+                                                $childCover = parseStoredCover($child['cover_image_url'] ?? '', 150)['url'];
                                             ?>
                                                 <div class="child-thumb" style="cursor:pointer;"
                                                     title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
@@ -476,67 +483,6 @@ KV-1003
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
     <script>
         // Folders now use parent-grid layout (no horizontal scroll)
-    </script>
-    <script>
-        // Lazy-load covers from Drive for products without cover_image_url
-        document.addEventListener('DOMContentLoaded', () => {
-            const placeholders = document.querySelectorAll('.cover-placeholder');
-            if (placeholders.length === 0) return;
-
-            // Collect SKUs that need covers
-            const skuElements = {};
-            placeholders.forEach(ph => {
-                const cardImage = ph.closest('.card-image');
-                if (cardImage && cardImage.dataset.sku) {
-                    const sku = cardImage.dataset.sku;
-                    if (!skuElements[sku]) skuElements[sku] = [];
-                    skuElements[sku].push(cardImage);
-                }
-                // Also check child thumbnails
-                const childThumb = ph.closest('.child-thumb');
-                if (childThumb && childThumb.dataset.sku) {
-                    const sku = childThumb.dataset.sku;
-                    if (!skuElements[sku]) skuElements[sku] = [];
-                    skuElements[sku].push(childThumb);
-                }
-            });
-
-            const allSkus = Object.keys(skuElements);
-            if (allSkus.length === 0) return;
-
-            // Fetch in batches of 50
-            const batchSize = 50;
-            for (let i = 0; i < allSkus.length; i += batchSize) {
-                const batch = allSkus.slice(i, i + batchSize);
-                fetch('/api/covers/batch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ skus: batch })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    const covers = data.covers || {};
-                    Object.entries(covers).forEach(([sku, cover]) => {
-                        if (!cover || !cover.url) return;
-                        const elements = skuElements[sku] || [];
-                        elements.forEach(el => {
-                            const placeholder = el.querySelector('.cover-placeholder, .child-placeholder');
-                            if (placeholder) {
-                                const img = document.createElement('img');
-                                img.src = cover.url;
-                                img.alt = sku;
-                                img.loading = 'lazy';
-                                img.className = 'img-fade-in';
-                                img.onload = () => img.classList.add('loaded');
-                                img.onerror = () => { img.outerHTML = '<div class="cover-placeholder">📷</div>'; };
-                                placeholder.replaceWith(img);
-                            }
-                        });
-                    });
-                })
-                .catch(() => {}); // Silent fail — placeholders remain
-            }
-        });
     </script>
 
     <!-- Batch Search JS -->
@@ -955,8 +901,7 @@ KV-1003
 
     <!-- Autocomplete JS -->
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
-    <!-- QR Scanner (html5-qrcode CDN, solo carga bajo demanda en qr-scanner.js) -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+    <!-- QR Scanner: qr-scanner.js descarga html5-qrcode solo al abrir el escáner -->
     <script src="/assets/js/qr-scanner.js?v=<?= APP_VERSION ?>" defer></script>
     <?php include __DIR__ . '/../partials/loading_overlay.php'; ?>
 </body>

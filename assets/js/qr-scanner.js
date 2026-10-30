@@ -107,13 +107,40 @@
     let html5QrCode = null;
     let scannerRunning = false;
 
-    function openQrModal() {
-        // Verificar que la librería ya cargó
-        if (typeof Html5Qrcode === 'undefined') {
-            alert('⚠️ La librería de escaneo aún está cargando. Intenta en un momento.');
-            return;
-        }
+    // La librería (~370 KB) se descarga solo cuando el usuario abre el escáner,
+    // así no pesa en la carga de la página de inicio.
+    const QR_LIB_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    let qrLibPromise = null;
 
+    function loadQrLib() {
+        if (typeof Html5Qrcode !== 'undefined') return Promise.resolve();
+        if (!qrLibPromise) {
+            qrLibPromise = new Promise(function (resolve, reject) {
+                const s = document.createElement('script');
+                s.src = QR_LIB_URL;
+                s.onload = resolve;
+                s.onerror = function () { qrLibPromise = null; reject(); };
+                document.head.appendChild(s);
+            });
+        }
+        return qrLibPromise;
+    }
+
+    let qrOpening = false;
+
+    function openQrModal() {
+        if (qrOpening || scannerRunning) return; // evita varios escáneres por doble toque
+        qrOpening = true;
+        loadQrLib().then(function () {
+            qrOpening = false;
+            startQrModal();
+        }, function () {
+            qrOpening = false;
+            alert('⚠️ No se pudo cargar el escáner. Revisa tu conexión e intenta de nuevo.');
+        });
+    }
+
+    function startQrModal() {
         buildModal();
 
         const modal = document.getElementById('kinoQrModal');

@@ -256,19 +256,20 @@ if ($uri === '/admin/products') {
     exit;
 }
 
-if ($uri === '/admin/import') {
+if ($uri === '/admin/sync') {
     requireAdmin();
-    if ($method === 'POST') {
-        include __DIR__ . '/src/controllers/admin_import.php';
-    } else {
-        include __DIR__ . '/templates/admin/import.php';
-    }
+    include __DIR__ . '/templates/admin/sync.php';
     exit;
 }
 
-if ($uri === '/admin/product/delete' && $method === 'POST') {
+// La importación por Excel se quitó: la hoja maestra es la única fuente
+if ($uri === '/admin/import') {
+    redirect('/admin/sync');
+}
+
+if ($uri === '/admin/products/active' && $method === 'POST') {
     requireAdmin();
-    include __DIR__ . '/src/controllers/admin_delete_product.php';
+    include __DIR__ . '/src/controllers/admin_products_active.php';
     exit;
 }
 
@@ -320,21 +321,33 @@ if ($uri === '/admin/media/sync-covers' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/media/sin-codigo.csv') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_media_report.php';
+    exit;
+}
+
 if ($uri === '/admin/media/visibility' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_media_visibility.php';
     exit;
 }
 
-if ($uri === '/admin/albums') {
+if ($uri === '/admin/folders') {
     requireAdmin();
-    include __DIR__ . '/src/controllers/admin_albums.php';
+    include __DIR__ . '/src/controllers/admin_folders.php';
     exit;
 }
 
-if ($uri === '/admin/product/update' && $method === 'POST') {
+if ($uri === '/admin/folders/toggle' && $method === 'POST') {
     requireAdmin();
-    include __DIR__ . '/src/controllers/admin_product_update.php';
+    include __DIR__ . '/src/controllers/admin_folder_toggle.php';
+    exit;
+}
+
+if ($uri === '/admin/albums') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_albums.php';
     exit;
 }
 
@@ -366,7 +379,22 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     $db = getDB();
     $freshRequested = !empty($_GET['fresh']);
 
-    // filterHiddenFiles() ahora definida en src/helpers.php
+    // === Índice local de Drive (sin llamadas a Drive; las portadas las asigna el sync) ===
+    require_once __DIR__ . '/src/services/DriveIndex.php';
+    if (DriveIndex::isReady($db)) {
+        $result = DriveIndex::filesForSku($db, $sku);
+        $files = filterHiddenFiles($db, $result['files']);
+        header('Cache-Control: public, max-age=60');
+        jsonResponse([
+            'files' => $files,
+            'sku' => $sku,
+            'root_sku' => $result['root_sku'],
+            'is_variant' => ($sku !== $result['root_sku']),
+            'cached' => true,
+        ]);
+    }
+
+    // Sin índice todavía (antes del primer sync): caché + búsqueda en Drive
 
     // === CACHÉ: verificar si hay respuesta en caché (TTL 30 min) ===
     if (!$freshRequested) {
@@ -437,15 +465,7 @@ if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
     }
 
     // 1) Get file metadata (name + mimeType)
-    $metaUrl = "https://www.googleapis.com/drive/v3/files/{$fileId}?fields=name,mimeType,size";
-    $ch = curl_init($metaUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
-    ]);
-    $metaJson = curl_exec($ch);
-    curl_close($ch);
-    $meta = json_decode($metaJson, true);
+    $meta = $drive->getFileMetadata($fileId, 'name,mimeType,size');
 
     if (empty($meta['name'])) {
         http_response_code(404);
@@ -501,7 +521,7 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
 
     $input = json_decode(file_get_contents('php://input'), true);
-    $skus = array_slice(array_unique($input['skus'] ?? []), 0, 50); // max 50
+    $skus = array_slice(array_unique(array_map('strval', (array) ($input['skus'] ?? []))), 0, 50); // max 50
 
     if (empty($skus)) {
         jsonCachedResponse(['covers' => new \stdClass()], 300);
@@ -512,12 +532,32 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $covers = [];
     $uncachedSkus = [];
 
+    // Con índice local: todas las portadas salen de la BD, sin límite ni Drive.
+    // Además se auto-asignan, así la próxima visita ni siquiera llama a este endpoint.
+    require_once __DIR__ . '/src/services/DriveIndex.php';
+    if (DriveIndex::isReady($db)) {
+        // Una sola consulta para saber qué productos aún no tienen portada guardada
+        $in = implode(',', array_fill(0, count($skus), '?'));
+        $coverStmt = $db->prepare("SELECT sku, cover_image_url FROM products WHERE sku IN ($in)");
+        $coverStmt->execute($skus);
+        $storedCovers = $coverStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        foreach ($skus as $sku) {
+            $files = filterHiddenFiles($db, DriveIndex::filesForSku($db, $sku)['files']);
+            if (array_key_exists($sku, $storedCovers) && empty($storedCovers[$sku])) {
+                autoAssignCover($db, $sku, $files);
+            }
+            $covers[$sku] = extractCoverFromFiles($files);
+        }
+        jsonCachedResponse(['covers' => $covers], 300);
+    }
+
     // 1) Buscar en caché primero
     try {
         $placeholders = implode(',', array_fill(0, count($skus), '?'));
         $cacheStmt = $db->prepare(
             "SELECT sku, files_json FROM media_search_cache 
-             WHERE sku IN ($placeholders) AND cached_at > NOW() - INTERVAL 10 MINUTE"
+             WHERE sku IN ($placeholders) AND " . freshCoverCacheSql()
         );
         $cacheStmt->execute($skus);
         $cached = $cacheStmt->fetchAll();

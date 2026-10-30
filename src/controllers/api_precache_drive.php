@@ -42,9 +42,20 @@ if (!$folderId) {
     exit;
 }
 
+// Con el índice local activo las páginas ya no consultan Drive: no hay caché por SKU que
+// calentar. Este cron pasa a hacer lo mismo que /api/cron/sync-covers (refrescar el índice
+// y asignar portadas), así un cron ya programado sigue siendo útil.
+require_once __DIR__ . '/../services/DriveIndex.php';
+if (DriveIndex::isReady($db)) {
+    $_GET['token'] = $tokenProvided; // admin_sync_covers.php valida el token por query
+    include __DIR__ . '/admin_sync_covers.php';
+    exit;
+}
+
 // ── Obtener SKUs sin caché reciente ──────────────────────────────────────────
 // Selecciona productos activos cuyo SKU NO tiene una entrada en media_search_cache
-// con cached_at reciente (< $cacheTtlMin minutos). Así priorizamos los más obsoletos.
+// con cached_at reciente (< $cacheTtlMin minutos). Orden aleatorio: si algún SKU falla
+// siempre en Drive, no bloquea al resto del catálogo en cada ejecución.
 try {
     $stmt = $db->prepare(
         "SELECT p.sku
@@ -54,7 +65,7 @@ try {
               AND c.cached_at > NOW() - INTERVAL ? MINUTE
          WHERE p.archived = 0
            AND c.sku IS NULL
-         ORDER BY p.sku ASC
+         ORDER BY RAND()
          LIMIT ?"
     );
     $stmt->execute([$cacheTtlMin, $batchSize]);
@@ -86,64 +97,10 @@ foreach ($skuRows as $sku) {
     $stats['processed']++;
 
     try {
-        // Raíz de familia desde la BD (parent_sku), con fallback a extractRootSku()
-        $rootSku = getFamilyRootSku($db, $sku);
-
-        // Buscar archivos en Drive por SKU raíz
-        $files = $drive->findBySku($folderId, $rootSku);
-
-        // Si el SKU es variante, combinar genéricos del padre + específicos del hijo
-        if ($sku !== $rootSku) {
-            $parentOnly = array_filter($files, function ($f) use ($rootSku) {
-                return isGenericMediaForSku($rootSku, $f['name']);
-            });
-            $childFiles  = $drive->findBySku($folderId, $sku);
-            $existingIds = array_column($childFiles, 'id');
-            $merged      = $childFiles;
-            foreach ($parentOnly as $pf) {
-                if (!in_array($pf['id'], $existingIds)) {
-                    $merged[] = $pf;
-                }
-            }
-            $files = array_values($merged);
-        }
-
-        // Hacer públicos los archivos encontrados (en batch)
-        if (!empty($files)) {
-            $drive->makePublicBatch(array_column($files, 'id'));
-        }
-
-        // Guardar en caché (incluso si está vacío, para no reintentar en la misma ejecución)
-        $saveStmt = $db->prepare(
-            "INSERT INTO media_search_cache (sku, root_sku, files_json, cached_at)
-             VALUES (?, ?, ?, NOW())
-             ON DUPLICATE KEY UPDATE
-               root_sku   = VALUES(root_sku),
-               files_json = VALUES(files_json),
-               cached_at  = NOW()"
-        );
-        $saveStmt->execute([$sku, $rootSku, json_encode(array_values($files))]);
-
-        // Auto-asignar portada si el producto no tiene ninguna
-        if (!empty($files)) {
-            $coverCheck = $db->prepare(
-                "SELECT id, cover_image_url FROM products WHERE sku = ? LIMIT 1"
-            );
-            $coverCheck->execute([$sku]);
-            $prodRow = $coverCheck->fetch();
-            if ($prodRow && empty($prodRow['cover_image_url'])) {
-                // Elegir la mejor imagen (nunca video) como portada
-                $imgOnly = array_filter($files, fn($f) => str_starts_with($f['mimeType'] ?? '', 'image/'));
-                $bestImage = pickBestCoverFile($imgOnly);
-                if ($bestImage) {
-                    $coverUrl = "https://lh3.googleusercontent.com/d/{$bestImage['id']}=s400";
-                    $db->prepare("UPDATE products SET cover_image_url = ? WHERE id = ?")
-                       ->execute([$coverUrl, $prodRow['id']]);
-                }
-            }
-        }
-
-        $stats['cached_new']++;
+        // Misma lógica que /api/media y /api/covers/batch: busca (padre↔hijo),
+        // hace públicos, cachea (incluido "sin foto") y auto-asigna portada.
+        $result = fetchAndCacheMediaForSku($db, $drive, $folderId, $sku);
+        $stats[$result['failed'] ? 'errors' : 'cached_new']++;
 
     } catch (\Exception $e) {
         $stats['errors']++;

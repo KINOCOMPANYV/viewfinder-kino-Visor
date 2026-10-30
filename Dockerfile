@@ -8,8 +8,20 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql zip gd \
+    && docker-php-ext-install pdo pdo_mysql zip gd opcache \
     && rm -rf /var/lib/apt/lists/*
+
+# OPcache: el PHP se compila una vez por arranque del contenedor (el código no
+# cambia entre deploys, así que no hace falta revisar timestamps en cada petición)
+RUN { \
+    echo "opcache.enable=1"; \
+    echo "opcache.memory_consumption=128"; \
+    echo "opcache.interned_strings_buffer=16"; \
+    echo "opcache.max_accelerated_files=10000"; \
+    echo "opcache.validate_timestamps=0"; \
+    echo "realpath_cache_size=4096K"; \
+    echo "realpath_cache_ttl=600"; \
+    } > /usr/local/etc/php/conf.d/opcache.ini
 
 # Configurar PHP para uploads grandes (videos profesionales)
 RUN echo "upload_max_filesize = 500M" >> /usr/local/etc/php/conf.d/uploads.ini \

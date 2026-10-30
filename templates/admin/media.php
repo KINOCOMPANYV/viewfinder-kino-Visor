@@ -516,6 +516,22 @@
                 opacity: 0;
             }
         }
+        /* Móvil: archivos de 2 en 2, barra de filtros a lo ancho */
+        @media (max-width: 640px) {
+            .drive-status { flex-wrap: wrap; padding: 1rem; }
+            .drive-status .btn-google { margin-left: 0 !important; width: 100%; text-align: center; }
+            .media-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+            .media-stat { padding: 0.75rem 0.5rem; }
+            .media-stat .number { font-size: 1.5rem; }
+            .media-stat .label { font-size: 0.7rem; }
+            .file-grid, .folder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+            .file-card .thumbnail, .file-card .video-thumb { height: 120px; }
+            .media-toolbar input[type=text] { min-width: 0; flex-basis: 100%; font-size: 16px; }
+            .media-toolbar select { flex: 1; font-size: 16px; }
+            .upload-zone { padding: 1.25rem; }
+            .toast-container { left: 0.75rem; right: 0.75rem; }
+            .toast { max-width: none; }
+        }
     </style>
 </head>
 
@@ -527,7 +543,7 @@
         </div>
     </header>
 
-    <main class="container fade-in" style="padding: 2rem 0;">
+    <main class="container fade-in" style="padding-top:2rem; padding-bottom:2rem;">
 
         <!-- Flash Messages -->
         <?php if (!empty($_SESSION['flash_success'])): ?>
@@ -541,13 +557,7 @@
             </div>
             <?php unset($_SESSION['flash_error']); endif; ?>
 
-        <!-- Nav Admin -->
-        <div style="display:flex; gap:1rem; margin-bottom:2rem; flex-wrap:wrap;">
-            <a href="/admin" class="btn btn-sm btn-secondary">📊 Dashboard</a>
-            <a href="/admin/products" class="btn btn-sm btn-secondary">📦 Productos</a>
-            <a href="/admin/import" class="btn btn-sm btn-secondary">📥 Importar Excel</a>
-            <a href="/admin/media" class="btn btn-sm btn-primary">🖼️ Media</a>
-        </div>
+        <?php $adminNav = 'media'; include __DIR__ . '/partials/nav.php'; ?>
 
         <h1>🖼️ Gestión de Media</h1>
         <p style="color:var(--color-text-muted); margin-bottom:2rem;">
@@ -606,6 +616,11 @@
                         style="font-size:0.85rem; padding:0.6rem 1.5rem; <?= $withoutCover > 0 ? 'margin-left:0.5rem;' : '' ?>">
                         🔄 Reasignar TODAS las portadas
                     </button>
+                    <p style="font-size:0.8rem; margin-top:0.5rem;">
+                        Regla: la foto se llama igual que el código (<code>X6071.jpg</code>, <code>X6071-A.jpg</code>, <code>X6071 (2).jpg</code>).
+                        📥 <a href="/admin/media/sin-codigo.csv?tipo=archivos" style="color:var(--color-gold);">Archivos con otro nombre</a>
+                        · <a href="/admin/media/sin-codigo.csv?tipo=productos" style="color:var(--color-gold);">Productos sin foto</a>
+                    </p>
                     <p style="font-size:0.8rem; color:var(--color-text-muted); margin-top:0.5rem;">
                         <?= $withoutCover > 0 ? 'Auto-asignar busca los faltantes. ' : '' ?>Reasignar TODO refresca TODAS las portadas desde Drive.
                     </p>
@@ -1059,8 +1074,12 @@
                                 <span>🎬 <strong>${data.assigned_videos || 0}</strong> portadas video</span>
                                 ${data.remaining > 0 ? '<span>❓ <strong>' + data.remaining + '</strong> sin coincidencia en Drive</span>' : '<span style="color:#22c55e;">✅ ¡Todos cubiertos!</span>'}
                             </div>
+                            <div style="margin-top:0.6rem; font-size:0.85rem;">
+                                📥 Para renombrar: <a href="/admin/media/sin-codigo.csv?tipo=archivos" style="color:var(--color-gold);">archivos cuyo nombre no es un código</a>
+                                · <a href="/admin/media/sin-codigo.csv?tipo=productos" style="color:var(--color-gold);">productos sin foto</a>
+                            </div>
                             ${data.errors && data.errors.length > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ ' + data.errors.length + ' error(es): ' + data.errors.slice(0, 3).join(', ') + '</div>' : ''}
-                            ${data.unmapped_files && data.unmapped_files.length > 0 ? '<div style="margin-top:1rem; font-size:0.8rem; color:var(--color-text-muted); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.8rem;"><strong style="color:var(--color-gold);">⚠️ Archivos ignorados por no hacer match con ningún producto (' + data.unmapped_files.length + '):</strong><br><div style="max-height:150px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:0.3rem; word-break: break-all;">' + data.unmapped_files.join('<br>') + '</div></div>' : ''}
+                            ${data.unmapped_files && data.unmapped_files.length > 0 ? '<div style="margin-top:1rem; font-size:0.8rem; color:var(--color-text-muted); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.8rem;"><strong style="color:var(--color-gold);">⚠️ Archivos cuyo nombre no es el código de ningún producto (' + data.unmapped_files.length + '):</strong><br><div style="max-height:150px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:0.3rem; word-break: break-all;">' + data.unmapped_files.join('<br>') + '</div></div>' : ''}
                         </div>`;
 
                     statusText.textContent = data.assigned > 0 ? '¡Portadas asignadas!' : 'Proceso completado';

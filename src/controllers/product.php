@@ -21,6 +21,13 @@ $product = $stmt->fetch();
 $originalSku = $sku;
 $isVariant = false;
 if (!$product) {
+    // 0) Mismo código con otro separador: "/producto/M-8464-2" o "M8464-2" → "M:8464-2"
+    $variants = skuNameVariants($sku);
+    $stmt = $db->prepare("SELECT * FROM products WHERE sku IN (" . implode(',', array_fill(0, count($variants), '?')) . ") ORDER BY archived ASC LIMIT 1");
+    $stmt->execute($variants);
+    $product = $stmt->fetch();
+}
+if (!$product) {
     // 1) Intentar con el SKU raíz (padre)
     $rootSku = extractRootSku($sku);
     if ($rootSku !== $sku) {
@@ -73,50 +80,58 @@ if (!$product) {
     $product = $stmt->fetch();
 }
 
+// Desactivado en el admin o fuera de la hoja maestra: no se muestra al público
+if ($product && !empty($product['archived']) && !isAdminLoggedIn()) {
+    $product = null;
+}
+
 if (!$product) {
     http_response_code(404);
     include __DIR__ . '/../../templates/404.php';
     exit;
 }
 
-// Precargar portada desde caché del server (evita esperar JS)
-// Upscale a =s800 para la vista de detalle (en catálogo se usa =s400)
-$serverCover = $product['cover_image_url'] ?? '';
-if ($serverCover && !str_starts_with($serverCover, '[VIDEO]')) {
-    $serverCover = preg_replace('/=s\d+$/', '=s800', $serverCover);
-}
-if (empty($serverCover)) {
-    try {
-        $cacheStmt = $db->prepare(
-            "SELECT files_json FROM media_search_cache 
-             WHERE sku = ? AND cached_at > NOW() - INTERVAL 10 MINUTE"
-        );
-        $cacheStmt->execute([$originalSku]);
-        $cacheRow = $cacheStmt->fetch();
-        if ($cacheRow) {
-            $cachedFiles = json_decode($cacheRow['files_json'], true) ?: [];
-            foreach ($cachedFiles as $cf) {
-                if (str_starts_with($cf['mimeType'] ?? '', 'image/')) {
-                    $thumb = $cf['thumbnailLink'] ?? '';
-                    $serverCover = $thumb
-                        ? preg_replace('/=s\d+/', '=s800', $thumb)
-                        : "https://lh3.googleusercontent.com/d/{$cf['id']}=s800";
-                    break;
-                }
-            }
-        }
-    } catch (Exception $e) {
-        // tabla no existe aún, ignorar
-    }
-}
-
-// ── Cache: ETag + Cache-Control para páginas de producto ──
+// ── Cache: ETag + Cache-Control (antes de cualquier consulta extra, así el 304 sale rápido) ──
 $productEtag = '"p-' . md5($product['sku'] . ($product['updated_at'] ?? '') . APP_VERSION) . '"';
 header("ETag: {$productEtag}");
 header('Cache-Control: private, max-age=60');
 if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $productEtag) {
     http_response_code(304);
     exit;
+}
+
+// Precargar portada desde caché del server (evita esperar JS)
+// Upscale a =s800 para la vista de detalle (en catálogo se usa =s400)
+$storedCover = parseStoredCover($product['cover_image_url'] ?? '', 800);
+$serverCover = $storedCover['video'] ? ($product['cover_image_url'] ?? '') : $storedCover['url'];
+if (empty($serverCover)) {
+    // Archivos del SKU: índice local de Drive o, si aún no existe, la caché de búsquedas
+    require_once __DIR__ . '/../services/DriveIndex.php';
+    $knownFiles = null;
+    if (DriveIndex::isReady($db)) {
+        $knownFiles = DriveIndex::filesForSku($db, $originalSku)['files'];
+    } else {
+        try {
+            $cacheStmt = $db->prepare(
+                "SELECT files_json FROM media_search_cache
+                 WHERE sku = ? AND " . freshCoverCacheSql()
+            );
+            $cacheStmt->execute([$originalSku]);
+            $cacheRow = $cacheStmt->fetch();
+            if ($cacheRow) {
+                $knownFiles = json_decode($cacheRow['files_json'], true) ?: [];
+            }
+        } catch (Exception $e) {
+            // tabla no existe aún, ignorar
+        }
+    }
+    if ($knownFiles) {
+        // Misma elección que las tarjetas (mejor imagen, sin archivos ocultos)
+        $cover = extractCoverFromFiles(filterHiddenFiles($db, $knownFiles));
+        if ($cover && !$cover['video']) {
+            $serverCover = coverUrlAtSize($cover['url'], 800);
+        }
+    }
 }
 
 // ── Buscar Variantes (Hermanos) ──
@@ -201,7 +216,7 @@ $variants = $varStmt->fetchAll();
                             data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
                         <?php if ($serverCover): ?>
                             <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
-                                decoding="async" style="cursor:pointer;" onclick="downloadMainImage()">
+                                decoding="async" style="cursor:zoom-in;" onclick="openMainLightbox()">
                         <?php else: ?>
                             <div class="cover-skeleton"
                                 style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
@@ -252,6 +267,11 @@ $variants = $varStmt->fetchAll();
                                     <?= e($product['movement']) ?>
                                 </span></li>
                         <?php endif; ?>
+                        <?php foreach (['brand' => 'Marca', 'color' => 'Color', 'case_material' => 'Caja', 'strap_material' => 'Pulsera'] as $col => $label): ?>
+                            <?php if (!empty($product[$col])): ?>
+                                <li><span><?= $label ?></span><span><?= e($product[$col]) ?></span></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                     </ul>
 
                     <!-- Description -->
@@ -282,13 +302,8 @@ $variants = $varStmt->fetchAll();
                             ?>
                             <div class="variant-strip">
                                 <?php foreach ($variants as $v):
-                                    $vCover = ($v['cover_image_url'] ?: '') ?: $familyCover;
-                                    if (str_starts_with($vCover, '[VIDEO]')) {
-                                        // usar el thumbnail del video como imagen del chip
-                                        $vCover = substr($vCover, 7);
-                                    } elseif ($vCover) {
-                                        $vCover = preg_replace('/=s\d+$/', '=s150', $vCover);
-                                    }
+                                    // Si es video, se usa su fotograma de lh3 como imagen del chip
+                                    $vCover = parseStoredCover(($v['cover_image_url'] ?: '') ?: $familyCover, 150)['url'];
                                     $isActive = ($v['sku'] === $product['sku']);
                                 ?>
                                     <a href="/producto/<?= urlencode($v['sku']) ?>" 
@@ -364,6 +379,7 @@ $variants = $varStmt->fetchAll();
         </div>
     </footer>
 
+    <script src="/assets/js/lightbox.js?v=<?= APP_VERSION ?>"></script>
     <script>
         const SKU = '<?= e($product['sku']) ?>';
         const SEARCH_SKU = '<?= e($originalSku) ?>'; // SKU original para búsqueda bidireccional
@@ -494,8 +510,9 @@ $variants = $varStmt->fetchAll();
             imgEl.alt = PRODUCT_NAME;
             imgEl.style.opacity = '0';
             imgEl.style.transition = 'opacity 0.4s ease';
-            imgEl.onclick = () => downloadMainImage();
+            imgEl.onclick = () => openMainLightbox();
             imgEl.onload = () => {
+                Lightbox.preload(fileId || url); // versión grande lista para el clic
                 container.innerHTML = '';
                 container.appendChild(imgEl);
                 requestAnimationFrame(() => imgEl.style.opacity = '1');
@@ -706,6 +723,8 @@ $variants = $varStmt->fetchAll();
             const grid = document.getElementById('galleryGrid');
             gallery.style.display = 'block';
             allGalleryFiles = files;
+            // Las primeras fotos en grande quedan en caché mientras el usuario mira la ficha
+            files.filter(f => (f.mimeType || '').startsWith('image/')).slice(0, 4).forEach(f => Lightbox.preload(f.id));
 
             // Build thumbnail strip
             const strip = document.getElementById('thumbStrip');
@@ -921,7 +940,7 @@ $variants = $varStmt->fetchAll();
                     currentCover = imageUrl;
                     // Update main image
                     const mainImg = document.querySelector('.main-image');
-                    mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}" style="cursor:pointer;" onclick="downloadMainImage()">`;
+                    mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}" style="cursor:zoom-in;" onclick="openMainLightbox()">`;
 
                     // Reset all cover buttons
                     document.querySelectorAll('.btn-set-cover').forEach(b => {
@@ -1016,6 +1035,26 @@ $variants = $varStmt->fetchAll();
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeVideoModal(e, true);
         });
+
+        // Abre en grande la foto principal; con galería cargada se puede pasar entre todas las fotos
+        function openMainLightbox() {
+            const mainImg = document.querySelector('#mainCover img');
+            const images = allGalleryFiles
+                .filter(f => (f.mimeType || '').startsWith('image/'))
+                .map(f => ({ id: f.id, name: f.name, src: (f.thumbnailLink || '').replace(/=s\d+/, '=s600') }));
+            let start = images.findIndex(it => it.id === currentMainFileId);
+            if (start < 0 && mainImg) {
+                // Portada guardada (aún sin galería o sin id conocido): buscarla por id en la URL
+                const m = (mainImg.currentSrc || mainImg.src).match(/\/d\/([A-Za-z0-9_-]+)/);
+                start = m ? images.findIndex(it => it.id === m[1]) : -1;
+                if (start < 0) {
+                    images.unshift({ id: m ? m[1] : null, name: PRODUCT_NAME, src: mainImg.currentSrc || mainImg.src });
+                    start = 0;
+                }
+            }
+            if (mainImg) images[start].src = mainImg.currentSrc || mainImg.src; // ya está en caché: se ve al instante
+            Lightbox.open(images, Math.max(0, start));
+        }
 
         // Download the current main image
         function downloadMainImage() {
