@@ -13,7 +13,7 @@ if (!empty($_GET['album'])) {
     redirect('/carpeta/' . rawurlencode($_GET['album']));
 }
 $page = max(1, intval($_GET['page'] ?? 1));
-$perPage = 20;
+$perPage = 60;
 $offset = ($page - 1) * $perPage;
 
 $db = getDB();

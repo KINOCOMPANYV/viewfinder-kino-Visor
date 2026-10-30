@@ -3200,3 +3200,64 @@ img, video, iframe { max-width: 100%; }
 @media (min-width: 641px) and (max-width: 1024px) {
     .parent-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 }
+
+/* ============================================================
+   Catálogo denso: tarjetas en grilla, sin scroll lateral.
+   Va al final para ganar a las reglas de tablet/móvil de arriba.
+   ============================================================ */
+.container { max-width: 1680px; }
+
+.parent-grid,
+.parent-grid[style] {
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)) !important;
+    gap: 0.6rem !important;
+    padding: 0.75rem 0 1.5rem;
+}
+
+.parent-card { border-radius: var(--radius); display: flex; flex-direction: column; }
+.parent-card:hover { transform: none; }
+
+.parent-card .card-body { padding: 0.45rem 0.55rem 0.5rem !important; }
+.parent-card .card-sku { font-size: 0.68rem !important; margin-bottom: 0.1rem; }
+.parent-card .card-name {
+    font-size: 0.74rem !important;
+    line-height: 1.2;
+    margin-bottom: 0.15rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.parent-card .card-meta { font-size: 0.66rem; margin-bottom: 0.2rem; }
+
+/* Variantes: se acomodan en filas (grilla), no en carrusel */
+.children-scroll-wrapper { margin: 0.35rem 0 0.1rem; }
+.children-scroll-btn { display: none !important; }
+.children-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(26px, 1fr));
+    gap: 0.25rem !important;
+    overflow: visible;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0;
+}
+.child-thumb,
+.child-more {
+    width: auto !important;
+    height: auto !important;
+    aspect-ratio: 1;
+    border-radius: 4px;
+}
+.child-thumb:hover { transform: none; }
+.children-info { margin-top: 0.15rem; }
+.children-label { font-size: 0.62rem; }
+
+.parent-card .card-actions { margin: auto 0.55rem 0.5rem; padding-top: 0.25rem; }
+.parent-card .card-wa-btn { font-size: 0.66rem; padding: 0.3rem 0.4rem; }
+
+/* Carpetas: también en grilla, sin deslizar a los lados */
+.drive-folders-grid {
+    flex-wrap: wrap;
+    overflow-x: visible;
+}
