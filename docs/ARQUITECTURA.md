@@ -5,6 +5,9 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 ## Stack y despliegue
 - PHP 8.2 + Apache (`Dockerfile`), MySQL de Railway (`MYSQL_URL`). Deploy automático desde `main`.
 - Al arrancar el contenedor: `php migrate.php` aplica `migrations/*.sql` pendientes (tabla `migrations`).
+- Luego, en segundo plano, `scripts/sync_loop.sh`: **sincronización automática** al arrancar (cada deploy) y cada
+  `SYNC_INTERVAL_MINUTES` (60): `php scripts/cli_sync.php hoja` y después `portadas` (los mismos controladores que los
+  botones del admin). `AUTO_SYNC=0` la apaga. El resultado sale en los logs de Railway.
 - Config: `config/database.php` (`env()`, `getDB()` singleton PDO), `config/app.php` (constantes, `APP_VERSION` para cache-busting).
 - Variables clave: `GOOGLE_DRIVE_FOLDER_ID` (carpeta raíz de fotos), `GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI`,
   `GOOGLE_SHEET_ID`, `CRON_SECRET`, `WEBHOOK_SHEETS_SECRET`, `ADMIN_USER/ADMIN_PASSWORD(_HASH)`.

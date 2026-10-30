@@ -59,6 +59,8 @@ RUN echo '#!/bin/bash\n\
     env | grep -E "^(DB_|MYSQL|ADMIN_|PORT|APP_|GOOGLE_)" | sed "s/=.*//" | while read var; do echo "PassEnv $var"; done > /etc/apache2/conf-enabled/passenv.conf\n\
     # Ejecutar migraciones pendientes antes de iniciar\n\
     php /var/www/html/migrate.php || true\n\
+    # Sincronización automática en segundo plano (hoja + portadas, al arrancar y cada hora)\n\
+    bash /var/www/html/scripts/sync_loop.sh &\n\
     apache2-foreground' > /start.sh && chmod +x /start.sh
 
 # Asegurar que PHP lee $_ENV
