@@ -7,8 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Viewfinder — Centro de Contenido</title>
-    <meta name="description"
-        content="Centro de contenido exclusivo para distribuidores. Busca por SKU y descarga fotos y videos — Viewfinder Visor.">
+    <?= shareMetaTags([
+        'title' => 'Catálogo Kino — Viewfinder',
+        'description' => 'Centro de contenido exclusivo para distribuidores. Busca por SKU y descarga fotos y videos — Viewfinder Visor.',
+        'url' => publicBaseUrl() . '/',
+    ]) ?>
     <style>
         body {
             background: #0a0a0f;

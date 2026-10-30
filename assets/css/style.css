@@ -1687,6 +1687,20 @@ textarea.form-input {
     flex-shrink: 0;
 }
 
+/* Botón "Compartir por WhatsApp" (enlace con vista previa) en ficha y carpeta */
+.btn-whatsapp.share-link-btn {
+    width: auto;
+    margin: 0 0 1.25rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    text-decoration: none;
+}
+.btn-whatsapp.share-link-btn:hover { color: #fff; }
+@media (max-width: 600px) {
+    .btn-whatsapp.share-link-btn { width: 100%; min-height: 44px; }
+}
+
 /* === Batch Search Modal === */
 .batch-modal-overlay {
     position: fixed;

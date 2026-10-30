@@ -264,6 +264,19 @@ if (!empty($pageRoots)) {
     <title>
         <?= $q ? e($q) . ' — ' : '' ?>Búsqueda · Viewfinder
     </title>
+    <?php
+    // Vista previa al compartir la búsqueda por WhatsApp: foto del primer resultado
+    $shareImageId = null;
+    array_walk_recursive($grouped, function ($v, $k) use (&$shareImageId) {
+        if (!$shareImageId && $k === 'cover_image_url' && $v) $shareImageId = driveIdFromUrl($v);
+    });
+    echo shareMetaTags([
+        'title' => $q ? $q . ' — Catálogo Kino' : 'Catálogo Kino',
+        'description' => $totalParents . ' producto' . ($totalParents !== 1 ? 's' : '') . ' · fotos y videos',
+        'url' => publicBaseUrl() . '/buscar' . ($q !== '' ? '?q=' . rawurlencode($q) : ''),
+        'image_id' => $shareImageId,
+    ]);
+    ?>
     <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

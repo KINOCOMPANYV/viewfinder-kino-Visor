@@ -869,3 +869,82 @@ function cleanSkuDisplay(string $sku): string
 {
     return preg_replace('/\.\w{2,4}$/i', '', $sku);
 }
+
+// ── Compartir por WhatsApp (vista previa del enlace) ──
+
+/**
+ * URL pública del sitio (https://dominio), para enlaces absolutos en las etiquetas Open Graph.
+ * Usa APP_URL si está configurada (y no es localhost); si no, el host de la petición.
+ */
+function publicBaseUrl(): string
+{
+    $appUrl = rtrim((string) env('APP_URL', ''), '/');
+    if ($appUrl !== '' && !preg_match('#//(localhost|127\.0\.0\.1)#', $appUrl)) {
+        return $appUrl;
+    }
+    $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $host = preg_replace('/[^A-Za-z0-9.:-]/', '', explode(',', $host)[0]);
+    $proto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http');
+    $proto = trim(explode(',', $proto)[0]) === 'https' ? 'https' : 'http';
+    return "{$proto}://{$host}";
+}
+
+/** ID de Drive dentro de una URL de lh3/Drive (".../d/{id}=s400", "?id={id}"); null si no hay. */
+function driveIdFromUrl(?string $url): ?string
+{
+    if ($url && preg_match('#(?:/d/|[?&]id=)([A-Za-z0-9_-]{10,})#', $url, $m)) {
+        return $m[1];
+    }
+    return null;
+}
+
+/**
+ * Imagen para la vista previa de WhatsApp: se sirve desde el propio dominio (/og/{id}.jpg),
+ * en JPEG liviano, porque WhatsApp no muestra imágenes pesadas ni algunas de Google.
+ */
+function shareImageUrl(string $fileId): string
+{
+    return publicBaseUrl() . '/og/' . rawurlencode($fileId) . '.jpg';
+}
+
+/**
+ * Etiquetas Open Graph para que el enlace se vea con foto, título y descripción en WhatsApp.
+ * @param array{title: string, description?: string, url: string, image_id?: ?string, type?: string} $m
+ */
+function shareMetaTags(array $m): string
+{
+    $tags = [
+        'og:site_name' => 'Viewfinder Kino',
+        'og:type' => $m['type'] ?? 'website',
+        'og:title' => $m['title'],
+        'og:description' => $m['description'] ?? '',
+        'og:url' => $m['url'],
+        'og:locale' => 'es_CO',
+    ];
+    if (!empty($m['image_id'])) {
+        $tags['og:image'] = shareImageUrl($m['image_id']);
+        $tags['og:image:type'] = 'image/jpeg';
+        $tags['og:image:width'] = (string) OG_IMAGE_SIZE;
+        $tags['og:image:height'] = (string) OG_IMAGE_SIZE;
+        $tags['og:image:alt'] = $m['title'];
+    }
+    $html = '';
+    foreach ($tags as $property => $content) {
+        if ($content === '') continue;
+        $html .= '<meta property="' . $property . '" content="' . e($content) . "\">\n    ";
+    }
+    $html .= '<meta name="twitter:card" content="' . (!empty($m['image_id']) ? 'summary_large_image' : 'summary') . "\">\n    ";
+    if (($m['description'] ?? '') !== '') {
+        $html .= '<meta name="description" content="' . e($m['description']) . "\">\n";
+    }
+    return $html;
+}
+
+/** Lado (px) de la imagen de vista previa: cuadrada, como las fotos de producto. */
+const OG_IMAGE_SIZE = 600;
+
+/** Enlace de WhatsApp que abre el chat con el texto listo: título en negrita + enlace (WhatsApp arma la vista previa). */
+function whatsappShareHref(string $title, string $url): string
+{
+    return 'https://wa.me/?text=' . rawurlencode("*{$title}*\n{$url}");
+}

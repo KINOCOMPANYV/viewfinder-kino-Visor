@@ -202,6 +202,22 @@ unset($v);
         <?= e($product['sku']) ?> —
         <?= e($product['name']) ?> · Viewfinder
     </title>
+    <?php
+    // Vista previa al compartir el enlace (WhatsApp): foto, código y nombre
+    $shareTitle = $product['sku'] . ' — ' . $product['name'];
+    $shareDesc = implode(' · ', array_filter([
+        $product['brand'] ?? '', $product['category'] ?? '', $product['color'] ?? '',
+        !empty($product['gender']) ? ucfirst($product['gender']) : '',
+    ])) ?: 'Fotos y videos del producto en el catálogo Kino';
+    $shareUrl = publicBaseUrl() . '/producto/' . str_replace('%3A', ':', rawurlencode($product['sku']));
+    echo shareMetaTags([
+        'title' => $shareTitle,
+        'description' => $shareDesc,
+        'url' => $shareUrl,
+        'type' => 'product',
+        'image_id' => driveIdFromUrl($serverCover) ?? driveIdFromUrl($product['cover_image_url'] ?? ''),
+    ]);
+    ?>
     <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -275,6 +291,8 @@ unset($v);
                     <h1>
                         <?= e($product['name']) ?>
                     </h1>
+
+                    <?php include __DIR__ . '/../../templates/partials/share_whatsapp.php'; ?>
 
                     <!-- Meta info -->
                     <ul class="meta-list">
@@ -405,6 +423,7 @@ unset($v);
         const SKU = '<?= e($product['sku']) ?>';
         const SEARCH_SKU = '<?= e($originalSku) ?>'; // SKU original para búsqueda bidireccional
         const PRODUCT_NAME = '<?= e(addslashes($product['name'])) ?>';
+        const SHARE_URL = <?= json_encode($shareUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?>;
         const PRODUCT_ID = <?= intval($product['id']) ?>;
         const IS_ADMIN = <?= isAdminLoggedIn() ? 'true' : 'false' ?>;
         const IS_VARIANT = <?= $isVariant ? 'true' : 'false' ?>;
@@ -900,7 +919,8 @@ unset($v);
                             return null;
                         }))).filter(Boolean);
                         if (fileObjs.length > 0) {
-                            const sd = { files: fileObjs };
+                            // Con pie de foto: código, nombre y enlace a la ficha (vista previa en WhatsApp)
+                            const sd = { files: fileObjs, text: '*' + SKU + ' — ' + PRODUCT_NAME + '*\n' + SHARE_URL };
                             if (navigator.canShare(sd)) { await navigator.share(sd); resetGalleryBtn(); return; }
                         }
                     } catch (e) { if (e.name === 'AbortError') { resetGalleryBtn(); return; } }
@@ -909,7 +929,7 @@ unset($v);
 
                 // Fallback (desktop): open links text
                 let text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n';
-                text += '🔗 Ver producto: ' + location.href + '\n\n';
+                text += SHARE_URL + '\n\n';
                 if (selImages.length > 0) {
                     text += '📸 *Imágenes (' + selImages.length + '):*\n\n';
                     selImages.forEach((f, i) => {
@@ -1024,7 +1044,7 @@ unset($v);
         async function shareMainImageWa() {
             if (!currentMainFileId) return;
             const imgUrl = 'https://lh3.googleusercontent.com/d/' + currentMainFileId + '=s1200';
-            const productUrl = window.location.href;
+            const productUrl = SHARE_URL;
             const text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n🔗 Ver producto: ' + productUrl;
 
             const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);

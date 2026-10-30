@@ -58,6 +58,27 @@ foreach ($files as &$item) {
     $item['isVideo'] = str_starts_with($item['mimeType'] ?? '', 'video/');
 }
 unset($item);
+
+// Vista previa al compartir el enlace (WhatsApp): portada de la carpeta o su primera foto
+$shareTitle = $folderName . ' — Catálogo Kino';
+$shareUrl = publicBaseUrl() . '/carpeta/' . rawurlencode($folderId);
+$shareImageId = null;
+try {
+    $stmt = $db->prepare("SELECT cover_file_id FROM drive_index WHERE file_id = ? AND is_folder = 1");
+    $stmt->execute([$folderId]);
+    $shareImageId = $stmt->fetchColumn() ?: null;
+} catch (Exception $e) {
+    // índice aún sin la columna: se usa la primera foto
+}
+if (!$shareImageId) {
+    foreach ($files as $item) {
+        if (!$item['isVideo']) { $shareImageId = $item['id']; break; }
+    }
+}
+$shareDesc = implode(' · ', array_filter([
+    $subfolders ? count($subfolders) . ' carpeta' . (count($subfolders) !== 1 ? 's' : '') : '',
+    $files ? (count($files) === 1 ? '1 foto o video' : count($files) . ' fotos y videos') : '',
+])) ?: 'Fotos y videos del catálogo Kino';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -67,6 +88,7 @@ unset($item);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title><?= e($folderName) ?> — Viewfinder</title>
+    <?= shareMetaTags(['title' => $shareTitle, 'description' => $shareDesc, 'url' => $shareUrl, 'image_id' => $shareImageId]) ?>
     <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -98,6 +120,9 @@ unset($item);
                 <?= count($subfolders) ?> subcarpeta<?= count($subfolders) !== 1 ? 's' : '' ?> · 
                 <?= count($files) ?> archivo<?= count($files) !== 1 ? 's' : '' ?>
             </p>
+            <div style="margin-top:0.75rem;">
+                <?php include __DIR__ . '/../../templates/partials/share_whatsapp.php'; ?>
+            </div>
         </div>
     </div>
 
