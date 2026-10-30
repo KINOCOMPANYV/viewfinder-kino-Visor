@@ -19,6 +19,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/buscar` (`?q=`, `?ajax=1`) | `src/controllers/search.php` | Grid de familias (20/página), multi-código, carpetas de `drive_index`. `?album=ID` (viejo) redirige a `/carpeta/ID` |
 | `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}` |
 | `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada) |
+| `/og/{fileId}.jpg` | `src/controllers/og_image.php` | Foto de vista previa para WhatsApp (og:image), ver "Compartir por WhatsApp" |
 | `/api/search` | `src/controllers/api_search.php` | Autocomplete JSON |
 | `/api/batch-search` POST | `src/controllers/api_batch_search.php` | Búsqueda por lote (modal) |
 | `/api/covers/batch` POST | inline en `index.php` | Portadas para SKUs sin `cover_image_url` (desde `drive_index`) |
@@ -141,6 +142,14 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - Tarjeta (inicio y búsqueda): si el padre no tiene foto, usa la portada de una variante.
 - Variantes: `computeParentSkuMap()` agrupa por raíz candidata + mismo nombre → `parent_sku`.
   Un hijo ve sus archivos propios + los genéricos del padre (`isGenericMediaForSku`).
+
+## Compartir por WhatsApp
+- Ficha, carpeta, búsqueda e inicio llevan etiquetas Open Graph (`shareMetaTags()` en helpers): al pegar el enlace en
+  WhatsApp sale la foto, el título y la descripción. URL absoluta con `publicBaseUrl()` (env `APP_URL` o el host de la petición).
+- `og:image` = `/og/{fileId}.jpg` (propio dominio): baja la foto de lh3 una vez, la deja cuadrada de 600 px con fondo
+  blanco, JPEG ≤ 250 KB, y la guarda en `storage/og_cache/`. Solo archivos de `drive_index` no ocultos. Si lh3 falla, redirige a lh3.
+- Botón "Compartir por WhatsApp" (`templates/partials/share_whatsapp.php`) en ficha y carpeta: abre `wa.me` con título + enlace.
+- Enviar fotos (tarjetas, galería, foto principal): en el celular manda los archivos con el código, nombre y enlace como pie de foto.
 
 ## Caché HTTP
 - Assets (`.htaccess`): 1 año `immutable`; se invalida con `?v=APP_VERSION`.

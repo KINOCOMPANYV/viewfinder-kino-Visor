@@ -165,6 +165,13 @@ if (preg_match('#^/carpeta/([^/]+)$#', $uri, $matches)) {
     exit;
 }
 
+if (preg_match('#^/og/([A-Za-z0-9_-]+)\.jpg$#', $uri, $matches)) {
+    // Imagen de vista previa para WhatsApp (etiqueta og:image) servida desde el propio dominio
+    session_write_close();
+    include __DIR__ . '/src/controllers/og_image.php';
+    exit;
+}
+
 if ($uri === '/api/search') {
     // API de búsqueda (para autocomplete AJAX)
     checkRateLimit(120); // 120 req/min — autocomplete es frecuente
