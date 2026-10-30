@@ -242,7 +242,8 @@ unset($v);
                             data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
                         <?php if ($serverCover): ?>
                             <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
-                                decoding="async" style="cursor:zoom-in;" onclick="openMainLightbox()">
+                                decoding="async" style="cursor:zoom-in;" onclick="openMainLightbox()"
+                                onerror="this.remove()">
                         <?php else: ?>
                             <div class="cover-skeleton"
                                 style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
