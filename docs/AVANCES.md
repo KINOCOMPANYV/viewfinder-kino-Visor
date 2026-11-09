@@ -10,7 +10,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Drive raíz: env `GOOGLE_DRIVE_FOLDER_ID` = carpeta **PRODUCTOS**. Se indexan todos los niveles en `drive_index`.
 - Hoja maestra: **"MAESTRA DE PRODUCTOS KINO"** (env `GOOGLE_SHEET_ID`), ~3600 códigos.
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#20 fusionados.
+- PRs #1–#21 fusionados.
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -29,10 +29,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Catálogo público en grilla densa (60 por página, una tarjeta por familia; contador "N referencias · M familias").
 - Ficha de producto con variantes, galería, visor grande; WhatsApp + Descargar en cada foto.
 - Compartir por WhatsApp con vista previa (foto, título, enlace) vía Open Graph (`/og/{id}.jpg`).
-- "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto → códigos → fotos → enviar una por una.
-  Botón verde 📲 en cada fila (junto a la casilla): comparte al instante solo esa foto (en el PC la copia para WhatsApp Web).
-  Ya no hay envío del lote junto (tardaba demasiado, decisión del dueño 2026-11-09). Las casillas ✅ eligen qué entra en
-  "Copiar foto", "Descargar todas" y la lista en texto.
+- "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto → códigos → galería de fotos (tocar = marcar/desmarcar).
+  "💾 Guardar N en el celular" (Android/PC: descargas; iPhone: Compartir → Guardar imágenes) y luego se mandan desde
+  WhatsApp (📎 → Galería, hasta 100). "📲 Enviar por tandas": Compartir a WhatsApp de 20 en 20. 📲 en cada foto = solo esa.
+  Decisión del dueño 2026-11-09: ofrecer las dos vías; ir foto por foto era lento y el lote de 30+ fallaba.
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
 - Todo el visor y el admin se revisan a 320/360/375 px (celular): sin scroll lateral, letra legible, botones de dedo.
@@ -59,3 +59,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #20: repaso móvil: barra "Enviar por WhatsApp" ya no tapa la pantalla (y aparece en la galería de la ficha), encabezado sin
   choques, letra de tarjetas más grande, menú del admin completo en 2-3 filas, Enviar catálogo usable en el celular, error JS del inicio.
 - #21: Enviar catálogo: botón 📲 por fila (comparte solo esa foto); se quitan los botones verdes de lote y "N de M".
+- #22: Enviar catálogo en galería: guardar las marcadas en el celular + enviar por tandas de 20; fotos a 1200 px.
