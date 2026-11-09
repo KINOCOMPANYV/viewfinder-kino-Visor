@@ -159,81 +159,51 @@ $shareDesc = implode(' · ', array_filter([
             </div>
         <?php endif; ?>
 
-        <!-- Archivos (fotos/videos) -->
-        <?php if (!empty($files)): 
-            // Agrupar archivos por SKU raíz para mostrar variantes juntas
-            $groupedFiles = [];
-            foreach ($files as $f) {
-                $fileSku = pathinfo($f['name'] ?? '', PATHINFO_FILENAME);
-                $rootSku = extractRootSku($fileSku);
-                if (!isset($groupedFiles[$rootSku])) {
-                    $groupedFiles[$rootSku] = ['parent' => $f, 'children' => []];
-                } else {
-                    $groupedFiles[$rootSku]['children'][] = $f;
-                }
-            }
+        <!-- Archivos (fotos/videos): una tarjeta por foto, en grilla, para ver y marcar cada una -->
+        <?php if (!empty($files)):
+            // Orden por nombre para que las variantes de una referencia queden juntas (1409-C1, 1409-C2…)
+            usort($files, fn($x, $y) => strnatcasecmp($x['name'] ?? '', $y['name'] ?? ''));
+            $refCount = count(array_unique(array_map(fn($f) => extractRootSku(pathinfo($f['name'] ?? '', PATHINFO_FILENAME)), $files)));
         ?>
             <div class="section-header-landing" style="margin-top:1rem;">
-                <h2>🖼️ Archivos</h2>
-                <span class="product-count"><?= count($groupedFiles) ?> referencia<?= count($groupedFiles) !== 1 ? 's' : '' ?> (<?= count($files) ?> archivos)</span>
+                <h2>🖼️ Fotos</h2>
+                <span class="product-count"><?= count($files) ?> archivo<?= count($files) !== 1 ? 's' : '' ?> · <?= $refCount ?> referencia<?= $refCount !== 1 ? 's' : '' ?></span>
             </div>
             <div class="parent-grid" style="padding-top:1rem;">
-                <?php $idx = 0; foreach ($groupedFiles as $rootSku => $group): 
-                    $file = $group['parent'];
-                    $children = $group['children'];
-                    $childCount = count($children);
+                <?php foreach ($files as $idx => $file):
+                    $code = pathinfo($file['name'] ?? '', PATHINFO_FILENAME);
+                    $rootSku = extractRootSku($code);
                 ?>
-                    <div class="parent-card">
-                        <div style="text-decoration:none;color:inherit;display:block;">
-                            <a href="/producto/<?= urlencode($rootSku) ?>" class="dynamic-card-link" style="display:block;">
-                                <div class="card-image" style="position:relative;">
-                                    <?php if ($file['isVideo']): ?>
-                                        <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.7rem;z-index:2;">🎬 Video</div>
-                                    <?php endif; ?>
-                                    <img src="<?= e($file['thumb']) ?>" 
-                                         alt="<?= e($file['name']) ?>" 
-                                         loading="<?= $idx < 6 ? 'eager' : 'lazy' ?>"
-                                         class="img-fade-in"
-                                         onload="this.classList.add('loaded')"
-                                         onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'"
-                                         style="width:100%;height:100%;object-fit:cover;">
-                                </div>
-                            </a>
-                            <div class="card-body">
-                                <a href="/producto/<?= urlencode($rootSku) ?>" class="dynamic-card-link" style="text-decoration:none; color:inherit; display:block;">
-                                    <div class="card-sku dynamic-card-sku" style="font-size:0.75rem; font-weight:600;"><?= e($rootSku) ?></div>
-                                    <div class="card-name" style="font-size:0.7rem; word-break:break-all; color:var(--color-text-muted);"><?= e($file['name']) ?></div>
-                                </a>
-                                
-                                <!-- Children thumbnails -->
-                                <?php if ($childCount > 0): ?>
-                                    <div class="children-scroll-wrapper" style="margin-top:0.75rem;">
-                                        <button class="children-scroll-btn scroll-left hidden" onclick="scrollChildren(this,-1)" type="button">◀</button>
-                                        <div class="children-row">
-                                            <?php
-                                            foreach ($children as $child):
-                                                $childName = pathinfo($child['name'] ?? '', PATHINFO_FILENAME);
-                                            ?>
-                                                <div class="child-thumb" style="cursor:pointer;" 
-                                                     title="<?= e($childName) ?>"
-                                                     onclick="previewVariant(this, '<?= urlencode(extractRootSku($childName)) ?>', '<?= e($childName) ?>')">
-                                                    <img src="<?= e($child['thumb']) ?>" alt="<?= e($child['name']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                        <button class="children-scroll-btn scroll-right" onclick="scrollChildren(this,1)" type="button">▶</button>
-                                    </div>
-                                    <div class="children-info">
-                                        <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
-                                    </div>
+                    <div class="parent-card search-selectable-card">
+                        <a href="/producto/<?= rawurlencode($rootSku) ?>" style="display:block;color:inherit;text-decoration:none;">
+                            <div class="card-image" style="position:relative;">
+                                <?php if ($file['isVideo']): ?>
+                                    <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.7rem;z-index:2;">🎬 Video</div>
                                 <?php endif; ?>
+                                <img src="<?= e($file['thumb']) ?>"
+                                     alt="<?= e($code) ?>"
+                                     loading="<?= $idx < 6 ? 'eager' : 'lazy' ?>"
+                                     class="img-fade-in"
+                                     onload="this.classList.add('loaded')"
+                                     onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
                             </div>
-                        </div>
-                        <div class="card-body" style="padding-top:0;">
-                            <?= mediaActionButtons($file['id'], $file['name'] ?? '', $rootSku, '/producto/' . rawurlencode($rootSku)) ?>
-                        </div>
+                            <div class="card-body">
+                                <div class="card-sku"><?= e($code) ?></div>
+                            </div>
+                        </a>
+                        <?= mediaActionButtons($file['id'], $file['name'] ?? '', $code, '/producto/' . rawurlencode($rootSku)) ?>
+                        <?php if (!$file['isVideo']): ?>
+                        <label class="search-check-footer" style="border-top: 1px solid var(--color-border); margin-top: auto;">
+                            <input type="checkbox" class="search-card-check"
+                                   data-sku="<?= e($code) ?>"
+                                   data-file-id="<?= e($file['id']) ?>"
+                                   data-is-video="0">
+                            <span class="search-check-icon">✓</span>
+                            <span class="search-check-text">Seleccionar</span>
+                        </label>
+                        <?php endif; ?>
                     </div>
-                <?php $idx++; endforeach; ?>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
 
@@ -265,62 +235,7 @@ $shareDesc = implode(' · ', array_filter([
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/media_actions.js?v=<?= APP_VERSION ?>"></script>
-    <script>
-        function previewVariant(thumbEl, skuEnc, skuLabel) {
-            const card = thumbEl.closest('.parent-card');
-            if (!card) return;
-
-            const thumbImg = thumbEl.querySelector('img');
-            const newSrc = thumbImg ? thumbImg.src : null;
-            if (!newSrc) return;
-
-            const mainImgContainer = card.querySelector('.card-image');
-            const mainImg = mainImgContainer.querySelector('img');
-            const hiresUrl = newSrc.replace(/=s\d+/, '=s600'); 
-            
-            if (mainImg) {
-                mainImg.src = hiresUrl;
-            } else {
-                const ph = mainImgContainer.querySelector('.cover-placeholder');
-                if (ph) {
-                    ph.outerHTML = `<img src="${hiresUrl}" class="img-fade-in loaded" style="width:100%;height:100%;object-fit:cover;">`;
-                }
-            }
-
-            // SKU label update (visual only)
-
-            const skuText = card.querySelector('.dynamic-card-sku');
-            if (skuText) skuText.textContent = skuLabel;
-            if (window.KinoMedia) KinoMedia.retarget(card, skuLabel, '/producto/' + skuEnc);
-
-            card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
-            thumbEl.style.boxShadow = 'var(--glow-accent)';
-        }
-
-        function scrollChildren(btn, direction) {
-            const wrapper = btn.closest('.children-scroll-wrapper');
-            const row = wrapper.querySelector('.children-row');
-            row.scrollBy({ left: direction * 120, behavior: 'smooth' });
-            setTimeout(() => {
-                const leftBtn = wrapper.querySelector('.scroll-left');
-                const rightBtn = wrapper.querySelector('.scroll-right');
-                if (leftBtn) leftBtn.classList.toggle('hidden', row.scrollLeft <= 0);
-                if (rightBtn) rightBtn.classList.toggle('hidden', row.scrollLeft + row.clientWidth >= row.scrollWidth - 2);
-            }, 350);
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.children-scroll-wrapper').forEach(wrapper => {
-                const row = wrapper.querySelector('.children-row');
-                const leftBtn = wrapper.querySelector('.scroll-left');
-                const rightBtn = wrapper.querySelector('.scroll-right');
-                if (!row) return;
-                const needsScroll = row.scrollWidth > row.clientWidth + 2;
-                if (leftBtn) leftBtn.classList.add('hidden');
-                if (rightBtn) rightBtn.classList.toggle('hidden', !needsScroll);
-            });
-        });
-    </script>
+    <script src="/assets/js/wa_batch.js?v=<?= APP_VERSION ?>"></script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
 </body>
 

@@ -1,5 +1,5 @@
 /**
- * Marcar varias fotos en el catálogo (inicio y resultados de búsqueda/filtro) y mandarlas por WhatsApp.
+ * Marcar varias fotos en el catálogo (inicio, resultados de búsqueda/filtro y carpetas) y mandarlas por WhatsApp.
  * Mismo mecanismo que "Enviar catálogo" (/enviar-catalogo): fotos livianas de /enviar-catalogo/foto/{id}
  * que bajan en segundo plano (3 intentos), envío por tandas de 10 con el menú Compartir del celular
  * (solo imágenes, sin texto) y "💾 Guardar" para bajarlas al celular o al computador.
@@ -33,7 +33,9 @@
             const ctrl = new AbortController();
             const timer = setTimeout(() => ctrl.abort(), 30000);
             try {
-                const r = await fetch('/enviar-catalogo/foto/' + encodeURIComponent(id), { credentials: 'same-origin', signal: ctrl.signal });
+                let r = await fetch('/enviar-catalogo/foto/' + encodeURIComponent(id), { credentials: 'same-origin', signal: ctrl.signal });
+                // Foto de carpeta sin código enlazado: la liviana no existe, va la original
+                if (r.status === 404) r = await fetch('/api/download/' + encodeURIComponent(id), { signal: ctrl.signal });
                 if (!r.ok) throw new Error('error ' + r.status);
                 const b = await r.blob();
                 if (!b.size) throw new Error('foto vacía');
