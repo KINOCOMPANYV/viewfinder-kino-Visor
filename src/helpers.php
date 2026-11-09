@@ -588,13 +588,13 @@ function isAlbumFolderName(string $name): bool
 }
 
 /**
- * ¿La carpeta es "archivada"? (decisión del dueño, 2026-11-09: se oculta por defecto con todo su contenido).
- * Sin distinguir mayúsculas ni tildes: "ARCHIVADO", "archivados", "Archivado 2024", "Archivadas"…
+ * ¿La carpeta es "archivada" o "desactivada"? (decisión del dueño, 2026-11-09: se oculta por defecto con todo su contenido).
+ * Sin distinguir mayúsculas ni tildes: "ARCHIVADO", "archivados", "Archivado 2024", "DESACTIVADOS", "Desactivadas"…
  */
 function isArchivedFolderName(string $name): bool
 {
     $plain = strtr(mb_strtolower($name, 'UTF-8'), ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u']);
-    return (bool) preg_match('/archivad[oa]s?/', $plain);
+    return (bool) preg_match('/(archivad|desactivad)[oa]s?/', $plain);
 }
 
 /**

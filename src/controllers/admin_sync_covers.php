@@ -139,7 +139,7 @@ echo json_encode([
             ? "📂 Álbumes: {$albumSync['added']} nuevos, {$albumSync['deactivated']} desactivados (ya no están en la carpeta raíz). "
             : '')
         . (!empty($folderState['archived_folders'])
-            ? "🗄️ Carpetas \"archivado\": {$folderState['archived_hidden']} de {$folderState['archived_folders']} ocultas"
+            ? "🗄️ Carpetas \"archivado\"/\"desactivados\": {$folderState['archived_hidden']} de {$folderState['archived_folders']} ocultas"
               . ($folderState['archived_new'] ? " ({$folderState['archived_new']} nuevas)" : '') . ". "
             : '')
         . ($link['drive_products'] ? "🆕 {$link['drive_products']} producto(s) solo de Drive (foto con código que no está en la hoja). " : '')
