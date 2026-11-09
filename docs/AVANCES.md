@@ -10,7 +10,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Drive raíz: env `GOOGLE_DRIVE_FOLDER_ID` = carpeta **PRODUCTOS**. Se indexan todos los niveles en `drive_index`.
 - Hoja maestra: **"MAESTRA DE PRODUCTOS KINO"** (env `GOOGLE_SHEET_ID`), ~3600 códigos.
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#18 fusionados. No hay PRs abiertos.
+- PRs #1–#19 fusionados. #20 (repaso móvil) abierto.
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -34,11 +34,11 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   En el PC: "Descargar todas" y arrastrarlas juntas a WhatsApp Web. Solo cuentan los productos marcados.
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
+- Todo el visor y el admin se revisan a 320/360/375 px (celular): sin scroll lateral, letra legible, botones de dedo.
 - Admin: Productos (activar/desactivar), Carpetas (ocultar), Sincronizar (hoja + Drive, "¿Por qué no sale la foto?"), Media.
 
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
-- En el inicio había un error JS ("Cannot read properties of null (reading 'addEventListener')"); revisar si sigue.
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
 
 ## Historial (1 línea por PR)
@@ -55,3 +55,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #17: contador de carpetas ocultas igual que la lista (no borra ajustes viejos).
 - #18: este archivo de avances + regla de actualizarlo (CLAUDE.md).
 - #19: Enviar catálogo: botón "Enviar todo el lote" (fotos marcadas juntas), marcar/desmarcar todos, "📲 Este".
+- #20: repaso móvil: barra "Enviar por WhatsApp" ya no tapa la pantalla (y aparece en la galería de la ficha), encabezado sin
+  choques, letra de tarjetas más grande, menú del admin completo en 2-3 filas, Enviar catálogo usable en el celular, error JS del inicio.

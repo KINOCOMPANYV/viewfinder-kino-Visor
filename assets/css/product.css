@@ -695,3 +695,14 @@ html.lightbox-lock, html.lightbox-lock body { overflow: hidden; }
     .lightbox-prev, .lightbox-next { top: auto; bottom: 48px; transform: none; }
     .lightbox-actions { bottom: 52px; }
 }
+
+/* Repaso móvil 2: botones sobre la foto principal con tamaño de dedo */
+@media (max-width: 640px) {
+    .main-image-download,
+    .main-image-wa {
+        min-height: 36px;
+        padding: 0.45rem 0.85rem;
+        font-size: 0.8rem;
+    }
+    .breadcrumb-bar { gap: 0.5rem; }
+}

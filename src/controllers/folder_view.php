@@ -111,7 +111,7 @@ $shareDesc = implode(' · ', array_filter([
     <!-- Breadcrumb + Folder Title -->
     <div style="background:var(--color-surface); border-bottom:1px solid var(--color-border); padding: 1.5rem 0;">
         <div class="container">
-            <div style="font-size:0.85rem; color:var(--color-text-muted); margin-bottom:0.5rem;">
+            <div class="folder-breadcrumb" style="font-size:0.85rem; color:var(--color-text-muted); margin-bottom:0.5rem;">
                 <a href="/" style="color:var(--color-primary);">Inicio</a>
                 <?php foreach (array_slice($folderPath, 0, -1) as $crumb): ?>
                     / <a href="/carpeta/<?= urlencode($crumb['id']) ?>" style="color:var(--color-primary);"><?= e($crumb['name']) ?></a>

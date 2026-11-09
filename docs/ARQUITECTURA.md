@@ -165,6 +165,10 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
 
 ## Móvil (responsive)
 - Reglas comunes al final de `assets/css/style.css` (bloque "Móvil"): sin scroll horizontal (`overflow-x: clip`),
-  botones ≥ 40-44 px, campos a 16 px (iOS no hace zoom), menú del admin en una fila deslizable, 3 tarjetas por fila en tablet.
+  botones ≥ 40-44 px, campos a 16 px (iOS no hace zoom), 3 tarjetas por fila en tablet.
 - Admin → Productos: bajo 900 px la tabla se ve como tarjetas (estilos en `templates/admin/products.php`). Media tiene su bloque en su `<style>`.
+- Bloque "Repaso móvil 2" (final de `style.css`): encabezado (bajo 370 px con dos botones queda solo el icono "VF"),
+  menú del admin en cuadrícula de 3 (2 bajo 380 px) en vez de fila deslizable, letra de tarjetas ≥ 12 px en el celular.
+- Barra "Seleccionar / Enviar por WhatsApp" (`.search-wa-toolbar`, búsqueda y galería de la ficha): fija abajo; se muestra
+  con la clase `visible` al marcar algo. Enviar catálogo: en el celular el panel de envío no es `sticky` (tapaba la lista).
 - Como hay mucho estilo en línea en las plantillas, algunas reglas móviles usan `!important` a propósito.
