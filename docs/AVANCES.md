@@ -67,4 +67,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #24: Enviar catálogo: arreglo "Failed to fetch" y tandas sin esperas (comparte lo ya bajado), fotos a 800 px, caché en disco.
 - #25: Enviar por tandas: el botón verde aparece solo cuando la siguiente tanda de 10 está lista (pedido del dueño).
 - #26: ficha en el celular: la foto ya no sale corrida a la derecha con muchas fotos (la tira de miniaturas estiraba la columna);
+  en el celular las miniaturas de la ficha van en cuadrícula (5 por fila, sin deslizar; tocar una sube a la foto grande).
   Enviar catálogo: las miniaturas muestran la foto entera (no recortada).
