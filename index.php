@@ -4,6 +4,14 @@
  * Todas las peticiones pasan por aquí gracias a .htaccess
  * @deploy 2026-02-18
  */
+// Páginas públicas (GET fuera de /admin): sin "no-store" de la sesión, para que el botón Atrás
+// del celular vuelva al instante a la búsqueda o carpeta (caché de ida y vuelta) en vez de recargarla.
+// "no-cache" obliga a pedirla de nuevo al navegar normal; cada controlador puede cambiarlo.
+$reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+if (in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true) && strpos($reqPath, '/admin') !== 0) {
+    session_cache_limiter('');
+    header('Cache-Control: private, no-cache');
+}
 session_start();
 
 require_once __DIR__ . '/config/database.php';

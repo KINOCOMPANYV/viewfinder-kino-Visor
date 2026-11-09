@@ -1,0 +1,715 @@
+// Movido desde src/controllers/product.php para que el navegador lo guarde en caché.
+// Usa las constantes que la ficha define antes (SKU, SHARE_URL, currentCover, currentMainFileId…).
+let mediaFiles = { images: [], videos: [] };
+let allGalleryFiles = [];
+
+// Escapa HTML para interpolar texto (nombres de archivo de Drive) en innerHTML
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function copyDescription() {
+    const text = document.getElementById('descriptionText').innerText;
+    const btn = document.getElementById('copyBtn');
+
+    navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = '✅ Copiado';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = '📋 Copiar';
+            btn.classList.remove('copied');
+        }, 2000);
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '✅ Copiado';
+        setTimeout(() => btn.textContent = '📋 Copiar', 2000);
+    });
+}
+
+// Load media from Drive API (búsqueda bidireccional)
+async function loadMedia() {
+    try {
+        const resp = await fetch('/api/media/' + encodeURIComponent(SEARCH_SKU));
+        const data = await resp.json();
+        const files = data.files || [];
+
+        files.forEach(f => {
+            const mime = f.mimeType || '';
+            if (mime.startsWith('image/')) {
+                mediaFiles.images.push(f);
+            } else if (mime.startsWith('video/')) {
+                mediaFiles.videos.push(f);
+            }
+        });
+
+        // Cargar imagen principal dinámicamente
+        loadMainCover(files);
+
+        updateButtons();
+        renderGallery(files);
+    } catch (e) {
+        console.error('Error cargando media:', e);
+        document.getElementById('btnPhotos').textContent = '📸 Sin conexión';
+        document.getElementById('btnVideos').textContent = '🎥 Sin conexión';
+        // Mostrar placeholder si falla
+        const main = document.getElementById('mainCover');
+        if (main && !main.querySelector('img')) main.innerHTML = '📷';
+    }
+}
+
+function loadMainCover(files) {
+    const main = document.getElementById('mainCover');
+    if (!main) return;
+
+    // Helper: show video as main cover with play overlay
+    function showVideoCover() {
+        const vid = files.find(f => (f.mimeType || '').startsWith('video/'));
+        if (vid) {
+            const idx = files.indexOf(vid);
+            const thumbUrl = vid.thumbnailLink
+                ? vid.thumbnailLink.replace(/=s\d+/, '=s800')
+                : '';
+            const thumbImg = thumbUrl
+                ? `<img src="${thumbUrl}" alt="${esc(vid.name)}" style="width:100%;height:100%;object-fit:cover;">`
+                : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
+            main.innerHTML = `
+                <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
+                    ${thumbImg}
+                    <div class="video-play-overlay">
+                        <div class="video-play-btn" style="width:64px;height:64px;">
+                            <svg viewBox="0 0 24 24" style="width:28px;height:28px;"><path d="M8 5v14l11-7z"/></svg>
+                        </div>
+                        <span class="video-play-label" style="font-size:0.85rem;">Reproducir video</span>
+                    </div>
+                    <span class="video-badge" style="font-size:0.75rem;padding:0.25rem 0.6rem;">VIDEO</span>
+                </div>`;
+            document.getElementById('mainImageName').textContent = vid.name;
+            return;
+        }
+        main.innerHTML = '📷';
+    }
+
+    // Helper: try Drive images, fallback to video
+    function tryDriveImages() {
+        const img = files.find(f => (f.mimeType || '').startsWith('image/'));
+        if (img) {
+            const url = img.thumbnailLink
+                ? img.thumbnailLink.replace(/=s\d+/, '=s600')
+                : `https://lh3.googleusercontent.com/d/${img.id}=s600`;
+            setCoverImage(main, url, img.id, img.name, showVideoCover);
+            return;
+        }
+        showVideoCover();
+    }
+
+    // 1) Si ya tiene cover de BD, usarla (con fallback a Drive si falla)
+    if (main.dataset.cover) {
+        setCoverImage(main, main.dataset.cover, null, null, tryDriveImages);
+        return;
+    }
+
+    // 2) Buscar primera imagen de Drive (con fallback a video)
+    tryDriveImages();
+}
+
+function setCoverImage(container, url, fileId, fileName, onErrorFallback) {
+    const imgEl = document.createElement('img');
+    imgEl.alt = PRODUCT_NAME;
+    imgEl.style.opacity = '0';
+    imgEl.style.transition = 'opacity 0.4s ease';
+    imgEl.onclick = () => openMainLightbox();
+    imgEl.onload = () => {
+        Lightbox.preload(fileId || url); // versión grande lista para el clic
+        container.innerHTML = '';
+        container.appendChild(imgEl);
+        requestAnimationFrame(() => imgEl.style.opacity = '1');
+        // Update tracking vars and info bar (portada guardada: el id va en la URL de lh3)
+        if (!fileId) {
+            const m = String(url).match(/\/d\/([A-Za-z0-9_-]{10,})/);
+            fileId = m ? m[1] : null;
+        }
+        if (fileId) {
+            currentMainFileId = fileId;
+            currentMainFileName = fileName || '';
+            document.getElementById('mainImageName').textContent = fileName || '';
+            document.getElementById('mainImageDownload').style.display = '';
+            document.getElementById('mainImageWaShare').style.display = '';
+        }
+    };
+    imgEl.onerror = () => {
+        if (typeof onErrorFallback === 'function') {
+            onErrorFallback();
+        } else {
+            container.innerHTML = '📷';
+        }
+    };
+    imgEl.src = url;
+}
+
+function updateButtons() {
+    const btnP = document.getElementById('btnPhotos');
+    const btnV = document.getElementById('btnVideos');
+    const count = document.getElementById('mediaCount');
+
+    const imgCount = mediaFiles.images.length;
+    const vidCount = mediaFiles.videos.length;
+
+    if (imgCount > 0) {
+        btnP.textContent = `📸 Descargar Fotos (${imgCount})`;
+        btnP.disabled = false;
+        btnP.style.opacity = '1';
+    } else {
+        btnP.textContent = '📸 Sin fotos';
+        btnP.disabled = true;
+        btnP.style.opacity = '0.4';
+    }
+
+    if (vidCount > 0) {
+        btnV.textContent = `🎥 Descargar Videos (${vidCount})`;
+        btnV.disabled = false;
+        btnV.style.opacity = '1';
+    } else {
+        btnV.textContent = '🎥 Sin videos';
+        btnV.disabled = true;
+        btnV.style.opacity = '0.4';
+    }
+
+    count.textContent = `${imgCount} foto(s) · ${vidCount} video(s) en Drive`;
+}
+
+// Show file in main image area when clicking a thumbnail
+// Celular: las miniaturas están en varias filas; al tocar una de abajo se sube a ver la foto grande
+function mainIntoView() {
+    const m = document.getElementById('mainCover');
+    if (!m) return;
+    const top = m.getBoundingClientRect().top;
+    if (top < 70) window.scrollTo({ top: window.scrollY + top - 80, behavior: 'smooth' }); // 80 = encabezado fijo
+}
+
+function showInMain(idx) {
+    const f = allGalleryFiles[idx];
+    if (!f) return;
+    const isVideo = (f.mimeType || '').startsWith('video/');
+
+    const main = document.getElementById('mainCover');
+
+    if (isVideo) {
+        // Show video preview thumbnail in main area with play overlay
+        const videoThumb = f.thumbnailLink
+            ? f.thumbnailLink.replace(/=s\d+/, '=s600')
+            : '';
+        const thumbImg = videoThumb
+            ? `<img src="${videoThumb}" alt="${esc(f.name)}" style="width:100%;height:100%;object-fit:contain;">`
+            : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style="font-size:4rem;opacity:0.3">🎬</span></div>`;
+        main.innerHTML = `
+            <div style="position:relative;width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
+                ${thumbImg}
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);">
+                    <div style="width:64px;height:64px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="#000"><path d="M8 5v14l11-7z"/></svg>
+                    </div>
+                    <span style="font-size:0.8rem;color:rgba(255,255,255,0.85);margin-top:0.5rem;text-shadow:0 1px 4px rgba(0,0,0,0.7);">Reproducir video</span>
+                </div>
+            </div>`;
+        // Update info bar
+        document.getElementById('mainImageName').textContent = f.name;
+        currentMainFileId = f.id;
+        currentMainFileName = f.name || '';
+        document.getElementById('mainImageDownload').style.display = '';
+    } else {
+        const url = f.thumbnailLink
+            ? f.thumbnailLink.replace(/=s\d+/, '=s600')
+            : `https://lh3.googleusercontent.com/d/${f.id}=s600`;
+        setCoverImage(main, url, f.id, f.name, () => { main.innerHTML = '📷'; });
+    }
+
+    // Highlight active thumbnail
+    document.querySelectorAll('.thumb-strip-item').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+    });
+    document.querySelectorAll('.gallery-item').forEach((el, i) => {
+        el.classList.toggle('gallery-active', i === idx);
+    });
+}
+
+// Global state for video modal (redundant storage)
+window.KINO_VIDEO_STATE = { id: '', name: '' };
+
+function openVideoModal(idx) {
+    const f = allGalleryFiles[idx];
+    if (!f) return;
+    openVideoModalDirect(f.id, f.name);
+}
+
+function openVideoModalDirect(fileId, fileName) {
+    console.log('--- OPEN VIDEO MODAL ---', { fileId, fileName });
+    if (!fileId) {
+        console.error('Error: openVideoModalDirect llamado sin fileId');
+        return;
+    }
+
+    const modal = document.getElementById('videoModal');
+    const player = document.getElementById('videoModalPlayer');
+    const title = document.getElementById('videoModalTitle');
+    const dlBtn = document.getElementById('videoModalDownload');
+
+    // 1. Store in global object
+    window.KINO_VIDEO_STATE = { id: fileId, name: fileName || '' };
+
+    // 2. Store in sessionStorage (cache backup)
+    try {
+        sessionStorage.setItem('last_video_id', fileId);
+        sessionStorage.setItem('last_video_name', fileName || '');
+    } catch(e) {}
+
+    // 3. Store in button attributes
+    if (dlBtn) {
+        dlBtn.setAttribute('data-file-id', fileId);
+        dlBtn.setAttribute('data-file-name', fileName || '');
+    }
+
+    player.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>`;
+    title.textContent = fileName || '';
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => {
+        modal.querySelector('.video-modal-content').style.transform = 'scale(1)';
+    }, 10);
+}
+
+function closeVideoModal(e, force) {
+    if (!force && e.target !== e.currentTarget) return;
+    const modal = document.getElementById('videoModal');
+    const player = document.getElementById('videoModalPlayer');
+    modal.querySelector('.video-modal-content').style.transform = 'scale(0.9)';
+    setTimeout(() => {
+        modal.classList.remove('active');
+        player.innerHTML = '';
+        document.body.style.overflow = '';
+    }, 200);
+}
+
+function downloadModalVideo(e) {
+    const dlBtn = document.getElementById('videoModalDownload');
+
+    // Try reading from 3 sources
+    let fid = window.KINO_VIDEO_STATE.id;
+    let fname = window.KINO_VIDEO_STATE.name;
+
+    if (!fid) {
+        fid = dlBtn ? dlBtn.getAttribute('data-file-id') : null;
+        fname = dlBtn ? dlBtn.getAttribute('data-file-name') : '';
+    }
+
+    if (!fid) {
+        fid = sessionStorage.getItem('last_video_id');
+        fname = sessionStorage.getItem('last_video_name');
+    }
+
+    console.log('--- ATTEMPT DOWNLOAD ---', { fid, fname, global: window.KINO_VIDEO_STATE.id, attr: dlBtn.getAttribute('data-file-id') });
+
+    if (fid && fid !== 'undefined' && fid !== 'null' && fid !== '') {
+        downloadFile(fid, fname, e);
+    } else {
+        console.error('CRITICAL: No video ID found in any storage!');
+        alert('Error: No se ha detectado el ID del video.\n\nPor favor intenta esto:\n1. Cierra el video.\n2. Presiona Ctrl+F5 (o recarga la página).\n3. Abre el video de nuevo.');
+    }
+}
+
+// Download file via proxy — simple way for browser to handle large files
+function downloadFile(fileId, fileName, evt) {
+    if (!fileId || fileId === 'undefined') {
+        alert('Error: ID de archivo no disponible');
+        return;
+    }
+    const btn = evt && evt.target ? evt.target : null;
+    if (btn) {
+        const originalText = btn.textContent;
+        btn.textContent = '⏳ Iniciando descarga...';
+        btn.disabled = true;
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }, 2000);
+    }
+    // Navegar directamente al proxy — el navegador gestiona el stream a disco
+    window.location.assign('/api/download/' + fileId);
+}
+
+function renderGallery(files) {
+    if (files.length === 0) return;
+
+    const gallery = document.getElementById('mediaGallery');
+    const grid = document.getElementById('galleryGrid');
+    gallery.style.display = 'block';
+    allGalleryFiles = files;
+    // Las primeras fotos en grande quedan en caché mientras el usuario mira la ficha
+    files.filter(f => (f.mimeType || '').startsWith('image/')).slice(0, 4).forEach(f => Lightbox.preload(f.id));
+
+    // Build thumbnail strip
+    const strip = document.getElementById('thumbStrip');
+    strip.innerHTML = files.map((f, idx) => {
+        const isImage = (f.mimeType || '').startsWith('image/');
+        const isVideo = (f.mimeType || '').startsWith('video/');
+        let thumbSrc = '';
+        if (isImage) {
+            thumbSrc = f.thumbnailLink
+                ? f.thumbnailLink.replace(/=s\d+/, '=s120')
+                : `https://lh3.googleusercontent.com/d/${f.id}=s120`;
+        } else if (isVideo && f.thumbnailLink) {
+            thumbSrc = f.thumbnailLink.replace(/=s\d+/, '=s120');
+        }
+        const imgTag = thumbSrc
+            ? `<img src="${thumbSrc}" alt="${esc(f.name)}" loading="lazy">`
+            : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.5rem;">📄</div>`;
+        const badge = isVideo ? '<span class="thumb-video-badge">▶</span>' : '';
+        return `<div class="thumb-strip-item" onclick="showInMain(${idx}); mainIntoView()" title="${esc(f.name)}">${imgTag}${badge}</div>`;
+    }).join('');
+
+    grid.innerHTML = files.map((f, idx) => {
+        const isImage = (f.mimeType || '').startsWith('image/');
+        const isVideo = (f.mimeType || '').startsWith('video/');
+        const downloadUrl = f.webContentLink || f.webViewLink || '#';
+
+        let mediaHtml;
+        if (isImage) {
+            const thumbUrl = f.thumbnailLink
+                ? f.thumbnailLink.replace(/=s\d+/, '=s200')
+                : `https://lh3.googleusercontent.com/d/${f.id}=s200`;
+            mediaHtml = `<img data-src="${thumbUrl}" alt="${esc(f.name)}" class="img-fade-in gallery-lazy" style="cursor:pointer;" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:150px;color:var(--color-text-muted);font-size:2rem;\\'>📷</div>'" onclick="showInMain(${idx})">`;
+        } else if (isVideo) {
+            const videoThumb = f.thumbnailLink
+                ? f.thumbnailLink.replace(/=s\d+/, '=s300')
+                : '';
+            const thumbContent = videoThumb
+                ? `<img src="${videoThumb}" alt="${esc(f.name)}" loading="lazy">`
+                : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#0a0a0f);display:flex;align-items:center;justify-content:center;"><span style='font-size:2.5rem;opacity:0.3'>🎬</span></div>`;
+            mediaHtml = `<div class="video-thumb-wrap" onclick="openVideoModal(${idx})">
+                ${thumbContent}
+                <div class="video-play-overlay">
+                    <div class="video-play-btn">
+                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </div>
+                    <span class="video-play-label">Reproducir</span>
+                </div>
+                <span class="video-badge">VIDEO</span>
+            </div>
+            <button onclick="event.stopPropagation();downloadFile('${f.id}','${esc(f.name.replace(/['"\\]/g, ''))}',event)" style="display:block;width:100%;text-align:center;padding:0.25rem;font-size:0.7rem;color:var(--color-primary);background:none;border:none;cursor:pointer;">⬇️ Descargar video</button>`;
+        } else {
+            mediaHtml = `<div class="video-placeholder">📄</div>`;
+        }
+
+        // Checkbox for images AND videos (selectable media)
+        const checkHtml = (isImage || isVideo) ? `
+            <label class="search-check-footer">
+                <input type="checkbox" class="gallery-check" data-index="${idx}" data-file-id="${f.id}" data-name="${esc(f.name)}" data-type="${isVideo ? 'video' : 'image'}">
+                <span class="search-check-icon">✓</span>
+                <span class="search-check-text">Seleccionar</span>
+            </label>` : '';
+
+        return `
+            <div class="gallery-item" data-file-id="${f.id}">
+                ${mediaHtml}
+                <div style="font-size:0.65rem; color:var(--color-text-muted); padding:0.3rem 0.4rem; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(f.name)}">
+                    ${esc(f.name.length > 25 ? f.name.substring(0, 22) + '...' : f.name)}
+                </div>
+                ${checkHtml}
+            </div>
+        `;
+    }).join('');
+
+    // Lazy-load thumbnails
+    const lazyObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                    img.removeAttribute('data-src');
+                    img.onload = () => img.classList.add('loaded');
+                }
+                lazyObserver.unobserve(img);
+            }
+        });
+    }, { rootMargin: '300px' });
+
+    grid.querySelectorAll('img.gallery-lazy[data-src]').forEach(img => {
+        lazyObserver.observe(img);
+    });
+
+    // --- Gallery WhatsApp selection ---
+    const waBar = document.getElementById('galleryWaBar');
+    const selectAllCb = document.getElementById('gallerySelectAll');
+    const countEl = document.getElementById('gallerySelectedCount');
+    const btnSend = document.getElementById('btnGalleryWaSend');
+    const checks = grid.querySelectorAll('.gallery-check');
+
+    if (checks.length > 0) waBar.style.display = '';
+
+    function updateGalleryCount() {
+        const sel = grid.querySelectorAll('.gallery-check:checked').length;
+        countEl.textContent = sel;
+        btnSend.disabled = sel === 0;
+        selectAllCb.checked = sel === checks.length && checks.length > 0;
+        selectAllCb.indeterminate = sel > 0 && sel < checks.length;
+        // Igual que en la búsqueda: la barra de enviar aparece al marcar alguna foto
+        waBar.classList.toggle('visible', sel > 0);
+    }
+
+    checks.forEach(cb => cb.addEventListener('change', updateGalleryCount));
+    selectAllCb.addEventListener('change', () => {
+        checks.forEach(cb => cb.checked = selectAllCb.checked);
+        updateGalleryCount();
+    });
+
+    btnSend.addEventListener('click', async () => {
+        const sel = [];
+        grid.querySelectorAll('.gallery-check:checked').forEach(cb => {
+            const f = allGalleryFiles[parseInt(cb.dataset.index)];
+            if (f) sel.push(f);
+        });
+        if (sel.length === 0) return;
+        if (sel.length > 10) {
+            alert('⚠️ Solo se pueden enviar 10 archivos a la vez.\n\nPor favor deselecciona algunos.');
+            return;
+        }
+
+        const selImages = sel.filter(f => (f.mimeType || '').startsWith('image/'));
+        const selVideos = sel.filter(f => (f.mimeType || '').startsWith('video/'));
+
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobile && navigator.canShare && navigator.share) {
+            // Mobile: share files as blobs (images + videos)
+            btnSend.disabled = true;
+            btnSend.textContent = '⏳ Preparando archivos...';
+            try {
+                const fileObjs = (await Promise.all(sel.map(async (f, i) => {
+                    try {
+                        const isImg = (f.mimeType || '').startsWith('image/');
+                        const isVid = (f.mimeType || '').startsWith('video/');
+                        if (isImg) {
+                            const r = await fetch(`/api/download/${f.id}`);
+                            const b = await r.blob();
+                            const ext = (f.name.match(/\.[^.]+$/) || ['.jpg'])[0];
+                            return new File([b], f.name || `imagen_${i+1}${ext}`, { type: b.type || 'image/jpeg' });
+                        } else if (isVid) {
+                            const r = await fetch(`/api/download/${f.id}`);
+                            const b = await r.blob();
+                            return new File([b], f.name || `video_${i+1}.mp4`, { type: b.type || 'video/mp4' });
+                        }
+                    } catch { return null; }
+                    return null;
+                }))).filter(Boolean);
+                if (fileObjs.length > 0) {
+                    // Con pie de foto: código, nombre y enlace a la ficha (vista previa en WhatsApp)
+                    const sd = { files: fileObjs, text: '*' + SKU + ' — ' + PRODUCT_NAME + '*\n' + SHARE_URL };
+                    if (navigator.canShare(sd)) { await navigator.share(sd); resetGalleryBtn(); return; }
+                }
+            } catch (e) { if (e.name === 'AbortError') { resetGalleryBtn(); return; } }
+            resetGalleryBtn();
+        }
+
+        // Fallback (desktop): open links text
+        let text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n';
+        text += SHARE_URL + '\n\n';
+        if (selImages.length > 0) {
+            text += '📸 *Imágenes (' + selImages.length + '):*\n\n';
+            selImages.forEach((f, i) => {
+                text += (i + 1) + '. https://drive.google.com/uc?export=view&id=' + f.id + '\n\n';
+            });
+        }
+        if (selVideos.length > 0) {
+            text += '🎬 *Videos (' + selVideos.length + '):*\n\n';
+            selVideos.forEach((f, i) => {
+                text += (i + 1) + '. ' + f.name + '\n' + location.origin + '/api/download/' + f.id + '\n\n';
+            });
+        }
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    });
+
+    function resetGalleryBtn() {
+        btnSend.disabled = false;
+        btnSend.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Enviar por WhatsApp';
+    }
+}
+
+function downloadMedia(type) {
+    const files = type === 'image' ? mediaFiles.images : mediaFiles.videos;
+    if (files.length === 0) return;
+
+    // Open each file download link in a new tab
+    files.forEach((f, i) => {
+        const url = f.webContentLink || f.webViewLink || '#';
+        setTimeout(() => {
+            window.open(url, '_blank');
+        }, i * 300); // Stagger to avoid popup blocker
+    });
+}
+
+async function setCover(fileId, btn) {
+    if (btn.classList.contains('current')) return;
+    btn.textContent = '⏳...';
+    btn.disabled = true;
+
+    const imageUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+    const form = new FormData();
+    form.append('product_id', PRODUCT_ID);
+    form.append('image_url', imageUrl);
+
+    try {
+        const resp = await fetch('/admin/product/set-cover', { method: 'POST', body: form });
+        const data = await resp.json();
+        if (data.ok) {
+            currentCover = imageUrl;
+            // Update main image
+            const mainImg = document.querySelector('.main-image');
+            mainImg.innerHTML = `<img src="${imageUrl}" alt="${PRODUCT_NAME}" style="cursor:zoom-in;" onclick="openMainLightbox()">`;
+
+            // Reset all cover buttons
+            document.querySelectorAll('.btn-set-cover').forEach(b => {
+                b.classList.remove('current');
+                b.disabled = false;
+                b.textContent = '⭐ Hacer principal';
+            });
+            btn.classList.add('current');
+            btn.disabled = true;
+            btn.textContent = '⭐ Principal';
+        } else {
+            alert(data.error || 'Error al cambiar imagen.');
+            btn.textContent = '⭐ Hacer principal';
+            btn.disabled = false;
+        }
+    } catch (e) {
+        alert('Error de conexión.');
+        btn.textContent = '⭐ Hacer principal';
+        btn.disabled = false;
+    }
+}
+
+// Init
+loadMedia();
+let currentMainFileName = '';
+
+// === Botón volver dinámico ===
+(function() {
+    try {
+        const lastSearch = sessionStorage.getItem('lastSearch');
+        const btn = document.getElementById('btnBackCatalog');
+        if (lastSearch && btn) {
+            const url = new URL(lastSearch);
+            // Solo usar si es una página de búsqueda del mismo sitio
+            if (url.pathname.startsWith('/buscar') || url.pathname === '/') {
+                btn.href = lastSearch;
+                // Si hay álbum, leer nombre del álbum del sidebar
+                const albumParam = url.searchParams.get('album');
+                const q = url.searchParams.get('q');
+                if (albumParam) {
+                    // Intentar obtener nombre del álbum desde el título de la pestaña anterior
+                    const storedName = sessionStorage.getItem('lastAlbumName');
+                    if (storedName) {
+                        btn.textContent = '⬅️ Volver a "' + storedName + '"';
+                    } else {
+                        btn.textContent = '⬅️ Volver al álbum';
+                    }
+                } else if (q) {
+                    btn.textContent = '⬅️ Volver a "' + q + '"';
+                } else {
+                    btn.textContent = '⬅️ Volver al catálogo';
+                }
+            }
+        }
+    } catch(e) {}
+})();
+
+// === Compartir imagen principal por WhatsApp ===
+async function shareMainImageWa() {
+    if (!currentMainFileId) {
+        // Sin foto todavía: se manda el enlace (WhatsApp arma la vista previa)
+        window.open('https://wa.me/?text=' + encodeURIComponent('*' + SKU + ' — ' + PRODUCT_NAME + '*\n' + SHARE_URL), '_blank');
+        return;
+    }
+    const imgUrl = 'https://lh3.googleusercontent.com/d/' + currentMainFileId + '=s1200';
+    const productUrl = SHARE_URL;
+    const text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n🔗 Ver producto: ' + productUrl;
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile && navigator.canShare && navigator.share) {
+        const btn = document.getElementById('mainImageWaShare');
+        if (btn) { btn.textContent = '⏳ Preparando...'; btn.disabled = true; }
+        try {
+            const resp = await fetch(`/api/download/${currentMainFileId}`);
+            const blob = await resp.blob();
+            const ext = (currentMainFileName.match(/\.[^.]+$/) || ['.jpg'])[0];
+            const file = new File([blob], currentMainFileName || 'imagen' + ext, { type: blob.type || 'image/jpeg' });
+            const shareData = { files: [file], text: text };
+            if (navigator.canShare(shareData)) {
+                await navigator.share(shareData);
+                if (btn) { btn.textContent = '✅ Enviado'; setTimeout(() => { btn.innerHTML = '📤 WhatsApp'; btn.disabled = false; }, 2000); }
+                return;
+            }
+        } catch(e) {
+            if (e.name === 'AbortError') { if (btn) { btn.innerHTML = '📤 WhatsApp'; btn.disabled = false; } return; }
+        }
+        if (btn) { btn.innerHTML = '📤 WhatsApp'; btn.disabled = false; }
+    }
+    // Fallback desktop: abrir wa.me con link de la imagen + enlace del producto
+    const waText = text + '\n\n🖼️ Imagen: ' + imgUrl;
+    window.open('https://wa.me/?text=' + encodeURIComponent(waText), '_blank');
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeVideoModal(e, true);
+});
+
+// Abre en grande la foto principal; con galería cargada se puede pasar entre todas las fotos
+function openMainLightbox() {
+    const mainImg = document.querySelector('#mainCover img');
+    const images = allGalleryFiles
+        .filter(f => (f.mimeType || '').startsWith('image/'))
+        .map(f => ({ id: f.id, name: f.name, src: (f.thumbnailLink || '').replace(/=s\d+/, '=s600') }));
+    let start = images.findIndex(it => it.id === currentMainFileId);
+    if (start < 0 && mainImg) {
+        // Portada guardada (aún sin galería o sin id conocido): buscarla por id en la URL
+        const m = (mainImg.currentSrc || mainImg.src).match(/\/d\/([A-Za-z0-9_-]+)/);
+        start = m ? images.findIndex(it => it.id === m[1]) : -1;
+        if (start < 0) {
+            images.unshift({ id: m ? m[1] : null, name: PRODUCT_NAME, src: mainImg.currentSrc || mainImg.src });
+            start = 0;
+        }
+    }
+    if (mainImg) images[start].src = mainImg.currentSrc || mainImg.src; // ya está en caché: se ve al instante
+    Lightbox.open(images, Math.max(0, start));
+}
+
+// Download the current main image
+function downloadMainImage() {
+    if (!currentMainFileId) return;
+    const url = `https://lh3.googleusercontent.com/d/${currentMainFileId}=s1200`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentMainFileName || 'image.jpg';
+    a.target = '_blank';
+    // Blob download for mobile support
+    fetch(`/api/download/${currentMainFileId}`)
+        .then(r => r.blob())
+        .then(blob => {
+            const blobUrl = URL.createObjectURL(blob);
+            a.href = blobUrl;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        })
+        .catch(() => {
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+}
