@@ -79,3 +79,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #28: carpetas "archivado" ocultas por defecto (`isArchivedFolderName`, `DriveIndex::hideArchivedFolders` en cada sync); el
   mensaje de Sincronizar portadas dice cuántas hay y cuántas quedan ocultas.
 - #29: la misma regla oculta por defecto las carpetas "DESACTIVADOS" (antes solo no creaban productos "Solo Drive").
+- #30: la regla de carpetas archivado/desactivados se aplica al arrancar (paso `carpetas`, solo BD) y al inicio de
+  Sincronizar portadas, sin esperar a la hoja ni a Drive (antes solo corría tras recorrer todo Drive).
