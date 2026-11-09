@@ -173,6 +173,27 @@ if ($uri === '/api/search') {
     exit;
 }
 
+// Enviar catálogo por lista (público): pegar texto → códigos → fotos → WhatsApp. Solo lee la BD.
+if ($uri === '/enviar-catalogo') {
+    include __DIR__ . '/templates/client/catalog_send.php';
+    exit;
+}
+
+if ($uri === '/enviar-catalogo/extraer' && $method === 'POST') {
+    checkRateLimit(30);
+    $catalogAction = 'extract';
+    include __DIR__ . '/src/controllers/catalog_send.php';
+    exit;
+}
+
+if (preg_match('#^/enviar-catalogo/foto/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
+    checkRateLimit(120);
+    $catalogAction = 'photo';
+    $catalogFileId = $matches[1];
+    include __DIR__ . '/src/controllers/catalog_send.php';
+    exit;
+}
+
 if ($uri === '/api/batch-search' && $method === 'POST') {
     // API de búsqueda por lote
     checkRateLimit(30); // 30 req/min — operación pesada
