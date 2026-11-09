@@ -368,12 +368,14 @@ class DriveIndex
         $unlinked = self::matchFiles($real, $files)['unlinked'];
 
         $folders = [];
-        foreach ($db->query("SELECT file_id, name, parent_id FROM drive_index WHERE is_folder = 1")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        foreach ($db->query("SELECT file_id, name, parent_id, is_hidden FROM drive_index WHERE is_folder = 1")->fetchAll(PDO::FETCH_ASSOC) as $r) {
             $folders[$r['file_id']] = $r;
         }
         $inDisabledFolder = function (string $folderId) use ($folders): bool {
             for ($i = 0; isset($folders[$folderId]) && $i < self::MAX_DEPTH; $i++) {
                 if (preg_match('/desactivad|descontinuad/i', $folders[$folderId]['name'])) return true;
+                // "Archivado" cuenta mientras siga oculta (si el admin la muestra, vuelve a contar)
+                if ((int) $folders[$folderId]['is_hidden'] && isArchivedFolderName($folders[$folderId]['name'])) return true;
                 $folderId = (string) $folders[$folderId]['parent_id'];
             }
             return false;
@@ -603,12 +605,14 @@ class DriveIndex
      *   y para todo lo que tiene dentro, a cualquier nivel.
      * - cover_file_id: una foto al azar (pública, no oculta) de todo el contenido de cada carpeta.
      * Quita además las portadas de productos que apuntan a una foto que quedó oculta.
+     * Antes oculta por defecto las carpetas "archivado" nuevas (hideArchivedFolders).
      * Llamar después de cada sync() y de cada cambio de visibilidad.
-     * @return array{hidden: int, covers: int, product_covers_cleared: int}
+     * @return array{hidden: int, covers: int, product_covers_cleared: int, archived_folders: int, archived_hidden: int, archived_new: int}
      */
     public static function refreshFolderState(PDO $db): array
     {
         $stats = ['hidden' => 0, 'covers' => 0, 'product_covers_cleared' => 0];
+        $stats += self::hideArchivedFolders($db);
         try {
             $seeds = array_flip($db->query("SELECT folder_id FROM folder_settings WHERE hidden = 1")->fetchAll(PDO::FETCH_COLUMN));
             // Álbum apagado a mano en el admin = carpeta de primer nivel oculta
@@ -698,6 +702,42 @@ class DriveIndex
             }
         }
         return $stats;
+    }
+
+    /**
+     * Carpetas "archivado" (isArchivedFolderName): ocultas por defecto, ya indexadas o nuevas.
+     * Solo se crea la fila en folder_settings si la carpeta no tiene ninguna: así, si el admin
+     * la muestra a mano (hidden = 0), el sync no la vuelve a ocultar.
+     * @return array{archived_folders: int, archived_hidden: int, archived_new: int}
+     */
+    public static function hideArchivedFolders(PDO $db): array
+    {
+        $out = ['archived_folders' => 0, 'archived_hidden' => 0, 'archived_new' => 0];
+        try {
+            $rows = $db->query(
+                "SELECT d.file_id, d.name, fs.hidden FROM drive_index d
+                 LEFT JOIN folder_settings fs ON fs.folder_id = d.file_id
+                 WHERE d.is_folder = 1 AND d.name LIKE '%archiv%'"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            $insert = $db->prepare("INSERT IGNORE INTO folder_settings (folder_id, hidden) VALUES (?, 1)");
+            // Carpeta de primer nivel: la portada de inicio lee albums.is_active
+            $album = $db->prepare("UPDATE albums SET is_active = 0, auto_disabled = 0 WHERE drive_id = ?");
+            foreach ($rows as $r) {
+                if (!isArchivedFolderName($r['name'])) continue;
+                $out['archived_folders']++;
+                if ($r['hidden'] === null) {
+                    $insert->execute([$r['file_id']]);
+                    $album->execute([$r['file_id']]);
+                    $out['archived_new']++;
+                    $out['archived_hidden']++;
+                } elseif ((int) $r['hidden']) {
+                    $out['archived_hidden']++;
+                }
+            }
+        } catch (\PDOException $e) {
+            // migración 021 aún no aplicada
+        }
+        return $out;
     }
 
     /** Guarda la decisión del admin de mostrar u ocultar una carpeta y recalcula el estado. */
