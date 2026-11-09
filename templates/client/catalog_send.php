@@ -110,6 +110,7 @@
                     <button type="button" id="csSave" class="btn btn-secondary cs-big">💾 Guardar en el celular</button>
                     <button type="button" id="csBatch" class="btn btn-wa cs-big">📲 Enviar por tandas</button>
                 </div>
+                <div class="cs-msg" id="csProgress"></div>
                 <div class="cs-msg" id="csMsg"></div>
             </div>
 
@@ -222,7 +223,7 @@
             items.forEach((it) => {
                 (all ? it.photos : it.photos.slice(0, 1)).forEach((ph, n) => tiles.push({ item: it, photo: ph, n, on: true, sent: false }));
             });
-            batchPart = 0;
+            batchPart = 0; tandaNum = 0;
         }
 
         function renderGrid() {
@@ -244,33 +245,62 @@
             $('csSummary').innerHTML = `<strong>${items.length}</strong> referencias · <strong>${tiles.length}</strong> fotos · `
                 + `<strong style="color:#25D366">${sel}</strong> marcadas`;
             $('csSave').disabled = !sel;
-            $('csBatch').disabled = !sel;
             $('csSave').textContent = sel ? `💾 Guardar ${sel} en el celular` : '💾 Guardar en el celular';
-            $('csBatch').textContent = !sel ? '📲 Enviar por tandas'
-                : b.length > 1 ? `📲 Enviar tanda ${batchPart + 1} de ${b.length} (${b[batchPart].length} foto${b[batchPart].length === 1 ? "" : "s"})`
-                : `📲 Enviar las ${sel} por WhatsApp`;
             preload();
+            renderBatchBtn();
+        }
+
+        // ---- Enviar por tandas ----
+        // Nunca se queda esperando: al tocar se comparten las que YA están bajadas (hasta 10),
+        // y las demás siguen bajando en segundo plano para la siguiente tanda.
+        const pending = () => tiles.filter((t) => t.on && !t.wa);
+        const readyNow = () => pending().filter((t) => loaded.has(t.photo.id)).slice(0, TANDA);
+        let tandaNum = 0;
+        function renderBatchBtn() {
+            const btn = $('csBatch');
+            const pend = pending();
+            const sel = selected().length;
+            btn.disabled = !sel;
+            if (!sel) { btn.textContent = '📲 Enviar por tandas'; return; }
+            if (!pend.length) {
+                btn.textContent = '✅ Todo enviado · tocar para empezar de nuevo';
+                $('csProgress').textContent = '';
+                return;
+            }
+            const ready = readyNow().length;
+            const totalT = tandaNum + Math.ceil(pend.length / TANDA);
+            btn.textContent = ready
+                ? `📲 Enviar tanda ${tandaNum + 1} de ${totalT} (${ready} foto${ready === 1 ? '' : 's'})`
+                : '⏳ Bajando fotos…';
+            const loadedPend = pend.filter((t) => loaded.has(t.photo.id)).length;
+            $('csProgress').textContent = `Listas ${loadedPend} de ${pend.length} por enviar`
+                + (loadedPend < pend.length ? ' · siguen bajando…' : '');
         }
 
         // Baja las marcadas de 3 en 3 en segundo plano, empezando por la tanda actual, para que compartir sea inmediato
         let preloadRun = 0;
         function preload() {
             const run = ++preloadRun;
-            const b = batches();
-            const order = (b[batchPart] || []).concat(...b.filter((_, i) => i !== batchPart));
+            const order = pending().concat(selected().filter((t) => t.wa));
             const ids = [...new Set(order.map((t) => t.photo.id))].filter((id) => !loaded.has(id));
             let i = 0;
             const worker = async () => {
                 while (run === preloadRun && i < ids.length) {
-                    try { await getBlob(ids[i++]); } catch (e) { /* sigue */ }
+                    const id = ids[i++];
+                    try { await getBlob(id); } catch (e) {
+                        const bad = tiles.filter((t) => t.photo.id === id && t.on);
+                        if (bad.length) { dropFailed(bad); msg(`⚠️ No se pudo bajar: ${bad.map(skuOf).join(', ')} (la desmarqué).`); }
+                    }
+                    if (run === preloadRun) renderBatchBtn();
                 }
             };
-            for (let k = 0; k < 3; k++) worker();
+            for (let k = 0; k < 4; k++) worker();
         }
 
-        function markSent(ts) {
+        function markSent(ts, wa) {
             ts.forEach((t) => {
                 t.sent = true;
+                if (wa) t.wa = true;
                 const el = document.querySelector(`.cs-tile[data-i="${tiles.indexOf(t)}"]`);
                 if (el) el.classList.add('sent');
             });
@@ -310,25 +340,26 @@
             else msg('No se pudo: ' + (e && e.message ? e.message : e));
         }
 
-        // 📲 Enviar por tandas: Compartir del celular con hasta 20 fotos por toque
+        // 📲 Enviar por tandas: Compartir del celular con las fotos ya bajadas (hasta 10 por toque)
         $('csBatch').addEventListener('click', async () => {
-            const b = batches();
-            const part = b[batchPart];
-            if (!part) return;
-            const btn = $('csBatch');
             if (!canShareFiles) {
                 msg('En el computador no se pueden pasar varias fotos directo a WhatsApp: usa "💾 Guardar" y arrástralas juntas al chat de WhatsApp Web.');
                 return;
             }
-            if (!(await ensureLoaded(part, btn, 'Enviar'))) return;
+            if (!pending().length) { // todo enviado: empezar de nuevo
+                tiles.forEach((t) => { t.wa = false; });
+                tandaNum = 0; refresh(); msg('');
+                return;
+            }
+            const part = readyNow();
+            if (!part.length) { msg('Todavía están bajando las primeras fotos; toca de nuevo en un momento.'); preload(); return; }
             try {
                 const files = await Promise.all(part.map(toFile));
-                if (navigator.canShare && !navigator.canShare({ files })) throw new Error('el teléfono no acepta tantas fotos juntas');
                 await navigator.share({ files, text: listTextOf(part) });
-                markSent(part);
-                const left = b.length - batchPart - 1;
-                batchPart = left ? batchPart + 1 : 0;
-                msg(left ? `Tanda enviada. Faltan ${left}: toca otra vez el botón verde.` : `✅ Listo: ${selected().length} fotos enviadas.`);
+                markSent(part, true);
+                tandaNum++;
+                const left = pending().length;
+                msg(left ? `Tanda ${tandaNum} enviada. Faltan ${left} fotos: toca otra vez el botón verde.` : `✅ Listo: todas enviadas en ${tandaNum} tanda${tandaNum === 1 ? '' : 's'}.`);
                 refresh();
             } catch (e) { shareError(e, 'el botón verde'); }
         });
@@ -386,7 +417,7 @@
                 if (!canShareFiles) { await copyPhoto(t); return; }
                 try {
                     await navigator.share({ files: [await toFile(t)], text: caption(t.item) });
-                    markSent([t]); msg('');
+                    markSent([t], true); msg(''); renderBatchBtn();
                 } catch (err) { shareError(err, '📲 en la foto'); }
                 return;
             }
