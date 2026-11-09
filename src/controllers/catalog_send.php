@@ -2,7 +2,7 @@
 /**
  * Enviar catálogo por lista (público, botón en el inicio y en el catálogo).
  *   POST /enviar-catalogo/extraer      body JSON {"text": "..."} → códigos visibles encontrados + sus fotos
- *   GET  /enviar-catalogo/foto/{id}    la foto (=s1600) servida desde este dominio, para poder
+ *   GET  /enviar-catalogo/foto/{id}    la foto (=s1200) servida desde este dominio, para poder
  *                                      compartirla/copiarla desde el navegador (WhatsApp).
  * Solo lee MySQL (products + drive_index.matched_sku, el mismo vínculo que usa el visor). No cambia nada.
  * Igual que el resto del portal: solo productos con archived = 0 y archivos no ocultos.
@@ -145,7 +145,7 @@ function catalogSendPhotos(PDO $db, string $sku, string $storedCover, bool $inde
     return $out;
 }
 
-/** Sirve la foto (≈1600 px) desde este dominio. Solo imágenes del índice, visibles y enlazadas a un código. */
+/** Sirve la foto (≈1200 px, liviana para compartir muchas) desde este dominio. Solo imágenes del índice, visibles y enlazadas a un código. */
 function catalogSendPhoto(PDO $db, string $fileId): void
 {
     session_write_close();
@@ -168,7 +168,7 @@ function catalogSendPhoto(PDO $db, string $fileId): void
     }
 
     // lh3: la misma URL pública que ya usa el visor (archivo público, redimensionado)
-    [$body, $type] = catalogSendFetch(lh3Url($fileId, 1600));
+    [$body, $type] = catalogSendFetch(lh3Url($fileId, 1200));
 
     if ($body === null) {
         http_response_code(502);
