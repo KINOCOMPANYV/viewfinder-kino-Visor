@@ -705,7 +705,7 @@ class DriveIndex
     }
 
     /**
-     * Carpetas "archivado" (isArchivedFolderName): ocultas por defecto, ya indexadas o nuevas.
+     * Carpetas "archivado" y "desactivado" (isArchivedFolderName): ocultas por defecto, ya indexadas o nuevas.
      * Solo se crea la fila en folder_settings si la carpeta no tiene ninguna: así, si el admin
      * la muestra a mano (hidden = 0), el sync no la vuelve a ocultar.
      * @return array{archived_folders: int, archived_hidden: int, archived_new: int}
@@ -717,7 +717,7 @@ class DriveIndex
             $rows = $db->query(
                 "SELECT d.file_id, d.name, fs.hidden FROM drive_index d
                  LEFT JOIN folder_settings fs ON fs.folder_id = d.file_id
-                 WHERE d.is_folder = 1 AND d.name LIKE '%archiv%'"
+                 WHERE d.is_folder = 1 AND (d.name LIKE '%archiv%' OR d.name LIKE '%desactiv%')"
             )->fetchAll(PDO::FETCH_ASSOC);
             $insert = $db->prepare("INSERT IGNORE INTO folder_settings (folder_id, hidden) VALUES (?, 1)");
             // Carpeta de primer nivel: la portada de inicio lee albums.is_active

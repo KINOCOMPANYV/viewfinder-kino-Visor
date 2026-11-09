@@ -101,7 +101,7 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - `DriveIndex::refreshFolderState()` (tras cada sync y cada cambio) marca `drive_index.is_hidden = 1` en la carpeta y en todo
   lo que tiene dentro, y elige para cada carpeta una foto **al azar** (pública, no oculta) de todo su contenido → `cover_file_id`.
   También vacía las portadas de productos que eran una foto oculta (el visor elige otra visible).
-- Carpetas "archivado" (`isArchivedFolderName()`): `DriveIndex::hideArchivedFolders()` (al inicio de `refreshFolderState`) crea
+- Carpetas "archivado" y "desactivados" (`isArchivedFolderName()`): `DriveIndex::hideArchivedFolders()` (al inicio de `refreshFolderState`) crea
   `folder_settings.hidden = 1` solo si la carpeta no tiene fila; si el admin la muestra (`hidden = 0`) se respeta.
 - Todo lo público filtra `is_hidden = 0`: `/carpeta/{id}`, carpetas de la búsqueda, galería (`filesForSku`) y el sync de portadas.
 
