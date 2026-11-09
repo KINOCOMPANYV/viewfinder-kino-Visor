@@ -10,7 +10,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Drive raíz: env `GOOGLE_DRIVE_FOLDER_ID` = carpeta **PRODUCTOS**. Se indexan todos los niveles en `drive_index`.
 - Hoja maestra: **"MAESTRA DE PRODUCTOS KINO"** (env `GOOGLE_SHEET_ID`), ~3600 códigos.
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#17 fusionados. No hay PRs abiertos.
+- PRs #1–#18 fusionados. No hay PRs abiertos.
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -51,4 +51,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #15: módulo público "Enviar catálogo por lista".
 - #16: descarga con respaldo público si Drive está desconectado.
 - #17: contador de carpetas ocultas igual que la lista (no borra ajustes viejos).
-- (siguiente) docs: este archivo de avances.
+- #18: este archivo de avances + regla de actualizarlo (CLAUDE.md).
