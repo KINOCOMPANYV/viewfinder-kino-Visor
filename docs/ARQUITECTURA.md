@@ -89,6 +89,8 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - **La hoja MAESTRA es la única fuente de datos** (`src/services/MasterSheet.php`, env `GOOGLE_SHEET_ID` y opcional
   `GOOGLE_SHEET_GID`). Encabezados aceptados: SKU, NAME, COLOR, CATEGORY, GENDER, MOVEMENT, PRICE_SUGGESTED, PRICE, STOCK,
   DESCRIPTION, BRAND, MATERIAL DE CAJA, MATERIAL PULSERA, STATUS/estado (también en español). Se guarda tal cual.
+- Cada sync de la hoja (botón o automático) guarda en `sync_status` (migración 025, `recordSyncStatus()`) la fecha del último
+  éxito y del último error; Admin → Sincronizar los muestra con el conteo hoja / Solo Drive / visibles.
 - El sync completo marca `in_sheet = 0` lo que ya no está en la hoja (no borra). Si iba a ocultar más de la mitad, pide confirmar.
 - **Activar/desactivar es solo del admin** (`is_active`); la hoja nunca lo cambia. No hay borrado de productos.
 - `refreshProductVisibility()` (helpers) recalcula `archived = NOT (is_active AND (in_sheet OR from_drive))`; todas las páginas públicas

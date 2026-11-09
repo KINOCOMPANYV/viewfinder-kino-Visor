@@ -4,6 +4,22 @@
  */
 
 /**
+ * Guarda el resultado de una sincronización (tabla sync_status): éxito o error, con fecha.
+ * Nunca rompe la sincronización (si la tabla aún no existe, no hace nada).
+ */
+function recordSyncStatus(PDO $db, string $name, bool $ok, string $message): void
+{
+    try {
+        $sql = $ok
+            ? "INSERT INTO sync_status (name, last_ok_at, last_ok_message) VALUES (?, NOW(), ?)
+               ON DUPLICATE KEY UPDATE last_ok_at = NOW(), last_ok_message = VALUES(last_ok_message)"
+            : "INSERT INTO sync_status (name, last_error_at, last_error) VALUES (?, NOW(), ?)
+               ON DUPLICATE KEY UPDATE last_error_at = NOW(), last_error = VALUES(last_error)";
+        $db->prepare($sql)->execute([$name, mb_substr($message, 0, 2000)]);
+    } catch (\Throwable $e) { /* migración 025 pendiente */ }
+}
+
+/**
  * Devuelve JSON y termina la ejecución.
  */
 function jsonResponse(array $data, int $code = 200): void
