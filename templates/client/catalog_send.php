@@ -3,7 +3,7 @@
  * Enviar catálogo por lista (público: /enviar-catalogo, botón en el inicio y en el catálogo).
  * Se pega un texto, se sacan los códigos (POST /enviar-catalogo/extraer), se muestra la lista con sus fotos
  * en una galería: tocar una foto la marca/desmarca. Las marcadas se guardan en el celular de un toque (para mandarlas
- * luego desde WhatsApp) o se comparten a WhatsApp por tandas de 20. El 📲 de cada foto la manda sola.
+ * luego desde WhatsApp) o se comparten a WhatsApp por tandas de 10. El 📲 de cada foto la manda sola.
  * Las fotos salen de /enviar-catalogo/foto/{id}.
  */
 ?>
@@ -96,7 +96,7 @@
             <div class="cs-summary" id="csSummary"></div>
             <p class="help">Toca una foto para marcarla o desmarcarla (verde = va). Luego, abajo:
                 <strong>💾 Guardar en el celular</strong> y las mandas desde WhatsApp (📎 → Galería, hasta 100 juntas), o
-                <strong>📲 Enviar por tandas</strong> directo a WhatsApp, 20 por toque. El 📲 de cada foto la manda sola.</p>
+                <strong>📲 Enviar por tandas</strong> directo a WhatsApp, 10 por toque. El 📲 de cada foto la manda sola.</p>
             <div class="cs-bulk">
                 <button type="button" id="csAll" class="btn btn-secondary btn-sm">Marcar todas</button>
                 <button type="button" id="csNone" class="btn btn-secondary btn-sm">Desmarcar todas</button>
@@ -135,7 +135,7 @@
             } catch (e) { return false; }
         })();
         const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        const TANDA = 20; // fotos por toque al compartir: más que eso se pone lento o el teléfono lo rechaza
+        const TANDA = 10; // fotos por toque al compartir: más que eso se pone lento o el teléfono lo rechaza
 
         let items = [];      // [{sku, name, price, photos:[{id,name,thumb}]}]
         let tiles = [];      // [{item, photo, n, on, sent}] una por foto mostrada en la galería
