@@ -180,6 +180,27 @@ if ($uri === '/api/search') {
     exit;
 }
 
+// Enviar catálogo por lista (público): pegar texto → códigos → fotos → WhatsApp. Solo lee la BD.
+if ($uri === '/enviar-catalogo') {
+    include __DIR__ . '/templates/client/catalog_send.php';
+    exit;
+}
+
+if ($uri === '/enviar-catalogo/extraer' && $method === 'POST') {
+    checkRateLimit(30);
+    $catalogAction = 'extract';
+    include __DIR__ . '/src/controllers/catalog_send.php';
+    exit;
+}
+
+if (preg_match('#^/enviar-catalogo/foto/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
+    checkRateLimit(120);
+    $catalogAction = 'photo';
+    $catalogFileId = $matches[1];
+    include __DIR__ . '/src/controllers/catalog_send.php';
+    exit;
+}
+
 if ($uri === '/api/batch-search' && $method === 'POST') {
     // API de búsqueda por lote
     checkRateLimit(30); // 30 req/min — operación pesada
@@ -454,6 +475,63 @@ if (preg_match('#^/api/media/([^/]+)$#', $uri, $matches)) {
     }
 }
 
+/**
+ * Descarga un archivo público de Drive sin token (respaldo de /api/download). Solo archivos del índice
+ * que no estén ocultos. Original desde drive.usercontent.google.com; si Drive responde una página en vez
+ * del archivo y es una imagen, la imagen a tamaño completo de lh3. Devuelve false si no pudo.
+ */
+function downloadPublicDriveFile(PDO $db, string $fileId): bool
+{
+    try {
+        $stmt = $db->prepare("SELECT name, mime_type FROM drive_index WHERE file_id = ? AND is_folder = 0 AND is_hidden = 0 LIMIT 1");
+        $stmt->execute([$fileId]);
+        $row = $stmt->fetch();
+    } catch (\PDOException $e) {
+        $row = false;
+    }
+    if (!$row) return false;
+
+    $name = (string) $row['name'];
+    $mime = (string) ($row['mime_type'] ?: 'application/octet-stream');
+    $urls = ["https://drive.usercontent.google.com/download?id={$fileId}&export=download&confirm=t"];
+    if (str_starts_with($mime, 'image/')) $urls[] = "https://lh3.googleusercontent.com/d/{$fileId}=s0";
+
+    set_time_limit(0);
+    foreach ($urls as $url) {
+        $status = 0;
+        $type = '';
+        $started = false;
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_HEADERFUNCTION => function ($ch, $line) use (&$status, &$type) {
+                if (preg_match('#^HTTP/\S+\s+(\d+)#', $line, $m)) { $status = (int) $m[1]; $type = ''; }
+                elseif (stripos($line, 'content-type:') === 0) $type = strtolower(trim(substr($line, 13)));
+                return strlen($line);
+            },
+            // Solo empieza a enviar si Drive mandó el archivo (no una página HTML de aviso)
+            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$status, &$type, &$started, $name, $mime) {
+                if (!$started) {
+                    if ($status !== 200 || str_starts_with($type, 'text/html')) return 0; // corta y prueba la siguiente
+                    $started = true;
+                    while (ob_get_level() > 0) ob_end_clean();
+                    header('Content-Type: ' . ($type && $type !== 'application/octet-stream' ? $type : $mime));
+                    header('Content-Disposition: attachment; filename="' . addslashes($name) . '"');
+                    header('Cache-Control: private, max-age=0, no-cache');
+                }
+                echo $data;
+                flush();
+                return strlen($data);
+            },
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+        if ($started) return true;
+    }
+    return false;
+}
+
 // ============================================================
 // DOWNLOAD PROXY — descarga directa de archivos de Drive
 // GET /api/download/{fileId}
@@ -472,6 +550,9 @@ if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
     $token = $drive->getValidToken($db);
 
     if (!$token) {
+        // Sin conexión OAuth (token vencido o revocado): los archivos del índice son públicos,
+        // así que se descargan por la URL pública de Drive en vez de mostrar un error.
+        if (downloadPublicDriveFile($db, $fileId)) exit;
         http_response_code(503);
         echo 'Drive not connected';
         exit;

@@ -289,6 +289,7 @@ if (!empty($pageRoots)) {
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
+            <a href="/enviar-catalogo" class="btn btn-sm btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar catálogo</a>
         </div>
     </header>
 

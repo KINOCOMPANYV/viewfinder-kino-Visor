@@ -236,6 +236,7 @@ unset($v);
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
+            <a href="/enviar-catalogo" class="btn btn-sm btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar catálogo</a>
         </div>
     </header>
 
@@ -259,7 +260,8 @@ unset($v);
                             data-cover="<?= e($serverCover) ?>" <?php endif; ?>>
                         <?php if ($serverCover): ?>
                             <img src="<?= e($serverCover) ?>" alt="<?= e($product['name']) ?>" fetchpriority="high"
-                                decoding="async" style="cursor:zoom-in;" onclick="openMainLightbox()">
+                                decoding="async" style="cursor:zoom-in;" onclick="openMainLightbox()"
+                                onerror="this.remove()">
                         <?php else: ?>
                             <div class="cover-skeleton"
                                 style="display:flex;align-items:center;justify-content:center;height:100%;min-height:250px;background:var(--color-card-bg);border-radius:var(--radius);">
