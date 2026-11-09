@@ -71,7 +71,7 @@
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
-            <a href="/" class="btn btn-sm btn-secondary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Catálogo</a>
+            <a href="/" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Catálogo</a>
         </div>
     </header>
 
@@ -131,6 +131,7 @@
 
     <script>window.CS_CSRF = '<?= csrfToken() ?>';</script>
     <script src="/assets/js/catalog_send.js?v=<?= APP_VERSION ?>"></script>
+    <?php $mnavActive = 'enviar'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 
 </html>

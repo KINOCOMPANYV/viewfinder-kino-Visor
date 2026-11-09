@@ -43,7 +43,7 @@
                 Viewfinder
             </a>
             <div style="display:flex; gap:0.5rem; align-items:center;">
-                <a href="/enviar-catalogo" class="btn btn-sm btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar catálogo</a>
+                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar catálogo</a>
                 <a href="/admin/login" class="btn btn-sm btn-secondary"
                     style="font-size:0.75rem; padding:0.4rem 0.8rem; opacity:0.4;">Admin</a>
             </div>
@@ -92,9 +92,12 @@
                 <div class="search-box" style="max-width: 600px; margin: 0 auto;">
                     <span class="search-icon">🔍</span>
                     <form action="/buscar" method="GET" id="searchForm" style="width:100%;">
-                        <textarea name="q" id="searchInput" rows="1"
-                            placeholder="Buscar por SKU, referencia o nombre..."
-                            autocomplete="off" autofocus></textarea>
+                        <span class="search-field">
+                            <textarea name="q" id="searchInput" rows="1"
+                                placeholder="Buscar por SKU, referencia o nombre..." data-ph-short="Código o nombre…"
+                                autocomplete="off" autofocus></textarea>
+                            <button type="button" class="search-clear" aria-label="Borrar búsqueda">✕</button>
+                        </span>
                         <button type="submit" class="search-btn">Buscar</button>
                     </form>
                     <!-- Botón escáner QR -->
@@ -109,7 +112,7 @@
 
             <!-- ===== Carpetas de primer nivel (se navegan como en Drive) ===== -->
             <?php if (!empty($albums)): ?>
-            <div style="margin-bottom: 3rem;">
+            <div id="carpetas" style="margin-bottom: 3rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
                     <h2 style="font-size: 1.5rem; margin:0;">📂 Carpetas</h2>
                     <span style="color:var(--color-text-muted); font-size:0.9rem;"><?= $totalAlbums ?> carpetas</span>
@@ -505,6 +508,7 @@ KV-1003
     <!-- QR Scanner: qr-scanner.js descarga html5-qrcode solo al abrir el escáner -->
     <script src="/assets/js/qr-scanner.js?v=<?= APP_VERSION ?>" defer></script>
     <?php include __DIR__ . '/../partials/loading_overlay.php'; ?>
+    <?php $mnavActive = 'inicio'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 
 </html>

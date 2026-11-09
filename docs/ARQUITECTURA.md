@@ -191,3 +191,9 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
   no ensanche la columna; si no, la foto principal se sale de la pantalla. En el celular (≤ 640 px) la tira es una
   cuadrícula de 5 (4 bajo 340 px), sin deslizar (`gallery-slider.css`); tocar una miniatura sube a la foto (`mainIntoView`).
 - Como hay mucho estilo en línea en las plantillas, algunas reglas móviles usan `!important` a propósito.
+- Bloque "Etapa 2" (final de `style.css`, ≤ 640 px): barra inferior `templates/partials/mobile_nav.php` (`$mnavActive`;
+  se esconde cuando está abierta la barra de WhatsApp), encabezado no fijo y sin botones `.hdr-hide-m`, `.hero` con
+  `display: contents` para que `.search-box` quede `sticky` en toda la página, carpetas `#carpetas` de 3 en 3,
+  `.folder-hits` (carpetas en la búsqueda) como filas, y la casilla `.search-check-footer` como círculo sobre la foto.
+- Buscador: la ✕ (`.search-clear`, todas las pantallas) se ve solo con texto (`:placeholder-shown`); en el celular el texto
+  de ayuda corto sale de `data-ph-short` (`search.js`). El overlay "cargando" ignora clics ya manejados (`defaultPrevented`).

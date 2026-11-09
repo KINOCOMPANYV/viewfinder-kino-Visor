@@ -48,6 +48,21 @@
         autoResize();
     }
 
+    // En el celular el texto de ayuda largo no cabe junto a los botones: uno corto
+    if (input.dataset.phShort && window.matchMedia('(max-width: 640px)').matches) {
+        input.placeholder = input.dataset.phShort;
+    }
+
+    // Botón ✕ del buscador: borra y deja el teclado abierto para escribir otra búsqueda
+    const clearBtn = document.querySelector('.search-clear');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            input.dispatchEvent(new Event('input'));
+            input.focus();
+        });
+    }
+
     input.addEventListener('input', function () {
         clearTimeout(debounceTimer);
         autoResize();

@@ -12,9 +12,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   completa (3629 de 3629, sin filas descartadas ni repetidas). En la hoja faltan datos: 124 filas sin PRICE_SUGGESTED (98 POEDAGAR)
   y 33 sin NAME; esas salen sin precio o con el código como nombre. Admin → Sincronizar muestra hoja vs "Solo Drive".
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#34 fusionados.
+- PRs #1–#35 fusionados.
 - Plan de mejora UX/velocidad aprobado por el dueño (2026-11-09), un PR por etapa: 1 velocidad, 2 celular más claro,
-  3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hecha: etapa 1 (#34).
+  3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapa 1 (#34) y etapa 2 (#35).
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -56,12 +56,15 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
 - Todo el visor y el admin se revisan a 320/360/375 px (celular): sin scroll lateral, letra legible, botones de dedo.
+- Celular (etapa 2): barra abajo tipo app (Inicio, Buscar, Carpetas, Enviar); buscador pegado arriba en una fila con ✕
+  para borrar y 📷 al lado; carpetas del inicio de 3 en 3; "Seleccionar" es un círculo sobre la foto. El computador no cambia
+  (solo gana la ✕ del buscador).
 - Admin: Productos (activar/desactivar), Carpetas (ocultar), Sincronizar (hoja + Drive, "¿Por qué no sale la foto?"), Media.
 
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan UX: etapas 2 a 6 (ver "Estado actual").
+- Plan UX: etapas 3 a 6 (ver "Estado actual").
 
 ## Historial (1 línea por PR)
 - #1–#7 (oct 2026): carpetas como en Drive (todos los niveles), códigos con prefijo M:/M/M-, búsqueda tolerante,
@@ -101,3 +104,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #34: etapa 1 de velocidad: sin bcrypt en cada petición (servidor ~60 ms → 2-28 ms por página), fotos de tarjeta a
   200/400 px según pantalla y prioridad a las primeras, preconexión a Google arreglada, Atrás instantáneo en búsqueda y
   carpetas, JS de las páginas en archivos cacheables (ficha 57 KB → 20 KB). La búsqueda en BD ya tardaba ~2 ms: sin cambios.
+- #35: etapa 2, celular más claro: barra inferior tipo app, buscador fijo arriba en una fila (✕ y 📷), encabezado sin
+  botones repetidos, carpetas compactas (inicio y búsqueda), "Seleccionar" como círculo sobre la foto.

@@ -289,7 +289,7 @@ if (!empty($pageRoots)) {
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
-            <a href="/enviar-catalogo" class="btn btn-sm btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar catálogo</a>
+            <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar catálogo</a>
         </div>
     </header>
 
@@ -301,9 +301,12 @@ if (!empty($pageRoots)) {
         <div class="search-box" style="max-width:800px; margin: 0 auto 1.5rem auto;">
             <span class="search-icon">🔍</span>
             <form action="/buscar" method="GET" id="searchForm" style="width:100%;">
-                <textarea name="q" id="searchInput" rows="1"
-                    placeholder="Buscar por SKU, referencia o nombre..."
-                    autocomplete="off"><?= e($q) ?></textarea>
+                <span class="search-field">
+                    <textarea name="q" id="searchInput" rows="1"
+                        placeholder="Buscar por SKU, referencia o nombre..." data-ph-short="Código o nombre…"
+                        autocomplete="off"><?= e($q) ?></textarea>
+                    <button type="button" class="search-clear" aria-label="Borrar búsqueda">✕</button>
+                </span>
                 <button type="submit" class="search-btn">Buscar</button>
             </form>
             <div class="autocomplete-dropdown" id="autocomplete"></div>
@@ -347,7 +350,7 @@ if (!empty($pageRoots)) {
             <div class="section-header-landing" style="margin-bottom:1rem; border-top: 1px solid var(--color-border); padding-top:1.5rem;">
                 <h2 style="font-size:1.2rem;">📂 Carpetas encontradas</h2>
             </div>
-            <div class="parent-grid" style="margin-bottom:2rem;">
+            <div class="parent-grid folder-hits" style="margin-bottom:2rem;">
                 <?php foreach ($matchedFolders as $idx => $folder): 
                     $fIcon = $folder['icon_url'] ?? '';
                 ?>
@@ -544,6 +547,7 @@ if (!empty($pageRoots)) {
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/category-filters.js?v=<?= APP_VERSION ?>"></script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
+    <?php $mnavActive = 'buscar'; include __DIR__ . '/../../templates/partials/mobile_nav.php'; ?>
 </body>
 
 </html>
