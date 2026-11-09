@@ -10,7 +10,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Drive raíz: env `GOOGLE_DRIVE_FOLDER_ID` = carpeta **PRODUCTOS**. Se indexan todos los niveles en `drive_index`.
 - Hoja maestra: **"MAESTRA DE PRODUCTOS KINO"** (env `GOOGLE_SHEET_ID`), ~3600 códigos.
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#22 fusionados.
+- PRs #1–#23 fusionados.
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -31,7 +31,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Compartir por WhatsApp con vista previa (foto, título, enlace) vía Open Graph (`/og/{id}.jpg`).
 - "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto → códigos → galería de fotos (tocar = marcar/desmarcar).
   "💾 Guardar N en el celular" (Android/PC: descargas; iPhone: Compartir → Guardar imágenes) y luego se mandan desde
-  WhatsApp (📎 → Galería, hasta 100). "📲 Enviar por tandas": Compartir a WhatsApp de 10 en 10. 📲 en cada foto = solo esa.
+  WhatsApp (📎 → Galería, hasta 100). "📲 Enviar por tandas": comparte al instante las que ya bajaron (hasta 10 por toque),
+  nunca se queda "preparando"; las demás bajan en segundo plano ("Listas N de M"). 📲 en cada foto = solo esa.
+  Si una foto no baja (3 intentos), se desmarca, se avisa cuál y se sigue con las demás. Fotos a 800 px con copia en disco
+  (`storage/send_cache`).
   Decisión del dueño 2026-11-09: ofrecer las dos vías; ir foto por foto era lento y el lote de 30+ fallaba.
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
@@ -61,3 +64,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #21: Enviar catálogo: botón 📲 por fila (comparte solo esa foto); se quitan los botones verdes de lote y "N de M".
 - #22: Enviar catálogo en galería: guardar las marcadas en el celular + enviar por tandas de 20; fotos a 1200 px.
 - #23: Enviar catálogo: tandas de 10 fotos por toque (antes 20), pedido del dueño.
+- #24: Enviar catálogo: arreglo "Failed to fetch" y tandas sin esperas (comparte lo ya bajado), fotos a 800 px, caché en disco.
