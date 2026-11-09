@@ -12,7 +12,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   completa (3629 de 3629, sin filas descartadas ni repetidas). En la hoja faltan datos: 124 filas sin PRICE_SUGGESTED (98 POEDAGAR)
   y 33 sin NAME; esas salen sin precio o con el código como nombre. Admin → Sincronizar muestra hoja vs "Solo Drive".
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#26 fusionados.
+- PRs #1–#31 fusionados.
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -28,11 +28,18 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   mayúsculas ni tildes) queda oculta por defecto con todo su contenido, ya indexada o nueva. Si el admin la muestra, el
   sync no la vuelve a ocultar. Mientras está oculta tampoco crea productos "Solo Drive".
 - **Sync automático** en cada deploy y cada hora (`scripts/sync_loop.sh`); `AUTO_SYNC=0` lo apaga.
+- **WhatsApp = imágenes** (2026-11-09): los envíos mandan solo fotos, nunca la lista en texto. Una foto sola lleva su código
+  como pie; en tandas no va texto (WhatsApp no deja un pie distinto por foto).
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
 - Catálogo público en grilla densa (60 por página, una tarjeta por familia; contador "N referencias · M familias").
 - Ficha de producto con variantes, galería, visor grande; WhatsApp + Descargar en cada foto.
+- Botón WhatsApp de cada foto: manda solo la imagen liviana (800 px) con el código como pie, sin enlace. En el computador
+  copia la foto para pegarla en WhatsApp Web (Ctrl+V).
+- Inicio y resultados de búsqueda/filtro: "Seleccionar" en cada tarjeta → barra abajo con "Marcar todas" (lo visible con el
+  filtro), "💾 Guardar" y "📲 Enviar" por tandas de 10 (mismo sistema que Enviar catálogo, solo imágenes). Lo marcado se
+  mantiene al hacer otra búsqueda, así se juntan fotos de varias búsquedas.
 - Compartir por WhatsApp con vista previa (foto, título, enlace) vía Open Graph (`/og/{id}.jpg`).
 - "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto → códigos → galería de fotos (tocar = marcar/desmarcar).
   "💾 Guardar N en el celular" (Android/PC: descargas; iPhone: Compartir → Guardar imágenes) y luego se mandan desde
@@ -81,3 +88,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #29: la misma regla oculta por defecto las carpetas "DESACTIVADOS" (antes solo no creaban productos "Solo Drive").
 - #30: la regla de carpetas archivado/desactivados se aplica al arrancar (paso `carpetas`, solo BD) y al inicio de
   Sincronizar portadas, sin esperar a la hoja ni a Drive (antes solo corría tras recorrer todo Drive).
+- #31: compartir por WhatsApp desde el catálogo: marcar varias en inicio/búsqueda y enviar por tandas de 10 (`wa_batch.js`);
+  botón WhatsApp de cada foto = imagen liviana + código; Enviar catálogo ya no manda la lista en texto en las tandas.

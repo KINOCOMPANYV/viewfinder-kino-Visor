@@ -86,7 +86,7 @@
             <div class="cs-options">
                 <label><input type="radio" name="csMode" value="cover" checked> Solo la foto principal</label>
                 <label><input type="radio" name="csMode" value="all"> Todas las fotos de cada código</label>
-                <label><input type="checkbox" id="csPrice"> Poner el precio en el texto</label>
+                <label><input type="checkbox" id="csPrice"> Poner el precio en el pie de foto (📲 de una foto)</label>
             </div>
             <div class="cs-actions">
                 <button type="button" id="csGenerate" class="btn btn-primary">⚡ Generar lista</button>
@@ -99,7 +99,7 @@
             <div class="cs-summary" id="csSummary"></div>
             <p class="help">Toca una foto para marcarla o desmarcarla (verde = va). Luego, abajo:
                 <strong>💾 Guardar en el celular</strong> y las mandas desde WhatsApp (📎 → Galería, hasta 100 juntas), o
-                <strong>📲 Enviar por tandas</strong> directo a WhatsApp, 10 por toque. El 📲 de cada foto la manda sola.</p>
+                <strong>📲 Enviar por tandas</strong> directo a WhatsApp, 10 por toque (solo las fotos, sin texto). El 📲 de cada foto la manda sola con su código.</p>
             <div class="cs-bulk">
                 <button type="button" id="csAll" class="btn btn-secondary btn-sm">Marcar todas</button>
                 <button type="button" id="csNone" class="btn btn-secondary btn-sm">Desmarcar todas</button>
@@ -365,7 +365,7 @@
             if (!part.length) { preload(); return; }
             try {
                 const files = await Promise.all(part.map(toFile));
-                await navigator.share({ files, text: listTextOf(part) });
+                await navigator.share({ files }); // solo las fotos: sin la lista en texto
                 markSent(part, true);
                 tandaNum++;
                 const left = pending().length;

@@ -156,8 +156,13 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - Botón "Compartir por WhatsApp" (`templates/partials/share_whatsapp.php`) en ficha y carpeta: abre `wa.me` con título + enlace.
 - **WhatsApp + Descargar siempre visibles** en cada foto: tarjetas de inicio y búsqueda, tarjetas de carpeta, foto principal
   de la ficha y visor grande. Marcado `data-media-action="wa|dl"` (`mediaActionButtons()` en helpers) y un solo script,
-  `assets/js/media_actions.js`: usa la foto que muestra la tarjeta en ese momento. WhatsApp en el celular manda el archivo con
-  código, nombre y enlace como pie; en el computador abre `wa.me` con el enlace. Descargar = `/api/download/{id}`.
+  `assets/js/media_actions.js`: usa la foto que muestra la tarjeta en ese momento. WhatsApp en el celular manda solo la imagen
+  (`/enviar-catalogo/foto/{id}`, 800 px; si no sirve, `/api/download`) con el código como pie; en el computador copia la foto
+  al portapapeles (si no se puede, abre `wa.me` con el enlace). Descargar = `/api/download/{id}`.
+- **Marcar varias en el catálogo** (inicio y búsqueda, también tras la búsqueda AJAX): casilla `.search-card-check`
+  (`data-sku`, `data-file-id`, `data-is-video`) en cada tarjeta y `assets/js/wa_batch.js`, que crea la barra `.wab-bar`
+  (Marcar todas = visibles con foto, 💾 Guardar, 📲 Enviar por tandas de 10 sin texto). Mismo mecanismo que Enviar catálogo:
+  fotos de `/enviar-catalogo/foto/{id}`, precarga de 4 en 4, 3 intentos. Lo marcado vive en memoria y sobrevive a nuevas búsquedas.
 - Galería de la ficha: elegir varias fotos y enviarlas juntas (con el mismo pie de foto).
 
 ## Caché HTTP
@@ -173,7 +178,7 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
 - Admin → Productos: bajo 900 px la tabla se ve como tarjetas (estilos en `templates/admin/products.php`). Media tiene su bloque en su `<style>`.
 - Bloque "Repaso móvil 2" (final de `style.css`): encabezado (bajo 370 px con dos botones queda solo el icono "VF"),
   menú del admin en cuadrícula de 3 (2 bajo 380 px) en vez de fila deslizable, letra de tarjetas ≥ 12 px en el celular.
-- Barra "Seleccionar / Enviar por WhatsApp" (`.search-wa-toolbar`, búsqueda y galería de la ficha): fija abajo; se muestra
+- Barra "Seleccionar / Enviar por WhatsApp" (`.search-wa-toolbar`, catálogo y galería de la ficha): fija abajo; se muestra
   con la clase `visible` al marcar algo. Enviar catálogo: en el celular el panel de envío no es `sticky` (tapaba la lista).
 - Ficha: las columnas de `.detail-grid` son `minmax(0, 1fr)` para que la tira de miniaturas (`#thumbStrip`, deslizable)
   no ensanche la columna; si no, la foto principal se sale de la pantalla. En el celular (≤ 640 px) la tira es una
