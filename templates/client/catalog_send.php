@@ -45,6 +45,9 @@
         .cs-big { font-size:1rem; padding:0.75rem 1.1rem; }
         .btn-wa { background:#25D366; color:#062b16; border:none; font-weight:700; }
         .btn-wa:disabled { opacity:0.6; }
+        #csBatch:disabled { background:var(--color-surface-2); color:var(--color-text-muted); border:1px solid var(--color-border); opacity:1; }
+        #csBatch.pop { animation:csPop 0.6s ease; }
+        @keyframes csPop { 0% { transform:scale(1); } 40% { transform:scale(1.05); box-shadow:0 0 0 6px rgba(37,211,102,0.35); } 100% { transform:scale(1); } }
         .cs-more { margin-top:1rem; font-size:0.85rem; }
         .cs-more summary { cursor:pointer; color:var(--color-text-muted); }
         .cs-row { display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; margin-top:0.6rem; font-size:0.85rem; }
@@ -251,10 +254,11 @@
         }
 
         // ---- Enviar por tandas ----
-        // Nunca se queda esperando: al tocar se comparten las que YA están bajadas (hasta 10),
-        // y las demás siguen bajando en segundo plano para la siguiente tanda.
+        // Las fotos bajan en segundo plano. El botón verde se activa solo cuando la tanda siguiente
+        // (10 fotos) está completa; mientras tanto muestra "Preparando tanda N: 6/10".
         const pending = () => tiles.filter((t) => t.on && !t.wa);
-        const readyNow = () => pending().filter((t) => loaded.has(t.photo.id)).slice(0, TANDA);
+        const nextTanda = () => pending().slice(0, TANDA);
+        const readyNow = () => { const t = nextTanda(); return t.every((x) => loaded.has(x.photo.id)) ? t : []; };
         let tandaNum = 0;
         function renderBatchBtn() {
             const btn = $('csBatch');
@@ -267,11 +271,17 @@
                 $('csProgress').textContent = '';
                 return;
             }
+            const next = nextTanda();
             const ready = readyNow().length;
+            const have = next.filter((t) => loaded.has(t.photo.id)).length;
             const totalT = tandaNum + Math.ceil(pend.length / TANDA);
+            const wasReady = btn.classList.contains('ready');
+            btn.classList.toggle('ready', !!ready);
+            btn.disabled = !ready;
             btn.textContent = ready
-                ? `📲 Enviar tanda ${tandaNum + 1} de ${totalT} (${ready} foto${ready === 1 ? '' : 's'})`
-                : '⏳ Bajando fotos…';
+                ? `📲 Enviar ${tandaNum ? 'siguiente ' : ''}tanda ${tandaNum + 1} de ${totalT} (${ready} foto${ready === 1 ? '' : 's'})`
+                : `⏳ Preparando tanda ${tandaNum + 1} de ${totalT}: ${have}/${next.length}…`;
+            if (ready && !wasReady) { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
             const loadedPend = pend.filter((t) => loaded.has(t.photo.id)).length;
             $('csProgress').textContent = `Listas ${loadedPend} de ${pend.length} por enviar`
                 + (loadedPend < pend.length ? ' · siguen bajando…' : '');
@@ -352,14 +362,14 @@
                 return;
             }
             const part = readyNow();
-            if (!part.length) { msg('Todavía están bajando las primeras fotos; toca de nuevo en un momento.'); preload(); return; }
+            if (!part.length) { preload(); return; }
             try {
                 const files = await Promise.all(part.map(toFile));
                 await navigator.share({ files, text: listTextOf(part) });
                 markSent(part, true);
                 tandaNum++;
                 const left = pending().length;
-                msg(left ? `Tanda ${tandaNum} enviada. Faltan ${left} fotos: toca otra vez el botón verde.` : `✅ Listo: todas enviadas en ${tandaNum} tanda${tandaNum === 1 ? '' : 's'}.`);
+                msg(left ? `✅ Tanda ${tandaNum} enviada. Faltan ${left} fotos: el botón verde aparece cuando la siguiente tanda esté lista.` : `✅ Listo: todas enviadas en ${tandaNum} tanda${tandaNum === 1 ? '' : 's'}.`);
                 refresh();
             } catch (e) { shareError(e, 'el botón verde'); }
         });
