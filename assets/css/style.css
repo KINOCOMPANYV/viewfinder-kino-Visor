@@ -3430,3 +3430,11 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 @media (max-width: 380px) {
     .admin-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Ficha: las columnas nunca crecen más que la pantalla. Con muchas fotos, la tira de miniaturas
+   (que no se parte en filas) estiraba la columna a ~800 px y la foto quedaba corrida a la derecha. */
+.product-detail .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.product-detail .detail-grid > * { min-width: 0; }
+@media (max-width: 768px) {
+    .product-detail .detail-grid { grid-template-columns: minmax(0, 1fr); }
+}

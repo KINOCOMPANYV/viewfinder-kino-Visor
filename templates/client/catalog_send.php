@@ -30,7 +30,7 @@
         /* Galería: tocar una foto la marca o desmarca */
         .cs-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:0.5rem; }
         .cs-tile { position:relative; border-radius:10px; overflow:hidden; background:#111; border:3px solid transparent; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
-        .cs-tile img { display:block; width:100%; aspect-ratio:1; object-fit:cover; pointer-events:none; }
+        .cs-tile img { display:block; width:100%; aspect-ratio:1; object-fit:contain; background:#fff; pointer-events:none; }
         .cs-tile.on { border-color:#25D366; }
         .cs-tile:not(.on) img { opacity:0.4; }
         .cs-tile .chk { position:absolute; top:6px; left:6px; width:26px; height:26px; border-radius:50%; border:2px solid #fff; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; color:#062b16; }
@@ -58,7 +58,7 @@
             .cs-options { flex-direction:column; gap:0.15rem; }
             .cs-options label { min-height:40px; font-size:0.92rem; }
             .cs-options input { width:20px; height:20px; }
-            .cs-card { padding:1rem; }
+            .cs-card { padding:0.85rem 0.6rem; }
             .cs-bulk .btn { flex:1; }
             .cs-bar .cs-actions .btn { flex:1 1 100%; }
             .cs-row { flex-direction:column; align-items:stretch; }
