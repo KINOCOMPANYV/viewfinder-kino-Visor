@@ -44,6 +44,12 @@
                 <?php if ($listMode): ?>
                     <a href="/admin/folders" style="color:var(--color-primary);">Todas las carpetas</a>
                     / <?= $onlyHidden ? 'Ocultas por el admin' : 'Búsqueda: «' . e($q) . '»' ?> (<?= count($folders) ?>)
+                    <?php if ($onlyHidden && $hiddenMissing > 0): ?>
+                        <div style="font-size:0.8rem; margin-top:0.35rem;">
+                            Carpetas ocultas que ya no están en Drive (borradas o movidas): <?= $hiddenMissing ?>.
+                            No se cuentan ni se listan; si vuelven a aparecer, seguirán ocultas.
+                        </div>
+                    <?php endif; ?>
                 <?php else: ?>
                     <a href="/admin/folders" style="color:var(--color-primary);">Inicio</a>
                     <?php foreach ($path as $i => $crumb): ?>

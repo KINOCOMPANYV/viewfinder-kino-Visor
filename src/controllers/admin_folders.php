@@ -24,6 +24,9 @@ $select = "SELECT d.file_id, d.name, d.parent_id, d.cover_file_id, d.is_hidden,
            LEFT JOIN albums a ON a.drive_id = d.file_id
            WHERE d.is_folder = 1";
 
+// Mismo criterio para la lista "Ocultas" y para su contador
+$hiddenWhere = "(fs.hidden = 1 OR (a.is_active = 0 AND a.auto_disabled = 0))";
+
 $folders = [];
 $path = [];
 $currentHidden = false;
@@ -33,7 +36,7 @@ if ($indexReady) {
         $stmt = $db->prepare("$select AND d.name LIKE ? ORDER BY d.name ASC LIMIT 100");
         $stmt->execute(['%' . addcslashes($q, '%_\\') . '%']);
     } elseif ($onlyHidden) {
-        $stmt = $db->prepare("$select AND (fs.hidden = 1 OR (a.is_active = 0 AND a.auto_disabled = 0)) ORDER BY d.name ASC LIMIT 500");
+        $stmt = $db->prepare("$select AND $hiddenWhere ORDER BY d.name ASC LIMIT 500");
         $stmt->execute();
     } else {
         $stmt = $db->prepare("$select AND d.parent_id = ? ORDER BY CAST(d.name AS UNSIGNED) = 0, CAST(d.name AS UNSIGNED), d.name ASC");
@@ -54,9 +57,19 @@ if ($indexReady) {
     }
 }
 
+// Contador = carpetas que la lista "Ocultas" muestra (las que están en la copia de Drive).
+// $hiddenMissing = carpetas marcadas como ocultas que ya no están en esa copia (borradas o movidas
+// fuera de la carpeta raíz, o copia desactualizada). Se guardan por si vuelven a aparecer.
 $hiddenCount = 0;
+$hiddenMissing = 0;
 try {
-    $hiddenCount = (int) $db->query("SELECT COUNT(*) FROM folder_settings WHERE hidden = 1")->fetchColumn();
+    $hiddenCount = (int) $db->query("SELECT COUNT(*) FROM drive_index d
+        LEFT JOIN folder_settings fs ON fs.folder_id = d.file_id
+        LEFT JOIN albums a ON a.drive_id = d.file_id
+        WHERE d.is_folder = 1 AND $hiddenWhere")->fetchColumn();
+    $hiddenMissing = (int) $db->query("SELECT COUNT(*) FROM folder_settings fs
+        WHERE fs.hidden = 1
+          AND NOT EXISTS (SELECT 1 FROM drive_index d WHERE d.file_id = fs.folder_id AND d.is_folder = 1)")->fetchColumn();
 } catch (\PDOException $e) { /* migración 021 pendiente */ }
 
 include __DIR__ . '/../../templates/admin/folders.php';
