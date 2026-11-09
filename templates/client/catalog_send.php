@@ -29,6 +29,9 @@
         .cs-item { display:flex; gap:0.75rem; align-items:center; padding:0.6rem; border:1px solid var(--color-border); border-radius:var(--radius-sm); background:var(--color-surface-2); }
         .cs-item.off { opacity:0.45; }
         .cs-item.sent { border-color:rgba(52,168,83,0.5); }
+        .cs-item.now { border-color:#25D366; box-shadow:0 0 0 2px rgba(37,211,102,0.35); }
+        .cs-item .cs-this { flex-shrink:0; font-size:0.75rem; padding:0.35rem 0.55rem; }
+        .cs-bulk { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem; }
         .cs-item input[type=checkbox] { width:20px; height:20px; flex-shrink:0; }
         .cs-item .info { flex:1; min-width:0; }
         .cs-item .sku { font-weight:700; font-family:monospace; font-size:0.95rem; }
@@ -84,6 +87,12 @@
         <section class="cs-card" id="csResult" hidden>
             <h2>2. Revisa la lista</h2>
             <div class="cs-summary" id="csSummary"></div>
+            <p class="help">Solo se envían los productos <strong>marcados</strong> ✅, en el orden de la lista.
+                Usa "📲 Este" para saltar directo a uno.</p>
+            <div class="cs-bulk">
+                <button type="button" id="csAll" class="btn btn-secondary btn-sm">Marcar todos</button>
+                <button type="button" id="csNone" class="btn btn-secondary btn-sm">Desmarcar todos</button>
+            </div>
             <div class="cs-list" id="csList"></div>
             <div class="cs-warn" id="csNotFound" hidden></div>
 
@@ -94,6 +103,9 @@
                         <div class="count" id="csNowCount"></div>
                         <div class="cap" id="csNowCap"></div>
                     </div>
+                </div>
+                <div class="cs-actions" style="margin-bottom:0.6rem;">
+                    <button type="button" id="csBatch" class="btn btn-wa cs-big">📦 Enviar todo el lote por WhatsApp</button>
                 </div>
                 <div class="cs-actions">
                     <button type="button" id="csShare" class="btn btn-wa cs-big">📲 Enviar por WhatsApp</button>
@@ -128,6 +140,7 @@
         let queue = [];      // [{item, photo, caption, filename}]
         let pos = 0;
         const blobs = new Map(); // fileId → Promise<Blob>
+        const settled = new Map(); // fileId → Blob ya descargado (para el lote)
 
         const fmtPrice = (n) => n > 0 ? '$' + Math.round(n).toLocaleString('es-CO') : '';
         const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -145,7 +158,7 @@
             if (!blobs.has(id)) {
                 const p = fetch('/enviar-catalogo/foto/' + encodeURIComponent(id), { credentials: 'same-origin' })
                     .then((r) => { if (!r.ok) throw new Error('foto ' + r.status); return r.blob(); });
-                p.catch(() => blobs.delete(id));
+                p.then((b) => settled.set(id, b), () => blobs.delete(id));
                 blobs.set(id, p);
             }
             return blobs.get(id);
@@ -157,6 +170,7 @@
 
         function buildQueue() {
             queue = [];
+            batchPart = 0;
             const all = mode() === 'all';
             items.forEach((it) => {
                 if (!it.on || !it.photos.length) return;
@@ -166,6 +180,8 @@
             });
             if (pos > queue.length) pos = queue.length;
             renderNow();
+            renderBatch();
+            preloadBatch();
         }
 
         function renderList() {
@@ -182,6 +198,7 @@
                         <div class="name">${esc(it.name || '')}${it.price > 0 ? ' · ' + fmtPrice(it.price) : ''}</div>
                     </div>
                     <div class="cs-thumbs">${thumbs}</div>
+                    ${it.photos.length ? '<button type="button" class="btn btn-secondary btn-sm cs-this" title="Enviar este producto ahora">📲 Este</button>' : ''}
                 </label>`;
             }).join('');
             list.querySelectorAll('.cs-item input').forEach((cb) => {
@@ -194,6 +211,32 @@
                     renderSummary();
                 });
             });
+            list.querySelectorAll('.cs-item .cs-this').forEach((b) => {
+                b.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const row = b.closest('.cs-item');
+                    const it = items[+row.dataset.idx];
+                    if (!it.on) {
+                        it.on = true;
+                        row.classList.remove('off');
+                        row.querySelector('input[type=checkbox]').checked = true;
+                        buildQueue();
+                        renderSummary();
+                    }
+                    const at = queue.findIndex((q) => q.item === it);
+                    if (at < 0) return;
+                    pos = at;
+                    renderNow();
+                    msg('');
+                    $('csSend').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                });
+            });
+        }
+
+        function setAll(on) {
+            items.forEach((it) => { if (it.photos.length) it.on = on; });
+            pos = 0;
+            renderList(); buildQueue(); renderSummary();
         }
 
         function renderSummary(notFound) {
@@ -211,10 +254,16 @@
 
         function renderNow() {
             const done = pos >= queue.length;
+            // Resalta en la lista el producto que se va a enviar
+            document.querySelectorAll('.cs-item.now').forEach((el) => el.classList.remove('now'));
+            if (!done && queue[pos]) {
+                const cur = document.querySelector(`.cs-item[data-idx="${items.indexOf(queue[pos].item)}"]`);
+                if (cur) cur.classList.add('now');
+            }
             ['csShare', 'csCopy', 'csCopyCap', 'csSkip'].forEach((id) => { $(id).disabled = done || !queue.length; });
             if (!queue.length) {
                 $('csNowImg').removeAttribute('src');
-                $('csNowCount').textContent = 'No hay fotos para enviar.';
+                $('csNowCount').textContent = 'No hay fotos para enviar: marca al menos un producto.';
                 $('csNowCap').textContent = '';
                 return;
             }
@@ -227,7 +276,8 @@
             }
             const q = queue[pos];
             $('csNowImg').src = q.photo.thumb;
-            $('csNowCount').textContent = `Foto ${pos + 1} de ${queue.length}`;
+            const nProd = new Set(queue.map((x) => x.item)).size;
+            $('csNowCount').textContent = `Foto ${pos + 1} de ${queue.length} · ${nProd} producto${nProd === 1 ? '' : 's'} marcado${nProd === 1 ? '' : 's'}`;
             $('csNowCap').textContent = q.caption;
             $('csShare').textContent = `📲 Enviar ${pos + 1} de ${queue.length} por WhatsApp`;
             $('csCopy').textContent = `📋 Copiar foto ${pos + 1} de ${queue.length}`;
@@ -235,6 +285,71 @@
             getBlob(q.photo.id).catch(() => {});
             if (queue[pos + 1]) getBlob(queue[pos + 1].photo.id).catch(() => {});
         }
+
+        // ---- Lote completo: todas las fotos marcadas en un solo "Compartir" ----
+        const BATCH_MAX = 30; // WhatsApp acepta hasta ~30 fotos por envío
+        let batchPart = 0;
+        function batches() {
+            const out = [];
+            for (let i = 0; i < queue.length; i += BATCH_MAX) out.push(queue.slice(i, i + BATCH_MAX));
+            return out;
+        }
+        function renderBatch() {
+            const b = batches();
+            const btn = $('csBatch');
+            btn.disabled = !queue.length;
+            if (batchPart >= b.length) batchPart = 0;
+            btn.textContent = !queue.length ? '📦 Enviar todo el lote por WhatsApp'
+                : b.length > 1 ? `📦 Enviar lote ${batchPart + 1} de ${b.length} (${b[batchPart].length} fotos)`
+                : `📦 Enviar las ${queue.length} fotos juntas por WhatsApp`;
+        }
+        function preloadBatch() { queue.forEach((q) => getBlob(q.photo.id).catch(() => {})); }
+        async function readyFiles(part) {
+            return Promise.all(part.map(async (q) => {
+                const blob = await getBlob(q.photo.id);
+                return new File([blob], q.filename + '.' + extFor(blob.type), { type: blob.type || 'image/jpeg' });
+            }));
+        }
+        function allLoaded(part) { return part.every((q) => settled.has(q.photo.id)); }
+
+        $('csBatch').addEventListener('click', async () => {
+            const b = batches();
+            const part = b[batchPart];
+            if (!part) return;
+            if (!canShareFiles) {
+                msg('En el computador no se pueden pasar varias fotos directo a WhatsApp. Usa "⬇️ Descargar todas" y luego arrástralas juntas al chat de WhatsApp Web (o usa el clip 📎 y selecciónalas todas).');
+                return;
+            }
+            const btn = $('csBatch');
+            // El celular solo deja compartir si el toque es reciente: si faltan fotos por bajar, se bajan y se pide otro toque
+            if (!allLoaded(part)) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Preparando fotos…';
+                try {
+                    await readyFiles(part);
+                    msg('Fotos listas: toca otra vez el botón para enviarlas todas juntas.');
+                } catch (e) {
+                    msg('Alguna foto no se pudo bajar: ' + (e && e.message ? e.message : e));
+                } finally { btn.disabled = false; renderBatch(); }
+                return;
+            }
+            try {
+                const files = await readyFiles(part);
+                if (navigator.canShare && !navigator.canShare({ files })) throw new Error('el teléfono no acepta tantas fotos juntas');
+                const text = part.filter((q, i) => part.findIndex((x) => x.item === q.item) === i)
+                    .map((q) => '• ' + q.caption.replace('\n', ' · ')).join('\n');
+                await navigator.share({ files, text });
+                part.forEach(markSent);
+                const left = b.length - batchPart - 1;
+                batchPart = left ? batchPart + 1 : 0;
+                msg(left ? `Lote enviado. Faltan ${left} lote(s): toca de nuevo el botón.` : `✅ Lote enviado (${queue.length} fotos).`);
+                renderBatch();
+            } catch (e) {
+                if (e && e.name === 'AbortError') msg('Cancelado. Toca de nuevo para enviar el lote.');
+                else if (e && e.name === 'NotAllowedError') msg('El teléfono pidió otro toque: vuelve a tocar el botón del lote.');
+                else msg('No se pudo enviar el lote: ' + (e && e.message ? e.message : e));
+            }
+        });
 
         function markSent(q) {
             const el = document.querySelector(`.cs-item[data-idx="${items.indexOf(q.item)}"]`);
@@ -258,8 +373,8 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
                 items = data.items.map((it) => ({ ...it, on: it.photos.length > 0 }));
-                pos = 0;
-                blobs.clear();
+                pos = 0; batchPart = 0;
+                blobs.clear(); settled.clear();
                 $('csResult').hidden = false;
                 renderList();
                 buildQueue();
@@ -346,6 +461,8 @@
         });
 
         $('csSkip').addEventListener('click', next);
+        $('csAll').addEventListener('click', () => setAll(true));
+        $('csNone').addEventListener('click', () => setAll(false));
         $('csRestart').addEventListener('click', () => {
             pos = 0;
             document.querySelectorAll('.cs-item.sent').forEach((el) => el.classList.remove('sent'));

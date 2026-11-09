@@ -30,6 +30,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Ficha de producto con variantes, galería, visor grande; WhatsApp + Descargar en cada foto.
 - Compartir por WhatsApp con vista previa (foto, título, enlace) vía Open Graph (`/og/{id}.jpg`).
 - "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto → códigos → fotos → enviar una por una.
+  "📦 Enviar todo el lote": en el celular manda todas las fotos marcadas juntas en un solo Compartir (de 30 en 30).
+  En el PC: "Descargar todas" y arrastrarlas juntas a WhatsApp Web. Solo cuentan los productos marcados.
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
 - Admin: Productos (activar/desactivar), Carpetas (ocultar), Sincronizar (hoja + Drive, "¿Por qué no sale la foto?"), Media.
@@ -52,3 +54,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #16: descarga con respaldo público si Drive está desconectado.
 - #17: contador de carpetas ocultas igual que la lista (no borra ajustes viejos).
 - #18: este archivo de avances + regla de actualizarlo (CLAUDE.md).
+- #19: Enviar catálogo: botón "Enviar todo el lote" (fotos marcadas juntas), marcar/desmarcar todos, "📲 Este".
