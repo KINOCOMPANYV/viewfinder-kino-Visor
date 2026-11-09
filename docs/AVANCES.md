@@ -12,7 +12,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   completa (3629 de 3629, sin filas descartadas ni repetidas). En la hoja faltan datos: 124 filas sin PRICE_SUGGESTED (98 POEDAGAR)
   y 33 sin NAME; esas salen sin precio o con el código como nombre. Admin → Sincronizar muestra hoja vs "Solo Drive".
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#32 fusionados.
+- PRs #1–#33 fusionados.
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -41,7 +41,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   filtro), "💾 Guardar" y "📲 Enviar" por tandas de 10 (mismo sistema que Enviar catálogo, solo imágenes). Lo marcado se
   mantiene al hacer otra búsqueda, así se juntan fotos de varias búsquedas.
 - Carpetas: cada foto es una tarjeta en la grilla (ya no se agrupan como miniaturas de variantes), con su código, WhatsApp,
-  Descargar y "Seleccionar" para mandar varias (misma barra).
+  Descargar y "Seleccionar" para mandar varias (misma barra). Una carpeta que solo tiene subcarpetas (p. ej. una línea con
+  14 modelos) muestra debajo las fotos de todas sus subcarpetas (hasta 300) para marcarlas sin entrar a cada una; no en la raíz.
 - Compartir por WhatsApp con vista previa (foto, título, enlace) vía Open Graph (`/og/{id}.jpg`).
 - "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto → códigos → galería de fotos (tocar = marcar/desmarcar).
   "💾 Guardar N en el celular" (Android/PC: descargas; iPhone: Compartir → Guardar imágenes) y luego se mandan desde
@@ -93,3 +94,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #31: compartir por WhatsApp desde el catálogo: marcar varias en inicio/búsqueda y enviar por tandas de 10 (`wa_batch.js`);
   botón WhatsApp de cada foto = imagen liviana + código; Enviar catálogo ya no manda la lista en texto en las tandas.
 - #32: carpetas en grilla de fotos (una tarjeta por archivo, ordenadas por nombre) con marcar varias para WhatsApp.
+- #33: carpeta con solo subcarpetas: grilla con las fotos de todas sus subcarpetas para marcar y compartir.

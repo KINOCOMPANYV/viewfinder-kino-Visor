@@ -53,6 +53,17 @@ if (DriveIndex::isReady($db)) {
     }
 }
 
+// Carpeta que solo tiene subcarpetas (p. ej. una línea con 14 modelos): se muestran juntas las fotos
+// de todas sus subcarpetas, para verlas y marcarlas sin entrar a cada una. No en la raíz (sería todo el catálogo).
+$fromSubfolders = false;
+$moreInSubfolders = false;
+if (empty($files) && !empty($subfolders) && $folderId !== env('GOOGLE_DRIVE_FOLDER_ID', '') && DriveIndex::isReady($db)) {
+    $desc = DriveIndex::descendantImages($db, $folderId, 300);
+    $files = $desc['files'];
+    $moreInSubfolders = $desc['more'];
+    $fromSubfolders = (bool) $files;
+}
+
 foreach ($files as &$item) {
     $item['thumb'] = lh3Url($item['id']);
     $item['isVideo'] = str_starts_with($item['mimeType'] ?? '', 'video/');
@@ -121,7 +132,7 @@ $shareDesc = implode(' · ', array_filter([
             <h1 style="font-size:1.5rem; margin:0;">📂 <?= e($folderName) ?></h1>
             <p style="color:var(--color-text-muted); font-size:0.9rem; margin-top:0.25rem;">
                 <?= count($subfolders) ?> subcarpeta<?= count($subfolders) !== 1 ? 's' : '' ?> · 
-                <?= count($files) ?> archivo<?= count($files) !== 1 ? 's' : '' ?>
+                <?= $fromSubfolders ? 0 : count($files) ?> archivo<?= (!$fromSubfolders && count($files) === 1) ? '' : 's' ?>
             </p>
             <div style="margin-top:0.75rem;">
                 <?php include __DIR__ . '/../../templates/partials/share_whatsapp.php'; ?>
@@ -162,13 +173,16 @@ $shareDesc = implode(' · ', array_filter([
         <!-- Archivos (fotos/videos): una tarjeta por foto, en grilla, para ver y marcar cada una -->
         <?php if (!empty($files)):
             // Orden por nombre para que las variantes de una referencia queden juntas (1409-C1, 1409-C2…)
-            usort($files, fn($x, $y) => strnatcasecmp($x['name'] ?? '', $y['name'] ?? ''));
+            if (!$fromSubfolders) usort($files, fn($x, $y) => strnatcasecmp($x['name'] ?? '', $y['name'] ?? ''));
             $refCount = count(array_unique(array_map(fn($f) => extractRootSku(pathinfo($f['name'] ?? '', PATHINFO_FILENAME)), $files)));
         ?>
             <div class="section-header-landing" style="margin-top:1rem;">
-                <h2>🖼️ Fotos</h2>
-                <span class="product-count"><?= count($files) ?> archivo<?= count($files) !== 1 ? 's' : '' ?> · <?= $refCount ?> referencia<?= $refCount !== 1 ? 's' : '' ?></span>
+                <h2>🖼️ <?= $fromSubfolders ? 'Fotos de las subcarpetas' : 'Fotos' ?></h2>
+                <span class="product-count"><?= count($files) ?><?= $moreInSubfolders ? '+' : '' ?> archivo<?= count($files) !== 1 ? 's' : '' ?> · <?= $refCount ?> referencia<?= $refCount !== 1 ? 's' : '' ?></span>
             </div>
+            <?php if ($moreInSubfolders): ?>
+                <p style="color:var(--color-text-muted); font-size:0.85rem;">Se muestran las primeras <?= count($files) ?> fotos. Para ver el resto, entra a cada subcarpeta.</p>
+            <?php endif; ?>
             <div class="parent-grid" style="padding-top:1rem;">
                 <?php foreach ($files as $idx => $file):
                     $code = pathinfo($file['name'] ?? '', PATHINFO_FILENAME);
@@ -189,6 +203,9 @@ $shareDesc = implode(' · ', array_filter([
                             </div>
                             <div class="card-body">
                                 <div class="card-sku"><?= e($code) ?></div>
+                                <?php if (!empty($file['folder'])): ?>
+                                    <div class="card-name" style="font-size:0.7rem; color:var(--color-text-muted);">📁 <?= e($file['folder']) ?></div>
+                                <?php endif; ?>
                             </div>
                         </a>
                         <?= mediaActionButtons($file['id'], $file['name'] ?? '', $code, '/producto/' . rawurlencode($rootSku)) ?>
