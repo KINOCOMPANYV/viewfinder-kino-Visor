@@ -159,7 +159,7 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
   `assets/js/media_actions.js`: usa la foto que muestra la tarjeta en ese momento. WhatsApp en el celular manda solo la imagen
   (`/enviar-catalogo/foto/{id}`, 800 px; si no sirve, `/api/download`) con el código como pie; en el computador copia la foto
   al portapapeles (si no se puede, abre `wa.me` con el enlace). Descargar = `/api/download/{id}`.
-- **Marcar varias en el catálogo** (inicio, búsqueda, también tras la búsqueda AJAX, y carpetas: una tarjeta por foto): casilla `.search-card-check`
+- **Marcar varias en el catálogo** (inicio, búsqueda, también tras la búsqueda AJAX, y carpetas: una tarjeta por foto; si la carpeta solo tiene subcarpetas, `DriveIndex::descendantImages()` trae las fotos de todas ellas, máx. 300): casilla `.search-card-check`
   (`data-sku`, `data-file-id`, `data-is-video`) en cada tarjeta y `assets/js/wa_batch.js`, que crea la barra `.wab-bar`
   (Marcar todas = visibles con foto, 💾 Guardar, 📲 Enviar por tandas de 10 sin texto). Mismo mecanismo que Enviar catálogo:
   fotos de `/enviar-catalogo/foto/{id}` (si da 404, foto de carpeta sin código, `/api/download`), precarga de 4 en 4, 3 intentos. Lo marcado vive en memoria y sobrevive a nuevas búsquedas.

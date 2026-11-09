@@ -511,6 +511,41 @@ class DriveIndex
     }
 
     /**
+     * Fotos (solo imágenes) de todas las subcarpetas visibles de una carpeta, a cualquier profundidad.
+     * Para carpetas que solo tienen subcarpetas: así se pueden ver y marcar juntas.
+     * Cada foto lleva 'folder' (nombre de su carpeta). Se corta en $limit fotos; 'more' = true si hay más.
+     * @return array{files: array, more: bool}
+     */
+    public static function descendantImages(PDO $db, string $folderId, int $limit = 300): array
+    {
+        $files = [];
+        $queue = [[$folderId, '']];
+        $seen = [$folderId => true];
+        $folderStmt = $db->prepare(
+            "SELECT file_id, name, mime_type, size, is_folder FROM drive_index
+             WHERE parent_id = ? AND is_hidden = 0 ORDER BY name ASC"
+        );
+        $visited = 0;
+        while ($queue && $visited < 500) {
+            [$id, $label] = array_shift($queue);
+            $visited++;
+            $folderStmt->execute([$id]);
+            foreach ($folderStmt->fetchAll() as $r) {
+                if ($r['is_folder']) {
+                    if (empty($seen[$r['file_id']])) {
+                        $seen[$r['file_id']] = true;
+                        $queue[] = [$r['file_id'], $r['name']];
+                    }
+                } elseif ($id !== $folderId && str_starts_with($r['mime_type'], 'image/')) {
+                    if (count($files) >= $limit) return ['files' => $files, 'more' => true];
+                    $files[] = self::toApiFile($r) + ['folder' => $label];
+                }
+            }
+        }
+        return ['files' => $files, 'more' => (bool) $queue];
+    }
+
+    /**
      * Alinea la tabla albums con las carpetas de primer nivel de la raíz:
      * crea las nuevas, actualiza nombres y DESACTIVA (sin borrar) las que ya no
      * están bajo la raíz (p. ej. de una carpeta raíz anterior) o no son marcas
