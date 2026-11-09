@@ -34,11 +34,10 @@ php -S localhost:8080
 4. Configurar variables de entorno (ver `.env.example`)
 5. Deploy automático con cada `git push`
 
-## Importar catálogo
+## Catálogo
 
-1. Ir a `/admin/login`
-2. Ir a **Importar Excel**
-3. Subir archivo `.xlsx` o `.csv` con columnas: `sku, name, category, gender, movement, price_suggested, status, description`
+Los productos salen de la hoja maestra de Google (Admin → Sincronizar) y de los archivos de Drive.
+Ver `docs/AVANCES.md` (estado y decisiones) y `docs/ARQUITECTURA.md` (cómo funciona).
 
 ## Estructura
 
