@@ -10,7 +10,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Drive raíz: env `GOOGLE_DRIVE_FOLDER_ID` = carpeta **PRODUCTOS**. Se indexan todos los niveles en `drive_index`.
 - Hoja maestra: **"MAESTRA DE PRODUCTOS KINO"** (env `GOOGLE_SHEET_ID`), ~3600 códigos.
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#24 fusionados.
+- PRs #1–#25 fusionados.
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -66,3 +66,6 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #23: Enviar catálogo: tandas de 10 fotos por toque (antes 20), pedido del dueño.
 - #24: Enviar catálogo: arreglo "Failed to fetch" y tandas sin esperas (comparte lo ya bajado), fotos a 800 px, caché en disco.
 - #25: Enviar por tandas: el botón verde aparece solo cuando la siguiente tanda de 10 está lista (pedido del dueño).
+- #26: ficha en el celular: la foto ya no sale corrida a la derecha con muchas fotos (la tira de miniaturas estiraba la columna);
+  en el celular las miniaturas de la ficha van en cuadrícula (5 por fila, sin deslizar; tocar una sube a la foto grande).
+  Enviar catálogo: las miniaturas muestran la foto entera (no recortada).

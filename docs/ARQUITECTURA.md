@@ -171,4 +171,7 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
   menú del admin en cuadrícula de 3 (2 bajo 380 px) en vez de fila deslizable, letra de tarjetas ≥ 12 px en el celular.
 - Barra "Seleccionar / Enviar por WhatsApp" (`.search-wa-toolbar`, búsqueda y galería de la ficha): fija abajo; se muestra
   con la clase `visible` al marcar algo. Enviar catálogo: en el celular el panel de envío no es `sticky` (tapaba la lista).
+- Ficha: las columnas de `.detail-grid` son `minmax(0, 1fr)` para que la tira de miniaturas (`#thumbStrip`, deslizable)
+  no ensanche la columna; si no, la foto principal se sale de la pantalla. En el celular (≤ 640 px) la tira es una
+  cuadrícula de 5 (4 bajo 340 px), sin deslizar (`gallery-slider.css`); tocar una miniatura sube a la foto (`mainIntoView`).
 - Como hay mucho estilo en línea en las plantillas, algunas reglas móviles usan `!important` a propósito.

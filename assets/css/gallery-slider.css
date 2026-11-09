@@ -217,3 +217,28 @@
     .lightbox-nav.prev { left: 0.4rem; }
     .lightbox-nav.next { right: 0.4rem; }
 }
+
+/* Celular: miniaturas en cuadrícula de varias filas (pedido del dueño: deslizar a los lados no es práctico).
+   Se ven todas de una vez y se tocan para cambiar la foto principal. */
+@media (max-width: 640px) {
+    #thumbStrip {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.4rem;
+        overflow: visible;
+        scroll-snap-type: none;
+        padding: 0.25rem 0;
+    }
+    .thumb-strip-item {
+        width: auto;
+        height: auto;
+        aspect-ratio: 1;
+        background: #fff;
+    }
+    .thumb-strip-item img { object-fit: contain; }
+    .thumb-strip-item:hover,
+    .thumb-strip-item.active { transform: none; }
+}
+@media (max-width: 339px) {
+    #thumbStrip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

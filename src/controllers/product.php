@@ -617,6 +617,14 @@ unset($v);
         }
 
         // Show file in main image area when clicking a thumbnail
+        // Celular: las miniaturas están en varias filas; al tocar una de abajo se sube a ver la foto grande
+        function mainIntoView() {
+            const m = document.getElementById('mainCover');
+            if (!m) return;
+            const top = m.getBoundingClientRect().top;
+            if (top < 70) window.scrollTo({ top: window.scrollY + top - 80, behavior: 'smooth' }); // 80 = encabezado fijo
+        }
+
         function showInMain(idx) {
             const f = allGalleryFiles[idx];
             if (!f) return;
@@ -795,7 +803,7 @@ unset($v);
                     ? `<img src="${thumbSrc}" alt="${esc(f.name)}" loading="lazy">`
                     : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.5rem;">📄</div>`;
                 const badge = isVideo ? '<span class="thumb-video-badge">▶</span>' : '';
-                return `<div class="thumb-strip-item" onclick="showInMain(${idx})" title="${esc(f.name)}">${imgTag}${badge}</div>`;
+                return `<div class="thumb-strip-item" onclick="showInMain(${idx}); mainIntoView()" title="${esc(f.name)}">${imgTag}${badge}</div>`;
             }).join('');
 
             grid.innerHTML = files.map((f, idx) => {
