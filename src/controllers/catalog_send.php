@@ -167,8 +167,24 @@ function catalogSendPhoto(PDO $db, string $fileId): void
         exit;
     }
 
-    // lh3: la misma URL pública que ya usa el visor (archivo público, redimensionado)
+    // Copia en disco: la segunda vez sale al instante y no depende de que lh3 responda a tiempo
+    $cacheDir = BASE_DIR . '/storage/send_cache';
+    $cacheFile = $cacheDir . '/' . $fileId . '.img';
+    if (is_file($cacheFile) && filesize($cacheFile) > 0) {
+        $body = (string) file_get_contents($cacheFile);
+        $info = new finfo(FILEINFO_MIME_TYPE);
+        $type = (string) $info->buffer($body);
+        catalogSendOutput($body, str_starts_with($type, 'image/') ? $type : 'image/jpeg');
+        return;
+    }
+
+    // lh3: la misma URL pública que ya usa el visor (archivo público, redimensionado).
+    // Un reintento: lh3 a veces corta o tarda en la primera petición.
     [$body, $type] = catalogSendFetch(lh3Url($fileId, 1200));
+    if ($body === null) {
+        usleep(400000);
+        [$body, $type] = catalogSendFetch(lh3Url($fileId, 1200));
+    }
 
     if ($body === null) {
         http_response_code(502);
@@ -176,6 +192,18 @@ function catalogSendPhoto(PDO $db, string $fileId): void
         echo 'No se pudo traer la foto de Drive';
         exit;
     }
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0775, true);
+    }
+    $tmp = $cacheFile . '.' . getmypid() . '.tmp';
+    if (@file_put_contents($tmp, $body) !== false) {
+        @rename($tmp, $cacheFile);
+    }
+    catalogSendOutput($body, $type);
+}
+
+function catalogSendOutput(string $body, string $type): void
+{
     header('Content-Type: ' . $type);
     header('Content-Length: ' . strlen($body));
     header('Cache-Control: public, max-age=86400');
@@ -189,8 +217,8 @@ function catalogSendFetch(string $url, array $headers = []): array
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_HTTPHEADER => $headers,
     ]);
     $body = curl_exec($ch);

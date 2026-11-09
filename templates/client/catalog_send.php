@@ -165,10 +165,30 @@
             return blobs.get(id);
         }
 
+        // Baja una foto con hasta 3 intentos (el celular a veces corta la conexión: "Failed to fetch")
+        async function fetchPhoto(id) {
+            let last;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                if (attempt) await new Promise((ok) => setTimeout(ok, 700 * attempt));
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 30000);
+                try {
+                    const r = await fetch('/enviar-catalogo/foto/' + encodeURIComponent(id), { credentials: 'same-origin', signal: ctrl.signal });
+                    if (!r.ok) throw new Error('error ' + r.status);
+                    const b = await r.blob();
+                    if (!b.size) throw new Error('foto vacía');
+                    return b;
+                } catch (e) {
+                    last = e;
+                    if (e && /error 404/.test(e.message)) break; // no existe: no vale la pena reintentar
+                } finally { clearTimeout(timer); }
+            }
+            throw last;
+        }
+
         function getBlob(id) {
             if (!blobs.has(id)) {
-                const p = fetch('/enviar-catalogo/foto/' + encodeURIComponent(id), { credentials: 'same-origin' })
-                    .then((r) => { if (!r.ok) throw new Error('foto ' + r.status); return r.blob(); });
+                const p = fetchPhoto(id);
                 p.then(() => loaded.add(id), () => blobs.delete(id));
                 blobs.set(id, p);
             }
@@ -227,7 +247,7 @@
             $('csBatch').disabled = !sel;
             $('csSave').textContent = sel ? `💾 Guardar ${sel} en el celular` : '💾 Guardar en el celular';
             $('csBatch').textContent = !sel ? '📲 Enviar por tandas'
-                : b.length > 1 ? `📲 Enviar tanda ${batchPart + 1} de ${b.length} (${b[batchPart].length} fotos)`
+                : b.length > 1 ? `📲 Enviar tanda ${batchPart + 1} de ${b.length} (${b[batchPart].length} foto${b[batchPart].length === 1 ? "" : "s"})`
                 : `📲 Enviar las ${sel} por WhatsApp`;
             preload();
         }
@@ -258,21 +278,30 @@
 
         // El teléfono solo deja compartir justo después de un toque: si faltan fotos por bajar,
         // se bajan mostrando el avance y se pide tocar otra vez.
+        // Si una foto no baja ni con reintentos, se quita de la tanda (se desmarca) y se sigue con las demás.
         async function ensureLoaded(ts, btn, label) {
             if (ts.every((t) => loaded.has(t.photo.id))) return true;
             btn.disabled = true;
             let done = 0;
             const total = ts.length;
             btn.textContent = `⏳ Preparando 0/${total}…`;
-            try {
-                await Promise.all(ts.map((t) => getBlob(t.photo.id).then(() => { btn.textContent = `⏳ Preparando ${++done}/${total}…`; })));
-                msg(`Fotos listas: toca otra vez "${label}".`);
-            } catch (e) {
-                msg('Alguna foto no se pudo bajar: ' + (e && e.message ? e.message : e) + '. Desmárcala o intenta de nuevo.');
-            } finally {
-                btn.disabled = false; refresh();
-            }
+            const res = await Promise.allSettled(ts.map((t) => getBlob(t.photo.id).finally(() => { btn.textContent = `⏳ Preparando ${++done}/${total}…`; })));
+            const bad = ts.filter((t, i) => res[i].status === 'rejected');
+            dropFailed(bad);
+            btn.disabled = false; refresh();
+            const okCount = total - bad.length;
+            msg((bad.length ? `⚠️ No se pudo bajar: ${bad.map(skuOf).join(', ')} (las desmarqué). ` : '')
+                + (okCount ? `Fotos listas: toca otra vez "${label}".` : 'Intenta de nuevo en un momento.'));
             return false;
+        }
+
+        const skuOf = (t) => t.item.sku + (t.n ? ' (' + (t.n + 1) + ')' : '');
+        function dropFailed(bad) {
+            bad.forEach((t) => {
+                t.on = false;
+                const el = document.querySelector(`.cs-tile[data-i="${tiles.indexOf(t)}"]`);
+                if (el) { el.classList.remove('on'); el.setAttribute('aria-checked', 'false'); }
+            });
         }
 
         function shareError(e, what) {
@@ -326,6 +355,7 @@
             }
             btn.disabled = true;
             let ok = 0;
+            const bad = [];
             for (let i = 0; i < sel.length; i++) {
                 btn.textContent = `💾 Guardando ${i + 1}/${sel.length}…`;
                 try {
@@ -338,11 +368,12 @@
                     markSent([sel[i]]);
                     ok++;
                     await new Promise((r) => setTimeout(r, 300));
-                } catch (e) { /* sigue con la siguiente */ }
+                } catch (e) { bad.push(sel[i]); /* sigue con la siguiente */ }
             }
             btn.disabled = false;
             refresh();
-            msg(`✅ ${ok} de ${sel.length} fotos guardadas. Si el navegador pregunta, permite "descargar varios archivos". `
+            msg((bad.length ? `⚠️ No se pudo bajar: ${bad.map(skuOf).join(', ')}. ` : '')
+                + `✅ ${ok} de ${sel.length} fotos guardadas. Si el navegador pregunta, permite "descargar varios archivos". `
                 + 'Ahora en WhatsApp: 📎 → Galería (álbum Download) y selecciónalas todas.');
         });
 

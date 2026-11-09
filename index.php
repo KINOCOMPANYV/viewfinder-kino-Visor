@@ -194,7 +194,7 @@ if ($uri === '/enviar-catalogo/extraer' && $method === 'POST') {
 }
 
 if (preg_match('#^/enviar-catalogo/foto/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
-    checkRateLimit(120);
+    checkRateLimit(300); // fotos: precarga + reintentos de una lista larga
     $catalogAction = 'photo';
     $catalogFileId = $matches[1];
     include __DIR__ . '/src/controllers/catalog_send.php';
