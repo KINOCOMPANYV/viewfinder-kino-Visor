@@ -103,7 +103,7 @@ $shareDesc = implode(' · ', array_filter([
     <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+    <link rel="preconnect" href="https://lh3.googleusercontent.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
@@ -196,7 +196,7 @@ $shareDesc = implode(' · ', array_filter([
                                 <?php endif; ?>
                                 <img src="<?= e($file['thumb']) ?>"
                                      alt="<?= e($code) ?>"
-                                     loading="<?= $idx < 6 ? 'eager' : 'lazy' ?>"
+                                     <?= cardImgAttrs($file['thumb'], $idx < 6) ?>
                                      class="img-fade-in"
                                      onload="this.classList.add('loaded')"
                                      onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">

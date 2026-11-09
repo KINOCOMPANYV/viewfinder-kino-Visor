@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Productos · Viewfinder Admin</title>
     <style>body{background:#0a0a0f;color:#e8e8f0}</style>
-    <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+    <link rel="preconnect" href="https://lh3.googleusercontent.com">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .prod-filters { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; }

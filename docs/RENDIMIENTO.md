@@ -38,4 +38,4 @@ Objetivo: que navegar por el catálogo (inicio, búsqueda, ficha) solo lea MySQL
 - `admin_media.php` y `admin_sync_sheets.php` aún usan `listAllMediaFiles` (recorrido en vivo); podrían leer `drive_index`.
 - `/api/covers/batch` con índice hace ~4 consultas por SKU (máx. 50); se puede agrupar si hiciera falta.
 - Una vez que el índice esté siempre lleno, borrar el camino viejo (`media_search_cache`, `fetchAndCacheMediaForSku`).
-- Columna normalizada de SKU (sin guiones) indexada, para no usar `REPLACE(...) LIKE` (escaneo completo) en las búsquedas.
+- Columna normalizada de SKU indexada: medido 2026-11-09 con ~5800 productos, el `REPLACE(...) LIKE` tarda ~2 ms; no vale la pena aún.

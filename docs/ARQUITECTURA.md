@@ -9,6 +9,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
   `SYNC_INTERVAL_MINUTES` (60): `php scripts/cli_sync.php carpetas` (solo BD, carpetas ocultas), `hoja` y después `portadas` (los mismos controladores que los
   botones del admin). `AUTO_SYNC=0` la apaga. El resultado sale en los logs de Railway.
 - Config: `config/database.php` (`env()`, `getDB()` singleton PDO), `config/app.php` (constantes, `APP_VERSION` para cache-busting).
+  La clave del admin se comprueba solo al entrar (`adminPasswordMatches`); nada de bcrypt en cada petición (costaba ~60 ms).
 - Variables clave: `GOOGLE_DRIVE_FOLDER_ID` (carpeta raíz de fotos), `GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI`,
   `GOOGLE_SHEET_ID`, `CRON_SECRET`, `WEBHOOK_SHEETS_SECRET`, `ADMIN_USER/ADMIN_PASSWORD(_HASH)`.
 
@@ -65,7 +66,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 
 ## Flujo de portadas (cómo llega la foto a la tarjeta)
 1. **Guardada en BD** (camino rápido): `products.cover_image_url` = `lh3Url($id)` (`…/d/{id}=s400`).
-   Se pinta directo en el HTML (landing/search). Las 3 primeras con `loading=eager` y el resto `lazy`.
+   Se pinta directo en el HTML (landing/search/carpetas) con `cardImgAttrs()`: `srcset` 200/400 px (el navegador elige según
+   la pantalla), las primeras `eager` + `fetchpriority=high`, el resto `lazy`. Si un script cambia la foto, quita el `srcset`.
 2. **Sin portada** → placeholder 📷 y el JS llama `POST /api/covers/batch` con los SKUs que faltan.
    Con índice: sale de `drive_index` y se **auto-asigna** (`autoAssignCover`), así la próxima visita ya viene en el HTML.
 3. **Asignación**: `DriveIndex::relink()` (ver "Enlace único foto ↔ producto") recalcula la portada de TODOS los productos.
@@ -168,6 +170,11 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 ## Caché HTTP
 - Assets (`.htaccess`): 1 año `immutable`; se invalida con `?v=APP_VERSION`.
 - Landing `max-age=60`; ficha de producto: ETag + `private, max-age=60`; APIs con `jsonCachedResponse($data, ttl)`.
+- Páginas públicas (GET fuera de `/admin`): `index.php` quita el `no-store` de la sesión y pone `private, no-cache`, así el
+  botón Atrás vuelve al instante (bfcache). El admin sigue con `no-store`.
+- El JS de cada página va en archivos cacheables (`landing.js`, `search_page.js`, `product_page.js`, `catalog_send.js`);
+  en la plantilla solo quedan las constantes con datos de PHP (SKU, CSRF…). Preconexión a `lh3` sin `crossorigin`
+  (las `<img>` no usan CORS; con `crossorigin` la conexión previa no se aprovechaba).
 
 ## Rendimiento
 Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).

@@ -876,6 +876,22 @@ function lh3Url(string $fileId, int $size = 400): string
 }
 
 /**
+ * Atributos de carga para la foto de una tarjeta de la grilla: el navegador elige 200 o 400 px
+ * según la pantalla (un computador normal baja la de 200; el celular, la de 400), y las primeras
+ * tarjetas cargan ya y con prioridad. Si la URL no es de lh3 solo pone el modo de carga.
+ * Si un script cambia la foto (variantes), debe quitar el srcset.
+ */
+function cardImgAttrs(string $url, bool $eager): string
+{
+    $attrs = $eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
+    if (preg_match('#^(https://lh3\.googleusercontent\.com/d/[^=]+)=s\d+$#', $url, $m)) {
+        $attrs .= ' srcset="' . e($m[1]) . '=s200 200w, ' . e($m[1]) . '=s400 400w"'
+            . ' sizes="(max-width: 640px) 50vw, 200px"';
+    }
+    return $attrs;
+}
+
+/**
  * Decodifica un cover_image_url guardado: quita el prefijo "[VIDEO]" y ajusta el tamaño.
  * @return array{url: string, video: bool}
  */

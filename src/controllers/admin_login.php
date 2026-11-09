@@ -12,7 +12,7 @@ if (APP_ENV === 'production' && ADMIN_PASSWORD_IS_DEFAULT) {
     redirect('/admin/login');
 }
 
-if ($user === ADMIN_USER && password_verify($pass, ADMIN_PASSWORD_HASH)) {
+if ($user === ADMIN_USER && adminPasswordMatches($pass)) {
     // Regenerar session ID para prevenir session fixation
     session_regenerate_id(true);
     $_SESSION['admin_logged_in'] = true;
