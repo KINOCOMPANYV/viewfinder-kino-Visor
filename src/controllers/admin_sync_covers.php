@@ -138,6 +138,10 @@ echo json_encode([
         . ($albumSync['added'] || $albumSync['deactivated']
             ? "📂 Álbumes: {$albumSync['added']} nuevos, {$albumSync['deactivated']} desactivados (ya no están en la carpeta raíz). "
             : '')
+        . (!empty($folderState['archived_folders'])
+            ? "🗄️ Carpetas \"archivado\": {$folderState['archived_hidden']} de {$folderState['archived_folders']} ocultas"
+              . ($folderState['archived_new'] ? " ({$folderState['archived_new']} nuevas)" : '') . ". "
+            : '')
         . ($link['drive_products'] ? "🆕 {$link['drive_products']} producto(s) solo de Drive (foto con código que no está en la hoja). " : '')
         . ($albumsFixed ? "🔁 {$albumsFixed} producto(s) con álbum corregido. " : '')
         . ($coversCleared ? "🧹 {$coversCleared} portada(s) quitadas (foto vieja, oculta o de otro código, y no hay otra). " : '')

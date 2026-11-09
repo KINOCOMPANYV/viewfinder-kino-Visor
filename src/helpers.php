@@ -588,6 +588,16 @@ function isAlbumFolderName(string $name): bool
 }
 
 /**
+ * ¿La carpeta es "archivada"? (decisión del dueño, 2026-11-09: se oculta por defecto con todo su contenido).
+ * Sin distinguir mayúsculas ni tildes: "ARCHIVADO", "archivados", "Archivado 2024", "Archivadas"…
+ */
+function isArchivedFolderName(string $name): bool
+{
+    $plain = strtr(mb_strtolower($name, 'UTF-8'), ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u']);
+    return (bool) preg_match('/archivad[oa]s?/', $plain);
+}
+
+/**
  * Verifica si un nombre de archivo es la portada GENÉRICA del código.
  * (Ej: archivo "839-5.jpg" es genérica para "839-5", pero "839-5-1.jpg" es específica).
  * 

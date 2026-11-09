@@ -24,6 +24,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   `DRIVE_PRODUCTS=0` los apaga.
 - **Activación**: solo el switch del admin (`is_active`). La hoja nunca reactiva. No se borra nada, solo se desactiva.
 - **Carpetas**: se navegan como en Drive (ya no se muestran "álbumes"). Cada carpeta tiene switch mostrar/ocultar y portada al azar.
+- **Carpetas "archivado"** (2026-11-09): toda carpeta cuyo nombre diga archivado/archivados/archivada (sin importar
+  mayúsculas ni tildes) queda oculta por defecto con todo su contenido, ya indexada o nueva. Si el admin la muestra, el
+  sync no la vuelve a ocultar. Mientras está oculta tampoco crea productos "Solo Drive".
 - **Sync automático** en cada deploy y cada hora (`scripts/sync_loop.sh`); `AUTO_SYNC=0` lo apaga.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
@@ -73,3 +76,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Enviar catálogo: las miniaturas muestran la foto entera (no recortada).
 - #27: Admin → Sincronizar: última sincronización de la hoja con éxito (y último error) guardada en `sync_status`; conteo
   códigos de la hoja vs "Solo Drive", visibles, y filas de la hoja sin precio o sin nombre.
+- #28: carpetas "archivado" ocultas por defecto (`isArchivedFolderName`, `DriveIndex::hideArchivedFolders` en cada sync); el
+  mensaje de Sincronizar portadas dice cuántas hay y cuántas quedan ocultas.
