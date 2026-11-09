@@ -313,7 +313,7 @@
                     $isVideo = str_starts_with($coverUrl, '[VIDEO]');
                     if ($isVideo) $coverUrl = substr($coverUrl, 7);
                 ?>
-                    <div class="parent-card">
+                    <div class="parent-card search-selectable-card">
                         <div style="text-decoration:none; color:inherit; display:block;">
                             <!-- Parent image -->
                             <a href="/producto/<?= rawurlencode($parent['sku']) ?>" class="dynamic-card-link" style="display:block;">
@@ -378,6 +378,14 @@
                         </div>
                         <!-- WhatsApp + Descargar (fuera del enlace para no abrir la ficha) -->
                         <?= mediaActionButtons((string) driveIdFromUrl($coverUrl), $parent['sku'], $parent['sku'] . ' — ' . $parent['name'], '/producto/' . rawurlencode($parent['sku'])) ?>
+                        <label class="search-check-footer" style="border-top: 1px solid var(--color-border); margin-top: auto;">
+                            <input type="checkbox" class="search-card-check"
+                                   data-sku="<?= e($parent['sku']) ?>"
+                                   data-file-id="<?= e((string) driveIdFromUrl($coverUrl)) ?>"
+                                   data-is-video="<?= $isVideo ? '1' : '0' ?>">
+                            <span class="search-check-icon">✓</span>
+                            <span class="search-check-text">Seleccionar</span>
+                        </label>
                     </div>
                 <?php $cardIndex++; ?>
                 <?php endforeach; ?>
@@ -484,6 +492,7 @@ KV-1003
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/media_actions.js?v=<?= APP_VERSION ?>"></script>
+    <script src="/assets/js/wa_batch.js?v=<?= APP_VERSION ?>"></script>
     <script>
         // Folders now use parent-grid layout (no horizontal scroll)
     </script>

@@ -3,9 +3,8 @@
  *
  * Marcado: <button data-media-action="wa|dl" data-file-id="…" data-name="archivo.jpg"
  *                  data-title="SKU — Nombre" data-url="/producto/SKU">
- * - WhatsApp en el celular: manda el archivo con el título y el enlace como pie de foto.
- *   En el computador (o si el celular no deja compartir archivos): abre wa.me con el enlace,
- *   y WhatsApp arma la vista previa con la foto.
+ * - WhatsApp en el celular: manda solo la imagen (versión liviana) con el código como pie de foto.
+ *   En el computador: copia la foto para pegarla en WhatsApp Web; si no se puede, abre wa.me con el enlace.
  * - Descargar: /api/download/{id} (sale como archivo, también en el celular).
  */
 (function () {
@@ -27,33 +26,80 @@
         a.remove();
     }
 
+    // Foto liviana (≈800 px, con caché en el servidor) de /enviar-catalogo/foto; si no sirve (video o
+    // archivo sin código), el original de /api/download. Se guarda en memoria: el segundo toque es inmediato.
+    const blobs = new Map();
+    function getBlob(fileId) {
+        if (!blobs.has(fileId)) {
+            const p = fetch('/enviar-catalogo/foto/' + encodeURIComponent(fileId), { credentials: 'same-origin' })
+                .then((r) => (r.ok ? r : fetch('/api/download/' + encodeURIComponent(fileId))))
+                .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); });
+            p.catch(() => blobs.delete(fileId));
+            blobs.set(fileId, p);
+        }
+        return blobs.get(fileId);
+    }
+
+    function toPng(blob) {
+        return createImageBitmap(blob).then((bmp) => {
+            const c = document.createElement('canvas');
+            c.width = bmp.width; c.height = bmp.height;
+            c.getContext('2d').drawImage(bmp, 0, 0);
+            return new Promise((ok, bad) => c.toBlob((b) => (b ? ok(b) : bad(new Error('png'))), 'image/png'));
+        });
+    }
+
+    function toast(text) {
+        let t = document.getElementById('mediaToast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'mediaToast';
+            t.className = 'media-toast';
+            document.body.appendChild(t);
+        }
+        t.textContent = text;
+        t.classList.add('show');
+        clearTimeout(t._h);
+        t._h = setTimeout(() => t.classList.remove('show'), 4000);
+    }
+
+    // El código del producto: va como pie de la foto ("SKU — Nombre" → "SKU")
+    const codeOf = (opts) => String(opts.title || '').split(' — ')[0].trim();
+
+    // WhatsApp de una foto: manda SOLO la imagen con el código como pie (sin enlace).
+    // Celular: menú Compartir. Computador: copia la foto para pegarla en WhatsApp Web (Ctrl+V).
     async function shareWa(opts) {
         const fileId = opts.fileId || '';
-        const pageUrl = absUrl(opts.url) || (fileId ? location.origin + '/og/' + fileId + '.jpg' : location.href);
-        const text = (opts.title ? '*' + opts.title + '*\n' : '') + pageUrl;
+        const code = codeOf(opts);
+        const linkText = (opts.title ? '*' + opts.title + '*\n' : '') + (absUrl(opts.url) || location.href);
+        if (!fileId) { window.open('https://wa.me/?text=' + encodeURIComponent(linkText), '_blank'); return; }
 
-        if (fileId && isMobile && navigator.canShare && navigator.share) {
+        if (isMobile && navigator.canShare && navigator.share) {
             const btn = opts.button;
             const label = btn ? btn.innerHTML : '';
             if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
             try {
-                const resp = await fetch('/api/download/' + encodeURIComponent(fileId));
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                const blob = await resp.blob();
-                const name = opts.name || (blob.type.startsWith('video/') ? 'video.mp4' : 'imagen.jpg');
+                const blob = await getBlob(fileId);
+                const ext = blob.type.startsWith('video/') ? 'mp4' : blob.type.includes('png') ? 'png' : 'jpg';
+                const name = (code || 'imagen').replace(/[^\w.-]+/g, '_') + '.' + ext;
                 const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
-                const data = { files: [file], text: text };
-                if (navigator.canShare(data)) {
-                    await navigator.share(data);
-                    return;
-                }
+                const data = code ? { files: [file], text: code } : { files: [file] };
+                if (navigator.canShare(data)) { await navigator.share(data); return; }
             } catch (e) {
                 if (e.name === 'AbortError') return; // el usuario cerró el menú de compartir
+                if (e.name === 'NotAllowedError') { toast('Foto lista: toca WhatsApp otra vez.'); return; }
             } finally {
                 if (btn) { btn.disabled = false; btn.innerHTML = label; }
             }
+        } else if (navigator.clipboard && window.ClipboardItem && window.createImageBitmap) {
+            try {
+                // El ClipboardItem recibe la promesa: así el navegador no pierde el permiso del clic
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': getBlob(fileId).then(toPng) })]);
+                toast('📋 Foto ' + (code ? code + ' ' : '') + 'copiada: pégala en el chat de WhatsApp Web con Ctrl+V.');
+                return;
+            } catch (e) { /* video o navegador sin permiso: va el enlace */ }
         }
-        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+        window.open('https://wa.me/?text=' + encodeURIComponent(linkText), '_blank');
     }
 
     // Foto que la tarjeta muestra ahora (puede haber cambiado: portada que llegó por JS, variante elegida)

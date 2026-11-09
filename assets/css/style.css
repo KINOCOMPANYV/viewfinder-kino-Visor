@@ -3438,3 +3438,36 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 @media (max-width: 768px) {
     .product-detail .detail-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Barra "marcar varias → WhatsApp" del catálogo (inicio y búsqueda), assets/js/wa_batch.js.
+   Reusa .search-wa-toolbar (fija abajo) y agrega Guardar, Enviar por tandas y un mensaje. */
+.search-wa-toolbar.wab-bar { flex-direction: column; align-items: stretch; gap: 0.3rem; border-radius: 18px; max-width: 680px; }
+.wab-row { display: flex; align-items: center; gap: 0.5rem; }
+.wab-row .wa-toolbar-send { margin-left: auto; }
+.wab-clear, .wab-save {
+    background: var(--color-surface-2); color: var(--color-text); border: 1px solid var(--color-border);
+    border-radius: 20px; padding: 0.5rem 0.8rem; font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.wab-clear { padding: 0.45rem 0.6rem; }
+.wab-save:disabled { opacity: 0.5; cursor: not-allowed; }
+.wab-msg { font-size: 0.78rem; color: var(--color-text-muted); text-align: center; }
+.wab-msg:empty { display: none; }
+@media (max-width: 640px) {
+    .wab-row { gap: 0.35rem; }
+    .wab-save { padding: 0.45rem 0.6rem; min-height: 40px; }
+    .wab-clear { min-height: 40px; }
+    body:has(.wab-bar.visible) main, body:has(.wab-bar.visible) .footer { padding-bottom: 6rem; }
+}
+@media (max-width: 420px) {
+    .wab-row { flex-wrap: wrap; }
+    .wab-row .wa-toolbar-send { flex: 1 1 100%; justify-content: center; margin-left: 0; }
+    .wab-save { margin-left: auto; }
+}
+
+/* Aviso corto del botón WhatsApp de una foto (assets/js/media_actions.js) */
+.media-toast {
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); z-index: 1000; max-width: calc(100% - 32px);
+    background: rgba(18, 18, 26, 0.97); color: #fff; border: 1px solid rgba(37, 211, 102, 0.4); border-radius: 12px;
+    padding: 0.6rem 1rem; font-size: 0.85rem; opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s;
+}
+.media-toast.show { opacity: 1; visibility: visible; }
