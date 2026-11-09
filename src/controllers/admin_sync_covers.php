@@ -34,6 +34,9 @@ if ($cronToken !== '' && isset($_GET['token']) && hash_equals($cronToken, $_GET[
 
 $forceReassign = !empty($_GET['force']) || !empty($_POST['force']);
 
+// Carpetas "archivado"/"desactivados" ocultas ya con el índice actual: no depende de que Drive responda
+DriveIndex::refreshFolderState($db);
+
 $drive = new GoogleDriveService();
 $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
 
