@@ -884,6 +884,8 @@ unset($v);
                 btnSend.disabled = sel === 0;
                 selectAllCb.checked = sel === checks.length && checks.length > 0;
                 selectAllCb.indeterminate = sel > 0 && sel < checks.length;
+                // Igual que en la búsqueda: la barra de enviar aparece al marcar alguna foto
+                waBar.classList.toggle('visible', sel > 0);
             }
 
             checks.forEach(cb => cb.addEventListener('change', updateGalleryCount));

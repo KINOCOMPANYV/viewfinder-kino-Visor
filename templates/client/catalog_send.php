@@ -53,6 +53,19 @@
         @media (max-width:640px) {
             .cs-thumbs { max-width:40%; }
             .cs-thumbs img, .cs-thumbs .none { width:48px; height:48px; }
+            /* Opciones y botones con tamaño de dedo, todos del mismo ancho */
+            .cs-options { flex-direction:column; gap:0.15rem; }
+            .cs-options label { min-height:40px; font-size:0.92rem; }
+            .cs-options input { width:20px; height:20px; }
+            .cs-card { padding:1rem; }
+            .cs-bulk .btn { flex:1; }
+            .cs-send .cs-actions .btn { flex:1 1 100%; }
+            .cs-send .cs-actions .btn-sm { flex:1 1 calc(50% - 0.5rem); }
+            .cs-row { flex-direction:column; align-items:stretch; }
+            .cs-row input[type=tel] { width:100%; }
+            .cs-item .cs-this { min-height:40px; }
+            /* El panel de envío es alto: pegado abajo tapaba toda la lista en el celular */
+            .cs-send { position:static; box-shadow:none; }
         }
     </style>
 </head>

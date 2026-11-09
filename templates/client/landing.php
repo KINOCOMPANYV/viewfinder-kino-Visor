@@ -86,7 +86,7 @@
             <!-- Hero Integrado -->
             <div class="hero" style="padding: 2.5rem 0; text-align: center;">
                 <h1 style="font-size: 3rem; margin-bottom: 0.5rem; letter-spacing: -0.5px;">Centro de Contenido</h1>
-                <p style="margin: 0 0 2rem 0; font-size: 1.1rem; color: var(--color-text-muted);">Busca por referencia o SKU para acceder a fotos y videos de alta calidad.</p>
+                <p style="margin: 0 auto 2rem; font-size: 1.1rem; color: var(--color-text-muted);">Busca por referencia o SKU para acceder a fotos y videos de alta calidad.</p>
 
                 <!-- Search Box -->
                 <div class="search-box" style="max-width: 600px; margin: 0 auto;">
@@ -507,6 +507,9 @@ KV-1003
             const selectAllCb = document.getElementById('batchSelectAll');
             const selectedCountEl = document.getElementById('batchSelectedCount');
             const btnWaSend = document.getElementById('btnBatchWaSend');
+
+            // El botón que abría este modal ya no está (lo reemplazó "Enviar catálogo"): sin él, no se arma
+            if (!modal || !btnOpen) return;
 
             let batchFoundItems = [];
 
