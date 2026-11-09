@@ -3,7 +3,22 @@
  * Admin — Sincronizar: hoja maestra (datos de productos) y Drive (fotos, carpetas y portadas).
  */
 $db = getDB();
-$lastSheetSync = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn();
+$sheetStatus = null;
+try {
+    $sheetStatus = $db->query("SELECT * FROM sync_status WHERE name = 'hoja'")->fetch() ?: null;
+} catch (\PDOException $e) { /* migración 025 pendiente */ }
+// Qué hay cargado: de la hoja vs "Solo Drive" (y datos que faltan en la hoja)
+$loaded = $db->query(
+    "SELECT SUM(in_sheet = 1) AS hoja,
+            SUM(in_sheet = 1 AND archived = 0) AS hoja_visibles,
+            SUM(in_sheet = 1 AND (price_suggested IS NULL OR price_suggested <= 0)) AS hoja_sin_precio,
+            SUM(in_sheet = 1 AND name = sku) AS hoja_sin_nombre,
+            SUM(in_sheet = 0 AND from_drive = 1) AS solo_drive,
+            SUM(in_sheet = 0 AND from_drive = 1 AND archived = 0) AS solo_drive_visibles,
+            SUM(archived = 0) AS visibles
+     FROM products"
+)->fetch();
+$fmtDate = fn($d) => $d ? date('d/m/Y H:i', strtotime($d)) : '—';
 $lastDriveSync = null;
 try {
     $lastDriveSync = $db->query("SELECT MAX(synced_at) FROM drive_index")->fetchColumn();
@@ -28,6 +43,9 @@ $sheetId = env('GOOGLE_SHEET_ID', '');
         .sync-result.ok { border:1px solid rgba(52,168,83,0.35); }
         .sync-result.warn { border:1px solid rgba(251,191,36,0.4); }
         .sync-result.error { border:1px solid rgba(220,53,69,0.4); color:#f87171; }
+        .sync-loaded { display:grid; gap:0.35rem; font-size:0.85rem; margin-bottom:1rem; padding:0.75rem 0.9rem; background:var(--color-surface-2); border-radius:var(--radius-sm); }
+        .sync-loaded small { color:var(--color-text-muted); }
+        .sync-loaded .warn { color:#fbbf24; }
         .sync-result .skus { max-height:120px; overflow-y:auto; margin-top:0.5rem; padding:0.5rem; background:rgba(0,0,0,0.25); border-radius:4px; font-family:monospace; font-size:0.78rem; }
     </style>
 </head>
@@ -55,8 +73,20 @@ $sheetId = env('GOOGLE_SHEET_ID', '');
                 <?php else: ?>
                     <br><strong style="color:#f87171;">Falta la variable GOOGLE_SHEET_ID en Railway.</strong>
                 <?php endif; ?>
-                <br>Última actualización de productos: <?= $lastSheetSync ? date('d/m/Y H:i', strtotime($lastSheetSync)) : '—' ?>
+                <br>Última sincronización con éxito: <strong><?= $fmtDate($sheetStatus['last_ok_at'] ?? null) ?></strong>
+                <?php if (!empty($sheetStatus['last_ok_message'])): ?><br><small><?= e($sheetStatus['last_ok_message']) ?></small><?php endif; ?>
+                <?php if (!empty($sheetStatus['last_error_at']) && $sheetStatus['last_error_at'] > ($sheetStatus['last_ok_at'] ?? '')): ?>
+                    <br><strong style="color:#f87171;">Último intento falló (<?= $fmtDate($sheetStatus['last_error_at']) ?>): <?= e($sheetStatus['last_error']) ?></strong>
+                <?php endif; ?>
             </p>
+            <div class="sync-loaded">
+                <div><b><?= number_format((int) $loaded['hoja']) ?></b> códigos de la hoja <small>(<?= number_format((int) $loaded['hoja_visibles']) ?> visibles)</small></div>
+                <div><b><?= number_format((int) $loaded['solo_drive']) ?></b> "Solo Drive" <small>(foto sin fila en la hoja · <?= number_format((int) $loaded['solo_drive_visibles']) ?> visibles · sin precio)</small></div>
+                <div><b><?= number_format((int) $loaded['visibles']) ?></b> visibles en el portal</div>
+                <?php if ($loaded['hoja_sin_precio'] || $loaded['hoja_sin_nombre']): ?>
+                    <div class="warn">En la hoja: <?= (int) $loaded['hoja_sin_precio'] ?> sin PRICE_SUGGESTED y <?= (int) $loaded['hoja_sin_nombre'] ?> sin NAME (salen sin precio o con el código como nombre).</div>
+                <?php endif; ?>
+            </div>
             <div class="sync-actions">
                 <button class="btn btn-secondary" onclick="syncSheet(true, this)">👁️ Vista previa</button>
                 <button class="btn btn-primary" onclick="syncSheet(false, this)">🔄 Sincronizar hoja</button>

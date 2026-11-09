@@ -18,32 +18,37 @@ if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
 
 $dryRun = (($_GET['dry_run'] ?? '') === '1');
 set_time_limit(120);
+$db = getDB();
+
+// Error: se guarda con fecha (Admin → Sincronizar lo muestra) y se responde
+$fail = function (string $msg, int $code) use ($db, $dryRun): void {
+    if (!$dryRun) recordSyncStatus($db, 'hoja', false, $msg);
+    jsonResponse(['error' => $msg], $code);
+};
 
 try {
     $sheet = MasterSheet::parse(MasterSheet::fetchCsv());
 } catch (RuntimeException $e) {
-    jsonResponse(['error' => $e->getMessage()], 502);
+    $fail($e->getMessage(), 502);
 }
 $rows = $sheet['rows'];
 if (!$rows) {
-    jsonResponse(['error' => 'La hoja no tiene productos (¿pestaña equivocada? revisa GOOGLE_SHEET_GID).'], 400);
+    $fail('La hoja no tiene productos (¿pestaña equivocada? revisa GOOGLE_SHEET_GID).', 400);
 }
-
-$db = getDB();
 
 // Seguro: si la hoja trae muchos menos códigos de los que hay (pestaña equivocada, filtro puesto),
 // no ocultar medio catálogo sin confirmar
 $inDb = $db->query("SELECT sku FROM products WHERE in_sheet = 1")->fetchAll(PDO::FETCH_COLUMN);
 $removed = array_values(array_diff($inDb, array_keys($rows)));
 if (!$dryRun && count($removed) > 200 && count($removed) > count($inDb) / 2 && ($_GET['force'] ?? '') !== '1') {
-    jsonResponse(['error' => 'La hoja trae ' . count($rows) . ' códigos y se ocultarían ' . count($removed)
-        . ' de ' . count($inDb) . '. Revisa la hoja (¿pestaña o filtro?) o haz la vista previa.'], 409);
+    $fail('La hoja trae ' . count($rows) . ' códigos y se ocultarían ' . count($removed)
+        . ' de ' . count($inDb) . '. Revisa la hoja (¿pestaña o filtro?) o haz la vista previa.', 409);
 }
 
 try {
     $stats = MasterSheet::upsert($db, $rows, $dryRun);
 } catch (\Throwable $e) {
-    jsonResponse(['error' => 'Error guardando productos: ' . $e->getMessage()], 500);
+    $fail('Error guardando productos: ' . $e->getMessage(), 500);
 }
 
 // Códigos que ya no están en la hoja → fuera del portal (no se borran)
@@ -68,7 +73,11 @@ if ($stats['updated']) $parts[] = "🔄 {$stats['updated']} actualizados";
 if ($stats['unchanged']) $parts[] = "✅ {$stats['unchanged']} sin cambios";
 if ($removed) $parts[] = '📦 ' . count($removed) . ' ya no están en la hoja (se ocultan)';
 if ($sheet['duplicates']) $parts[] = '⚠️ ' . count($sheet['duplicates']) . ' códigos repetidos en la hoja (se usó la última fila)';
+if ($sheet['skipped']) $parts[] = '⚠️ ' . $sheet['skipped'] . ' filas sin código (no se cargan)';
 if ($inactive) $parts[] = "⏸️ {$inactive} desactivados por el admin";
+
+$message = implode(' · ', $parts) ?: 'Sin cambios';
+if (!$dryRun) recordSyncStatus($db, 'hoja', true, count($rows) . " códigos leídos · {$message}");
 
 jsonResponse([
     'success' => true,
@@ -82,5 +91,5 @@ jsonResponse([
     'duplicate_skus' => array_keys($sheet['duplicates']),
     'columns' => $sheet['columns'],
     'visibility_changed' => $visibilityChanged,
-    'message' => ($dryRun ? '👁️ VISTA PREVIA (nada se guardó) — ' : '') . (implode(' · ', $parts) ?: 'Sin cambios'),
+    'message' => ($dryRun ? '👁️ VISTA PREVIA (nada se guardó) — ' : '') . $message,
 ]);
