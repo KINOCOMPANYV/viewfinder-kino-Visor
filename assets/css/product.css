@@ -684,7 +684,14 @@ html.lightbox-lock, html.lightbox-lock body { overflow: hidden; }
     pointer-events: none;
 }
 .lightbox.is-zoomed .lightbox-bar { display: none; }
+.lightbox-actions {
+    position: absolute; left: 50%; bottom: 2.75rem; z-index: 3; transform: translateX(-50%);
+    display: flex; gap: 0.5rem;
+}
+.lightbox-actions .media-btn { flex: none; min-height: 40px; padding: 0.45rem 1rem; font-size: 0.85rem; }
+.lightbox.is-zoomed .lightbox-actions { display: none; }
 @media (max-width: 640px) {
     .lightbox-stage { padding: 3.5rem 0.5rem; }
     .lightbox-prev, .lightbox-next { top: auto; bottom: 48px; transform: none; }
+    .lightbox-actions { bottom: 52px; }
 }

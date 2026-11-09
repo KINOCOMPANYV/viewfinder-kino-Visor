@@ -58,6 +58,27 @@ foreach ($files as &$item) {
     $item['isVideo'] = str_starts_with($item['mimeType'] ?? '', 'video/');
 }
 unset($item);
+
+// Vista previa al compartir el enlace (WhatsApp): portada de la carpeta o su primera foto
+$shareTitle = $folderName . ' — Catálogo Kino';
+$shareUrl = publicBaseUrl() . '/carpeta/' . rawurlencode($folderId);
+$shareImageId = null;
+try {
+    $stmt = $db->prepare("SELECT cover_file_id FROM drive_index WHERE file_id = ? AND is_folder = 1");
+    $stmt->execute([$folderId]);
+    $shareImageId = $stmt->fetchColumn() ?: null;
+} catch (Exception $e) {
+    // índice aún sin la columna: se usa la primera foto
+}
+if (!$shareImageId) {
+    foreach ($files as $item) {
+        if (!$item['isVideo']) { $shareImageId = $item['id']; break; }
+    }
+}
+$shareDesc = implode(' · ', array_filter([
+    $subfolders ? count($subfolders) . ' carpeta' . (count($subfolders) !== 1 ? 's' : '') : '',
+    $files ? (count($files) === 1 ? '1 foto o video' : count($files) . ' fotos y videos') : '',
+])) ?: 'Fotos y videos del catálogo Kino';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -67,6 +88,7 @@ unset($item);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title><?= e($folderName) ?> — Viewfinder</title>
+    <?= shareMetaTags(['title' => $shareTitle, 'description' => $shareDesc, 'url' => $shareUrl, 'image_id' => $shareImageId]) ?>
     <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -101,6 +123,9 @@ unset($item);
                 <?= count($subfolders) ?> subcarpeta<?= count($subfolders) !== 1 ? 's' : '' ?> · 
                 <?= count($files) ?> archivo<?= count($files) !== 1 ? 's' : '' ?>
             </p>
+            <div style="margin-top:0.75rem;">
+                <?php include __DIR__ . '/../../templates/partials/share_whatsapp.php'; ?>
+            </div>
         </div>
     </div>
 
@@ -205,14 +230,7 @@ unset($item);
                             </div>
                         </div>
                         <div class="card-body" style="padding-top:0;">
-                            <div class="card-actions" style="margin-top:0.5rem; justify-content:space-between;">
-                                <a href="/api/download/<?= e($file['id']) ?>" class="btn-ver" style="flex:1;text-align:center;font-size:0.7rem;padding:0.4rem;">
-                                    ⬇️ Original
-                                </a>
-                                <a href="<?= e($file['webViewLink'] ?? '#') ?>" target="_blank" rel="noopener" class="btn-ver" style="font-size:0.7rem;padding:0.4rem;" title="Abrir en Drive">
-                                    🔗 Drive
-                                </a>
-                            </div>
+                            <?= mediaActionButtons($file['id'], $file['name'] ?? '', $rootSku, '/producto/' . rawurlencode($rootSku)) ?>
                         </div>
                     </div>
                 <?php $idx++; endforeach; ?>
@@ -246,6 +264,7 @@ unset($item);
 
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
+    <script src="/assets/js/media_actions.js?v=<?= APP_VERSION ?>"></script>
     <script>
         function previewVariant(thumbEl, skuEnc, skuLabel) {
             const card = thumbEl.closest('.parent-card');
@@ -272,6 +291,7 @@ unset($item);
 
             const skuText = card.querySelector('.dynamic-card-sku');
             if (skuText) skuText.textContent = skuLabel;
+            if (window.KinoMedia) KinoMedia.retarget(card, skuLabel, '/producto/' + skuEnc);
 
             card.querySelectorAll('.child-thumb').forEach(t => t.style.boxShadow = 'none');
             thumbEl.style.boxShadow = 'var(--glow-accent)';

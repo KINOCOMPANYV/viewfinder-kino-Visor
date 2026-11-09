@@ -90,6 +90,10 @@
         selectAll.indeterminate = selected > 0 && selected < total;
     }
 
+    function productUrl() {
+        return window.location.origin + '/producto/' + encodeURIComponent(currentSku);
+    }
+
     // Abrir modal
     window.openShareModal = function (sku, name) {
         currentSku = sku;
@@ -185,7 +189,7 @@
                     try {
                         const resp = await fetch(`/api/download/${img.id}`);
                         const blob = await resp.blob();
-                        return new File([blob], `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
+                        return new File([blob], img.name || `imagen_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
                     } catch {
                         return null;
                     }
@@ -194,8 +198,10 @@
                 const files = (await Promise.all(filePromises)).filter(Boolean);
 
                 if (files.length > 0) {
+                    // Fotos + texto (código, nombre y enlace a la ficha) como pie de foto
                     const shareData = {
-                        files: files
+                        files: files,
+                        text: `*${currentSku} — ${currentName}*\n${productUrl()}`
                     };
 
                     if (navigator.canShare(shareData)) {
@@ -216,13 +222,11 @@
             resetSendButton();
         }
 
-        // Fallback: WhatsApp con links de Drive
-        const productUrl = window.location.origin + '/producto/' + currentSku;
-        let text = `📦 *${currentName}*\n🔗 SKU: ${currentSku}\n\n📸 *${selected.length} imagen(es):*\n`;
+        // Fallback (computador): enlace de la ficha primero, así WhatsApp arma la vista previa con la foto
+        let text = `📦 *${currentSku} — ${currentName}*\n${productUrl()}\n\n📸 *${selected.length} imagen(es):*\n`;
         selected.forEach((img) => {
             text += `\n🖼️ ${img.driveUrl}`;
         });
-        text += `\n\n🔗 Ver ficha completa:\n${productUrl}`;
 
         window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
         closeModal();

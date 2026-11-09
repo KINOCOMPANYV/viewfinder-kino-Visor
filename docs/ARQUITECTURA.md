@@ -19,6 +19,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/buscar` (`?q=`, `?ajax=1`) | `src/controllers/search.php` | Grid de familias (20/página), multi-código, carpetas de `drive_index`. `?album=ID` (viejo) redirige a `/carpeta/ID` |
 | `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}` |
 | `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada) |
+| `/og/{fileId}.jpg` | `src/controllers/og_image.php` | Foto de vista previa para WhatsApp (og:image), ver "Compartir por WhatsApp" |
 | `/enviar-catalogo` | `templates/client/catalog_send.php` + `src/controllers/catalog_send.php` | **Enviar catálogo por lista** (botón en el encabezado público): se pega un texto, `POST /enviar-catalogo/extraer` saca los códigos visibles y sus fotos (`filesForSku`, portada primero) y se envían por WhatsApp una por una (Compartir del celular, o copiar foto para WhatsApp Web). Fotos: `/enviar-catalogo/foto/{id}` (lh3 `=s1600` servido desde el dominio; solo imágenes del índice, visibles y enlazadas). Solo lee la BD |
 | `/api/search` | `src/controllers/api_search.php` | Autocomplete JSON |
 | `/api/batch-search` POST | `src/controllers/api_batch_search.php` | Búsqueda por lote (modal) |
@@ -142,6 +143,18 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - Tarjeta (inicio y búsqueda): si el padre no tiene foto, usa la portada de una variante.
 - Variantes: `computeParentSkuMap()` agrupa por raíz candidata + mismo nombre → `parent_sku`.
   Un hijo ve sus archivos propios + los genéricos del padre (`isGenericMediaForSku`).
+
+## Compartir por WhatsApp
+- Ficha, carpeta, búsqueda e inicio llevan etiquetas Open Graph (`shareMetaTags()` en helpers): al pegar el enlace en
+  WhatsApp sale la foto, el título y la descripción. URL absoluta con `publicBaseUrl()` (env `APP_URL` o el host de la petición).
+- `og:image` = `/og/{fileId}.jpg` (propio dominio): baja la foto de lh3 una vez, la deja cuadrada de 600 px con fondo
+  blanco, JPEG ≤ 250 KB, y la guarda en `storage/og_cache/`. Solo archivos de `drive_index` no ocultos. Si lh3 falla, redirige a lh3.
+- Botón "Compartir por WhatsApp" (`templates/partials/share_whatsapp.php`) en ficha y carpeta: abre `wa.me` con título + enlace.
+- **WhatsApp + Descargar siempre visibles** en cada foto: tarjetas de inicio y búsqueda, tarjetas de carpeta, foto principal
+  de la ficha y visor grande. Marcado `data-media-action="wa|dl"` (`mediaActionButtons()` en helpers) y un solo script,
+  `assets/js/media_actions.js`: usa la foto que muestra la tarjeta en ese momento. WhatsApp en el celular manda el archivo con
+  código, nombre y enlace como pie; en el computador abre `wa.me` con el enlace. Descargar = `/api/download/{id}`.
+- Galería de la ficha: elegir varias fotos y enviarlas juntas (con el mismo pie de foto).
 
 ## Caché HTTP
 - Assets (`.htaccess`): 1 año `immutable`; se invalida con `?v=APP_VERSION`.

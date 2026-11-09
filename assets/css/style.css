@@ -1687,6 +1687,20 @@ textarea.form-input {
     flex-shrink: 0;
 }
 
+/* Botón "Compartir por WhatsApp" (enlace con vista previa) en ficha y carpeta */
+.btn-whatsapp.share-link-btn {
+    width: auto;
+    margin: 0 0 1.25rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    text-decoration: none;
+}
+.btn-whatsapp.share-link-btn:hover { color: #fff; }
+@media (max-width: 600px) {
+    .btn-whatsapp.share-link-btn { width: 100%; min-height: 44px; }
+}
+
 /* === Batch Search Modal === */
 .batch-modal-overlay {
     position: fixed;
@@ -3279,6 +3293,48 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .children-row { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); }
     .parent-card .card-actions { margin: auto 0.45rem 0.4rem; }
     .parent-card .card-wa-btn { font-size: 0.68rem !important; padding: 0.3rem 0.4rem !important; min-height: 32px; }
+}
+
+/* Botones WhatsApp + Descargar en cada foto (tarjetas y carpetas): siempre visibles */
+.media-actions {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+}
+.media-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    min-height: 32px;
+    padding: 0.3rem 0.4rem;
+    border-radius: 6px;
+    font-family: var(--font);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.media-btn-wa { background: #25D366; color: #fff; border: none; }
+.media-btn-wa:hover { background: #1da851; }
+.media-btn-dl {
+    background: var(--color-surface-3, #1c1c28);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+}
+.media-btn-dl:hover { color: var(--color-primary); border-color: var(--color-primary); }
+.media-btn:disabled { opacity: 0.6; cursor: wait; }
+.parent-card .media-actions { margin: auto 0.55rem 0.5rem; padding-top: 0.25rem; }
+/* En la tarjeta: WhatsApp ancho y Descargar como botón cuadrado de icono (las tarjetas son angostas) */
+.parent-card .media-btn-dl { flex: 0 0 38px; padding: 0.3rem; }
+.parent-card .media-btn-dl span { display: none; }
+.parent-card .card-body .media-actions { margin: 0.5rem 0 0; padding-top: 0; }
+@media (max-width: 480px) {
+    /* Grilla de 2 columnas: solo iconos para que quepan los dos */
+    .parent-card .media-btn span { display: none; }
+    .parent-card .media-btn { font-size: 0.8rem; min-height: 34px; }
 }
 
 /* Ficha: sin foto (o mientras carga) no deja un bloque vacío gigante */
