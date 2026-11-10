@@ -51,7 +51,7 @@ function catalogSendExtract(PDO $db, string $text): array
 {
     // Solo lo visible en el portal
     $rows = $db->query(
-        "SELECT sku, name, price_suggested, cover_image_url FROM products WHERE archived = 0 ORDER BY id ASC"
+        "SELECT sku, name, price_suggested, cover_image_url FROM products WHERE archived = 0 AND cover_image_url > '' ORDER BY id ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
     $exact = [];
     $norm = [];

@@ -35,6 +35,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Una tarjeta por referencia** (2026-11-10): inicio, búsqueda y autocompletar muestran cada código por separado, sin la
   tira de variantes; las variantes se ven solo al abrir la ficha. Al buscar un código, el exacto sale primero marcado
   "✓ Código exacto" (con o sin "M"), y debajo las carpetas que coinciden.
+- **Sin foto no se muestra** (2026-11-10): en lo público (inicio, búsqueda, sugerencias, ficha, variantes, Enviar catálogo,
+  catálogo por enlace) solo salen productos con portada (foto o video de PRODUCTOS). No se desactivan: siguen en el admin y
+  en 🩺 Problemas → sin foto, y aparecen solos cuando llega su foto. SQL: `archived = 0 AND cover_image_url > ''`.
 - **Fotos con código, sin precio** (2026-11-10): el material que se arma lleva el código; el precio no se pone por ahora.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
@@ -156,3 +159,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #45: en las carpetas, una foto sin código (IMG_…, WhatsApp…) llevaba a `/producto/IMG_…` y salía vacío. Ahora solo enlaza a
   la ficha si la foto tiene producto visible (`drive_index.matched_sku`); si no, abre la foto en grande. Enlaces viejos a un
   archivo sin producto redirigen a su carpeta. La regla de nombres no cambió.
+- #46: lo público solo muestra productos con foto o video en PRODUCTOS (los demás quedan en el admin, sin desactivarlos).

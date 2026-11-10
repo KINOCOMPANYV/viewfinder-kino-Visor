@@ -90,7 +90,7 @@ if (!$cat || !$cat['is_active']) {
         $alive = array_flip($q->fetchAll(PDO::FETCH_COLUMN));
     }
     // Foto que ya no está → portada actual de su código (si el código sigue visible)
-    $coverOf = $db->prepare("SELECT cover_image_url FROM products WHERE sku = ? AND archived = 0");
+    $coverOf = $db->prepare("SELECT cover_image_url FROM products WHERE sku = ? AND archived = 0 AND cover_image_url > ''");
     $photos = [];
     foreach ($items as $it) {
         $fid = $it['id'];
