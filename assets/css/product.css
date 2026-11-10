@@ -235,19 +235,6 @@
 /* ============================================================
    Gallery Item Actions
    ============================================================ */
-.gallery-item .item-actions {
-    padding: 0.5rem;
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.gallery-item .item-actions a,
-.gallery-item .item-actions button {
-    font-size: 0.75rem;
-    padding: 0.3rem 0.6rem;
-}
 
 .btn-set-cover {
     background: rgba(201, 168, 76, 0.15);
