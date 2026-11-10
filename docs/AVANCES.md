@@ -81,8 +81,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   una sincronización a la vez.
 
 ## Pendiente / ideas
-- **Búsqueda por foto** (#48): falta poner `JINA_API_KEY` en Railway (producción). La primera vez prepara ~4400 portadas en
-  1-3 h (según el límite de la clave); el avance sale en Admin → Sincronizar.
+- **Búsqueda por foto** (#48): `JINA_API_KEY` puesta en Railway (producción) el 2026-11-10. La primera vez prepara ~4400
+  portadas en varias horas (según el límite de la clave); el avance sale en Admin → Sincronizar. Confirmar que funcione.
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
 - Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A-C hechas, D-I en el PR #42 (el dueño pidió hacerlas seguidas y fusionar al final; respaldo del main en la rama `respaldo-2026-11-10`). J (app instalable) sigue pausada.
