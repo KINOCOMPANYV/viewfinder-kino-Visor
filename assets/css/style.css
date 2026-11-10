@@ -393,13 +393,6 @@ img {
     z-index: 2;
 }
 
-.search-box .search-btn-row {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
 .search-box .search-btn {
     padding: 0.7rem 1.5rem;
     background: var(--color-primary);
@@ -2769,6 +2762,24 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 }
 .search-clear:hover { background: #dcdce3; color: #111; }
 .search-field textarea:placeholder-shown ~ .search-clear { display: none; }
+/* Búsqueda por foto (templates/partials/image_search.php): ícono de cámara dentro de la caja, a la derecha;
+   con texto escrito el ✕ se corre a su izquierda */
+.search-photo-btn {
+    position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%); z-index: 2;
+    width: 36px; height: 36px; padding: 0; border: none; border-radius: 50%;
+    background: transparent; color: #9a7a22; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.search-photo-btn:hover { background: #f3ecd9; color: #6f5714; }
+.search-photo-btn svg { width: 22px; height: 22px; }
+.search-field:has(.search-photo-btn) .search-clear { right: 2.75rem; }
+.search-box .search-field:has(.search-photo-btn) textarea { padding-right: 5.2rem; }
+.search-box .search-field:has(.search-photo-btn) textarea:placeholder-shown { padding-right: 2.9rem !important; }
+@media (max-width: 640px) {
+    .search-box .search-field:has(.search-photo-btn) textarea { padding-right: 5rem !important; }
+    .search-box .search-field:has(.search-photo-btn) textarea:placeholder-shown { padding-right: 2.75rem !important; }
+    .search-field:has(.search-photo-btn) .search-clear { right: 2.6rem; }
+}
 
 /* Barra inferior tipo app (templates/partials/mobile_nav.php): solo en el celular */
 .mnav { display: none; }

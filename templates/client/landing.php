@@ -97,9 +97,10 @@
                                 placeholder="Buscar por SKU, referencia o nombre..." data-ph-short="Código o nombre…"
                                 autocomplete="off" autofocus></textarea>
                             <button type="button" class="search-clear" aria-label="Borrar búsqueda">✕</button>
+                            <?php $imgSearchPart = 'button'; include __DIR__ . '/../partials/image_search.php'; ?>
                         </span>
                         <div class="search-actions">
-                            <div class="search-btn-row"><button type="submit" class="search-btn">Buscar</button><?php $imgSearchPart = 'button'; include __DIR__ . '/../partials/image_search.php'; ?></div>
+                            <button type="submit" class="search-btn">Buscar</button>
                             <!-- Botón escáner QR (type=button: no envía el formulario) -->
                             <button type="button" id="btnQrScan" title="Escanear código QR">
                                 📷<span class="qr-label"> Escanear</span>

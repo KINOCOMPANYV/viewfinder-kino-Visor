@@ -140,8 +140,8 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - **Sin resultados** → "¿Quisiste decir…?" (`searchSuggestions()`, helpers): códigos parecidos por distancia de letras
   (completo o el inicio del código), uno por familia, y marcas parecidas (abren el filtro). Sin servicios externos. Con
   filtros puestos no sugiere: avisa que los filtros pueden ocultar resultados.
-- **Por foto** (`src/services/ImageSearch.php`, env `JINA_API_KEY`; sin ella no sale el botón): botón "📸 Buscar por foto" en
-  inicio y búsqueda (`templates/partials/image_search.php`). El navegador achica la foto a 512 px y la manda a `POST /buscar-foto`
+- **Por foto** (`src/services/ImageSearch.php`, env `JINA_API_KEY`; sin ella no sale el botón): ícono de cámara dentro de la caja
+  de búsqueda, a la derecha (inicio y búsqueda; con texto el ✕ se corre a su izquierda; `templates/partials/image_search.php`). El navegador achica la foto a 512 px y la manda a `POST /buscar-foto`
   (`src/controllers/image_search.php`, 20/min por IP): 1 llamada a Jina para su vector, producto punto contra `image_embeddings`
   de las portadas visibles (foto, no video), 30 más parecidas en una ventana. El sync (`cli_sync.php imagenes`, tras portadas,
   máx. `IMAGE_INDEX_MAX_SECONDS`=1500 por vuelta) prepara las portadas nuevas (lh3 `=s512`, 8 por llamada). Estado en Admin → Sincronizar.

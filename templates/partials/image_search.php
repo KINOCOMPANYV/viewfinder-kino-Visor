@@ -1,7 +1,7 @@
 <?php
 /**
  * Búsqueda por foto. Dos partes:
- *   $imgSearchPart = 'button' → botón "📸 Buscar por foto" (va junto al botón Buscar)
+ *   $imgSearchPart = 'button' → ícono de cámara dentro de la caja de búsqueda (va en .search-field, después del ✕)
  *   $imgSearchPart = 'modal'  → ventana de resultados + script (una vez, al final de la página)
  * Solo sale si hay JINA_API_KEY (ImageSearch::enabled()).
  */
@@ -12,11 +12,10 @@ if (!ImageSearch::enabled()) {
 $imgSearchPart = $imgSearchPart ?? 'modal';
 
 if ($imgSearchPart === 'button'): ?>
-<button type="button" class="search-btn imgs-open" title="Toma o sube una foto y busca los productos parecidos">📸 Buscar por foto</button>
+<button type="button" class="search-photo-btn imgs-open" title="Buscar por foto: toma o sube una foto y te muestra los productos parecidos" aria-label="Buscar por foto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg></button>
 <?php return; endif; ?>
 
 <style>
-.search-box .search-btn.imgs-open { background: var(--color-surface-2, #1e1e2a); color: var(--color-text, #fff); border: 1px solid var(--color-border, #333); }
 .imgs-modal { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.75); display:none; align-items:flex-start; justify-content:center; overflow-y:auto; padding:1rem; }
 .imgs-modal.open { display:flex; }
 .imgs-panel { background:var(--color-surface, #12121a); border:1px solid var(--color-border, #333); border-radius:var(--radius, 12px); width:100%; max-width:960px; padding:1rem; margin:auto 0; }
@@ -34,6 +33,7 @@ if ($imgSearchPart === 'button'): ?>
 .imgs-card span { color:var(--color-text-muted, #999); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .imgs-msg { text-align:center; padding:2rem 1rem; color:var(--color-text-muted, #999); }
 .imgs-actions { display:flex; justify-content:center; margin-top:1rem; }
+.imgs-again { padding:.7rem 1.5rem; background:var(--color-primary, #c9a84c); color:#000; font-weight:600; border:none; border-radius:var(--radius-sm, 8px); cursor:pointer; font-size:.95rem; }
 @media (max-width: 600px) { .imgs-grid { grid-template-columns:repeat(3, 1fr); gap:.4rem; } .imgs-card div { font-size:.7rem; } .imgs-modal { padding:.5rem; } }
 </style>
 <input type="file" id="imgsFile" accept="image/*" hidden>
@@ -48,7 +48,7 @@ if ($imgSearchPart === 'button'): ?>
             <button type="button" class="imgs-close" id="imgsClose" aria-label="Cerrar">×</button>
         </div>
         <div class="imgs-grid" id="imgsGrid"></div>
-        <div class="imgs-actions"><button type="button" class="search-btn imgs-open">📸 Otra foto</button></div>
+        <div class="imgs-actions"><button type="button" class="imgs-again imgs-open">📸 Otra foto</button></div>
     </div>
 </div>
 <script>

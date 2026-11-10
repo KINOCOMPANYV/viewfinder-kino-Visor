@@ -164,5 +164,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   la ficha si la foto tiene producto visible (`drive_index.matched_sku`); si no, abre la foto en grande. Enlaces viejos a un
   archivo sin producto redirigen a su carpeta. La regla de nombres no cambió.
 - #46: lo público solo muestra productos con foto o video en PRODUCTOS (los demás quedan en el admin, sin desactivarlos).
-- #48: búsqueda por foto. Botón "📸 Buscar por foto" junto a Buscar (inicio y búsqueda): tomar o subir una foto muestra los
+- #48: búsqueda por foto. Ícono de cámara dentro de la caja de búsqueda (inicio y búsqueda): tomar o subir una foto muestra los
   30 productos visibles más parecidos. Huellas de las portadas en `image_embeddings`, preparadas por el sync. Requiere `JINA_API_KEY`.

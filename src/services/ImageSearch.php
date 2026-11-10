@@ -55,7 +55,6 @@ class ImageSearch
                 'model' => self::MODEL,
                 'dimensions' => self::DIM,
                 'normalized' => true,
-                'embedding_type' => 'float',
                 'input' => $input,
             ]),
         ]);
@@ -70,10 +69,17 @@ class ImageSearch
         }
         $out = [];
         foreach ($json['data'] as $i => $row) {
-            $out[(int) ($row['index'] ?? $i)] = array_map('floatval', $row['embedding'] ?? []);
+            $out[(int) ($row['index'] ?? $i)] = self::unit(array_map('floatval', $row['embedding'] ?? []));
         }
         ksort($out);
         return $out;
+    }
+
+    /** Largo 1 (así la comparación es un producto punto), por si la API no lo deja normalizado tras recortar. */
+    private static function unit(array $v): array
+    {
+        $n = sqrt(array_sum(array_map(fn($x) => $x * $x, $v)));
+        return $n > 0 ? array_map(fn($x) => $x / $n, $v) : $v;
     }
 
     private static function pack(array $v): string
@@ -219,7 +225,7 @@ class ImageSearch
     public static function search(PDO $db, string $imageBytes, int $limit = 30): array
     {
         $q = self::embedImages([$imageBytes])[0] ?? [];
-        if (count($q) !== self::DIM) {
+        if (!$q) {
             throw new RuntimeException('Respuesta inesperada del modelo');
         }
 

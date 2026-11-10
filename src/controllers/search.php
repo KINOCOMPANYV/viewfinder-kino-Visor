@@ -281,8 +281,9 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
                         placeholder="Buscar por SKU, referencia o nombre..." data-ph-short="Código o nombre…"
                         autocomplete="off"><?= e($q) ?></textarea>
                     <button type="button" class="search-clear" aria-label="Borrar búsqueda">✕</button>
+                    <?php $imgSearchPart = 'button'; include __DIR__ . '/../../templates/partials/image_search.php'; ?>
                 </span>
-                <div class="search-btn-row"><button type="submit" class="search-btn">Buscar</button><?php $imgSearchPart = 'button'; include __DIR__ . '/../../templates/partials/image_search.php'; ?></div>
+                <button type="submit" class="search-btn">Buscar</button>
             </form>
             <div class="autocomplete-dropdown" id="autocomplete"></div>
         </div>
