@@ -50,7 +50,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
   y categoría/género/movimiento solo si tienen datos suficientes. Chips con ✕ y "Quitar filtros".
 - Prueba: escribir "8363" mal escrito → sugerencia; filtrar POEDAGAR + con foto + precio → abrir ficha → Atrás conserva filtros.
 
-### C. "Mi selección" y no perder el trabajo (ideas 4, 5, 7)
+### C. "Mi selección" y no perder el trabajo (ideas 4, 5, 7) — ✅ hecha (#41)
 - Lo marcado pasa a `localStorage`: sobrevive al cerrar la página o quedarse sin señal.
 - Pantalla `/mi-seleccion`: fotos marcadas con su código, quitar, reordenar (arrastrar / ↑↓), sin duplicados,
   estado por foto (lista / falló). Desde ahí: Guardar y Enviar por tandas (mismo `wa_batch.js`).
