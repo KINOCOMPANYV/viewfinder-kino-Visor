@@ -24,19 +24,17 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/mi-seleccion` | `templates/client/my_selection.php` + `assets/js/my_selection.js` | **Mi selección**: lo marcado en todo el visor (y lo que se pasa desde Enviar catálogo) en una lista: orden, quitar, "dejar 1 foto por código", estado por foto (lista / bajando / en una tanda / no bajó + 🔁 reintentar) y repetir la última tanda. Todo en el dispositivo (`localStorage` `kinoWaSel` de `wa_batch.js`, API `window.KinoWaBatch`); no lee la BD |
 | `/enviar-catalogo` | `templates/client/catalog_send.php` + `src/controllers/catalog_send.php` | **Enviar catálogo por lista** (botón en el encabezado público): se pega un texto, `POST /enviar-catalogo/extraer` saca los códigos visibles y sus fotos (`filesForSku`, portada primero) y se muestran en una galería (tocar = marcar). Las marcadas se guardan en el celular (descargas; iPhone vía Compartir) o se comparten por tandas de 10 (Web Share; el botón se activa cuando la tanda ya bajó); 📲 en cada foto = solo esa. Se precargan de 3 en 3. Fotos: `/enviar-catalogo/foto/{id}` (lh3 `=s800` servido desde el dominio, copia en `storage/send_cache`; solo imágenes del índice, visibles y enlazadas). Solo lee la BD |
 | `/api/search` | `src/controllers/api_search.php` | Autocomplete JSON |
-| `/api/batch-search` POST | `src/controllers/api_batch_search.php` | Búsqueda por lote (modal) |
 | `/api/covers/batch` POST | inline en `index.php` | Portadas para SKUs sin `cover_image_url` (desde `drive_index`) |
 | `/api/media/{sku}` | inline en `index.php` | Archivos de un SKU para la galería (desde `drive_index`) |
 | `/api/download/{fileId}` | inline en `index.php` | Proxy de descarga autenticado |
-| `/api/drive-folders` | inline en `index.php` | Álbumes JSON |
 | `/api/cron/sync-covers?token=` | `admin_sync_covers.php` | **Actualiza el índice de Drive** y asigna portada + álbum |
-| `/api/cron/precache-drive?token=` | `api_precache_drive.php` | Con índice activo = alias de `sync-covers` (compatibilidad con crons viejos) |
+| `/api/cron/precache-drive?token=` | `admin_sync_covers.php` | Nombre viejo del cron = `sync-covers` (compatibilidad) |
 | `/api/webhook/sheets` POST | `webhook_sheets.php` | Sync incremental desde Apps Script (misma regla que el sync completo) |
 | `/admin/products` (`?q=&estado=&marca=&categoria=`) | `admin_products.php` | Listado y activar/desactivar. Cambio: `POST /admin/products/active` (`ids` o `all=1` + filtros) |
 | `/admin/sync` | `templates/admin/sync.php` | Botones: hoja maestra (`POST /admin/sync-sheets`, `?dry_run=1`) y Drive (`/admin/media/sync-covers`) |
 | `/admin/photo-check?sku=` | `admin_photo_check.php` | "¿Por qué no sale la foto?" (en Sincronizar): fotos del código en `drive_index`, ruta y qué las oculta (JSON) |
 | `/admin/folders` (`?id=`, `?q=`, `?ver=ocultas`) | `admin_folders.php` + `templates/admin/folders.php` | Mostrar/ocultar carpetas (cualquier nivel). Cambio: `POST /admin/folders/toggle` |
-| `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, carpetas, media, sincronizar, álbumes, caché). Menú común: `templates/admin/partials/nav.php` |
+| `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, carpetas, media, sincronizar, caché). Menú común: `templates/admin/partials/nav.php` |
 
 ## Tablas
 - `products`: `sku` (único), `parent_sku` (familia), datos de la hoja maestra (`name`, `color`, `category`, `gender`,

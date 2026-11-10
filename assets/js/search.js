@@ -12,17 +12,6 @@
     // para que el botón "Volver" del producto regrese a esta vista exacta
     try {
         sessionStorage.setItem('lastSearch', window.location.href);
-        // Guardar el nombre del álbum actual si existe (para mostrarlo en el botón volver)
-        const albumTitle = document.querySelector('.album-title, h1.page-title, [data-album-name]');
-        if (albumTitle) {
-            sessionStorage.setItem('lastAlbumName', albumTitle.textContent.trim().replace(/^📁\s*/, ''));
-        } else {
-            // Intentar leer del h1 si hay filtro de álbum
-            const h1 = document.querySelector('h1');
-            if (h1 && new URLSearchParams(window.location.search).get('album')) {
-                sessionStorage.setItem('lastAlbumName', h1.textContent.replace(/^[^\w]+/, '').trim());
-            }
-        }
     } catch(e) {}
 
     // Filtros activos de la búsqueda (#filterForm, solo en /buscar): viajan con cada búsqueda

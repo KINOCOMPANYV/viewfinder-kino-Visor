@@ -58,7 +58,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
 - Recordar la última tanda abierta y permitir repetirla ("tanda preparada", no "entregada": la web no sabe si WhatsApp la envió).
 - Prueba: ruta común, cerrar el navegador, volver → todo sigue marcado; reordenar y mandar desde Mi selección.
 
-### D. Limpieza de código (sección 2)
+### D. Limpieza de código (sección 2) — ✅ hecha (#42)
 - Quitar lo de la sección 2 tras comprobar que no se usa. Sin cambios visibles.
 - Prueba: ruta común completa + admin (Sincronizar, Media, Carpetas) siguen igual.
 

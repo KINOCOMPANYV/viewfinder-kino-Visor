@@ -12,7 +12,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   completa (3629 de 3629, sin filas descartadas ni repetidas). En la hoja faltan datos: 124 filas sin PRICE_SUGGESTED (98 POEDAGAR)
   y 33 sin NAME; esas salen sin precio o con el código como nombre. Admin → Sincronizar muestra hoja vs "Solo Drive".
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#40 fusionados. Plan de mejoras para distribuidores aprobado (2026-11-10, `docs/PLAN_MEJORAS.md`, etapas A-J).
+- PRs #1–#41 fusionados. Plan de mejoras para distribuidores aprobado (2026-11-10, `docs/PLAN_MEJORAS.md`, etapas A-J).
 - Plan de mejora UX/velocidad aprobado por el dueño (2026-11-09), un PR por etapa: 1 velocidad, 2 celular más claro,
   3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapas 1 (#34), 2 (#35), 3 (#36) y 4 (#37).
 
@@ -72,7 +72,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A, B y C hechas; siguen D-J, un PR cada una.
+- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A-D hechas; siguen E-J, un PR cada una.
   Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
@@ -128,3 +128,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   para códigos mal escritos; se quitan los chips de categoría client-side (`category-filters.js`).
 - #41: etapa C, Mi selección: lo marcado se guarda en el dispositivo (localStorage), pantalla `/mi-seleccion` (orden, quitar,
   1 foto por código, estado por foto, reintentar, repetir última tanda), "Marcar todas (esta vista)", Enviar catálogo → Mi selección.
+- #42: etapa D, limpieza: fuera el modal "Buscar lote" (no tenía botón; lo hace Enviar catálogo), `/api/batch-search`,
+  `/api/drive-folders` (sin uso, llamaba a Drive en vivo), Admin → Álbumes (sin enlace), el código viejo de precaché (el cron
+  `precache-drive` sigue y hace lo mismo que `sync-covers`) y restos de "álbum" en JS (~700 líneas, 317 de CSS). Arreglo: el
+  cron de Drive ya no corre sin `?token=` (una sesión sin token pasaba el control).
+  Se dejan: `media_search_cache`/`drive_cache` (los usa el camino de respaldo y la visibilidad) y las tablas viejas sin código.

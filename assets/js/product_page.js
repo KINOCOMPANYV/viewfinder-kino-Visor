@@ -515,18 +515,8 @@ let currentMainFileName = '';
             // Solo usar si es una página de búsqueda del mismo sitio
             if (url.pathname.startsWith('/buscar') || url.pathname === '/') {
                 btn.href = lastSearch;
-                // Si hay álbum, leer nombre del álbum del sidebar
-                const albumParam = url.searchParams.get('album');
                 const q = url.searchParams.get('q');
-                if (albumParam) {
-                    // Intentar obtener nombre del álbum desde el título de la pestaña anterior
-                    const storedName = sessionStorage.getItem('lastAlbumName');
-                    if (storedName) {
-                        btn.textContent = '⬅️ Volver a "' + storedName + '"';
-                    } else {
-                        btn.textContent = '⬅️ Volver al álbum';
-                    }
-                } else if (q) {
+                if (q) {
                     btn.textContent = '⬅️ Volver a "' + q + '"';
                 } else {
                     btn.textContent = '⬅️ Volver al catálogo';

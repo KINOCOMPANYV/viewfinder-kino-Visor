@@ -214,58 +214,7 @@ if (preg_match('#^/enviar-catalogo/foto/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
     exit;
 }
 
-if ($uri === '/api/batch-search' && $method === 'POST') {
-    // API de búsqueda por lote
-    checkRateLimit(30); // 30 req/min — operación pesada
-    session_write_close();
-    include __DIR__ . '/src/controllers/api_batch_search.php';
-    exit;
-}
 
-// ============================================================
-// API: Drive Folders — lista carpetas para el visor de cliente
-// ============================================================
-
-if ($uri === '/api/drive-folders') {
-    session_write_close();
-    header('Content-Type: application/json');
-    
-    $db = getDB();
-    $folders = [];
-    
-    // 1) Intentar leer de la tabla albums
-    try {
-        $stmt = $db->query("SELECT drive_id AS id, name, icon_url FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC");
-        $folders = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (\PDOException $e) {
-        // tabla no existe aún
-    }
-    
-    // 2) Si no hay álbumes en DB, intentar leer de Drive API
-    if (empty($folders)) {
-        $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
-        if ($rootFolderId) {
-            require_once __DIR__ . '/src/services/GoogleDriveService.php';
-            $drive = new GoogleDriveService();
-            $token = $drive->getValidToken($db);
-            
-            if ($token) {
-                $result = $drive->listFiles($rootFolderId);
-                foreach ($result['files'] as $item) {
-                    if (($item['mimeType'] ?? '') === 'application/vnd.google-apps.folder') {
-                        $folders[] = [
-                            'id' => $item['id'],
-                            'name' => $item['name'],
-                            'icon_url' => null,
-                        ];
-                    }
-                }
-            }
-        }
-    }
-    
-    jsonCachedResponse(['folders' => $folders], 300);
-}
 
 // ============================================================
 // RUTAS ADMIN
@@ -392,11 +341,6 @@ if ($uri === '/admin/folders/toggle' && $method === 'POST') {
     exit;
 }
 
-if ($uri === '/admin/albums') {
-    requireAdmin();
-    include __DIR__ . '/src/controllers/admin_albums.php';
-    exit;
-}
 
 if ($uri === '/admin/cache/clear' && $method === 'POST') {
     requireAdmin();
@@ -731,8 +675,9 @@ if ($uri === '/api/webhook/sheets' && $method === 'POST') {
 // ============================================================
 
 if ($uri === '/api/cron/precache-drive') {
+    // Nombre viejo del cron: hoy es lo mismo que /api/cron/sync-covers (índice de Drive + portadas)
     session_write_close();
-    include __DIR__ . '/src/controllers/api_precache_drive.php';
+    include __DIR__ . '/src/controllers/admin_sync_covers.php';
     exit;
 }
 
