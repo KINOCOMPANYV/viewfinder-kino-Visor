@@ -246,6 +246,12 @@ if ($uri === '/admin/products') {
     exit;
 }
 
+if ($uri === '/admin/problemas') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_problems.php';
+    exit;
+}
+
 if ($uri === '/admin/sync') {
     requireAdmin();
     include __DIR__ . '/templates/admin/sync.php';

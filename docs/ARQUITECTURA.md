@@ -33,6 +33,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/admin/products` (`?q=&estado=&marca=&categoria=`) | `admin_products.php` | Listado y activar/desactivar. Cambio: `POST /admin/products/active` (`ids` o `all=1` + filtros) |
 | `/admin/sync` | `templates/admin/sync.php` | Botones: hoja maestra (`POST /admin/sync-sheets`, `?dry_run=1`) y Drive (`/admin/media/sync-covers`) |
 | `/admin/photo-check?sku=` | `admin_photo_check.php` | "¿Por qué no sale la foto?" (en Sincronizar): fotos del código en `drive_index`, ruta y qué las oculta (JSON) |
+| `/admin/problemas` (`?tab=sinfoto\|ocultas\|archivos\|hoja`, `&csv=1`) | `admin_problems.php` | **Problemas de fotos** (etapa G, solo BD): productos sin foto, foto en carpeta oculta, archivos sin código y filas de la hoja sin precio/nombre, con motivo y ruta en Drive; CSV completo; "¿Por qué?" abre Sincronizar con el código (`/admin/sync?sku=`) |
 | `/admin/folders` (`?id=`, `?q=`, `?ver=ocultas`) | `admin_folders.php` + `templates/admin/folders.php` | Mostrar/ocultar carpetas (cualquier nivel). Cambio: `POST /admin/folders/toggle` |
 | `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, carpetas, media, sincronizar, caché). Menú común: `templates/admin/partials/nav.php` |
 

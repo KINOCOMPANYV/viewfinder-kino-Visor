@@ -121,7 +121,7 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
             <h2>🔎 ¿Por qué no sale la foto?</h2>
             <p>Escribe un código y verás sus fotos en Drive, dónde están y qué las oculta.</p>
             <form class="sync-actions" onsubmit="checkPhoto(event)">
-                <input type="text" id="photoSku" class="form-input" placeholder="Ej: 1514G-12" required
+                <input type="text" id="photoSku" class="form-input" placeholder="Ej: 1514G-12" required value="<?= e($_GET['sku'] ?? '') ?>"
                        style="flex:1; min-width:160px; padding:0.55rem 0.75rem; border-radius:8px; border:1px solid var(--color-border); background:var(--color-surface-2, #16161f); color:inherit;">
                 <button class="btn btn-primary" type="submit">Revisar</button>
             </form>
@@ -187,6 +187,11 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
             btn.disabled = false;
             btn.innerHTML = label;
         }
+
+        // Desde Problemas (?sku=…): revisar ese código al abrir
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.getElementById('photoSku').value) checkPhoto({ preventDefault() {} });
+        });
 
         async function checkPhoto(ev) {
             ev.preventDefault();

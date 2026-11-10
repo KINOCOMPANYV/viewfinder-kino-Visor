@@ -66,7 +66,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Celular (etapa 2): barra abajo tipo app (Inicio, Buscar, Carpetas, Enviar); buscador pegado arriba en una fila con ✕
   para borrar y 📷 al lado; carpetas del inicio de 3 en 3; "Seleccionar" es un círculo sobre la foto. El computador no cambia
   (solo gana la ✕ del buscador).
-- Admin: Productos (activar/desactivar), Carpetas (ocultar), Sincronizar (hoja + Drive, "¿Por qué no sale la foto?"), Media.
+- Admin: Productos (activar/desactivar), Carpetas (ocultar), Sincronizar (hoja + Drive, "¿Por qué no sale la foto?"), Media,
+  Problemas (todo lo que impide que salga una foto, con motivo y ruta).
   Sincronizar muestra hoja y Drive por separado (último éxito con qué cambió, último error y "🔁 Reintentar"); solo corre
   una sincronización a la vez.
 
@@ -138,3 +139,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   renombrar, borrar); avisa cuántas fotos de cada catálogo ya no están (`/api/fotos-vigentes`).
 - #42 (etapa F): "Cómo salen las fotos" en Mi selección: foto sola o con su código abajo (se arma en el celular), con vista
   previa; vale para Guardar y Enviar por tandas. Precio: no por ahora (decisión del dueño 2026-11-10).
+- #42 (etapa G): Admin → 🩺 Problemas: sin foto, foto en carpeta oculta, archivos sin código y datos incompletos de la hoja,
+  con motivo, ruta en Drive y CSV; "¿Por qué?" abre el diagnóstico del código en Sincronizar.

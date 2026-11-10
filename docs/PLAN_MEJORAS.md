@@ -73,7 +73,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
 - Opcional en una segunda parte: nombre, logo y contacto del distribuidor (guardados en el dispositivo).
 - Prueba: 5 fotos con código + precio → vista previa → guardar en el celular → revisar en la galería.
 
-### G. Panel de problemas de fotos + datos incompletos (ideas 15 y 10)
+### G. Panel de problemas de fotos + datos incompletos (ideas 15 y 10) — ✅ hecha (#42; "asociaciones incorrectas" no se detectan solas: se revisan con ¿Por qué?)
 - Una página admin "Problemas": productos sin foto, archivos sin código, fotos ocultas por carpeta y filas de la hoja
   sin precio/nombre, con motivo, ruta en Drive y CSV. Reutiliza `photo-check` y los CSV actuales (no se duplica lógica).
 - Prueba: abrir el panel, buscar un código sin foto, ver el motivo y la ruta.

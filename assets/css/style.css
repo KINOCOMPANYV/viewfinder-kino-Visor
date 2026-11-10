@@ -2983,3 +2983,28 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .ms-look-prev span { color: var(--color-text-muted); font-size: 0.8rem; }
 .ms-look small { color: var(--color-text-muted); font-size: 0.75rem; }
 
+/* Admin → Problemas de fotos (etapa G) */
+.pb-main { padding-top: 2rem; padding-bottom: 3rem; max-width: 1100px; }
+.pb-title { font-size: 1.5rem; margin-bottom: 0.4rem; }
+.pb-help { color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1rem; }
+.pb-help a, .pb-table a { color: var(--color-primary); }
+.pb-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
+.pb-tabs a { padding: 0.45rem 0.8rem; border-radius: 20px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); text-decoration: none; font-size: 0.85rem; }
+.pb-tabs a.active { border-color: var(--color-primary); color: var(--color-primary); }
+.pb-tabs b { margin-left: 0.25rem; color: var(--color-text); }
+.pb-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 0.6rem; }
+.pb-empty { color: var(--color-success); }
+.pb-table-wrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.pb-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.pb-table th, .pb-table td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+.pb-table th { background: var(--color-surface-2); color: var(--color-text-muted); font-weight: 600; }
+.pb-table td[data-h="Código"], .pb-table td[data-h="Archivo"] { font-family: monospace; white-space: nowrap; }
+@media (max-width: 640px) {
+    .pb-table thead { display: none; }
+    .pb-table, .pb-table tbody, .pb-table tr, .pb-table td { display: block; width: 100%; }
+    .pb-table tr { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--color-border); }
+    .pb-table td { border: 0; padding: 0.1rem 0; }
+    .pb-table td[data-h]::before { content: attr(data-h) ": "; color: var(--color-text-muted); }
+    .pb-table td[data-h="Código"], .pb-table td[data-h="Archivo"] { white-space: normal; word-break: break-all; }
+}
+
