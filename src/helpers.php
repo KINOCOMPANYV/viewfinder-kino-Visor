@@ -140,6 +140,11 @@ function requireAdmin(): void
             exit;
         }
 
+        // Recordar a dónde iba (p. ej. la vuelta de Google con ?code=...) para
+        // continuar ahí después del login en vez de perder la petición.
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+            $_SESSION['after_login'] = $_SERVER['REQUEST_URI'] ?? '/admin';
+        }
         redirect('/admin/login');
     }
 }

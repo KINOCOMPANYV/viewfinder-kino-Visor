@@ -160,3 +160,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   la ficha si la foto tiene producto visible (`drive_index.matched_sku`); si no, abre la foto en grande. Enlaces viejos a un
   archivo sin producto redirigen a su carpeta. La regla de nombres no cambió.
 - #46: lo público solo muestra productos con foto o video en PRODUCTOS (los demás quedan en el admin, sin desactivarlos).
+- #47: reconectar Google Drive más robusto: si la sesión del admin caducó, tras el login sigue con la vuelta de Google;
+  los errores se ven en Admin → Media con la causa; se conserva el refresh_token si Google no manda uno nuevo.

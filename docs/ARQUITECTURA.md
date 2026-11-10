@@ -56,7 +56,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 - `folder_settings`: `folder_id` → `hidden` (decisión del admin; sobrevive a los syncs).
 - `media_search_cache`: `sku` → `files_json` (búsqueda en Drive). Solo se usa mientras `drive_index` está vacío.
 - `drive_cache`: hoy solo guarda la visibilidad por archivo (`visible_publico`) y subcarpetas para la búsqueda.
-- `google_tokens`: OAuth (último registro = activo; `getValidToken()` renueva solo).
+- `google_tokens`: OAuth (último registro = activo; `getValidToken()` renueva solo). Se escribe en `/admin/google/callback`
+  (`admin_google_callback.php`); errores → flash en `/admin/media`.
 - Otras: `migrations`, `task_queue`, `media_assets` y `downloads_log` (heredadas, poco usadas).
 
 ## Índice local de Drive (clave del rendimiento)
