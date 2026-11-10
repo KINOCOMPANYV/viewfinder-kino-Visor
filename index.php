@@ -194,6 +194,22 @@ if ($uri === '/novedades') {
     exit;
 }
 
+// Catálogo por enlace (etapa I): /c/{código} público; crear / actualizar / desactivar desde Mi selección
+if ($uri === '/c/crear' && $method === 'POST') {
+    session_write_close();
+    $sharedAction = 'create';
+    include __DIR__ . '/src/controllers/shared_catalog.php';
+    exit;
+}
+if (preg_match('#^/c/([A-Za-z0-9]{6,16})(?:/(actualizar|desactivar))?$#', $uri, $m)) {
+    session_write_close();
+    $sharedCode = $m[1];
+    $sharedAction = !isset($m[2]) ? 'view' : ($m[2] === 'actualizar' ? 'update' : 'toggle');
+    if ($sharedAction !== 'view' && $method !== 'POST') { http_response_code(405); exit; }
+    include __DIR__ . '/src/controllers/shared_catalog.php';
+    exit;
+}
+
 if ($uri === '/mi-seleccion') {
     include __DIR__ . '/templates/client/my_selection.php';
     exit;

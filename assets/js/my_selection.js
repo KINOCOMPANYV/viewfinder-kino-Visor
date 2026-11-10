@@ -139,6 +139,87 @@
     });
     window.addEventListener('storage', (e) => { if (e.key === CKEY) drawCats(); });
 
+    // ---- Enlaces para compartir (etapa I): /c/{código} en el servidor; aquí se guarda el token para gestionarlos ----
+    const LKEY = 'kinoLinks';
+    const readLinks = () => { try { const v = JSON.parse(localStorage.getItem(LKEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+    const writeLinks = (l) => { try { localStorage.setItem(LKEY, JSON.stringify(l)); } catch (e) { alert('No se pudo guardar el enlace en este dispositivo. Cópialo ahora.'); } };
+    const linkUrl = (l) => location.origin + '/c/' + l.code;
+    async function linkPost(path, token, body) {
+        const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Manage-Token': token || '' }, body: JSON.stringify(body || {}) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'No se pudo completar. Revisa la conexión.');
+        return d;
+    }
+    async function shareLink(l) {
+        const url = linkUrl(l);
+        if (navigator.share) { try { await navigator.share({ title: l.name, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+        try { await navigator.clipboard.writeText(url); alert('Enlace copiado:\n' + url); } catch (e) { prompt('Copia el enlace:', url); }
+    }
+    function drawLinks() {
+        const links = readLinks().sort((a, b) => b.at - a.at);
+        $('msLinkEmpty').hidden = !!links.length;
+        $('msMakeLink').disabled = !W.items().length;
+        $('msLinkList').innerHTML = links.map((l) => {
+            const when = new Date(l.at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+            return `<li class="ms-cat${l.off ? ' ms-link-off' : ''}" data-code="${esc(l.code)}">
+                <span class="ms-cat-info"><strong>${esc(l.name)}</strong>
+                    <small>${l.n} foto${l.n === 1 ? '' : 's'} · ${esc(when)} · ${l.off ? '<b class="ms-bad">desactivado</b>' : '/c/' + esc(l.code)}</small></span>
+                <span class="ms-cat-act">
+                    ${l.off ? `<button type="button" class="btn btn-sm btn-secondary" data-l="on">Reactivar</button>` : `
+                    <button type="button" class="btn btn-sm btn-primary" data-l="share">Compartir</button>
+                    <a class="btn btn-sm btn-secondary" href="/c/${esc(l.code)}" target="_blank" rel="noopener">Abrir</a>
+                    <button type="button" class="btn btn-sm btn-secondary" data-l="update" title="Reemplazar sus fotos con la selección actual">Actualizar</button>
+                    <button type="button" class="btn btn-sm btn-secondary" data-l="off">Desactivar</button>`}
+                    <button type="button" class="btn btn-sm btn-secondary" data-l="forget" title="Quitar de esta lista">🗑</button>
+                </span></li>`;
+        }).join('');
+    }
+    $('msMakeLink').addEventListener('click', async () => {
+        const items = snapshot().filter((x) => !gone[x.id]);
+        if (!items.length) return;
+        const name = (prompt('Nombre que verá el cliente:', 'Catálogo Kino') || '').trim();
+        if (!name) return;
+        const contact = (prompt('Contacto para el cliente (opcional, ej. «Juan · 300 123 4567»). Déjalo vacío si no quieres mostrarlo:', '') || '').trim();
+        const btn = $('msMakeLink');
+        btn.disabled = true; btn.textContent = 'Creando…';
+        try {
+            const d = await linkPost('/c/crear', '', { name, contact, items });
+            const l = { code: d.code, token: d.token, name: name.slice(0, 80), n: items.length, at: Date.now() };
+            writeLinks(readLinks().concat(l));
+            drawLinks();
+            shareLink(l);
+        } catch (e) { alert(e.message); }
+        btn.textContent = '🔗 Crear enlace'; btn.disabled = !W.items().length;
+    });
+    $('msLinkList').addEventListener('click', async (e) => {
+        const b = e.target.closest('button[data-l]');
+        if (!b) return;
+        const links = readLinks();
+        const l = links.find((x) => x.code === b.closest('.ms-cat').dataset.code);
+        if (!l) return;
+        const act = b.dataset.l;
+        try {
+            if (act === 'share') return shareLink(l);
+            if (act === 'update') {
+                const items = snapshot().filter((x) => !gone[x.id]);
+                if (!items.length) { alert('No hay fotos marcadas.'); return; }
+                if (!confirm('¿Cambiar las fotos de «' + l.name + '» por la selección actual (' + items.length + ')? Quien ya tiene el enlace verá las nuevas.')) return;
+                await linkPost('/c/' + l.code + '/actualizar', l.token, { items });
+                l.n = items.length; l.at = Date.now();
+            } else if (act === 'off') {
+                if (!confirm('¿Desactivar «' + l.name + '»? El enlace dejará de abrir (puedes reactivarlo).')) return;
+                await linkPost('/c/' + l.code + '/desactivar', l.token); l.off = true;
+            } else if (act === 'on') {
+                await linkPost('/c/' + l.code + '/desactivar?activar=1', l.token); l.off = false;
+            } else if (act === 'forget') {
+                if (!confirm('¿Quitar «' + l.name + '» de esta lista? El enlace sigue funcionando, pero ya no podrás cambiarlo ni desactivarlo desde aquí.')) return;
+                writeLinks(links.filter((x) => x !== l)); drawLinks(); return;
+            }
+            writeLinks(links); drawLinks();
+        } catch (err) { alert(err.message); }
+    });
+    window.addEventListener('storage', (e) => { if (e.key === LKEY) drawLinks(); });
+
     // ---- Cómo salen las fotos (etapa F): foto sola o con su código; vista previa con la primera foto lista ----
     let prevKey = '', prevUrl = '';
     async function drawLook() {
@@ -162,9 +243,10 @@
     }
     document.querySelectorAll('input[name=msLabel]').forEach((r) => r.addEventListener('change', () => W.setLabel(r.value)));
 
-    W.onChange(() => { draw(); drawLook(); $('msSaveAs').disabled = !W.items().length; });
+    W.onChange(() => { draw(); drawLook(); $('msSaveAs').disabled = !W.items().length; $('msMakeLink').disabled = !W.items().length; });
     drawLook();
     draw();
     drawCats();
+    drawLinks();
     checkGone();
 })();

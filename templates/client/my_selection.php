@@ -55,6 +55,15 @@
                 <a href="/enviar-catalogo">Enviar catálogo</a>.</p>
         </div>
 
+        <section class="ms-cats ms-cats-bottom" id="msLinks">
+            <div class="ms-cats-head">
+                <h2>🔗 Enlaces para compartir</h2>
+                <button type="button" class="btn btn-sm btn-primary" id="msMakeLink">🔗 Crear enlace</button>
+            </div>
+            <ul class="ms-cat-list" id="msLinkList"></ul>
+            <p class="ms-cat-empty" id="msLinkEmpty">Crea un enlace con las fotos marcadas: el cliente lo abre sin instalar nada y ve siempre la foto vigente. Puedes actualizarlo o desactivarlo desde este dispositivo.</p>
+        </section>
+
         <section class="ms-cats ms-cats-bottom" id="msCats">
             <div class="ms-cats-head">
                 <h2>📚 Catálogos guardados <small>(en este dispositivo)</small></h2>

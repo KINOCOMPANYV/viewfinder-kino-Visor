@@ -74,7 +74,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A-D hechas, E-I en PR (el dueño pidió hacerlas seguidas y fusionar al final; respaldo del main en la rama `respaldo-2026-11-10`), un PR cada una.
+- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A-C hechas, D-I en el PR #42 (el dueño pidió hacerlas seguidas y fusionar al final; respaldo del main en la rama `respaldo-2026-11-10`). J (app instalable) sigue pausada.
   Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
@@ -143,3 +143,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   con motivo, ruta en Drive y CSV; "¿Por qué?" abre el diagnóstico del código en Sincronizar.
 - #42 (etapa H): Novedades (`/novedades`, 7/30/90 días) con `drive_index.first_seen_at` (migración 026; re-sincronizar no
   cuenta como nuevo; lo de antes queda sin fecha). Enlace en el inicio si hay fotos nuevas esta semana.
+- #42 (etapa I): catálogo por enlace `/c/{código}` (migración 027 `shared_catalogs`): se crea desde Mi selección con nombre y
+  contacto opcional; muestra siempre la foto vigente; actualizar/desactivar solo desde el dispositivo que lo creó.

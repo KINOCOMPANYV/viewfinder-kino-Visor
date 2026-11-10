@@ -12,15 +12,15 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
 | 2 | Búsqueda precisa | 🟡 parcial | Código exacto primero y luego "empieza por" (ya ordena así), ignora `- : .` y espacios, ✕ para borrar (#35), resultados al escribir. Falta: sugerencias por error de escritura. |
 | 3 | Filtros | 🟡 parcial | Solo chips de categoría en la búsqueda. Faltan marca, precio y "con foto". |
 | 4 | Selección unificada | 🟡 casi | Inicio, búsqueda, carpetas y ficha usan la misma barra (#31-#36). "Enviar catálogo" tiene su propia selección. Falta aclarar "Marcar todas (esta vista)". |
-| 5 | Vista "Mi selección" | ❌ | No existe. |
+| 5 | Vista "Mi selección" | ✅ etapa C (#41) | `/mi-seleccion`. |
 | 6 | Descarga y envío confiables | ✅ | Tandas de 10, precarga al marcar, 3 reintentos solo de las que fallan, botón verde cuando la tanda está lista, guardar en el celular (#22-#25, #36). |
 | 7 | Recuperar trabajo interrumpido | 🟡 parcial | Lo marcado vive en la pestaña (`sessionStorage`): se pierde al cerrarla. Falta guardarlo en el dispositivo. |
 | 8 | Variantes fáciles de identificar | ✅ base | Familias, variantes en la ficha, código en cada foto. Revisar solo si el uso real muestra fallas. |
-| 9 | Catálogos guardados | ❌ | No existe. |
+| 9 | Catálogos guardados | ✅ etapa E (#42) | En Mi selección, en el dispositivo. |
 | 10 | Información del producto | 🟡 parcial | Ficha con datos de la hoja; Admin → Sincronizar lista filas sin precio/nombre (#27). Stock: no hay fuente confiable → no se muestra. |
-| 11 | Material personalizado | ❌ | No existe. |
-| 12 | Catálogo por enlace | ❌ | No existe. |
-| 13 | Novedades | ❌ | El índice no guarda cuándo llegó cada archivo. |
+| 11 | Material personalizado | ✅ etapa F (#42) | Foto con código (sin precio, decisión del dueño). |
+| 12 | Catálogo por enlace | ✅ etapa I (#42) | `/c/{código}` desde Mi selección. |
+| 13 | Novedades | ✅ etapa H (#42) | `/novedades` con `first_seen_at`. |
 | 14 | Referencias relacionadas | ❌ | No existe (prioridad baja). |
 | 15 | Panel de problemas de fotos | 🟡 parcial | "¿Por qué no sale la foto?", CSV de archivos sin código y productos sin foto (Admin → Media). Están repartidos. |
 | 16 | Control de sincronización | ✅ etapa A (#39) | Antes: Drive no guardaba último éxito/error y solo la copia del índice tenía candado (hoja, enlace y portadas podían correr a la vez). |
@@ -83,7 +83,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
 - Sección "Nuevo" (últimos 7/30 días) con "Marcar todas" para sumarlas a la selección.
 - Prueba: subir una foto a Drive, esperar el sync → sale en Nuevo; re-sincronizar → no se duplica.
 
-### I. Catálogo por enlace (idea 12)
+### I. Catálogo por enlace (idea 12) — ✅ hecha (#42)
 - Desde Mi selección: "Crear enlace" → página ligera `/c/{código}` con las fotos en orden (tabla nueva por migración).
 - Se puede desactivar. Muestra siempre la foto vigente del código (si cambia en Drive, se actualiza sola).
   Contacto solo si el distribuidor lo escribe.
