@@ -78,7 +78,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
   sin precio/nombre, con motivo, ruta en Drive y CSV. Reutiliza `photo-check` y los CSV actuales (no se duplica lógica).
 - Prueba: abrir el panel, buscar un código sin foto, ver el motivo y la ruta.
 
-### H. Novedades (idea 13)
+### H. Novedades (idea 13) — ✅ hecha (#42)
 - Migración: `drive_index.first_seen_at` (cuando el sync ve el archivo por primera vez; re-sincronizar no lo cambia).
 - Sección "Nuevo" (últimos 7/30 días) con "Marcar todas" para sumarlas a la selección.
 - Prueba: subir una foto a Drive, esperar el sync → sale en Nuevo; re-sincronizar → no se duplica.

@@ -21,6 +21,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}` |
 | `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada) |
 | `/og/{fileId}.jpg` | `src/controllers/og_image.php` | Foto de vista previa para WhatsApp (og:image), ver "Compartir por WhatsApp" |
+| `/novedades` (`?dias=7\|30\|90`) | `src/controllers/news.php` | **Novedades** (etapa H): archivos visibles con `drive_index.first_seen_at` en el periodo, marcables para Mi selección. El inicio muestra un enlace si llegó algo en 7 días |
 | `/mi-seleccion` | `templates/client/my_selection.php` + `assets/js/my_selection.js` | **Mi selección**: lo marcado en todo el visor (y lo que se pasa desde Enviar catálogo) en una lista: orden, quitar, "dejar 1 foto por código", estado por foto (lista / bajando / en una tanda / no bajó + 🔁 reintentar) y repetir la última tanda. Todo en el dispositivo (`localStorage` `kinoWaSel` de `wa_batch.js`, API `window.KinoWaBatch`). **Catálogos guardados** (etapa E): `localStorage` `kinoCatalogs` (guardar como, abrir = reemplaza la selección, actualizar, duplicar, renombrar, borrar); `POST /api/fotos-vigentes` (ids → los que siguen visibles en `drive_index`) marca las fotos que ya no están. **Cómo salen las fotos** (etapa F): foto sola o con su código en una franja blanca abajo (`withCode()` en `wa_batch.js`, canvas en el celular, preferencia `kinoWaLabel`), con vista previa; aplica a Guardar y Enviar por tandas de la barra |
 | `/enviar-catalogo` | `templates/client/catalog_send.php` + `src/controllers/catalog_send.php` | **Enviar catálogo por lista** (botón en el encabezado público): se pega un texto, `POST /enviar-catalogo/extraer` saca los códigos visibles y sus fotos (`filesForSku`, portada primero) y se muestran en una galería (tocar = marcar). Las marcadas se guardan en el celular (descargas; iPhone vía Compartir) o se comparten por tandas de 10 (Web Share; el botón se activa cuando la tanda ya bajó); 📲 en cada foto = solo esa. Se precargan de 3 en 3. Fotos: `/enviar-catalogo/foto/{id}` (lh3 `=s800` servido desde el dominio, copia en `storage/send_cache`; solo imágenes del índice, visibles y enlazadas). Solo lee la BD |
 | `/api/search` | `src/controllers/api_search.php` | Autocomplete JSON |
@@ -46,7 +47,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 - `albums`: carpetas de primer nivel bajo la raíz (`drive_id`, `name`, `icon_url`, `is_active`, `order_priority`).
 - `drive_index`: **copia local del árbol de la carpeta raíz** (archivos y carpetas): `file_id`, `name`, `name_stem`
   (sin extensión, indexado para `LIKE 'SKU%'`), `mime_type`, `is_folder`, `parent_id`, `album_id`, `is_public`, `synced_at`,
-  `is_hidden` y `cover_file_id` (migración 021, ver "Carpetas: ocultar y portada").
+  `is_hidden` y `cover_file_id` (migración 021, ver "Carpetas: ocultar y portada"), `first_seen_at` (migración 026: cuándo
+  lo vio el sync por primera vez; el UPSERT no lo cambia; lo anterior a la migración queda NULL).
   Lo llena `DriveIndex::sync()` (`src/services/DriveIndex.php`).
 - `folder_settings`: `folder_id` → `hidden` (decisión del admin; sobrevive a los syncs).
 - `media_search_cache`: `sku` → `files_json` (búsqueda en Drive). Solo se usa mientras `drive_index` está vacío.

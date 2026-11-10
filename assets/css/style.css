@@ -3008,3 +3008,27 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .pb-table td[data-h="Código"], .pb-table td[data-h="Archivo"] { white-space: normal; word-break: break-all; }
 }
 
+/* Novedades (etapa H) */
+.nw-main { padding-top: 1.5rem; padding-bottom: 3rem; }
+.nw-title { font-size: 1.5rem; margin-bottom: 0.4rem; }
+.nw-help, .nw-count { color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 0.75rem; }
+.nw-empty { color: var(--color-text-muted); padding: 2rem 0; }
+.nw-badge { position: absolute; top: 8px; left: 8px; z-index: 2; background: var(--color-primary); color: var(--color-bg); font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+.nw-folder { font-size: 0.7rem; color: var(--color-text-muted); }
+.nw-link {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    padding: 0.8rem 1rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-text);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+.nw-link span { color: var(--color-primary); font-weight: 600; }
+

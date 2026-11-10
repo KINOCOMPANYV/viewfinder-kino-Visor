@@ -189,6 +189,11 @@ if ($uri === '/api/search') {
 }
 
 // Enviar catálogo por lista (público): pegar texto → códigos → fotos → WhatsApp. Solo lee la BD.
+if ($uri === '/novedades') {
+    include __DIR__ . '/src/controllers/news.php';
+    exit;
+}
+
 if ($uri === '/mi-seleccion') {
     include __DIR__ . '/templates/client/my_selection.php';
     exit;

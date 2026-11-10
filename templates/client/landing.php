@@ -110,6 +110,15 @@
                 </div>
             </div>
 
+            <?php
+            // Novedades (etapa H): enlace solo si llegó algo en los últimos 7 días
+            $newCount = 0;
+            try { if ($db) $newCount = (int) $db->query("SELECT COUNT(*) FROM drive_index WHERE is_folder = 0 AND is_hidden = 0 AND first_seen_at >= NOW() - INTERVAL 7 DAY AND (mime_type LIKE 'image/%' OR mime_type LIKE 'video/%')")->fetchColumn(); } catch (\PDOException $e) {}
+            ?>
+            <?php if ($newCount): ?>
+                <a href="/novedades" class="nw-link">🆕 <strong><?= number_format($newCount) ?></strong> foto<?= $newCount === 1 ? '' : 's' ?> nueva<?= $newCount === 1 ? '' : 's' ?> esta semana <span>Ver novedades →</span></a>
+            <?php endif; ?>
+
             <!-- ===== Carpetas de primer nivel (se navegan como en Drive) ===== -->
             <?php if (!empty($albums)): ?>
             <div id="carpetas" style="margin-bottom: 3rem;">

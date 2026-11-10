@@ -141,3 +141,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   previa; vale para Guardar y Enviar por tandas. Precio: no por ahora (decisión del dueño 2026-11-10).
 - #42 (etapa G): Admin → 🩺 Problemas: sin foto, foto en carpeta oculta, archivos sin código y datos incompletos de la hoja,
   con motivo, ruta en Drive y CSV; "¿Por qué?" abre el diagnóstico del código en Sincronizar.
+- #42 (etapa H): Novedades (`/novedades`, 7/30/90 días) con `drive_index.first_seen_at` (migración 026; re-sincronizar no
+  cuenta como nuevo; lo de antes queda sin fecha). Enlace en el inicio si hay fotos nuevas esta semana.
