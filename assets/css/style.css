@@ -3471,3 +3471,117 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     padding: 0.6rem 1rem; font-size: 0.85rem; opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s;
 }
 .media-toast.show { opacity: 1; visibility: visible; }
+
+/* ===== Etapa 2: celular más claro ===== */
+/* Botón ✕ del buscador (todas las pantallas): aparece solo cuando hay texto */
+.search-field { position: relative; display: block; width: 100%; }
+.search-box .search-field textarea { padding-right: 2.75rem; }
+.search-clear {
+    position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%); z-index: 2;
+    width: 36px; height: 36px; border: none; border-radius: 50%;
+    background: #e9e9ee; color: #555; font-size: 0.9rem; line-height: 1; cursor: pointer;
+}
+.search-clear:hover { background: #dcdce3; color: #111; }
+.search-field textarea:placeholder-shown ~ .search-clear { display: none; }
+
+/* Barra inferior tipo app (templates/partials/mobile_nav.php): solo en el celular */
+.mnav { display: none; }
+
+@media (max-width: 640px) {
+    .mnav {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+        background: rgba(18, 18, 26, 0.97);
+        -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+        border-top: 1px solid var(--color-border);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .mnav-item {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+        min-height: 58px; color: var(--color-text-muted); text-decoration: none;
+        font-size: 0.72rem; font-weight: 600; -webkit-tap-highlight-color: transparent;
+    }
+    .mnav-icon { font-size: 1.3rem; line-height: 1; filter: grayscale(1); opacity: 0.7; }
+    .mnav-item.active { color: var(--color-primary); }
+    .mnav-item.active .mnav-icon { filter: none; opacity: 1; }
+    body:has(.mnav) { padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
+    /* Con la barra de envío por WhatsApp abierta, la de navegación se esconde (si no, se tapan) */
+    body:has(.search-wa-toolbar.visible) .mnav,
+    body:has(#galleryWaBar.visible) .mnav { display: none; }
+    .media-toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+
+    /* Encabezado: ya no queda pegado arriba (la barra de abajo lleva la navegación) y sin botones repetidos */
+    body:has(.mnav) .header { position: static; padding: 0.55rem 0; }
+    .header .hdr-hide-m { display: none !important; }
+
+    /* Inicio: título corto, sin texto de ayuda; el buscador queda en la primera pantalla */
+    .hero { display: contents; }
+    .hero h1 { font-size: 1.3rem !important; text-align: center; margin: 0.25rem 0 0.25rem !important; }
+    .hero > p { display: none; }
+    .search-layout { padding-top: 0.75rem !important; }
+
+    /* Buscador pegado arriba al bajar, en una fila: [🔍 texto ✕] [Buscar] [📷] */
+    .search-box {
+        position: sticky; top: 0; z-index: 60;
+        display: flex; align-items: flex-start; gap: 0.4rem;
+        max-width: none !important; margin: 0 0 0.75rem !important; padding: 0.5rem 0;
+        background: var(--color-bg);
+    }
+    .search-box form { flex-direction: row; align-items: flex-start; gap: 0.4rem; flex: 1 1 auto; min-width: 0; }
+    .search-box .search-field { flex: 1 1 auto; min-width: 0; }
+    .search-box textarea { min-height: 48px; padding: 0.7rem 2.6rem 0.7rem 2.3rem !important; line-height: 1.4; }
+    .search-box .search-icon { top: calc(0.5rem + 14px); left: 0.75rem; font-size: 1rem; }
+    .search-box .search-btn { width: auto; min-height: 48px; padding: 0 0.85rem; font-size: 0.9rem; flex: 0 0 auto; align-self: flex-start; }
+    .search-box #btnQrScan {
+        margin: 0; display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+        min-width: 46px; min-height: 48px; font-size: 1.2rem !important;
+        background: var(--color-surface) !important; border: 1px solid var(--color-border) !important; border-radius: var(--radius-sm);
+    }
+    .search-clear { width: 34px; height: 34px; right: 0.3rem; }
+
+    /* Carpetas del inicio: de 3 en 3, compactas */
+    #carpetas { margin-bottom: 1.5rem !important; scroll-margin-top: 70px; }
+    #carpetas h2 { font-size: 1.15rem !important; }
+    #carpetas > div:first-child { margin-bottom: 0.75rem !important; }
+    #horizontalAlbums { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 0.5rem !important; }
+    #horizontalAlbums .sidebar-album-item { padding: 0.55rem 0.3rem !important; }
+    #horizontalAlbums .sidebar-album-thumb { width: 44px !important; height: 44px !important; margin-bottom: 0.4rem !important; }
+    #horizontalAlbums .sidebar-album-thumb span { font-size: 1.4rem !important; line-height: 44px !important; }
+    #horizontalAlbums .sidebar-album-name { font-size: 0.72rem !important; line-height: 1.2; }
+
+    /* Tarjetas más limpias: "Seleccionar" pasa a un círculo sobre la foto (como en la galería del celular)
+       y la tarjeta queda con foto, código, nombre, variantes y WhatsApp/Descargar */
+    .search-selectable-card { position: relative; }
+    .search-selectable-card > .search-check-footer {
+        position: absolute; top: 6px; right: 6px; z-index: 3;
+        width: 40px; height: 40px; padding: 0; margin: 0 !important;
+        border: none !important; border-radius: 50% !important; background: transparent;
+    }
+    .search-selectable-card > .search-check-footer .search-check-text { display: none; }
+    .search-selectable-card > .search-check-footer .search-check-icon {
+        width: 26px; height: 26px; font-size: 0.85rem;
+        background: rgba(0, 0, 0, 0.35); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    }
+    .search-selectable-card .media-actions { margin-bottom: 0.55rem; }
+}
+@media (max-width: 640px) {
+    /* Búsqueda: las carpetas encontradas como filas chicas (foto + nombre), no como tarjetas grandes */
+    .parent-grid.folder-hits { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.5rem !important; margin-bottom: 1.25rem !important; }
+    .folder-hits .parent-card { display: flex !important; flex-direction: row !important; align-items: center; gap: 0.5rem; padding: 0.4rem; text-align: left; }
+    .folder-hits .card-image { flex: 0 0 48px; width: 48px; height: 48px !important; min-height: 0 !important; aspect-ratio: auto !important; border-radius: 8px; overflow: hidden; }
+    .folder-hits .card-image .cover-placeholder { font-size: 1.5rem !important; }
+    .folder-hits .card-body { padding: 0 !important; min-width: 0; }
+    .folder-hits .card-sku { display: none; }
+    .folder-hits .card-name { font-size: 0.78rem !important; line-height: 1.2; }
+}
+@media (max-width: 640px) {
+    /* Sin texto escrito no hay ✕: el texto de ayuda usa ese espacio */
+    .search-box .search-field textarea:placeholder-shown { padding-right: 0.6rem !important; }
+    /* Los botones del encabezado se esconden en el celular: el nombre "Viewfinder" vuelve a caber */
+    body:has(.mnav) .header-inner .logo { font-size: 1.25rem !important; gap: 0.5rem !important; }
+}
+@media (max-width: 360px) {
+    .search-box .search-btn { padding: 0 0.6rem; font-size: 0.82rem; }
+    .search-box #btnQrScan { min-width: 42px; }
+}

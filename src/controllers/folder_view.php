@@ -113,8 +113,8 @@ $shareDesc = implode(' · ', array_filter([
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
             <div style="display:flex; gap:0.5rem; align-items:center;">
-                <a href="/enviar-catalogo" class="btn btn-sm btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar catálogo</a>
-                <a href="/" class="btn btn-sm btn-secondary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Inicio</a>
+                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar catálogo</a>
+                <a href="/" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Inicio</a>
             </div>
         </div>
     </header>
@@ -254,6 +254,7 @@ $shareDesc = implode(' · ', array_filter([
     <script src="/assets/js/media_actions.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/wa_batch.js?v=<?= APP_VERSION ?>"></script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
+    <?php $mnavActive = 'carpetas'; include __DIR__ . '/../../templates/partials/mobile_nav.php'; ?>
 </body>
 
 </html>

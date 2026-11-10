@@ -59,6 +59,8 @@
 
     // Mostrar overlay al hacer clic en links internos
     document.addEventListener('click', function(e) {
+        // Un script ya manejó el toque sin cambiar de página (p. ej. la barra inferior)
+        if (e.defaultPrevented) return;
         var link = e.target.closest('a[href]');
         if (!link) return;
         var href = link.getAttribute('href');
