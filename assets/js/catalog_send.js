@@ -379,6 +379,20 @@
     }
 
     $('csAll').addEventListener('click', () => setAll(true));
+    // 📌 Las marcadas se suman a "Mi selección" (misma lista que el catálogo, wa_batch.js) y se abre esa pantalla
+    $('csToSel').addEventListener('click', () => {
+        const ts = selected();
+        if (!ts.length) { msg('Marca al menos una foto.'); return; }
+        let store;
+        try { localStorage.setItem('kinoT', '1'); localStorage.removeItem('kinoT'); store = localStorage; } catch (e) { store = sessionStorage; }
+        let d;
+        try { d = JSON.parse(store.getItem('kinoWaSel') || 'null'); } catch (e) { d = null; }
+        if (!d || !Array.isArray(d.items)) d = { items: [], tanda: 0, last: null };
+        const have = new Set(d.items.map((x) => x.id));
+        ts.forEach((t) => { if (!have.has(t.photo.id)) { d.items.push({ id: t.photo.id, sku: t.item.sku, wa: false, err: false }); have.add(t.photo.id); } });
+        try { store.setItem('kinoWaSel', JSON.stringify(d)); } catch (e) { msg('No se pudo guardar en este dispositivo.'); return; }
+        location.href = '/mi-seleccion';
+    });
     $('csNone').addEventListener('click', () => setAll(false));
 
     $('csCopyList').addEventListener('click', async () => {

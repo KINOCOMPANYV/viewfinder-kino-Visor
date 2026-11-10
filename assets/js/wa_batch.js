@@ -7,8 +7,9 @@
  * Marcado de cada tarjeta (.parent-card):
  *   <label class="search-check-footer"><input type="checkbox" class="search-card-check"
  *          data-sku="SKU" data-file-id="…" data-is-video="0"> …</label>
- * La barra se crea sola. Lo marcado se guarda en la pestaña (sessionStorage) y se mantiene al hacer otra
- * búsqueda o al pasar a otra carpeta, al inicio o a una ficha: se juntan fotos de varias páginas en un mismo envío.
+ * La barra se crea sola. Lo marcado se guarda en el dispositivo (localStorage, etapa C): se mantiene al hacer otra
+ * búsqueda, al pasar a otra carpeta, al inicio o a una ficha, y también al cerrar la página o quedarse sin señal.
+ * "👁 Ver" abre /mi-seleccion (revisar, ordenar, quitar, reintentar, repetir la última tanda) con window.KinoWaBatch.
  * La galería de la ficha usa las mismas casillas (.search-card-check dentro de .gallery-item) y llama
  * window.KinoWaBatch.sync() cuando termina de dibujarse.
  */
@@ -21,25 +22,33 @@
     })();
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    const sel = new Map();      // fileId → {id, sku, wa:false}  (orden = orden en que se marcaron)
+    let sel = new Map();        // fileId → {id, sku, wa, err}  (orden = orden en que se marcaron o el de Mi selección)
     const blobs = new Map();    // fileId → Promise<Blob>
     const loaded = new Set();
     let tandaNum = 0;
+    let last = null;            // última tanda abierta para compartir: {ids, at} (no confirma que WhatsApp la entregó)
     let bar, el = {};
+    const listeners = [];
 
-    // ---- Selección guardada en la pestaña: sobrevive al cambiar de página ----
+    // ---- Selección guardada en el dispositivo: sobrevive al cambiar de página y al cerrar ----
     const STORE = 'kinoWaSel';
+    const store = (() => { try { localStorage.setItem('kinoT', '1'); localStorage.removeItem('kinoT'); return localStorage; } catch (e) { return sessionStorage; } })();
     function saveSel() {
-        try { sessionStorage.setItem(STORE, JSON.stringify({ items: Array.from(sel.values()), tanda: tandaNum })); } catch (e) {}
+        try { store.setItem(STORE, JSON.stringify({ items: Array.from(sel.values()), tanda: tandaNum, last })); } catch (e) {}
     }
     function loadSel() {
-        sel.clear();
+        sel = new Map();
         tandaNum = 0;
+        last = null;
         try {
-            const d = JSON.parse(sessionStorage.getItem(STORE) || 'null');
+            // Antes se guardaba solo en la pestaña: se trae una vez
+            let raw = store.getItem(STORE);
+            if (!raw && store !== sessionStorage) { raw = sessionStorage.getItem(STORE); sessionStorage.removeItem(STORE); }
+            const d = JSON.parse(raw || 'null');
             if (d && Array.isArray(d.items)) {
-                d.items.forEach((it) => { if (it && it.id) sel.set(it.id, { id: it.id, sku: it.sku || it.id, wa: !!it.wa }); });
+                d.items.forEach((it) => { if (it && it.id) sel.set(it.id, { id: it.id, sku: it.sku || it.id, wa: !!it.wa, err: !!it.err }); });
                 tandaNum = d.tanda | 0;
+                last = d.last && Array.isArray(d.last.ids) ? d.last : null;
             }
         } catch (e) {}
     }
@@ -102,7 +111,7 @@
             const id = fileIdOf(cb);
             if (!id) { cb.checked = false; msg('📷 ' + cb.dataset.sku + ' no tiene foto todavía.'); return false; }
             cb.dataset.selId = id;
-            if (!sel.has(id)) sel.set(id, { id, sku: cb.dataset.sku || id, wa: false });
+            if (!sel.has(id)) sel.set(id, { id, sku: cb.dataset.sku || id, wa: false, err: false });
             cb.checked = true;
         } else {
             const id = cb.dataset.selId || fileIdOf(cb);
@@ -124,7 +133,7 @@
 
     // ---- Barra ----
     function msg(t) { if (el.msg) el.msg.textContent = t || ''; }
-    const pending = () => Array.from(sel.values()).filter((it) => !it.wa);
+    const pending = () => Array.from(sel.values()).filter((it) => !it.wa && !it.err);
     const nextTanda = () => pending().slice(0, TANDA);
     const readyNow = () => { const t = nextTanda(); return t.length && t.every((x) => loaded.has(x.id)) ? t : []; };
 
@@ -132,8 +141,8 @@
         bar = document.createElement('div');
         bar.className = 'search-wa-toolbar wab-bar';
         bar.innerHTML = '<div class="wab-row">'
-            + '<label class="wa-toolbar-select"><input type="checkbox" class="wab-all"><span>Marcar todas</span></label>'
-            + '<span class="wa-toolbar-count wab-count">0</span>'
+            + '<label class="wa-toolbar-select" title="Marca o desmarca las fotos que se ven en esta página"><input type="checkbox" class="wab-all"><span>Marcar todas <small>(esta vista)</small></span></label>'
+            + '<a class="wab-view" href="/mi-seleccion" title="Revisar, ordenar y quitar"><span class="wa-toolbar-count wab-count">0</span> 👁 Ver</a>'
             + '<button type="button" class="wab-clear" title="Desmarcar todo">✕</button>'
             + '<button type="button" class="wab-save">💾 Guardar</button>'
             + '<button type="button" class="wa-toolbar-send wab-send">📲 Enviar</button>'
@@ -148,6 +157,7 @@
             tandaNum = 0; render();
         });
         el.clear.addEventListener('click', () => {
+            if (sel.size > 10 && !confirm('¿Desmarcar las ' + sel.size + ' fotos?')) return;
             sel.clear(); tandaNum = 0;
             checks().forEach((cb) => { cb.checked = false; });
             msg(''); render();
@@ -169,12 +179,14 @@
         renderSend();
         preload();
         saveSel();
+        listeners.forEach((fn) => { try { fn(); } catch (e) {} });
     }
 
     function renderSend() {
         const btn = el.send;
         const pend = pending();
         if (!sel.size) { btn.disabled = true; btn.textContent = '📲 Enviar'; return; }
+        if (!pend.length && !Array.from(sel.values()).some((x) => x.wa)) { btn.disabled = true; btn.textContent = '📲 Enviar'; return; }
         if (!pend.length) { btn.disabled = false; btn.textContent = '✅ Enviadas · otra vez'; return; }
         const next = nextTanda();
         const ready = readyNow().length;
@@ -191,23 +203,24 @@
     let run = 0;
     function preload() {
         const r = ++run;
-        const ids = pending().concat(Array.from(sel.values()).filter((x) => x.wa)).map((x) => x.id).filter((id) => !loaded.has(id));
+        const ids = pending().concat(Array.from(sel.values()).filter((x) => x.wa && !x.err)).map((x) => x.id).filter((id) => !loaded.has(id));
         let i = 0;
         const worker = async () => {
             while (r === run && i < ids.length) {
                 const id = ids[i++];
                 try { await getBlob(id); } catch (e) { drop(id); }
-                if (r === run) renderSend();
+                if (r === run) { renderSend(); listeners.forEach((fn) => { try { fn(); } catch (e) {} }); }
             }
         };
         for (let k = 0; k < 6; k++) worker();
     }
+    // Foto que no bajó (3 intentos): queda en la selección marcada con problema (Mi selección deja reintentar o quitar)
+    // y no entra en las tandas
     function drop(id) {
         const it = sel.get(id);
         if (!it) return;
-        sel.delete(id);
-        checks().forEach((cb) => { if (cb.dataset.selId === id) cb.checked = false; });
-        msg('⚠️ No se pudo bajar la foto de ' + it.sku + ' (la desmarqué).');
+        it.err = true;
+        msg('⚠️ No se pudo bajar la foto de ' + it.sku + ' (no va en las tandas; puedes reintentarla en Mi selección).');
         render();
     }
 
@@ -230,6 +243,7 @@
             await navigator.share({ files: await Promise.all(part.map(toFile)) });
             part.forEach((it) => { it.wa = true; });
             tandaNum++;
+            last = { ids: part.map((it) => it.id), at: Date.now() };
             saveSel();
             const left = pending().length;
             msg(left ? `✅ Tanda ${tandaNum} enviada. Faltan ${left}: toca 📲 cuando esté lista.` : `✅ Listo: ${sel.size} foto${sel.size === 1 ? '' : 's'} enviada${sel.size === 1 ? '' : 's'}.`);
@@ -283,13 +297,63 @@
         render();
     });
 
-    window.KinoWaBatch = { sync: syncChecks };
+    // ---- Para Mi selección (/mi-seleccion) ----
+    function statusOf(id) {
+        const it = sel.get(id);
+        if (!it) return '';
+        if (it.err) return 'error';
+        if (it.wa) return 'sent';
+        return loaded.has(id) ? 'ready' : 'loading';
+    }
+    async function resendLast() {
+        if (!last || !last.ids.length) return;
+        if (!canShareFiles) { msg('En el computador usa "💾 Guardar" y arrastra las fotos a WhatsApp Web.'); return; }
+        const its = last.ids.map((id) => sel.get(id) || { id, sku: id });
+        if (!its.every((x) => loaded.has(x.id))) {
+            msg('Preparando la tanda…');
+            try { await Promise.all(its.map((x) => getBlob(x.id))); } catch (e) { msg('Una foto de esa tanda no bajó. Intenta de nuevo.'); return; }
+            msg('Lista: toca otra vez para compartir.');
+            listeners.forEach((fn) => { try { fn(); } catch (e) {} });
+            return;
+        }
+        try {
+            await navigator.share({ files: await Promise.all(its.map(toFile)) });
+            last.at = Date.now(); saveSel();
+            msg('✅ Tanda abierta otra vez para compartir.');
+            listeners.forEach((fn) => { try { fn(); } catch (e) {} });
+        } catch (e) { shareError(e); }
+    }
+    window.KinoWaBatch = {
+        sync: syncChecks,
+        items: () => Array.from(sel.values()).map((it) => Object.assign({ status: statusOf(it.id) }, it)),
+        remove(id) { sel.delete(id); syncChecks(); },
+        move(id, delta) {
+            const arr = Array.from(sel.values());
+            const i = arr.findIndex((x) => x.id === id), j = i + delta;
+            if (i < 0 || j < 0 || j >= arr.length) return;
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+            sel = new Map(arr.map((x) => [x.id, x]));
+            tandaNum = 0; arr.forEach((x) => { x.wa = false; });
+            render();
+        },
+        retry(id) { const it = sel.get(id); if (it) { it.err = false; blobs.delete(id); msg(''); render(); } },
+        // Deja la primera foto de cada código (el resto se quita)
+        onePerCode() {
+            const seen = new Set();
+            Array.from(sel.values()).forEach((it) => { if (seen.has(it.sku)) sel.delete(it.id); else seen.add(it.sku); });
+            syncChecks();
+        },
+        clear() { sel.clear(); tandaNum = 0; msg(''); syncChecks(); },
+        last: () => last ? { count: last.ids.length, at: last.at, ready: last.ids.every((id) => loaded.has(id)) } : null,
+        resendLast,
+        onChange(fn) { listeners.push(fn); },
+    };
 
     function start() {
         const restored = sel.size;
-        if (!restored && !checks().length && !document.getElementById('searchResultsContainer')) return;
+        if (!restored && !checks().length && !document.getElementById('searchResultsContainer') && !document.getElementById('msList')) return;
         syncChecks();
-        if (restored) msg(`📌 ${restored} marcada${restored === 1 ? '' : 's'}: se mantienen al pasar de una página a otra.`);
+        if (restored && !document.getElementById('msList')) msg(`📌 ${restored} marcada${restored === 1 ? '' : 's'}: quedan guardadas en este dispositivo aunque cierres la página.`);
         const box = document.getElementById('searchResultsContainer');
         if (box && window.MutationObserver) {
             let t;
@@ -299,4 +363,6 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
     // Botón Atrás (la página vuelve tal cual estaba): traer lo marcado en las otras páginas
     window.addEventListener('pageshow', (e) => { if (e.persisted) { loadSel(); syncChecks(); } });
+    // Otra pestaña cambió la selección
+    window.addEventListener('storage', (e) => { if (e.key === STORE) { loadSel(); syncChecks(); } });
 })();

@@ -3199,3 +3199,78 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .search-actions { gap: 0.4rem; align-items: flex-start; }
     .qr-label { display: none; }
 }
+
+/* ============================================================
+   Mi selección (/mi-seleccion, etapa C) + enlace "👁 Ver" de la barra
+   ============================================================ */
+.wab-view {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--color-text);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.wa-toolbar-select small { font-weight: 400; color: var(--color-text-muted); }
+.ms-page .wab-bar .wa-toolbar-select, .ms-page .wab-view { display: none; }
+.ms-main [hidden] { display: none !important; }
+.ms-main { padding-top: 1.5rem; padding-bottom: 8rem; max-width: 760px; }
+.ms-title { font-size: 1.4rem; margin-bottom: 0.4rem; }
+.ms-title span { color: var(--color-text-muted); font-weight: 500; }
+.ms-help { color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1rem; }
+.ms-tools { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+.ms-last {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+}
+.ms-last small { display: block; color: var(--color-text-muted); margin-top: 0.15rem; }
+.ms-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
+.ms-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 0.4rem 0.5rem;
+}
+.ms-item.is-bad { border-color: var(--color-danger); }
+.ms-n { width: 1.6rem; text-align: center; color: var(--color-text-dim); font-size: 0.8rem; flex-shrink: 0; }
+.ms-item img { width: 56px; height: 56px; object-fit: contain; background: var(--color-text); border-radius: 8px; flex-shrink: 0; }
+.ms-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.85rem; }
+.ms-info strong { font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-st { font-size: 0.72rem; color: var(--color-text-muted); }
+.ms-ok { color: var(--color-success); }
+.ms-sent { color: var(--color-accent); }
+.ms-bad { color: var(--color-danger); font-weight: 700; }
+.ms-dup { color: var(--color-warning); }
+.ms-act { display: flex; gap: 0.25rem; flex-shrink: 0; }
+.ms-act button {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.ms-act button:disabled { opacity: 0.3; cursor: default; }
+.ms-empty { color: var(--color-text-muted); font-size: 0.9rem; }
+.ms-empty a { color: var(--color-primary); }
+@media (max-width: 400px) {
+    .ms-act button { width: 36px; }
+    .ms-item img { width: 48px; height: 48px; }
+}
+
