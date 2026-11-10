@@ -34,6 +34,19 @@ if ($cronToken !== '' && isset($_GET['token']) && hash_equals($cronToken, $_GET[
 
 $forceReassign = !empty($_GET['force']) || !empty($_POST['force']);
 
+// Un solo sync a la vez (hoja, Drive, cron, botón). Ocupado no es un error: no se guarda.
+if (!acquireSyncLock($db)) {
+    http_response_code(423);
+    echo json_encode(['ok' => false, 'busy' => true, 'error' => SYNC_BUSY_MESSAGE]);
+    exit;
+}
+// Error: se guarda con fecha (Admin → Sincronizar lo muestra) y se responde
+$fail = function (string $msg, array $extra = []) use ($db): void {
+    recordSyncStatus($db, 'drive', false, $msg);
+    echo json_encode(['ok' => false, 'error' => $msg] + $extra);
+    exit;
+};
+
 // Carpetas "archivado"/"desactivados" ocultas ya con el índice actual: no depende de que Drive responda
 DriveIndex::refreshFolderState($db);
 
@@ -42,13 +55,11 @@ $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
 
 $token = $drive->getValidToken($db);
 if (empty($token)) {
-    echo json_encode(['ok' => false, 'error' => 'No hay conexión a Google Drive.']);
-    exit;
+    $fail('No hay conexión a Google Drive (reconectar en Admin → Media).');
 }
 
 if (empty($rootFolderId)) {
-    echo json_encode(['ok' => false, 'error' => 'GOOGLE_DRIVE_FOLDER_ID no configurado.']);
-    exit;
+    $fail('GOOGLE_DRIVE_FOLDER_ID no configurado.');
 }
 
 // ============================================================
@@ -56,8 +67,7 @@ if (empty($rootFolderId)) {
 // ============================================================
 $indexStats = DriveIndex::sync($db, $drive, $rootFolderId);
 if (!$indexStats['ok']) {
-    echo json_encode(['ok' => false, 'error' => $indexStats['error'], 'index' => $indexStats]);
-    exit;
+    $fail($indexStats['error'], ['index' => $indexStats]);
 }
 
 // ============================================================
@@ -78,8 +88,7 @@ $folderState = DriveIndex::refreshFolderState($db);
 // ============================================================
 $link = DriveIndex::relink($db, $forceReassign);
 if (!$link['ok']) {
-    echo json_encode(['ok' => false, 'error' => 'No se pudo enlazar las fotos (¿faltan migraciones?).', 'index' => $indexStats]);
-    exit;
+    $fail('No se pudo enlazar las fotos (¿faltan migraciones?).', ['index' => $indexStats]);
 }
 $unmappedFiles = $link['unlinked'];
 $totalDriveFiles = $link['files'];
@@ -119,6 +128,13 @@ unset($_SESSION['media_linked_count_cache'], $_SESSION['media_linked_count_time'
 
 $remaining = $productsMissing;
 
+// Resumen corto con lo que cambió (Admin → Sincronizar lo muestra junto a la fecha)
+recordSyncStatus($db, 'drive', true,
+    "{$indexStats['files']} archivos en {$indexStats['folders']} carpetas · "
+    . "🆕 " . ($indexStats['added'] ?? 0) . " archivos nuevos · 🗑️ {$indexStats['removed']} quitados de Drive · "
+    . "⭐ {$assigned} portadas nuevas o corregidas · 🧹 {$coversCleared} quitadas · "
+    . "{$remaining} productos sin foto");
+
 echo json_encode([
     'ok' => true,
     'assigned' => $assigned,
@@ -137,6 +153,8 @@ echo json_encode([
     'unmapped_files' => $unmappedFiles,
     'covers_cleared' => $coversCleared,
     'message' => "🗂️ Índice de Drive: {$indexStats['files']} archivos en {$indexStats['folders']} carpetas"
+        . (!empty($indexStats['added']) ? ", {$indexStats['added']} nuevos" : '')
+        . ($indexStats['removed'] ? ", {$indexStats['removed']} quitados" : '')
         . ($indexStats['made_public'] ? ", {$indexStats['made_public']} hechos públicos" : '') . ". "
         . ($albumSync['added'] || $albumSync['deactivated']
             ? "📂 Álbumes: {$albumSync['added']} nuevos, {$albumSync['deactivated']} desactivados (ya no están en la carpeta raíz). "

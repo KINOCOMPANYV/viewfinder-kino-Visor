@@ -53,6 +53,7 @@ $rows = array_intersect_key($sheet['rows'], array_flip($skus));
 $notInSheet = array_values(array_diff($skus, array_keys($rows)));
 
 $db = getDB();
+acquireSyncLock($db, 120); // espera al sync en curso (si pasa el tiempo, sigue igual: no perder el cambio)
 try {
     $stats = MasterSheet::upsert($db, $rows);
     if ($notInSheet) {

@@ -26,6 +26,11 @@ $fail = function (string $msg, int $code) use ($db, $dryRun): void {
     jsonResponse(['error' => $msg], $code);
 };
 
+// Un solo sync a la vez (la vista previa no escribe, no lo necesita). Ocupado no es un error: no se guarda.
+if (!$dryRun && !acquireSyncLock($db)) {
+    jsonResponse(['error' => SYNC_BUSY_MESSAGE, 'busy' => true], 423);
+}
+
 try {
     $sheet = MasterSheet::parse(MasterSheet::fetchCsv());
 } catch (RuntimeException $e) {

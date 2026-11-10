@@ -55,7 +55,7 @@ class DriveIndex
     {
         // Con microsegundos: dos syncs en el mismo segundo no deben confundirse al borrar
         $startedAt = $db->query("SELECT NOW(6)")->fetchColumn();
-        $stats = ['ok' => true, 'files' => 0, 'folders' => 0, 'removed' => 0, 'made_public' => 0, 'api_calls' => 0];
+        $stats = ['ok' => true, 'files' => 0, 'folders' => 0, 'added' => 0, 'removed' => 0, 'made_public' => 0, 'api_calls' => 0];
 
         $albumOf = [$rootFolderId => null]; // carpeta → álbum (carpeta de primer nivel)
         $level = [$rootFolderId];
@@ -114,6 +114,7 @@ class DriveIndex
             return ['ok' => false, 'error' => 'La carpeta raíz de Drive aparece vacía; no se tocó el índice. Revisa GOOGLE_DRIVE_FOLDER_ID y los permisos.'] + $stats;
         }
 
+        $before = (int) $db->query("SELECT COUNT(*) FROM drive_index WHERE is_folder = 0")->fetchColumn();
         foreach (array_chunk($rows, 500) as $chunk) {
             $db->prepare(
                 "INSERT INTO drive_index (file_id, name, name_stem, mime_type, is_folder, parent_id, album_id, size, synced_at)
@@ -123,6 +124,9 @@ class DriveIndex
                     size = VALUES(size), synced_at = VALUES(synced_at)"
             )->execute(array_merge(...$chunk));
         }
+
+        // Nuevos = filas que no existían (antes de borrar lo que ya no está)
+        $stats['added'] = max(0, (int) $db->query("SELECT COUNT(*) FROM drive_index WHERE is_folder = 0")->fetchColumn() - $before);
 
         // Lo que no apareció en este recorrido ya no está en la carpeta raíz
         $del = $db->prepare("DELETE FROM drive_index WHERE synced_at < ?");

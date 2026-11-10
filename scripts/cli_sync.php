@@ -24,6 +24,7 @@ $step = $argv[1] ?? '';
 if ($step === 'carpetas') {
     require_once __DIR__ . '/../src/services/DriveIndex.php';
     $db = getDB();
+    acquireSyncLock($db, 600); // si hay otro sync corriendo, esperar a que termine
     $s = DriveIndex::refreshFolderState($db);
     $link = $s['product_covers_cleared'] ? DriveIndex::relink($db) : null;
     echo '[' . date('Y-m-d H:i:s') . '] Sincronizar carpetas: ' . json_encode($s + ['relinked' => (bool) $link]) . "\n";

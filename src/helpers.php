@@ -20,6 +20,24 @@ function recordSyncStatus(PDO $db, string $name, bool $ok, string $message): voi
 }
 
 /**
+ * Candado único de sincronización (hoja, Drive y webhook): evita que dos procesos recalculen productos,
+ * familias y portadas a la vez. GET_LOCK de MySQL: se suelta solo cuando termina la petición o el proceso.
+ * $waitSeconds = 0 → no espera (el botón avisa "ya está corriendo").
+ */
+function acquireSyncLock(PDO $db, int $waitSeconds = 0): bool
+{
+    try {
+        $st = $db->prepare("SELECT GET_LOCK('vf_sync', ?)");
+        $st->execute([$waitSeconds]);
+        return (bool) $st->fetchColumn();
+    } catch (\Throwable $e) {
+        return true; // sin candado antes que sin sincronización
+    }
+}
+
+const SYNC_BUSY_MESSAGE = 'Ya hay una sincronización corriendo (hoja o Drive: automática, cron o desde otro equipo). Espera uno o dos minutos y vuelve a intentar.';
+
+/**
  * Devuelve JSON y termina la ejecución.
  */
 function jsonResponse(array $data, int $code = 200): void
