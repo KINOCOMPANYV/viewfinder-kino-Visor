@@ -151,3 +151,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   contacto opcional; muestra siempre la foto vigente; actualizar/desactivar solo desde el dispositivo que lo creó.
 - #43: una tarjeta por referencia (sin tira de variantes) en inicio, búsqueda y autocompletar; búsqueda con el código exacto
   primero (con o sin "M") y sus carpetas debajo.
+- #44: fotos que se iban a un código oculto escrito igual al archivo (p. ej. "M8291-1-A.jpg" → producto viejo oculto "M8291-1"
+  en vez del visible "M:8291-1"). Ahora en el enlace gana el producto visible. La regla de nombres no cambió.

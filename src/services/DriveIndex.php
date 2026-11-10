@@ -176,7 +176,7 @@ class DriveIndex
         $names = skuNameVariants($sku);
         if (!$names) return $sku;
         $stmt = $db->prepare("SELECT sku FROM products WHERE sku IN (" . implode(',', array_fill(0, count($names), '?')) . ")
-                              ORDER BY sku = ? DESC, archived ASC LIMIT 1");
+                              ORDER BY archived ASC, sku = ? DESC LIMIT 1");
         $stmt->execute(array_merge($names, [$sku]));
         return $stmt->fetchColumn() ?: $sku;
     }
@@ -216,7 +216,7 @@ class DriveIndex
         $stats = ['ok' => false, 'files' => 0, 'linked' => 0, 'family' => 0, 'unlinked' => [], 'drive_products' => 0,
                   'covers_set' => 0, 'covers_cleared' => 0, 'without_photo' => 0, 'album_of' => []];
         if (!self::isReady($db)) return $stats;
-        $productsSql = "SELECT id, sku, parent_sku, cover_image_url, in_sheet, from_drive FROM products ORDER BY archived ASC, id ASC";
+        $productsSql = "SELECT id, sku, parent_sku, cover_image_url, in_sheet, from_drive, archived FROM products ORDER BY archived ASC, id ASC";
         try {
             // Todos los productos (también los ocultos): así la foto de uno desactivado no se
             // le pega a otro código más corto. Los visibles ganan si dos códigos chocan.
@@ -321,7 +321,13 @@ class DriveIndex
      */
     private static function matchFiles(array $products, array $files): array
     {
-        $productIndex = skuMatchIndex(array_column($products, 'sku'));
+        // Los visibles primero: un código oculto escrito igual al archivo ("M8291-1", sobra de un
+        // producto "solo Drive" viejo) no le quita las fotos al visible ("M:8291-1").
+        $visible = $hidden = [];
+        foreach ($products as $p) {
+            if ((int) ($p['archived'] ?? 0)) $hidden[] = $p['sku']; else $visible[] = $p['sku'];
+        }
+        $productIndex = skuMatchIndex($visible) + skuMatchIndex($hidden);
         $parentOf = array_column($products, 'parent_sku', 'sku');
 
         // Bases de familia que no son un producto ("993" para 993-1…993-4)
