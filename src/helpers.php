@@ -262,6 +262,24 @@ function skuSearchNorm(string $text): string
 }
 
 /**
+ * Formas normalizadas (skuSearchNorm) con las que un código buscado cuenta como EXACTO.
+ * "M", "M:" y "M-" son el mismo código: "8363-3" también es exacto para "M:8363-3" y al revés.
+ * @return string[]
+ */
+function skuExactForms(string $q): array
+{
+    $n = skuSearchNorm(preg_replace('/\.\w{2,4}$/i', '', trim($q)));
+    if ($n === '') return [];
+    $forms = [$n];
+    if (preg_match('/^m(\d.*)$/i', $n, $m)) {
+        $forms[] = $m[1];
+    } elseif (preg_match('/^\d/', $n)) {
+        $forms[] = 'M' . $n;
+    }
+    return $forms;
+}
+
+/**
  * Opciones de los filtros de la búsqueda: solo valores con datos suficientes (5+ productos visibles).
  * @return array{brands: string[], categories: string[], prices: bool}
  */

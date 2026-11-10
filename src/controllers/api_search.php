@@ -15,14 +15,15 @@ $db = getDB();
 // Buscar por SKU exacto primero, luego LIKE, luego FULLTEXT
 $results = [];
 
-// 1) Match exacto de SKU
+// 1) Match exacto de SKU ("8363-3" = "M:8363-3")
+$exactForms = skuExactForms($qCleanForSku) ?: [''];
+$exactPh = implode(',', array_fill(0, count($exactForms), '?'));
 $stmt = $db->prepare(
     "SELECT sku, name, category, cover_image_url, parent_sku FROM products 
-     WHERE archived = 0 AND " . skuSearchSql('sku') . " = ? 
-     LIMIT 1"
+     WHERE archived = 0 AND " . skuSearchSql('sku') . " IN ($exactPh)
+     LIMIT 3"
 );
-$exactMatchNoDash = skuSearchNorm($qCleanForSku);
-$stmt->execute([$exactMatchNoDash]);
+$stmt->execute($exactForms);
 $exact = $stmt->fetchAll();
 
 // 2) LIKE parcial (SKU, nombre o carpeta) multipalabra
@@ -36,44 +37,42 @@ if (empty($words)) {
     foreach ($words as $word) {
         $wordEscaped = addcslashes($word, '%_');
         $wordLike = "%{$wordEscaped}%";
-        $wordNoDash = skuSearchNorm($word);
-        $wordNoDashEscaped = addcslashes($wordNoDash, '%_');
-        $wordLikeNoDash = "%{$wordNoDashEscaped}%";
+        $skuOr = [];
+        foreach (skuExactForms($word) as $form) {
+            $skuOr[] = skuSearchSql('p.sku') . " LIKE ?";
+            $params[] = '%' . addcslashes($form, '%_') . '%';
+        }
 
-        $whereParts[] = "(" . skuSearchSql('p.sku') . " LIKE ? OR p.name LIKE ? OR p.category LIKE ?)";
-        $params[] = $wordLikeNoDash;
+        $whereParts[] = "(" . implode(' OR ', $skuOr ?: ['0']) . " OR p.name LIKE ? OR p.category LIKE ?)";
         $params[] = $wordLike;
         $params[] = $wordLike;
     }
 }
 $whereSql = implode(' AND ', $whereParts);
-$params[] = $qCleanForSku; // for p.sku != ?
 
 $stmt = $db->prepare(
     "SELECT p.sku, p.name, p.category, p.cover_image_url, p.parent_sku 
      FROM products p
      WHERE p.archived = 0 
        AND ($whereSql)
-       AND " . skuSearchSql('p.sku') . " != ?
-     ORDER BY p.sku ASC 
+       AND " . skuSearchSql('p.sku') . " NOT IN ($exactPh)
+     ORDER BY CASE WHEN " . implode(' OR ', array_fill(0, count($exactForms), skuSearchSql('p.sku') . ' LIKE ?')) . " THEN 0 ELSE 1 END,
+        p.sku ASC
      LIMIT 30"
 );
-// El último parametro es el qCleanForSku sin guiones para evitar duplicar el match exacto
-$params[count($params)-1] = $exactMatchNoDash;
+$params = array_merge($params, $exactForms, array_map(fn($f) => addcslashes($f, '%_') . '%', $exactForms));
 
 $stmt->execute($params);
 $partial = $stmt->fetchAll();
 
 $results = array_merge($exact, $partial);
 
-// Eliminar duplicados por Familia (parent_sku)
+// Una fila por referencia (código); las variantes salen cada una con su código
 $seen = [];
 $unique = [];
 foreach ($results as $r) {
-    $family = !empty($r['parent_sku']) ? $r['parent_sku'] : extractRootSku($r['sku']);
-    
-    if (!isset($seen[$family])) {
-        $seen[$family] = true;
+    if (!isset($seen[$r['sku']])) {
+        $seen[$r['sku']] = true;
         $unique[] = $r;
     }
 }
