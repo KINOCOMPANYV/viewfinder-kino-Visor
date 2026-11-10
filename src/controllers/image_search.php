@@ -22,12 +22,21 @@ if (!$info || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP
 }
 
 try {
-    $results = ImageSearch::search(getDB(), $bytes, 30);
+    $found = ImageSearch::search(getDB(), $bytes, 30);
 } catch (\Throwable $e) {
     error_log('[buscar-foto] ' . $e->getMessage());
     jsonResponse(['error' => 'No se pudo analizar la foto ahora. Intenta en un momento.'], 502);
 }
-if (!$results) {
-    jsonResponse(['results' => [], 'note' => 'Todavía no hay fotos del catálogo preparadas para comparar.']);
+$p = $found['progress'];
+$resp = ['results' => $found['results']];
+// Mientras se preparan las fotos del catálogo (primera vez: unas horas) se avisa cuántas están listas
+if ($p['indexadas'] < $p['fotos']) {
+    $resp['progress'] = $p;
 }
-jsonResponse(['results' => $results]);
+if (!$found['results']) {
+    $fmt = fn(int $n) => number_format($n, 0, ',', '.');
+    $resp['note'] = $p['indexadas'] === 0
+        ? 'Estamos preparando las fotos del catálogo para comparar (0 de ' . $fmt($p['fotos']) . ' listas). Prueba de nuevo en unos minutos.'
+        : 'No se encontraron productos parecidos.';
+}
+jsonResponse($resp);

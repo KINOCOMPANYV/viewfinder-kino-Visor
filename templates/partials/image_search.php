@@ -114,7 +114,12 @@ if ($imgSearchPart === 'button'): ?>
                 status.textContent = data.note || 'No se encontraron productos parecidos.';
                 return;
             }
-            status.textContent = 'Los más parecidos primero (' + items.length + '). Toca uno para abrirlo.';
+            let msg = 'Los más parecidos primero (' + items.length + '). Toca uno para abrirlo.';
+            if (data.progress) {
+                const n = v => Number(v).toLocaleString('es-CO');
+                msg += ' Aún se están preparando fotos del catálogo (' + n(data.progress.indexadas) + ' de ' + n(data.progress.fotos) + ' listas): puede faltar alguno.';
+            }
+            status.textContent = msg;
             grid.innerHTML = items.map(p =>
                 '<a class="imgs-card" href="' + esc(p.url) + '">' +
                 '<img src="' + esc(p.thumb) + '" alt="' + esc(p.sku) + '" loading="lazy">' +

@@ -12,6 +12,7 @@ class ImageSearch
     public const MODEL = 'jina-clip-v2';
     public const DIM = 512;
     private const API = 'https://api.jina.ai/v1/embeddings';
+    private const STATUS_FILE = BASE_DIR . '/storage/image_index_status.json';
     private const BATCH = 8; // 8 fotos de 512 px ≈ 32 000 tokens por llamada
 
     public static function enabled(): bool
@@ -219,16 +220,13 @@ class ImageSearch
     }
 
     /**
-     * Productos visibles más parecidos a la foto subida (bytes).
-     * @return array<int, array{sku: string, name: string, thumb: string, score: float}>
+     * Productos visibles más parecidos a la foto subida (bytes), y cuántas portadas ya se pueden comparar.
+     * Si todavía no hay ninguna lista, no llama a Jina (no gasta tokens).
+     * @return array{results: array<int, array{sku: string, url: string, name: string, thumb: string, score: float}>,
+     *               progress: array{fotos: int, indexadas: int}}
      */
     public static function search(PDO $db, string $imageBytes, int $limit = 30): array
     {
-        $q = self::embedImages([$imageBytes])[0] ?? [];
-        if (!$q) {
-            throw new RuntimeException('Respuesta inesperada del modelo');
-        }
-
         // Portada → productos visibles que la usan (una foto de familia puede ser de varios códigos)
         $byFile = [];
         $rows = $db->query("SELECT sku, name, cover_image_url FROM products WHERE archived = 0 AND cover_image_url > ''")->fetchAll(PDO::FETCH_ASSOC);
@@ -238,20 +236,30 @@ class ImageSearch
                 $byFile[$id][] = $r;
             }
         }
-
-        $scores = [];
+        $vectors = [];
         $st = $db->query("SELECT file_id, embedding FROM image_embeddings WHERE embedding IS NOT NULL");
         while ($row = $st->fetch(PDO::FETCH_NUM)) {
-            if (!isset($byFile[$row[0]])) {
-                continue;
+            if (isset($byFile[$row[0]])) {
+                $vectors[$row[0]] = $row[1];
             }
-            $v = unpack('g*', $row[1]);
+        }
+        $progress = ['fotos' => count($byFile), 'indexadas' => count($vectors)];
+        if (!$vectors) {
+            return ['results' => [], 'progress' => $progress];
+        }
+
+        $q = self::embedImages([$imageBytes])[0] ?? [];
+        if (!$q) {
+            throw new RuntimeException('Respuesta inesperada del modelo');
+        }
+        $scores = [];
+        foreach ($vectors as $fileId => $packed) {
             $dot = 0.0;
             $i = 0;
-            foreach ($v as $x) {
+            foreach (unpack('g*', $packed) as $x) {
                 $dot += $x * $q[$i++];
             }
-            $scores[$row[0]] = $dot;
+            $scores[$fileId] = $dot;
         }
         arsort($scores);
 
@@ -266,10 +274,24 @@ class ImageSearch
                     'score' => round($score, 3),
                 ];
                 if (count($out) >= $limit) {
-                    return $out;
+                    break 2;
                 }
             }
         }
-        return $out;
+        return ['results' => $out, 'progress' => $progress];
+    }
+
+    /** Última vuelta del indexado (la escribe cli_sync.php imagenes; el admin la muestra). */
+    public static function lastRun(): ?array
+    {
+        $raw = @file_get_contents(self::STATUS_FILE);
+        $data = $raw ? json_decode($raw, true) : null;
+        return is_array($data) ? $data : null;
+    }
+
+    public static function saveLastRun(array $result): void
+    {
+        @mkdir(dirname(self::STATUS_FILE), 0775, true);
+        @file_put_contents(self::STATUS_FILE, json_encode($result + ['at' => date('Y-m-d H:i:s')], JSON_UNESCAPED_UNICODE));
     }
 }
