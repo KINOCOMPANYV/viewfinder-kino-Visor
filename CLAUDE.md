@@ -24,7 +24,7 @@ Si cambias cómo funciona algo, actualiza también `docs/ARQUITECTURA.md`. Mant�
 - Variantes: `products.parent_sku` (familia). Raíz: `getFamilyRootSku()` → `extractRootSku()`.
 - Datos de productos: hoja maestra (`MasterSheet`) + productos "Solo Drive" (`from_drive`, `DRIVE_PRODUCTS=0` los apaga).
   Activar/desactivar: SOLO el admin (`is_active`).
-  Público = `archived = 0` (lo calcula `refreshProductVisibility()`). No se borran productos.
+  Público = `archived = 0 AND cover_image_url > ''` (archived lo calcula `refreshProductVisibility()`; sin portada no se muestra). No se borran productos.
 - Carpetas ocultas: `folder_settings` → `drive_index.is_hidden` (y `cover_file_id`) vía `DriveIndex::refreshFolderState()`.
 
 ## Archivos grandes (no leer enteros si no hace falta)

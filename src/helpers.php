@@ -286,14 +286,14 @@ function skuExactForms(string $q): array
 function searchFilterOptions(PDO $db): array
 {
     $pick = fn(string $col) => $db->query(
-        "SELECT $col FROM products WHERE archived = 0 AND $col IS NOT NULL AND TRIM($col) <> ''
+        "SELECT $col FROM products WHERE archived = 0 AND cover_image_url > '' AND $col IS NOT NULL AND TRIM($col) <> ''
          GROUP BY $col HAVING COUNT(*) >= 5 ORDER BY $col"
     )->fetchAll(PDO::FETCH_COLUMN);
     $categories = $pick('category');
     return [
         'brands' => $pick('brand'),
         'categories' => count($categories) >= 2 ? $categories : [],
-        'prices' => (int) $db->query("SELECT COUNT(*) FROM products WHERE archived = 0 AND price_suggested > 0")->fetchColumn() >= 20,
+        'prices' => (int) $db->query("SELECT COUNT(*) FROM products WHERE archived = 0 AND cover_image_url > '' AND price_suggested > 0")->fetchColumn() >= 20,
     ];
 }
 
@@ -312,7 +312,7 @@ function searchSuggestions(PDO $db, string $q, int $limit = 6): array
     $max = $len <= 4 ? 1 : 2;
 
     $best = []; // familia → [distancia, fila]
-    $rows = $db->query("SELECT sku, name, parent_sku, cover_image_url FROM products WHERE archived = 0")->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $db->query("SELECT sku, name, parent_sku, cover_image_url FROM products WHERE archived = 0 AND cover_image_url > ''")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($rows as $r) {
         $c = strtolower(skuSearchNorm($r['sku']));
         if ($c === '' || abs(strlen($c) - $len) > 6) continue;

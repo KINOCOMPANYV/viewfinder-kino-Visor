@@ -62,7 +62,7 @@ if ($isMultiCode && $q !== '') {
 
 if ($q === '' && !$isMultiCode) {
     // Sin query: mostrar todos
-    $where = "p.archived = 0" . $filterSql;
+    $where = "p.archived = 0 AND p.cover_image_url > ''" . $filterSql;
     $params = $filterParams;
 
     $countStmt = $db->prepare("SELECT COUNT(*) FROM products p WHERE $where");
@@ -87,7 +87,7 @@ if ($q === '' && !$isMultiCode) {
         $conditions[] = "sku LIKE ?";
         $params[] = $codeClean . '%';
     }
-    $whereMulti = "archived = 0 AND (" . implode(' OR ', $conditions) . ")" . $filterSql;
+    $whereMulti = "archived = 0 AND cover_image_url > '' AND (" . implode(' OR ', $conditions) . ")" . $filterSql;
     $params = array_merge($params, $filterParams);
     
     $countStmt = $db->prepare(
@@ -118,7 +118,7 @@ if ($q === '' && !$isMultiCode) {
     $paramsBase = [];
     
     if (empty($words)) {
-        $whereSimple = "p.archived = 0";
+        $whereSimple = "p.archived = 0 AND p.cover_image_url > ''";
     } else {
         foreach ($words as $word) {
             $wordEscaped = addcslashes($word, '%_');
@@ -136,7 +136,7 @@ if ($q === '' && !$isMultiCode) {
             $paramsBase[] = $wordLike;
             $paramsBase[] = $wordLike;
         }
-        $whereSimple = "p.archived = 0 AND (" . implode(' AND ', $whereSimpleParts) . ")";
+        $whereSimple = "p.archived = 0 AND p.cover_image_url > '' AND (" . implode(' AND ', $whereSimpleParts) . ")";
     }
     $whereSimple .= $filterSql;
     $paramsBase = array_merge($paramsBase, $filterParams);

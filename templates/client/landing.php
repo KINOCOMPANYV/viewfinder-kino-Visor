@@ -223,7 +223,7 @@
             $skuRows = $db->query(
                 "SELECT sku, parent_sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
                  FROM products 
-                 WHERE archived = 0 
+                 WHERE archived = 0 AND cover_image_url > '' 
                  {$orderClause}"
             )->fetchAll();
             $totalSkus = count($skuRows); // códigos visibles (cada variante cuenta)

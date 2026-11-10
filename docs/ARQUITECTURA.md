@@ -105,7 +105,7 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - El sync completo marca `in_sheet = 0` lo que ya no está en la hoja (no borra). Si iba a ocultar más de la mitad, pide confirmar.
 - **Activar/desactivar es solo del admin** (`is_active`); la hoja nunca lo cambia. No hay borrado de productos.
 - `refreshProductVisibility()` (helpers) recalcula `archived = NOT (is_active AND (in_sheet OR from_drive))`; todas las páginas públicas
-  filtran por `archived = 0`. La ficha de un producto oculto da 404 (salvo al admin).
+  filtran por `archived = 0 AND cover_image_url > ''` (sin foto/video no se muestra; 2026-11-10). La ficha de un producto oculto da 404 (salvo al admin).
 
 ## Carpetas: ocultar y portada
 - El admin apaga una carpeta en **Admin → Carpetas** → `folder_settings.hidden = 1` (en una de primer nivel también `albums.is_active = 0`).

@@ -20,7 +20,7 @@ $exactForms = skuExactForms($qCleanForSku) ?: [''];
 $exactPh = implode(',', array_fill(0, count($exactForms), '?'));
 $stmt = $db->prepare(
     "SELECT sku, name, category, cover_image_url, parent_sku FROM products 
-     WHERE archived = 0 AND " . skuSearchSql('sku') . " IN ($exactPh)
+     WHERE archived = 0 AND cover_image_url > '' AND " . skuSearchSql('sku') . " IN ($exactPh)
      LIMIT 3"
 );
 $stmt->execute($exactForms);
@@ -53,7 +53,7 @@ $whereSql = implode(' AND ', $whereParts);
 $stmt = $db->prepare(
     "SELECT p.sku, p.name, p.category, p.cover_image_url, p.parent_sku 
      FROM products p
-     WHERE p.archived = 0 
+     WHERE p.archived = 0 AND p.cover_image_url > '' 
        AND ($whereSql)
        AND " . skuSearchSql('p.sku') . " NOT IN ($exactPh)
      ORDER BY CASE WHEN " . implode(' OR ', array_fill(0, count($exactForms), skuSearchSql('p.sku') . ' LIKE ?')) . " THEN 0 ELSE 1 END,

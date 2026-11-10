@@ -55,7 +55,7 @@ if (!$product) {
     $skuDigits = preg_replace('/[^a-zA-Z0-9]/', '', $sku);
     if (strlen($skuDigits) >= 3) {
         $stmt = $db->prepare(
-            "SELECT * FROM products WHERE archived = 0 AND REPLACE(REPLACE(sku, '-', ''), '.', '') LIKE ? ORDER BY sku ASC LIMIT 1"
+            "SELECT * FROM products WHERE archived = 0 AND cover_image_url > '' AND REPLACE(REPLACE(sku, '-', ''), '.', '') LIKE ? ORDER BY sku ASC LIMIT 1"
         );
         $stmt->execute([$skuDigits . '%']);
         $product = $stmt->fetch();
@@ -65,7 +65,7 @@ if (!$product) {
 if (!$product) {
     // 4) Último intento: búsqueda LIKE directa por SKU
     $stmt = $db->prepare(
-        "SELECT * FROM products WHERE archived = 0 AND sku LIKE ? ORDER BY sku ASC LIMIT 1"
+        "SELECT * FROM products WHERE archived = 0 AND cover_image_url > '' AND sku LIKE ? ORDER BY sku ASC LIMIT 1"
     );
     $stmt->execute([$sku . '%']);
     $product = $stmt->fetch();
@@ -74,14 +74,15 @@ if (!$product) {
 if (!$product) {
     // 5) Buscar con guion (root sin producto propio, ej: 1555 → 1555-1)
     $stmt = $db->prepare(
-        "SELECT * FROM products WHERE archived = 0 AND sku LIKE ? ORDER BY sku ASC LIMIT 1"
+        "SELECT * FROM products WHERE archived = 0 AND cover_image_url > '' AND sku LIKE ? ORDER BY sku ASC LIMIT 1"
     );
     $stmt->execute([$sku . '-%']);
     $product = $stmt->fetch();
 }
 
-// Desactivado en el admin o fuera de la hoja maestra: no se muestra al público
-if ($product && !empty($product['archived']) && !isAdminLoggedIn()) {
+// Desactivado en el admin, fuera de la hoja maestra o sin foto/video en PRODUCTOS: no se muestra al público
+// (decisión del dueño 2026-11-10: sin foto no se muestra; aparece solo cuando llega su foto)
+if ($product && (!empty($product['archived']) || (string) $product['cover_image_url'] === '') && !isAdminLoggedIn()) {
     $product = null;
 }
 
@@ -174,7 +175,7 @@ try {
     $varStmt = $db->prepare(
         "SELECT id, sku, name, color, parent_sku, cover_image_url
          FROM products
-         WHERE archived = 0 AND (" . implode(' OR ', $conds) . ")
+         WHERE archived = 0 AND cover_image_url > '' AND (" . implode(' OR ', $conds) . ")
          ORDER BY sku ASC LIMIT 200"
     );
     $varStmt->execute($params);
