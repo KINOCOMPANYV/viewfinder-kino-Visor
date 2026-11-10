@@ -67,7 +67,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
 - Se guardan **en este dispositivo** (se dice claro en pantalla). Si un código ya no está visible, se marca.
 - Prueba: guardar 2 catálogos, cerrar, abrir uno, quitarle una foto y actualizarlo.
 
-### F. Fotos con código y precio (idea 11)
+### F. Fotos con código (idea 11) — ✅ hecha (#42), sin precio por decisión del dueño
 - Antes de guardar/enviar, elegir: foto sola / con código / con código + precio sugerido / con precio propio.
 - Vista previa de 1 foto; se generan en el celular (canvas), con un diseño legible y uniforme.
 - Opcional en una segunda parte: nombre, logo y contacto del distribuidor (guardados en el dispositivo).

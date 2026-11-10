@@ -32,6 +32,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Sync automático** en cada deploy y cada hora (`scripts/sync_loop.sh`); `AUTO_SYNC=0` lo apaga.
 - **WhatsApp = imágenes** (2026-11-09): los envíos mandan solo fotos, nunca la lista en texto. Una foto sola lleva su código
   como pie; en tandas no va texto (WhatsApp no deja un pie distinto por foto).
+- **Fotos con código, sin precio** (2026-11-10): el material que se arma lleva el código; el precio no se pone por ahora.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -135,3 +136,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Se dejan: `media_search_cache`/`drive_cache` (los usa el camino de respaldo y la visibilidad) y las tablas viejas sin código.
 - #42 (etapa E): catálogos guardados en el dispositivo dentro de Mi selección (guardar como, abrir, actualizar, duplicar,
   renombrar, borrar); avisa cuántas fotos de cada catálogo ya no están (`/api/fotos-vigentes`).
+- #42 (etapa F): "Cómo salen las fotos" en Mi selección: foto sola o con su código abajo (se arma en el celular), con vista
+  previa; vale para Guardar y Enviar por tandas. Precio: no por ahora (decisión del dueño 2026-11-10).

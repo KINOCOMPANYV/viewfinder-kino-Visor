@@ -139,7 +139,31 @@
     });
     window.addEventListener('storage', (e) => { if (e.key === CKEY) drawCats(); });
 
-    W.onChange(() => { draw(); $('msSaveAs').disabled = !W.items().length; });
+    // ---- Cómo salen las fotos (etapa F): foto sola o con su código; vista previa con la primera foto lista ----
+    let prevKey = '', prevUrl = '';
+    async function drawLook() {
+        const items = W.items();
+        $('msLook').hidden = !items.length;
+        document.querySelectorAll('input[name=msLabel]').forEach((r) => { r.checked = r.value === W.label(); });
+        const first = items.find((x) => x.status === 'ready' || x.status === 'sent') || items.find((x) => x.status !== 'error');
+        if (!first) return;
+        const key = first.id + '|' + W.label();
+        if (key === prevKey) return;
+        prevKey = key;
+        $('msPrevMsg').textContent = 'Preparando vista previa…';
+        try {
+            const b = await W.preview(first.id);
+            if (key !== prevKey || !b) return;
+            if (prevUrl) URL.revokeObjectURL(prevUrl);
+            prevUrl = URL.createObjectURL(b);
+            $('msPrev').src = prevUrl;
+            $('msPrevMsg').textContent = '';
+        } catch (e) { prevKey = ''; $('msPrevMsg').textContent = 'No se pudo preparar la vista previa.'; }
+    }
+    document.querySelectorAll('input[name=msLabel]').forEach((r) => r.addEventListener('change', () => W.setLabel(r.value)));
+
+    W.onChange(() => { draw(); drawLook(); $('msSaveAs').disabled = !W.items().length; });
+    drawLook();
     draw();
     drawCats();
     checkGone();

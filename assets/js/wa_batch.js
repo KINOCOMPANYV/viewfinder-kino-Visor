@@ -86,8 +86,31 @@
     }
     const ext = (type) => type.includes('png') ? 'png' : type.includes('webp') ? 'webp' : 'jpg';
     const safe = (s) => String(s).replace(/[^\w.-]+/g, '_');
+    // ---- Fotos con código (etapa F): se dibuja el código en una franja blanca abajo, en el celular (canvas) ----
+    // Preferencia del dispositivo: 'none' (foto sola) o 'code'. Se aplica al Guardar y al Enviar por tandas.
+    const LKEY = 'kinoWaLabel';
+    let labelMode = (() => { try { return store.getItem(LKEY) === 'code' ? 'code' : 'none'; } catch (e) { return 'none'; } })();
+    async function withCode(blob, code) {
+        const img = await createImageBitmap(blob);
+        const w = img.width, h = img.height;
+        const band = Math.max(48, Math.round(Math.min(w, h) * 0.12));
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h + band;
+        const g = c.getContext('2d');
+        g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0);
+        g.fillStyle = '#111111';
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        let size = Math.round(band * 0.55);
+        g.font = `700 ${size}px Inter, Arial, sans-serif`;
+        while (size > 12 && g.measureText(code).width > w * 0.92) { size -= 2; g.font = `700 ${size}px Inter, Arial, sans-serif`; }
+        g.fillText(code, w / 2, h + band / 2);
+        if (img.close) img.close();
+        return await new Promise((ok, bad) => c.toBlob((b) => b ? ok(b) : bad(new Error('no se pudo generar la imagen')), 'image/jpeg', 0.9));
+    }
     async function toFile(it) {
-        const b = await getBlob(it.id);
+        let b = await getBlob(it.id);
+        if (labelMode === 'code') b = await withCode(b, it.sku);
         return new File([b], safe(it.sku) + '.' + ext(b.type), { type: b.type || 'image/jpeg' });
     }
 
@@ -274,7 +297,8 @@
         for (let i = 0; i < items.length; i++) {
             btn.textContent = `💾 ${i + 1}/${items.length}…`;
             try {
-                const b = await getBlob(items[i].id);
+                let b = await getBlob(items[i].id);
+                if (labelMode === 'code') b = await withCode(b, items[i].sku);
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(b);
                 a.download = safe(items[i].sku) + '.' + ext(b.type);
@@ -353,6 +377,15 @@
         last: () => last ? { count: last.ids.length, at: last.at, ready: last.ids.every((id) => loaded.has(id)) } : null,
         resendLast,
         onChange(fn) { listeners.push(fn); },
+        label: () => labelMode,
+        setLabel(m) { labelMode = m === 'code' ? 'code' : 'none'; try { store.setItem(LKEY, labelMode); } catch (e) {} listeners.forEach((fn) => { try { fn(); } catch (e) {} }); },
+        // Vista previa: la foto ya preparada como saldrá (blob), o null si aún no baja
+        async preview(id) {
+            const it = sel.get(id);
+            if (!it) return null;
+            const b = await getBlob(id);
+            return labelMode === 'code' ? withCode(b, it.sku) : b;
+        },
     };
 
     function start() {

@@ -32,6 +32,16 @@
             dispositivo</strong> (siguen aquí si cierras la página), no en otros celulares.</p>
 
 
+        <section class="ms-look" id="msLook" hidden>
+            <h2>🖼️ Cómo salen las fotos</h2>
+            <div class="ms-look-opts" role="radiogroup">
+                <label><input type="radio" name="msLabel" value="none"> Foto sola</label>
+                <label><input type="radio" name="msLabel" value="code"> Foto con su código abajo</label>
+            </div>
+            <div class="ms-look-prev"><img id="msPrev" alt="Vista previa"><span id="msPrevMsg">Preparando vista previa…</span></div>
+            <small>Se aplica al 💾 Guardar y al 📲 Enviar por tandas. Se arma en este celular.</small>
+        </section>
+
         <div class="ms-last" id="msLast" hidden></div>
 
         <div class="ms-tools" id="msTools" hidden>

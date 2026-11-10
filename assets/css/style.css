@@ -2971,3 +2971,15 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .ms-cats-bottom { margin-top: 1.25rem; }
 .ms-cat-empty { color: var(--color-text-muted); font-size: 0.82rem; }
 
+/* Cómo salen las fotos (etapa F) */
+.ms-look { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 0.9rem 1rem; margin-bottom: 1rem; }
+.ms-look h2 { font-size: 1rem; margin-bottom: 0.5rem; }
+.ms-look-opts { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; margin-bottom: 0.6rem; font-size: 0.9rem; }
+.ms-look-opts label { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 36px; cursor: pointer; }
+.ms-look-opts input { accent-color: var(--color-primary); width: 18px; height: 18px; }
+.ms-look-prev { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.4rem; }
+.ms-look-prev img { width: 140px; max-height: 180px; object-fit: contain; background: var(--color-text); border-radius: 8px; }
+.ms-look-prev img:not([src]) { display: none; }
+.ms-look-prev span { color: var(--color-text-muted); font-size: 0.8rem; }
+.ms-look small { color: var(--color-text-muted); font-size: 0.75rem; }
+
