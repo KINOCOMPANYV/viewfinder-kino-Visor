@@ -228,74 +228,30 @@
             )->fetchAll();
             $totalSkus = count($skuRows); // códigos visibles (cada variante cuenta)
 
-            // Agrupar SKUs por familia
-            $familyMap = [];      // family -> [skus]
-            $familyMaxRow = [];   // family -> max sheet_row
-            foreach ($skuRows as $rowIdx => $row) {
-                $family = familyKey($row); // misma regla de familia que la búsqueda
-            
-            // Usar posición invertida para que Poedagar (que viene primero en la query) tenga el número más alto
-            $effectiveRow = count($skuRows) - $rowIdx;
-            
-            if (!isset($familyMap[$family])) {
-                $familyMap[$family] = [];
-                $familyMaxRow[$family] = $effectiveRow;
-            }
-            $familyMap[$family][] = $row['sku'];
-            if ($effectiveRow > $familyMaxRow[$family]) {
-                $familyMaxRow[$family] = $effectiveRow;
-            }
-        }
-        unset($skuRows); // Liberar memoria
+            // Una tarjeta por referencia (código), en el orden de la consulta. Las variantes
+            // ya no se agrupan en la tarjeta: se ven al abrir la ficha del producto.
+            $parentOrder = array_column($skuRows, 'sku');
+            unset($skuRows);
+            $totalParents = count($parentOrder);
+            $totalPages = max(1, ceil($totalParents / $perPage));
+            $currentPage = min($currentPage, $totalPages);
+            $offset = ($currentPage - 1) * $perPage;
+            $pageRoots = array_slice($parentOrder, $offset, $perPage);
+            unset($parentOrder);
 
-        // Ordenar familias: las más recientes primero
-        arsort($familyMaxRow);
-        $parentOrder = array_keys($familyMaxRow);
-
-        $totalParents = count($parentOrder);
-        $totalPages = max(1, ceil($totalParents / $perPage));
-        $currentPage = min($currentPage, $totalPages);
-        $offset = ($currentPage - 1) * $perPage;
-        $pageRoots = array_slice($parentOrder, $offset, $perPage);
-
-        // ── FASE 2: Cargar datos completos SOLO para esta página ──
-        $grouped = [];
-        if (!empty($pageRoots)) {
-            $pageSkus = [];
-            foreach ($pageRoots as $family) {
-                $pageSkus = array_merge($pageSkus, $familyMap[$family]);
-            }
-            unset($familyMap);
-
-            if (!empty($pageSkus)) {
-                $placeholders = implode(',', array_fill(0, count($pageSkus), '?'));
-                $selectCols = $hasSheetRow
-                    ? 'id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url, sheet_row'
-                    : 'id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url, id AS sheet_row';
-                
+            // ── FASE 2: Cargar datos completos SOLO para esta página ──
+            if (!empty($pageRoots)) {
+                $placeholders = implode(',', array_fill(0, count($pageRoots), '?'));
                 $stmt = $db->prepare(
-                    "SELECT {$selectCols} 
-                     FROM products 
-                     WHERE sku IN ({$placeholders})
-                     ORDER BY {$orderCol} DESC"
+                    "SELECT id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url
+                     FROM products WHERE sku IN ({$placeholders})"
                 );
-                $stmt->execute($pageSkus);
-                $pageProducts = $stmt->fetchAll();
-
-                // Agrupar por familia (sin duplicados por SKU)
-                $members = [];
-                foreach ($pageProducts as $p) {
-                    $members[familyKey($p)][$p['sku']] = $p;
+                $stmt->execute($pageRoots);
+                foreach ($stmt->fetchAll() as $p) {
+                    $grouped[$p['sku']] = ['parent' => $p, 'children' => []];
                 }
-                // Principal de la tarjeta: el SKU que ES la raíz de la familia (el padre
-                // real, igual que en la búsqueda); si no existe, el más reciente.
-                foreach ($members as $family => $bySku) {
-                    $parent = $bySku[$family] ?? reset($bySku);
-                    unset($bySku[$parent['sku']]);
-                    $grouped[$family] = ['parent' => $parent, 'children' => array_values($bySku)];
-                }
+                $pageRoots = array_values(array_filter($pageRoots, fn($sku) => isset($grouped[$sku])));
             }
-        }
         } catch (\PDOException $e) {
             // failed to connect to db or execute query
         }
@@ -306,7 +262,7 @@
         <?php if (!empty($pageRoots)): ?>
             <div class="section-header-landing">
                 <h2>Productos recientes</h2>
-                <span class="product-count" title="Cada tarjeta agrupa una familia (el código -1 y sus variantes)"><?= number_format($totalSkus, 0, ',', '.') ?> referencias · <?= number_format($totalParents, 0, ',', '.') ?> familias</span>
+                <span class="product-count" title="Una tarjeta por referencia; las variantes se ven al abrir el producto"><?= number_format($totalSkus, 0, ',', '.') ?> referencias</span>
             </div>
 
             <div class="parent-grid">
@@ -314,14 +270,7 @@
                 <?php foreach ($pageRoots as $root):
                     $group = $grouped[$root];
                     $parent = $group['parent'];
-                    $children = $group['children'];
-                    $childCount = count($children);
-                    // Igual que la búsqueda: si el padre no tiene foto, la tarjeta usa la de una variante
                     $coverUrl = $parent['cover_image_url'] ?? '';
-                    foreach ($children as $c) {
-                        if ($coverUrl) break;
-                        $coverUrl = $c['cover_image_url'] ?? '';
-                    }
                     $isVideo = str_starts_with($coverUrl, '[VIDEO]');
                     if ($isVideo) $coverUrl = substr($coverUrl, 7);
                 ?>
@@ -357,35 +306,6 @@
                                     <div class="card-meta"><span><?= e($parent['category']) ?></span></div>
                                 <?php endif; ?>
 
-                                <?php if ($childCount > 0): ?>
-                                    <div class="children-scroll-wrapper">
-                                        <button class="children-scroll-btn scroll-left hidden" onclick="scrollChildren(this,-1)" type="button">◀</button>
-                                        <div class="children-row">
-                                            <?php
-                                            foreach ($children as $child):
-                                                $childCover = parseStoredCover($child['cover_image_url'] ?? '', 150)['url'];
-                                            ?>
-                                                <div class="child-thumb" style="cursor:pointer;"
-                                                    title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
-                                                    data-sku="<?= e($child['sku']) ?>"
-                                                    onclick="previewVariant(this, '<?= rawurlencode($child['sku']) ?>', '<?= e(cleanSkuDisplay($child['sku'])) ?>')"
-                                                    <?php if ($childCover): ?>data-cover="<?= e($childCover) ?>"<?php endif; ?>>
-                                                    <?php if ($childCover): ?>
-                                                        <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>"
-                                                            loading="lazy"
-                                                            onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
-                                                    <?php else: ?>
-                                                        <span class="child-placeholder" data-sku="<?= e($child['sku']) ?>">📷</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                        <button class="children-scroll-btn scroll-right" onclick="scrollChildren(this,1)" type="button">▶</button>
-                                    </div>
-                                    <div class="children-info">
-                                        <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
-                                    </div>
-                                <?php endif; ?>
                             </div>
                         </div>
                         <!-- WhatsApp + Descargar (fuera del enlace para no abrir la ficha) -->

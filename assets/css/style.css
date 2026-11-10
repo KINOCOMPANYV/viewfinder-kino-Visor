@@ -3044,3 +3044,8 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .sc-item img { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--color-bg); display: block; }
 .sc-item span { padding: 0.35rem 0.5rem; font-weight: 700; font-size: 0.85rem; text-align: center; word-break: break-all; }
 @media (max-width: 480px) { .sc-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Búsqueda: el código exacto va primero y se marca; sus carpetas salen justo debajo (ocupan toda la fila) */
+.grid-span-all { grid-column: 1 / -1; min-width: 0; }
+.parent-card.exact-hit { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.exact-hit-label { font-size: 0.7rem; font-weight: 700; color: var(--color-primary); margin-bottom: 0.15rem; }

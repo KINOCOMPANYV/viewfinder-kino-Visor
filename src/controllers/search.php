@@ -124,14 +124,15 @@ if ($q === '' && !$isMultiCode) {
             $wordEscaped = addcslashes($word, '%_');
             $wordLike = "%{$wordEscaped}%";
             
-            // "M8363-3" encuentra "M:8363-3"
-            $wordNoDash = skuSearchNorm($word);
-            $wordNoDashEscaped = addcslashes($wordNoDash, '%_');
-            $wordLikeNoDash = "%{$wordNoDashEscaped}%";
+            // "M8363-3" encuentra "M:8363-3"; "8363-3" y "M8363-3" son el mismo código (skuExactForms)
+            $skuOr = [];
+            foreach (skuExactForms($word) as $form) {
+                $skuOr[] = skuSearchSql('p.sku') . " LIKE ?";
+                $paramsBase[] = '%' . addcslashes($form, '%_') . '%';
+            }
 
             // Para cada palabra, buscar en los distintos campos
-            $whereSimpleParts[] = "(" . skuSearchSql('p.sku') . " LIKE ? OR p.name LIKE ? OR p.category LIKE ?)";
-            $paramsBase[] = $wordLikeNoDash;
+            $whereSimpleParts[] = "(" . implode(' OR ', $skuOr ?: ['0']) . " OR p.name LIKE ? OR p.category LIKE ?)";
             $paramsBase[] = $wordLike;
             $paramsBase[] = $wordLike;
         }
@@ -146,22 +147,25 @@ if ($q === '' && !$isMultiCode) {
     $countStmt->execute($paramsBase);
     $total = $countStmt->fetchColumn();
 
+    // Orden: 1) el código exacto (con o sin "M"), 2) los que empiezan por él, 3) el resto.
+    // Dentro de cada grupo, por código, así las variantes quedan juntas (1409-1, 1409-2…).
+    $forms = skuExactForms($qCleanForSku) ?: [''];
+    $exactPh = implode(',', array_fill(0, count($forms), '?'));
+    $startsSql = implode(' OR ', array_fill(0, count($forms), skuSearchSql('p.sku') . ' LIKE ?'));
     $stmt = $db->prepare(
         "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
          FROM products p
          WHERE $whereSimple
          GROUP BY p.sku
          ORDER BY 
-            CASE WHEN " . skuSearchSql('p.sku') . " = ? THEN 0
-                 WHEN " . skuSearchSql('p.sku') . " LIKE ? THEN 1
+            CASE WHEN " . skuSearchSql('p.sku') . " IN ($exactPh) THEN 0
+                 WHEN $startsSql THEN 1
                  ELSE 2 END,
+            CASE WHEN " . skuSearchSql('p.sku') . " IN ($exactPh) OR $startsSql THEN p.sku END ASC,
             p.name ASC"
     );
-    $qCleanEscaped = addcslashes(skuSearchNorm($qCleanForSku), '%_');
-    $startsWith = "{$qCleanEscaped}%";
-    $exactMatch = skuSearchNorm($qCleanForSku);
-    
-    $finalParams = array_merge($paramsBase, [$exactMatch, $startsWith]);
+    $startsParams = array_map(fn($f) => addcslashes($f, '%_') . '%', $forms);
+    $finalParams = array_merge($paramsBase, $forms, $startsParams, $forms, $startsParams);
     $stmt->execute($finalParams);
     $allMatches = $stmt->fetchAll();
 }
@@ -174,13 +178,23 @@ $suggestions = (empty($allMatches) && !$isMultiCode && $q !== '' && !$hasFilters
 $matchedFolders = [];
 if (!$isMultiCode && $q !== '') {
     try {
+        // Por nombre tal cual o como código ("M8363" encuentra la carpeta "M:8363" o "8363").
+        // Primero la carpeta que se llama exactamente como lo buscado.
+        $fForms = skuExactForms($q);
+        $fLike = implode(' OR ', array_fill(0, count($fForms), skuSearchSql('f.name') . ' LIKE ?'));
+        $fExactPh = implode(',', array_fill(0, max(1, count($fForms)), '?'));
         $folderStmt = $db->prepare(
             "SELECT f.file_id AS id, f.name, f.cover_file_id AS thumb_id
              FROM drive_index f
-             WHERE f.is_folder = 1 AND f.is_hidden = 0 AND f.name LIKE ?
-             ORDER BY f.name ASC LIMIT 20"
+             WHERE f.is_folder = 1 AND f.is_hidden = 0 AND (f.name LIKE ?" . ($fLike ? " OR $fLike" : '') . ")
+             ORDER BY CASE WHEN " . skuSearchSql('f.name') . " IN ($fExactPh) THEN 0 ELSE 1 END, f.name ASC
+             LIMIT 20"
         );
-        $folderStmt->execute(['%' . addcslashes($q, '%_') . '%']);
+        $folderStmt->execute(array_merge(
+            ['%' . addcslashes($q, '%_') . '%'],
+            array_map(fn($f) => '%' . addcslashes($f, '%_') . '%', $fForms),
+            $fForms ?: ['']
+        ));
         foreach ($folderStmt->fetchAll(PDO::FETCH_ASSOC) as $f) {
             $f['icon_url'] = $f['thumb_id'] ? lh3Url($f['thumb_id'], 400) : '';
             $matchedFolders[] = $f;
@@ -188,92 +202,28 @@ if (!$isMultiCode && $q !== '') {
     } catch (\PDOException $e) { /* drive_index aún no existe */ }
 }
 
-// Identificar familias (parents) de todos los matches (familyKey: parent_sku o raíz del SKU)
-$rootsFound = [];
+// Una tarjeta por referencia (código), sin agrupar variantes: las variantes se ven al abrir la ficha.
+// El orden es el de la consulta (en una búsqueda por código, el exacto va primero).
+$bySku = [];
 foreach ($allMatches as $m) {
-    $family = familyKey($m);
-    $rootsFound[$family] = true;
+    $bySku[$m['sku']] = $m;
 }
-$parentOrder = array_keys($rootsFound);
+$parentOrder = array_keys($bySku);
 $totalParents = count($parentOrder);
 $totalPages = max(1, ceil($totalParents / $perPage));
 $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 $pageRoots = array_slice($parentOrder, $offset, $perPage);
-
-// ── Cargar familias completas para mostrar tarjetas íntegras ──
 $grouped = [];
-if (!empty($pageRoots)) {
-    $placeholders = implode(',', array_fill(0, count($pageRoots), '?'));
-    $fetchParams = $pageRoots;
-    
-    // Buscar productos que tengan este parent_sku O cuyo extractRootSku coincida (fallback)
-    // Para el fallback en SQL usamos una aproximación: LIKE 'root%' 
-    $whereOrConditions = ["p.parent_sku IN ($placeholders)"];
-    foreach ($pageRoots as $root) {
-        $whereOrConditions[] = "(p.sku = ? OR p.sku LIKE ?)";
-        $fetchParams[] = $root;
-        $fetchParams[] = addcslashes($root, '%_') . '-%';
-    }
-    $whereOr = implode(' OR ', $whereOrConditions);
-    
-    $stmt = $db->prepare(
-        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
-         FROM products p
-         WHERE p.archived = 0 AND ({$whereOr})
-         ORDER BY p.sku ASC"
-    );
-    $stmt->execute($fetchParams);
-    $familyProducts = $stmt->fetchAll();
-    
-    // Normaliza un código para comparar SKUs sin guiones/espacios/extensión.
-    $normCode = fn($s) => strtolower(str_replace(['-', ' ', '.'], '', preg_replace('/\.\w{2,4}$/i', '', (string)$s)));
+foreach ($pageRoots as $sku) {
+    $grouped[$sku] = ['parent' => $bySku[$sku], 'children' => []];
+}
+unset($bySku);
 
-    // Código buscado (solo en búsquedas por un código puntual, no por nombre ni multi-código).
-    // Si coincide con el SKU de una variante, esa variante será la PRINCIPAL de la tarjeta.
-    $searchedNorm = (!$isMultiCode && $q !== '') ? $normCode($q) : '';
-
-    foreach ($familyProducts as $p) {
-        $family = familyKey($p);
-
-        // Solo procesar si el producto pertenece a una de las familias de esta página
-        if (!in_array($family, $pageRoots)) continue;
-
-        if (!isset($grouped[$family])) {
-            $grouped[$family] = ['parent' => null, 'children' => []];
-        }
-
-        $grouped[$family]['children'][] = $p;
-    }
-
-    foreach ($grouped as $family => &$group) {
-        // Elegir el nodo PRINCIPAL de la tarjeta por prioridad:
-        //   1) El código buscado (cuando se busca un código puntual) → sale ese código
-        //   2) El SKU que coincide con la raíz de familia (el padre real)
-        //   3) El primero disponible
-        $chosen = null;
-        if ($searchedNorm !== '') {
-            foreach ($group['children'] as $c) {
-                if ($normCode($c['sku']) === $searchedNorm) { $chosen = $c; break; }
-            }
-        }
-        if (!$chosen) {
-            foreach ($group['children'] as $c) {
-                if ($c['sku'] === $family) { $chosen = $c; break; }
-            }
-        }
-        $group['parent'] = $chosen ?: ($group['children'][0] ?? null);
-
-        // Ordenar variantes: las coincidencias con la búsqueda primero
-        usort($group['children'], function($a, $b) use ($q) {
-            if (empty($q)) return strcmp($a['sku'], $b['sku']);
-            $scoreA = (stripos($a['sku'], $q) !== false || stripos($a['name'], $q) !== false) ? 1 : 0;
-            $scoreB = (stripos($b['sku'], $q) !== false || stripos($b['name'], $q) !== false) ? 1 : 0;
-            if ($scoreA !== $scoreB) return $scoreB - $scoreA;
-            return strcmp($a['sku'], $b['sku']);
-        });
-    }
-    unset($group);
+// ¿El código buscado existe tal cual? Entonces su tarjeta va arriba de todo (antes que las carpetas).
+$exactHit = false;
+if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
+    $exactHit = in_array(strtolower(skuSearchNorm($pageRoots[0])), array_map('strtolower', skuExactForms($q)), true);
 }
 
 // cleanSkuDisplay() ahora definida en src/helpers.php
@@ -458,6 +408,7 @@ if (!empty($pageRoots)) {
         <?php endif; ?>
 
 
+        <?php ob_start(); // carpetas: van antes de los productos, salvo que el código buscado exista tal cual ?>
         <?php if (!empty($matchedFolders)): ?>
             <!-- Matched Folders -->
             <div class="section-header-landing" style="margin-bottom:1rem; border-top: 1px solid var(--color-border); padding-top:1.5rem;">
@@ -487,6 +438,7 @@ if (!empty($pageRoots)) {
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+        <?php $foldersHtml = ob_get_clean(); if (!$exactHit) echo $foldersHtml; ?>
 
         <?php if (!empty($pageRoots)): ?>
 
@@ -495,24 +447,11 @@ if (!empty($pageRoots)) {
                 <?php foreach ($pageRoots as $root):
                     $group = $grouped[$root];
                     $p = $group['parent'];
-                    $children = $group['children'];
-                    $childCount = count($children);
-
-                    // Portada de familia: primera portada disponible entre padre e hijos.
-                    // Sirve de fallback para que ni la tarjeta ni las variantes queden en 📷
-                    // cuando algún miembro de la familia sí tiene foto.
-                    $familyCover = $p['cover_image_url'] ?? '';
-                    if (!$familyCover) {
-                        foreach ($children as $c) {
-                            if (!empty($c['cover_image_url'])) { $familyCover = $c['cover_image_url']; break; }
-                        }
-                    }
-
-                    $coverUrl = ($p['cover_image_url'] ?? '') ?: $familyCover;
+                    $coverUrl = $p['cover_image_url'] ?? '';
                     $isVideo = str_starts_with($coverUrl, '[VIDEO]');
                     if ($isVideo) $coverUrl = substr($coverUrl, 7);
                 ?>
-                    <div class="parent-card search-selectable-card" data-category="<?= e(strtolower($p['category'] ?? '')) ?>">
+                    <div class="parent-card search-selectable-card<?= ($exactHit && $cardIndex === 0) ? ' exact-hit' : '' ?>" data-category="<?= e(strtolower($p['category'] ?? '')) ?>">
                         <div style="text-decoration:none; color:inherit; display:block;">
                             <a href="/producto/<?= rawurlencode($p['sku']) ?>" class="dynamic-card-link" style="display:block;">
                                 <div class="card-image" data-sku="<?= e($p['sku']) ?>"
@@ -534,6 +473,7 @@ if (!empty($pageRoots)) {
                             </a>
                             <div class="card-body">
                                 <a href="/producto/<?= rawurlencode($p['sku']) ?>" class="dynamic-card-link" style="text-decoration:none; color:inherit; display:block;">
+                                    <?php if ($exactHit && $cardIndex === 0): ?><div class="exact-hit-label">✓ Código exacto</div><?php endif; ?>
                                     <div class="card-sku dynamic-card-sku"><?= e(cleanSkuDisplay($p['sku'])) ?></div>
                                     <div class="card-name"><?= e($p['name']) ?></div>
                                 </a>
@@ -541,40 +481,6 @@ if (!empty($pageRoots)) {
                                     <div class="card-meta"><span><?= e($p['category']) ?></span></div>
                                 <?php endif; ?>
 
-                                <!-- Children thumbnails -->
-                                <?php if ($childCount > 0): ?>
-                                    <div class="children-scroll-wrapper">
-                                        <button class="children-scroll-btn scroll-left hidden" onclick="scrollChildren(this,-1)" type="button">◀</button>
-                                        <div class="children-row">
-                                            <?php
-                                            foreach ($children as $child):
-                                                // Portada PROPIA de la variante. Si no tiene, se deja vacío
-                                                // (placeholder) y el cargador la resuelve con la foto real de
-                                                // ESTA variante vía /api/covers/batch.
-                                                // Antes se usaba $familyCover como fallback, pero eso hacía que
-                                                // varias variantes sin portada propia mostraran todas la MISMA
-                                                // foto del padre (fotos repetidas). Igual que en landing.php.
-                                                $childCover = parseStoredCover($child['cover_image_url'] ?? '', 150)['url'];
-                                            ?>
-                                                <div class="child-thumb" style="cursor:pointer;"
-                                                    title="<?= e(cleanSkuDisplay($child['sku'])) ?>"
-                                                    data-sku="<?= e($child['sku']) ?>"
-                                                    data-fallback="<?= empty($child['cover_image_url']) ? '1' : '0' ?>"
-                                                    onclick="previewVariant(this, '<?= rawurlencode($child['sku']) ?>', '<?= e(cleanSkuDisplay($child['sku'])) ?>')">
-                                                    <?php if ($childCover): ?>
-                                                        <img src="<?= e($childCover) ?>" alt="<?= e($child['sku']) ?>" loading="lazy" onerror="this.outerHTML='<span class=\'child-placeholder\'>📷</span>'">
-                                                    <?php else: ?>
-                                                        <span class="child-placeholder">📷</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                        <button class="children-scroll-btn scroll-right" onclick="scrollChildren(this,1)" type="button">▶</button>
-                                    </div>
-                                    <div class="children-info">
-                                        <span class="children-label"><?= $childCount ?> variante<?= $childCount > 1 ? 's' : '' ?></span>
-                                    </div>
-                                <?php endif; ?>
                             </div>
                         </div>
                         <?= mediaActionButtons((string) driveIdFromUrl($coverUrl), $p['sku'], $p['sku'] . ' — ' . $p['name'], '/producto/' . rawurlencode($p['sku'])) ?>
@@ -588,6 +494,9 @@ if (!empty($pageRoots)) {
                             <span class="search-check-text">Seleccionar</span>
                         </label>
                     </div>
+                <?php if ($exactHit && $cardIndex === 0 && trim($foldersHtml) !== ''): ?>
+                    <div class="grid-span-all"><?= $foldersHtml ?></div>
+                <?php endif; ?>
                 <?php $cardIndex++; endforeach; ?>
             </div>
 

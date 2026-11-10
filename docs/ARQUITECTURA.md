@@ -16,8 +16,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 ## Rutas (`index.php`)
 | Ruta | Archivo | Qué hace |
 |---|---|---|
-| `/` | `templates/client/landing.php` | Carpetas de primer nivel (abren `/carpeta/{id}`) + "Productos recientes" (10 familias/página) |
-| `/buscar` (`?q=`, `?ajax=1`) | `src/controllers/search.php` | Grid de familias (20/página), multi-código, carpetas de `drive_index`. `?album=ID` (viejo) redirige a `/carpeta/ID` |
+| `/` | `templates/client/landing.php` | Carpetas de primer nivel (abren `/carpeta/{id}`) + "Productos recientes" (60 referencias/página, una tarjeta por código) |
+| `/buscar` (`?q=`, `?ajax=1`) | `src/controllers/search.php` | Una tarjeta por código (60/página, sin variantes; orden: exacto con/sin "M" vía `skuExactForms()`, empieza por, resto), multi-código, carpetas de `drive_index` (por nombre o código; si el código existe, van tras su tarjeta). `?album=ID` (viejo) redirige a `/carpeta/ID` |
 | `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}` |
 | `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada) |
 | `/og/{fileId}.jpg` | `src/controllers/og_image.php` | Foto de vista previa para WhatsApp (og:image), ver "Compartir por WhatsApp" |

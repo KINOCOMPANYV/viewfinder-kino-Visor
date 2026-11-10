@@ -32,11 +32,14 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Sync automático** en cada deploy y cada hora (`scripts/sync_loop.sh`); `AUTO_SYNC=0` lo apaga.
 - **WhatsApp = imágenes** (2026-11-09): los envíos mandan solo fotos, nunca la lista en texto. Una foto sola lleva su código
   como pie; en tandas no va texto (WhatsApp no deja un pie distinto por foto).
+- **Una tarjeta por referencia** (2026-11-10): inicio, búsqueda y autocompletar muestran cada código por separado, sin la
+  tira de variantes; las variantes se ven solo al abrir la ficha. Al buscar un código, el exacto sale primero marcado
+  "✓ Código exacto" (con o sin "M"), y debajo las carpetas que coinciden.
 - **Fotos con código, sin precio** (2026-11-10): el material que se arma lleva el código; el precio no se pone por ahora.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
-- Catálogo público en grilla densa (60 por página, una tarjeta por familia; contador "N referencias · M familias").
+- Catálogo público en grilla densa (60 por página, **una tarjeta por referencia**; contador "N referencias").
 - Ficha de producto con variantes, galería, visor grande; WhatsApp + Descargar en cada foto.
 - Botón WhatsApp de cada foto: manda solo la imagen liviana (800 px) con el código como pie, sin enlace. En el computador
   copia la foto para pegarla en WhatsApp Web (Ctrl+V).
@@ -60,7 +63,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Decisión del dueño 2026-11-09: ofrecer las dos vías; ir foto por foto era lento y el lote de 30+ fallaba.
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
-- Búsqueda: filtros por marca, categoría, precio y "solo con foto" (combinables, en la URL); si no encuentra nada,
+- Búsqueda: el código exacto primero ("8363-3" = "M:8363-3"), luego los que empiezan por él y el resto; carpetas cuyo
+  nombre coincide (también como código), arriba o, si el código existe, justo debajo de su tarjeta. Filtros por marca, categoría, precio y "solo con foto" (combinables, en la URL); si no encuentra nada,
   "¿Quisiste decir…?" con los códigos y marcas más parecidos.
 - Todo el visor y el admin se revisan a 320/360/375 px (celular): sin scroll lateral, letra legible, botones de dedo.
 - Celular (etapa 2): barra abajo tipo app (Inicio, Buscar, Carpetas, Enviar); buscador pegado arriba en una fila con ✕
@@ -145,3 +149,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   cuenta como nuevo; lo de antes queda sin fecha). Enlace en el inicio si hay fotos nuevas esta semana.
 - #42 (etapa I): catálogo por enlace `/c/{código}` (migración 027 `shared_catalogs`): se crea desde Mi selección con nombre y
   contacto opcional; muestra siempre la foto vigente; actualizar/desactivar solo desde el dispositivo que lo creó.
+- #43: una tarjeta por referencia (sin tira de variantes) en inicio, búsqueda y autocompletar; búsqueda con el código exacto
+  primero (con o sin "M") y sus carpetas debajo.
