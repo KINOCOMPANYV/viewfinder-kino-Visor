@@ -25,7 +25,9 @@ if ($cronToken !== '' && isset($_GET['token']) && hash_equals($cronToken, $_GET[
 } else {
     // La sesión ya es manejada por index.php
     $csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
-    if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrfHeader)) {
+    // Sesión sin token (p. ej. el cron sin ?token=) no pasa: '' == '' no cuenta
+    $sessionToken = (string) ($_SESSION['csrf_token'] ?? '');
+    if ($sessionToken === '' || !hash_equals($sessionToken, (string) $csrfHeader)) {
         http_response_code(403);
         echo json_encode(['ok' => false, 'error' => 'Token CSRF inválido o acceso denegado.']);
         exit;

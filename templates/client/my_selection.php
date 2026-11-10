@@ -31,6 +31,17 @@
         <p class="ms-help">Las fotos que marcaste en el catálogo, en el orden en que se envían. Se guardan <strong>en este
             dispositivo</strong> (siguen aquí si cierras la página), no en otros celulares.</p>
 
+
+        <section class="ms-look" id="msLook" hidden>
+            <h2>🖼️ Cómo salen las fotos</h2>
+            <div class="ms-look-opts" role="radiogroup">
+                <label><input type="radio" name="msLabel" value="none"> Foto sola</label>
+                <label><input type="radio" name="msLabel" value="code"> Foto con su código abajo</label>
+            </div>
+            <div class="ms-look-prev"><img id="msPrev" alt="Vista previa"><span id="msPrevMsg">Preparando vista previa…</span></div>
+            <small>Se aplica al 💾 Guardar y al 📲 Enviar por tandas. Se arma en este celular.</small>
+        </section>
+
         <div class="ms-last" id="msLast" hidden></div>
 
         <div class="ms-tools" id="msTools" hidden>
@@ -43,6 +54,24 @@
             <p>Toca el círculo de una foto en <a href="/buscar">Buscar</a>, en una carpeta o en una ficha, o usa
                 <a href="/enviar-catalogo">Enviar catálogo</a>.</p>
         </div>
+
+        <section class="ms-cats ms-cats-bottom" id="msLinks">
+            <div class="ms-cats-head">
+                <h2>🔗 Enlaces para compartir</h2>
+                <button type="button" class="btn btn-sm btn-primary" id="msMakeLink">🔗 Crear enlace</button>
+            </div>
+            <ul class="ms-cat-list" id="msLinkList"></ul>
+            <p class="ms-cat-empty" id="msLinkEmpty">Crea un enlace con las fotos marcadas: el cliente lo abre sin instalar nada y ve siempre la foto vigente. Puedes actualizarlo o desactivarlo desde este dispositivo.</p>
+        </section>
+
+        <section class="ms-cats ms-cats-bottom" id="msCats">
+            <div class="ms-cats-head">
+                <h2>📚 Catálogos guardados <small>(en este dispositivo)</small></h2>
+                <button type="button" class="btn btn-sm btn-primary" id="msSaveAs">💾 Guardar como…</button>
+            </div>
+            <ul class="ms-cat-list" id="msCatList"></ul>
+            <p class="ms-cat-empty" id="msCatEmpty">Guarda la selección con un nombre («Poedagar dorados», «Catálogo de noviembre») para volver a abrirla.</p>
+        </section>
     </main>
 
     <script src="/assets/js/wa_batch.js?v=<?= APP_VERSION ?>"></script>

@@ -21,22 +21,23 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}` |
 | `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada) |
 | `/og/{fileId}.jpg` | `src/controllers/og_image.php` | Foto de vista previa para WhatsApp (og:image), ver "Compartir por WhatsApp" |
-| `/mi-seleccion` | `templates/client/my_selection.php` + `assets/js/my_selection.js` | **Mi selección**: lo marcado en todo el visor (y lo que se pasa desde Enviar catálogo) en una lista: orden, quitar, "dejar 1 foto por código", estado por foto (lista / bajando / en una tanda / no bajó + 🔁 reintentar) y repetir la última tanda. Todo en el dispositivo (`localStorage` `kinoWaSel` de `wa_batch.js`, API `window.KinoWaBatch`); no lee la BD |
+| `/novedades` (`?dias=7\|30\|90`) | `src/controllers/news.php` | **Novedades** (etapa H): archivos visibles con `drive_index.first_seen_at` en el periodo, marcables para Mi selección. El inicio muestra un enlace si llegó algo en 7 días |
+| `/c/{código}` (+ `POST /c/crear`, `/c/{código}/actualizar`, `/c/{código}/desactivar[?activar=1]`) | `src/controllers/shared_catalog.php` | **Catálogo por enlace** (etapa I): página pública liviana con las fotos en orden, código bajo cada una, contacto opcional y vista previa de WhatsApp. Si una foto se borró u ocultó, muestra la portada actual del código. Se crea/gestiona desde Mi selección; quien lo creó guarda el token en `localStorage` `kinoLinks` (cabecera `X-Manage-Token`). Desactivado = 410 |
+| `/mi-seleccion` | `templates/client/my_selection.php` + `assets/js/my_selection.js` | **Mi selección**: lo marcado en todo el visor (y lo que se pasa desde Enviar catálogo) en una lista: orden, quitar, "dejar 1 foto por código", estado por foto (lista / bajando / en una tanda / no bajó + 🔁 reintentar) y repetir la última tanda. Todo en el dispositivo (`localStorage` `kinoWaSel` de `wa_batch.js`, API `window.KinoWaBatch`). **Catálogos guardados** (etapa E): `localStorage` `kinoCatalogs` (guardar como, abrir = reemplaza la selección, actualizar, duplicar, renombrar, borrar); `POST /api/fotos-vigentes` (ids → los que siguen visibles en `drive_index`) marca las fotos que ya no están. **Cómo salen las fotos** (etapa F): foto sola o con su código en una franja blanca abajo (`withCode()` en `wa_batch.js`, canvas en el celular, preferencia `kinoWaLabel`), con vista previa; aplica a Guardar y Enviar por tandas de la barra |
 | `/enviar-catalogo` | `templates/client/catalog_send.php` + `src/controllers/catalog_send.php` | **Enviar catálogo por lista** (botón en el encabezado público): se pega un texto, `POST /enviar-catalogo/extraer` saca los códigos visibles y sus fotos (`filesForSku`, portada primero) y se muestran en una galería (tocar = marcar). Las marcadas se guardan en el celular (descargas; iPhone vía Compartir) o se comparten por tandas de 10 (Web Share; el botón se activa cuando la tanda ya bajó); 📲 en cada foto = solo esa. Se precargan de 3 en 3. Fotos: `/enviar-catalogo/foto/{id}` (lh3 `=s800` servido desde el dominio, copia en `storage/send_cache`; solo imágenes del índice, visibles y enlazadas). Solo lee la BD |
 | `/api/search` | `src/controllers/api_search.php` | Autocomplete JSON |
-| `/api/batch-search` POST | `src/controllers/api_batch_search.php` | Búsqueda por lote (modal) |
 | `/api/covers/batch` POST | inline en `index.php` | Portadas para SKUs sin `cover_image_url` (desde `drive_index`) |
 | `/api/media/{sku}` | inline en `index.php` | Archivos de un SKU para la galería (desde `drive_index`) |
 | `/api/download/{fileId}` | inline en `index.php` | Proxy de descarga autenticado |
-| `/api/drive-folders` | inline en `index.php` | Álbumes JSON |
 | `/api/cron/sync-covers?token=` | `admin_sync_covers.php` | **Actualiza el índice de Drive** y asigna portada + álbum |
-| `/api/cron/precache-drive?token=` | `api_precache_drive.php` | Con índice activo = alias de `sync-covers` (compatibilidad con crons viejos) |
+| `/api/cron/precache-drive?token=` | `admin_sync_covers.php` | Nombre viejo del cron = `sync-covers` (compatibilidad) |
 | `/api/webhook/sheets` POST | `webhook_sheets.php` | Sync incremental desde Apps Script (misma regla que el sync completo) |
 | `/admin/products` (`?q=&estado=&marca=&categoria=`) | `admin_products.php` | Listado y activar/desactivar. Cambio: `POST /admin/products/active` (`ids` o `all=1` + filtros) |
 | `/admin/sync` | `templates/admin/sync.php` | Botones: hoja maestra (`POST /admin/sync-sheets`, `?dry_run=1`) y Drive (`/admin/media/sync-covers`) |
 | `/admin/photo-check?sku=` | `admin_photo_check.php` | "¿Por qué no sale la foto?" (en Sincronizar): fotos del código en `drive_index`, ruta y qué las oculta (JSON) |
+| `/admin/problemas` (`?tab=sinfoto\|ocultas\|archivos\|hoja`, `&csv=1`) | `admin_problems.php` | **Problemas de fotos** (etapa G, solo BD): productos sin foto, foto en carpeta oculta, archivos sin código y filas de la hoja sin precio/nombre, con motivo y ruta en Drive; CSV completo; "¿Por qué?" abre Sincronizar con el código (`/admin/sync?sku=`) |
 | `/admin/folders` (`?id=`, `?q=`, `?ver=ocultas`) | `admin_folders.php` + `templates/admin/folders.php` | Mostrar/ocultar carpetas (cualquier nivel). Cambio: `POST /admin/folders/toggle` |
-| `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, carpetas, media, sincronizar, álbumes, caché). Menú común: `templates/admin/partials/nav.php` |
+| `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, carpetas, media, sincronizar, caché). Menú común: `templates/admin/partials/nav.php` |
 
 ## Tablas
 - `products`: `sku` (único), `parent_sku` (familia), datos de la hoja maestra (`name`, `color`, `category`, `gender`,
@@ -47,8 +48,11 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 - `albums`: carpetas de primer nivel bajo la raíz (`drive_id`, `name`, `icon_url`, `is_active`, `order_priority`).
 - `drive_index`: **copia local del árbol de la carpeta raíz** (archivos y carpetas): `file_id`, `name`, `name_stem`
   (sin extensión, indexado para `LIKE 'SKU%'`), `mime_type`, `is_folder`, `parent_id`, `album_id`, `is_public`, `synced_at`,
-  `is_hidden` y `cover_file_id` (migración 021, ver "Carpetas: ocultar y portada").
+  `is_hidden` y `cover_file_id` (migración 021, ver "Carpetas: ocultar y portada"), `first_seen_at` (migración 026: cuándo
+  lo vio el sync por primera vez; el UPSERT no lo cambia; lo anterior a la migración queda NULL).
   Lo llena `DriveIndex::sync()` (`src/services/DriveIndex.php`).
+- `shared_catalogs` (migración 027): `code` único, `name`, `items` (JSON `[{id, sku}]`, máx. 300), `contact`, `manage_hash`
+  (sha256 del token de gestión), `is_active`, `views`. No se borran: se desactivan.
 - `folder_settings`: `folder_id` → `hidden` (decisión del admin; sobrevive a los syncs).
 - `media_search_cache`: `sku` → `files_json` (búsqueda en Drive). Solo se usa mientras `drive_index` está vacío.
 - `drive_cache`: hoy solo guarda la visibilidad por archivo (`visible_publico`) y subcarpetas para la búsqueda.

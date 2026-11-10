@@ -189,6 +189,27 @@ if ($uri === '/api/search') {
 }
 
 // Enviar catálogo por lista (público): pegar texto → códigos → fotos → WhatsApp. Solo lee la BD.
+if ($uri === '/novedades') {
+    include __DIR__ . '/src/controllers/news.php';
+    exit;
+}
+
+// Catálogo por enlace (etapa I): /c/{código} público; crear / actualizar / desactivar desde Mi selección
+if ($uri === '/c/crear' && $method === 'POST') {
+    session_write_close();
+    $sharedAction = 'create';
+    include __DIR__ . '/src/controllers/shared_catalog.php';
+    exit;
+}
+if (preg_match('#^/c/([A-Za-z0-9]{6,16})(?:/(actualizar|desactivar))?$#', $uri, $m)) {
+    session_write_close();
+    $sharedCode = $m[1];
+    $sharedAction = !isset($m[2]) ? 'view' : ($m[2] === 'actualizar' ? 'update' : 'toggle');
+    if ($sharedAction !== 'view' && $method !== 'POST') { http_response_code(405); exit; }
+    include __DIR__ . '/src/controllers/shared_catalog.php';
+    exit;
+}
+
 if ($uri === '/mi-seleccion') {
     include __DIR__ . '/templates/client/my_selection.php';
     exit;
@@ -214,58 +235,7 @@ if (preg_match('#^/enviar-catalogo/foto/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
     exit;
 }
 
-if ($uri === '/api/batch-search' && $method === 'POST') {
-    // API de búsqueda por lote
-    checkRateLimit(30); // 30 req/min — operación pesada
-    session_write_close();
-    include __DIR__ . '/src/controllers/api_batch_search.php';
-    exit;
-}
 
-// ============================================================
-// API: Drive Folders — lista carpetas para el visor de cliente
-// ============================================================
-
-if ($uri === '/api/drive-folders') {
-    session_write_close();
-    header('Content-Type: application/json');
-    
-    $db = getDB();
-    $folders = [];
-    
-    // 1) Intentar leer de la tabla albums
-    try {
-        $stmt = $db->query("SELECT drive_id AS id, name, icon_url FROM albums WHERE is_active = 1 ORDER BY order_priority DESC, name ASC");
-        $folders = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (\PDOException $e) {
-        // tabla no existe aún
-    }
-    
-    // 2) Si no hay álbumes en DB, intentar leer de Drive API
-    if (empty($folders)) {
-        $rootFolderId = env('GOOGLE_DRIVE_FOLDER_ID', '');
-        if ($rootFolderId) {
-            require_once __DIR__ . '/src/services/GoogleDriveService.php';
-            $drive = new GoogleDriveService();
-            $token = $drive->getValidToken($db);
-            
-            if ($token) {
-                $result = $drive->listFiles($rootFolderId);
-                foreach ($result['files'] as $item) {
-                    if (($item['mimeType'] ?? '') === 'application/vnd.google-apps.folder') {
-                        $folders[] = [
-                            'id' => $item['id'],
-                            'name' => $item['name'],
-                            'icon_url' => null,
-                        ];
-                    }
-                }
-            }
-        }
-    }
-    
-    jsonCachedResponse(['folders' => $folders], 300);
-}
 
 // ============================================================
 // RUTAS ADMIN
@@ -294,6 +264,12 @@ if ($uri === '/admin/logout') {
 if ($uri === '/admin/products') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_products.php';
+    exit;
+}
+
+if ($uri === '/admin/problemas') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_problems.php';
     exit;
 }
 
@@ -392,11 +368,6 @@ if ($uri === '/admin/folders/toggle' && $method === 'POST') {
     exit;
 }
 
-if ($uri === '/admin/albums') {
-    requireAdmin();
-    include __DIR__ . '/src/controllers/admin_albums.php';
-    exit;
-}
 
 if ($uri === '/admin/cache/clear' && $method === 'POST') {
     requireAdmin();
@@ -622,6 +593,23 @@ if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
 // Responde: {"covers": {"sku1": {"url":"...","video":false}, ...}}
 // ============================================================
 
+// Qué fotos de una lista siguen visibles (catálogos guardados y Mi selección marcan las que ya no están). Solo BD.
+if ($uri === '/api/fotos-vigentes' && $method === 'POST') {
+    session_write_close();
+    checkRateLimit(60);
+    $ids = json_decode(file_get_contents('php://input') ?: '[]', true);
+    $ids = array_values(array_unique(array_filter(is_array($ids) ? $ids : [], fn($v) => is_string($v) && preg_match('/^[A-Za-z0-9_-]{10,100}$/', $v))));
+    $ids = array_slice($ids, 0, 500);
+    $ok = [];
+    if ($ids) {
+        $st = getDB()->prepare("SELECT file_id FROM drive_index WHERE is_folder = 0 AND is_hidden = 0 AND file_id IN ("
+            . implode(',', array_fill(0, count($ids), '?')) . ")");
+        $st->execute($ids);
+        $ok = $st->fetchAll(PDO::FETCH_COLUMN);
+    }
+    jsonResponse(['vigentes' => $ok]);
+}
+
 if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     checkRateLimit(60); // 60 req/min
     session_write_close(); // Unlock session to prevent blocking concurrent searches
@@ -731,8 +719,9 @@ if ($uri === '/api/webhook/sheets' && $method === 'POST') {
 // ============================================================
 
 if ($uri === '/api/cron/precache-drive') {
+    // Nombre viejo del cron: hoy es lo mismo que /api/cron/sync-covers (índice de Drive + portadas)
     session_write_close();
-    include __DIR__ . '/src/controllers/api_precache_drive.php';
+    include __DIR__ . '/src/controllers/admin_sync_covers.php';
     exit;
 }
 

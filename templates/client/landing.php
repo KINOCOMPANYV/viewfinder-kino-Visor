@@ -110,6 +110,15 @@
                 </div>
             </div>
 
+            <?php
+            // Novedades (etapa H): enlace solo si llegó algo en los últimos 7 días
+            $newCount = 0;
+            try { if ($db) $newCount = (int) $db->query("SELECT COUNT(*) FROM drive_index WHERE is_folder = 0 AND is_hidden = 0 AND first_seen_at >= NOW() - INTERVAL 7 DAY AND (mime_type LIKE 'image/%' OR mime_type LIKE 'video/%')")->fetchColumn(); } catch (\PDOException $e) {}
+            ?>
+            <?php if ($newCount): ?>
+                <a href="/novedades" class="nw-link">🆕 <strong><?= number_format($newCount) ?></strong> foto<?= $newCount === 1 ? '' : 's' ?> nueva<?= $newCount === 1 ? '' : 's' ?> esta semana <span>Ver novedades →</span></a>
+            <?php endif; ?>
+
             <!-- ===== Carpetas de primer nivel (se navegan como en Drive) ===== -->
             <?php if (!empty($albums)): ?>
             <div id="carpetas" style="margin-bottom: 3rem;">
@@ -441,66 +450,11 @@
         </div>
     </footer>
 
-    <!-- Modal Búsqueda por Lote -->
-    <div class="batch-modal-overlay" id="batchModal">
-        <div class="batch-modal">
-            <div class="batch-modal-header">
-                <h2>📋 Búsqueda por Lote</h2>
-                <button class="batch-modal-close" id="btnBatchClose">&times;</button>
-            </div>
-            <div class="batch-modal-body">
-                <div id="batchInputSection">
-                    <label for="batchCodes">Pega los códigos (uno por línea):</label>
-                    <textarea id="batchCodes" class="form-input" rows="8" placeholder="Ejemplo:
-KV-1001
-KV-1002
-KV-1003
-..."></textarea>
-                    <div class="batch-actions">
-                        <span class="batch-count" id="batchCount">0 códigos</span>
-                        <button class="btn btn-primary" id="btnBatchSearch">🔍 Buscar Lote</button>
-                    </div>
-                </div>
-                <div id="batchLoading" style="display:none;">
-                    <div class="batch-spinner"></div>
-                    <p style="text-align:center; color:var(--color-text-muted); margin-top:1rem;">Buscando productos...
-                    </p>
-                </div>
-                <div id="batchResults" style="display:none;">
-                    <div class="batch-results-header">
-                        <span id="batchSummary"></span>
-                        <button class="btn btn-sm btn-secondary" id="btnBatchBack">← Nueva búsqueda</button>
-                    </div>
-                    <div class="batch-results-grid" id="batchResultsGrid"></div>
-                    <div class="batch-wa-footer" id="batchWaFooter" style="display:none;">
-                        <div class="batch-wa-info">
-                            <label class="batch-select-all-label">
-                                <input type="checkbox" id="batchSelectAll"> Seleccionar todas
-                            </label>
-                            <span id="batchSelectedCount" class="batch-selected-count">0 seleccionadas</span>
-                        </div>
-                        <button class="batch-wa-send" id="btnBatchWaSend">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                                <path
-                                    d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                            </svg>
-                            📲 Enviar por WhatsApp
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- WhatsApp Share Modal -->
     <script src="/assets/js/whatsapp_share.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/media_actions.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/wa_batch.js?v=<?= APP_VERSION ?>"></script>
-    <script>
-        // Folders now use parent-grid layout (no horizontal scroll)
-    </script>
 
-    <!-- Batch Search JS -->
     <script src="/assets/js/landing.js?v=<?= APP_VERSION ?>"></script>
 
     <!-- Autocomplete JS -->

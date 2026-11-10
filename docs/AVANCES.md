@@ -12,7 +12,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   completa (3629 de 3629, sin filas descartadas ni repetidas). En la hoja faltan datos: 124 filas sin PRICE_SUGGESTED (98 POEDAGAR)
   y 33 sin NAME; esas salen sin precio o con el código como nombre. Admin → Sincronizar muestra hoja vs "Solo Drive".
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#40 fusionados. Plan de mejoras para distribuidores aprobado (2026-11-10, `docs/PLAN_MEJORAS.md`, etapas A-J).
+- PRs #1–#41 fusionados. Plan de mejoras para distribuidores aprobado (2026-11-10, `docs/PLAN_MEJORAS.md`, etapas A-J).
 - Plan de mejora UX/velocidad aprobado por el dueño (2026-11-09), un PR por etapa: 1 velocidad, 2 celular más claro,
   3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapas 1 (#34), 2 (#35), 3 (#36) y 4 (#37).
 
@@ -32,6 +32,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Sync automático** en cada deploy y cada hora (`scripts/sync_loop.sh`); `AUTO_SYNC=0` lo apaga.
 - **WhatsApp = imágenes** (2026-11-09): los envíos mandan solo fotos, nunca la lista en texto. Una foto sola lleva su código
   como pie; en tandas no va texto (WhatsApp no deja un pie distinto por foto).
+- **Fotos con código, sin precio** (2026-11-10): el material que se arma lleva el código; el precio no se pone por ahora.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -65,14 +66,15 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Celular (etapa 2): barra abajo tipo app (Inicio, Buscar, Carpetas, Enviar); buscador pegado arriba en una fila con ✕
   para borrar y 📷 al lado; carpetas del inicio de 3 en 3; "Seleccionar" es un círculo sobre la foto. El computador no cambia
   (solo gana la ✕ del buscador).
-- Admin: Productos (activar/desactivar), Carpetas (ocultar), Sincronizar (hoja + Drive, "¿Por qué no sale la foto?"), Media.
+- Admin: Productos (activar/desactivar), Carpetas (ocultar), Sincronizar (hoja + Drive, "¿Por qué no sale la foto?"), Media,
+  Problemas (todo lo que impide que salga una foto, con motivo y ruta).
   Sincronizar muestra hoja y Drive por separado (último éxito con qué cambió, último error y "🔁 Reintentar"); solo corre
   una sincronización a la vez.
 
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A, B y C hechas; siguen D-J, un PR cada una.
+- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A-C hechas, D-I en el PR #42 (el dueño pidió hacerlas seguidas y fusionar al final; respaldo del main en la rama `respaldo-2026-11-10`). J (app instalable) sigue pausada.
   Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
@@ -128,3 +130,18 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   para códigos mal escritos; se quitan los chips de categoría client-side (`category-filters.js`).
 - #41: etapa C, Mi selección: lo marcado se guarda en el dispositivo (localStorage), pantalla `/mi-seleccion` (orden, quitar,
   1 foto por código, estado por foto, reintentar, repetir última tanda), "Marcar todas (esta vista)", Enviar catálogo → Mi selección.
+- #42: etapa D, limpieza: fuera el modal "Buscar lote" (no tenía botón; lo hace Enviar catálogo), `/api/batch-search`,
+  `/api/drive-folders` (sin uso, llamaba a Drive en vivo), Admin → Álbumes (sin enlace), el código viejo de precaché (el cron
+  `precache-drive` sigue y hace lo mismo que `sync-covers`) y restos de "álbum" en JS (~700 líneas, 317 de CSS). Arreglo: el
+  cron de Drive ya no corre sin `?token=` (una sesión sin token pasaba el control).
+  Se dejan: `media_search_cache`/`drive_cache` (los usa el camino de respaldo y la visibilidad) y las tablas viejas sin código.
+- #42 (etapa E): catálogos guardados en el dispositivo dentro de Mi selección (guardar como, abrir, actualizar, duplicar,
+  renombrar, borrar); avisa cuántas fotos de cada catálogo ya no están (`/api/fotos-vigentes`).
+- #42 (etapa F): "Cómo salen las fotos" en Mi selección: foto sola o con su código abajo (se arma en el celular), con vista
+  previa; vale para Guardar y Enviar por tandas. Precio: no por ahora (decisión del dueño 2026-11-10).
+- #42 (etapa G): Admin → 🩺 Problemas: sin foto, foto en carpeta oculta, archivos sin código y datos incompletos de la hoja,
+  con motivo, ruta en Drive y CSV; "¿Por qué?" abre el diagnóstico del código en Sincronizar.
+- #42 (etapa H): Novedades (`/novedades`, 7/30/90 días) con `drive_index.first_seen_at` (migración 026; re-sincronizar no
+  cuenta como nuevo; lo de antes queda sin fecha). Enlace en el inicio si hay fotos nuevas esta semana.
+- #42 (etapa I): catálogo por enlace `/c/{código}` (migración 027 `shared_catalogs`): se crea desde Mi selección con nombre y
+  contacto opcional; muestra siempre la foto vigente; actualizar/desactivar solo desde el dispositivo que lo creó.

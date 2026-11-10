@@ -7,6 +7,7 @@ $adminNavItems = [
     'folders' => ['/admin/folders', '📂 Carpetas'],
     'media' => ['/admin/media', '🖼️ Media'],
     'sync' => ['/admin/sync', '🔄 Sincronizar'],
+    'problemas' => ['/admin/problemas', '🩺 Problemas'],
 ];
 ?>
 <nav class="admin-nav">

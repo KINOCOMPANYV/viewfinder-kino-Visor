@@ -117,8 +117,8 @@ class DriveIndex
         $before = (int) $db->query("SELECT COUNT(*) FROM drive_index WHERE is_folder = 0")->fetchColumn();
         foreach (array_chunk($rows, 500) as $chunk) {
             $db->prepare(
-                "INSERT INTO drive_index (file_id, name, name_stem, mime_type, is_folder, parent_id, album_id, size, synced_at)
-                 VALUES " . implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?)')) . "
+                "INSERT INTO drive_index (file_id, name, name_stem, mime_type, is_folder, parent_id, album_id, size, synced_at, first_seen_at)
+                 VALUES " . implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,NOW())')) . "
                  ON DUPLICATE KEY UPDATE name = VALUES(name), name_stem = VALUES(name_stem), mime_type = VALUES(mime_type),
                     is_folder = VALUES(is_folder), parent_id = VALUES(parent_id), album_id = VALUES(album_id),
                     size = VALUES(size), synced_at = VALUES(synced_at)"
@@ -615,8 +615,8 @@ class DriveIndex
             $stmt->execute([$parentId]);
             $parent = $stmt->fetch() ?: ['album_id' => null, 'is_hidden' => 0];
             $db->prepare(
-                "INSERT INTO drive_index (file_id, name, name_stem, mime_type, is_folder, parent_id, album_id, size, is_public, is_hidden, synced_at)
-                 VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, NOW(6))
+                "INSERT INTO drive_index (file_id, name, name_stem, mime_type, is_folder, parent_id, album_id, size, is_public, is_hidden, synced_at, first_seen_at)
+                 VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, NOW(6), NOW())
                  ON DUPLICATE KEY UPDATE name = VALUES(name), name_stem = VALUES(name_stem), is_public = VALUES(is_public)"
             )->execute([
                 $file['id'], $file['name'], mb_substr(pathinfo($file['name'], PATHINFO_FILENAME), 0, 191),
