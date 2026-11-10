@@ -12,7 +12,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   completa (3629 de 3629, sin filas descartadas ni repetidas). En la hoja faltan datos: 124 filas sin PRICE_SUGGESTED (98 POEDAGAR)
   y 33 sin NAME; esas salen sin precio o con el código como nombre. Admin → Sincronizar muestra hoja vs "Solo Drive".
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#38 fusionados. Plan de mejoras para distribuidores aprobado (2026-11-10, `docs/PLAN_MEJORAS.md`, etapas A-J).
+- PRs #1–#39 fusionados. Plan de mejoras para distribuidores aprobado (2026-11-10, `docs/PLAN_MEJORAS.md`, etapas A-J).
 - Plan de mejora UX/velocidad aprobado por el dueño (2026-11-09), un PR por etapa: 1 velocidad, 2 celular más claro,
   3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapas 1 (#34), 2 (#35), 3 (#36) y 4 (#37).
 
@@ -57,6 +57,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Decisión del dueño 2026-11-09: ofrecer las dos vías; ir foto por foto era lento y el lote de 30+ fallaba.
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
+- Búsqueda: filtros por marca, categoría, precio y "solo con foto" (combinables, en la URL); si no encuentra nada,
+  "¿Quisiste decir…?" con los códigos y marcas más parecidos.
 - Todo el visor y el admin se revisan a 320/360/375 px (celular): sin scroll lateral, letra legible, botones de dedo.
 - Celular (etapa 2): barra abajo tipo app (Inicio, Buscar, Carpetas, Enviar); buscador pegado arriba en una fila con ✕
   para borrar y 📷 al lado; carpetas del inicio de 3 en 3; "Seleccionar" es un círculo sobre la foto. El computador no cambia
@@ -68,7 +70,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapa A hecha; siguen B-J, un PR cada una.
+- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A y B hechas; siguen C-J, un PR cada una.
   Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
@@ -120,3 +122,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #38: `docs/PLAN_MEJORAS.md`: plan de mejoras para distribuidores (qué ya existe, qué quitar, etapas A-J). Solo documento.
 - #39: etapa A, sync seguro: un solo sync a la vez (hoja, Drive, cron, webhook; `acquireSyncLock`), Drive guarda último
   éxito/error en `sync_status` con archivos nuevos/quitados y portadas, Admin → Sincronizar los muestra por separado con Reintentar.
+- #40: etapa B, búsqueda y filtros: filtros en la BD (marca, categoría, precio, con foto) con chips ✕, "¿Quisiste decir…?"
+  para códigos mal escritos; se quitan los chips de categoría client-side (`category-filters.js`).

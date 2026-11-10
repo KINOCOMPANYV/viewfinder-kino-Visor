@@ -25,6 +25,29 @@
         }
     } catch(e) {}
 
+    // Filtros activos de la búsqueda (#filterForm, solo en /buscar): viajan con cada búsqueda
+    function filterQs() {
+        const ff = document.getElementById('filterForm');
+        if (!ff) return '';
+        const qs = new URLSearchParams();
+        new FormData(ff).forEach((v, k) => { if (k !== 'q' && String(v).trim() !== '') qs.append(k, v); });
+        const str = qs.toString();
+        return str ? '&' + str : '';
+    }
+    if (form) {
+        form.addEventListener('submit', () => {
+            const ff = document.getElementById('filterForm');
+            if (!ff) return;
+            form.querySelectorAll('input[data-filter]').forEach(el => el.remove());
+            new FormData(ff).forEach((v, k) => {
+                if (k === 'q' || String(v).trim() === '') return;
+                const h = document.createElement('input');
+                h.type = 'hidden'; h.name = k; h.value = v; h.dataset.filter = '1';
+                form.appendChild(h);
+            });
+        });
+    }
+
     let debounceTimer;
     let liveRequest = null; // búsqueda en curso: se cancela si el usuario sigue escribiendo
     let activeIndex = -1;
@@ -89,13 +112,14 @@
                 // Solo cuenta la última búsqueda: una respuesta vieja no pisa a la nueva
                 if (liveRequest) liveRequest.abort();
                 liveRequest = new AbortController();
-                fetch('/buscar?ajax=1&q=' + encodeURIComponent(q), { signal: liveRequest.signal })
+                fetch('/buscar?ajax=1&q=' + encodeURIComponent(q) + filterQs(), { signal: liveRequest.signal })
                     .then(r => r.text())
                     .then(html => {
                         resultsContainer.innerHTML = html;
                         resultsContainer.style.opacity = '1';
                         // La URL refleja la búsqueda (volver atrás / compartir el enlace)
-                        try { history.replaceState(null, '', '/buscar?q=' + encodeURIComponent(q)); sessionStorage.setItem('lastSearch', window.location.href); } catch (e) {}
+                        try { history.replaceState(null, '', '/buscar?q=' + encodeURIComponent(q) + filterQs());
+                            const fq = document.querySelector('#filterForm input[name="q"]'); if (fq) fq.value = q; sessionStorage.setItem('lastSearch', window.location.href); } catch (e) {}
                         
                         // Hide dropdown
                         dropdown.classList.remove('active');
@@ -160,7 +184,7 @@
         // En multi-código: Enter hace submit del form
         if (e.key === 'Enter' && isMultiCode(q)) {
             e.preventDefault();
-            form.submit();
+            (form.requestSubmit ? form.requestSubmit() : form.submit());
             return;
         }
 
@@ -175,7 +199,7 @@
             }
             // Si no hay item seleccionado, submit normal
             e.preventDefault();
-            form.submit();
+            (form.requestSubmit ? form.requestSubmit() : form.submit());
             return;
         }
 

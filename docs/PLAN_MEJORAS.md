@@ -44,7 +44,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
   con lo que cambió (archivos nuevos/borrados, portadas) y un botón "Reintentar" en el que falló.
 - Prueba: Admin → Sincronizar, pulsar dos veces seguidas → el segundo dice "ya está corriendo"; ver fecha de Drive.
 
-### B. Búsqueda y filtros (ideas 2 y 3; = etapa 6 anterior)
+### B. Búsqueda y filtros (ideas 2 y 3; = etapa 6 anterior) — ✅ hecha (#40)
 - Si no hay resultados: "¿Quisiste decir…?" con los códigos más parecidos (sin servicio externo).
 - Filtros en servidor, combinables y en la URL (Atrás los conserva): marca, rango de precio, "solo con foto",
   y categoría/género/movimiento solo si tienen datos suficientes. Chips con ✕ y "Quitar filtros".

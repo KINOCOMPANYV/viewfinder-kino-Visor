@@ -262,6 +262,70 @@ function skuSearchNorm(string $text): string
 }
 
 /**
+ * Opciones de los filtros de la búsqueda: solo valores con datos suficientes (5+ productos visibles).
+ * @return array{brands: string[], categories: string[], prices: bool}
+ */
+function searchFilterOptions(PDO $db): array
+{
+    $pick = fn(string $col) => $db->query(
+        "SELECT $col FROM products WHERE archived = 0 AND $col IS NOT NULL AND TRIM($col) <> ''
+         GROUP BY $col HAVING COUNT(*) >= 5 ORDER BY $col"
+    )->fetchAll(PDO::FETCH_COLUMN);
+    $categories = $pick('category');
+    return [
+        'brands' => $pick('brand'),
+        'categories' => count($categories) >= 2 ? $categories : [],
+        'prices' => (int) $db->query("SELECT COUNT(*) FROM products WHERE archived = 0 AND price_suggested > 0")->fetchColumn() >= 20,
+    ];
+}
+
+/**
+ * "¿Quisiste decir…?" cuando una búsqueda no encuentra nada: códigos parecidos (letras de más, de menos,
+ * cambiadas o invertidas, comparando sin "-", espacios, ":" ni "."), uno por familia, y marcas parecidas.
+ * Todo en PHP sobre los códigos visibles (~6000, unos ms). Sin servicios externos.
+ * @return array{codes: array<int, array{sku: string, name: string, cover: string}>, brands: string[]}
+ */
+function searchSuggestions(PDO $db, string $q, int $limit = 6): array
+{
+    $out = ['codes' => [], 'brands' => []];
+    $n = strtolower(skuSearchNorm(preg_replace('/\.\w{2,4}$/i', '', trim($q))));
+    $len = strlen($n);
+    if ($len < 3 || $len > 40) return $out;
+    $max = $len <= 4 ? 1 : 2;
+
+    $best = []; // familia → [distancia, fila]
+    $rows = $db->query("SELECT sku, name, parent_sku, cover_image_url FROM products WHERE archived = 0")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as $r) {
+        $c = strtolower(skuSearchNorm($r['sku']));
+        if ($c === '' || abs(strlen($c) - $len) > 6) continue;
+        // Código completo, o el inicio del código (escribió "M8336" buscando "M8363-1")
+        // (a igual parecido gana el código completo: el inicio suma medio punto solo para ordenar)
+        $d = abs(strlen($c) - $len) <= $max ? levenshtein($n, $c) : 99;
+        if (strlen($c) > $len) {
+            $dp = levenshtein($n, substr($c, 0, $len));
+            if ($dp <= $max) $d = min($d, $dp + 0.5);
+        }
+        if ($d > $max + 0.5) continue;
+        $fam = familyKey($r);
+        // Por familia gana el más parecido; a igual distancia, el padre (código = familia) o el más corto
+        $rank = [$d, $r['sku'] === $fam ? 0 : 1, strlen($c)];
+        if (!isset($best[$fam]) || $rank < $best[$fam][0]) $best[$fam] = [$rank, $r];
+    }
+    uasort($best, fn($a, $b) => $a[0] <=> $b[0]);
+    foreach (array_slice($best, 0, $limit) as [$rank, $r]) {
+        $out['codes'][] = ['sku' => $r['sku'], 'name' => (string) $r['name'], 'cover' => (string) $r['cover_image_url']];
+    }
+
+    // Marcas: "poedagr" → POEDAGAR (se ofrece como filtro)
+    $qWord = strtolower(trim($q));
+    foreach (searchFilterOptions($db)['brands'] as $brand) {
+        $b = strtolower($brand);
+        if (strlen($qWord) >= 4 && levenshtein($qWord, $b) <= (strlen($b) <= 5 ? 1 : 2)) $out['brands'][] = $brand;
+    }
+    return $out;
+}
+
+/**
  * Formas en que se escribe el mismo código en un nombre de archivo (minúsculas).
  * El separador entre el prefijo de letras y el número es libre: "M:8464-2", "M8464-2",
  * "M-8464-2", "M 8464-2", "M.8464-2" y "M_8464-2" son el mismo código.

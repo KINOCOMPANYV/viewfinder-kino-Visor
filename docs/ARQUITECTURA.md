@@ -126,6 +126,13 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 ## Búsqueda
 - Código sin importar "-", espacios, ":" ni "." (`skuSearchSql()` / `skuSearchNorm()`): "M8363-3" encuentra "M:8363-3".
 - Resultados mientras se escribe (`assets/js/search.js`, `/buscar?ajax=1`); una búsqueda nueva cancela la anterior.
+- Orden: código exacto, luego "empieza por", luego el resto (por nombre).
+- **Filtros** (`/buscar?marca=&cat=&pmin=&pmax=&foto=1`): en la BD (`$filterSql` en `search.php`), combinables, en la URL
+  (Atrás y la paginación los conservan) y viajan con la búsqueda en vivo. Solo se ofrecen marcas/categorías con 5+ productos
+  visibles y precio si hay 20+ con precio (`searchFilterOptions()`). Chips con ✕ y "Quitar filtros".
+- **Sin resultados** → "¿Quisiste decir…?" (`searchSuggestions()`, helpers): códigos parecidos por distancia de letras
+  (completo o el inicio del código), uno por familia, y marcas parecidas (abren el filtro). Sin servicios externos. Con
+  filtros puestos no sugiere: avisa que los filtros pueden ocultar resultados.
 
 ## Coincidencia SKU ↔ archivo (regla única, decidida por el dueño)
 - **La foto se llama como el código**: `X6071.jpg`, o el código + separador + lo que sea (`X6071-A.jpg`, `X6071 (2).jpg`).
