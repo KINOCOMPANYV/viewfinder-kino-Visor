@@ -99,7 +99,7 @@
                             <button type="button" class="search-clear" aria-label="Borrar búsqueda">✕</button>
                         </span>
                         <div class="search-actions">
-                            <button type="submit" class="search-btn">Buscar</button>
+                            <div class="search-btn-row"><button type="submit" class="search-btn">Buscar</button><?php $imgSearchPart = 'button'; include __DIR__ . '/../partials/image_search.php'; ?></div>
                             <!-- Botón escáner QR (type=button: no envía el formulario) -->
                             <button type="button" id="btnQrScan" title="Escanear código QR">
                                 📷<span class="qr-label"> Escanear</span>
@@ -382,6 +382,7 @@
     <!-- QR Scanner: qr-scanner.js descarga html5-qrcode solo al abrir el escáner -->
     <script src="/assets/js/qr-scanner.js?v=<?= APP_VERSION ?>" defer></script>
     <?php include __DIR__ . '/../partials/loading_overlay.php'; ?>
+    <?php $imgSearchPart = 'modal'; include __DIR__ . '/../partials/image_search.php'; ?>
     <?php $mnavActive = 'inicio'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 

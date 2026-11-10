@@ -180,6 +180,14 @@ if (preg_match('#^/og/([A-Za-z0-9_-]+)\.jpg$#', $uri, $matches)) {
     exit;
 }
 
+if ($uri === '/buscar-foto' && $method === 'POST') {
+    // Búsqueda por foto (botón 📸 junto a la búsqueda)
+    checkRateLimit(20);
+    session_write_close();
+    include __DIR__ . '/src/controllers/image_search.php';
+    exit;
+}
+
 if ($uri === '/api/search') {
     // API de búsqueda (para autocomplete AJAX)
     checkRateLimit(120); // 120 req/min — autocomplete es frecuente

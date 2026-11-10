@@ -393,6 +393,13 @@ img {
     z-index: 2;
 }
 
+.search-box .search-btn-row {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
 .search-box .search-btn {
     padding: 0.7rem 1.5rem;
     background: var(--color-primary);

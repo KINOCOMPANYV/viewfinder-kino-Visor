@@ -9,5 +9,6 @@ while true; do
     php scripts/cli_sync.php carpetas 2>&1 | cut -c1-2000
     php scripts/cli_sync.php hoja 2>&1 | cut -c1-2000
     php scripts/cli_sync.php portadas 2>&1 | cut -c1-2000
+    php scripts/cli_sync.php imagenes 2>&1 | cut -c1-2000
     sleep $(( ${SYNC_INTERVAL_MINUTES:-60} * 60 ))
 done
