@@ -462,6 +462,8 @@ class DriveIndex
             'thumbnailLink' => lh3Url($id, 220),
             'webViewLink' => "https://drive.google.com/file/d/{$id}/view",
             'webContentLink' => "https://drive.google.com/uc?id={$id}&export=download",
+            // Código del producto enlazado (null = archivo sin código, p. ej. IMG_…/WhatsApp)
+            'matchedSku' => $r['matched_sku'] ?? null,
         ];
     }
 
@@ -500,7 +502,7 @@ class DriveIndex
         }
 
         $stmt = $db->prepare(
-            "SELECT file_id, name, mime_type, size, is_folder, cover_file_id FROM drive_index
+            "SELECT file_id, name, mime_type, size, is_folder, cover_file_id, matched_sku FROM drive_index
              WHERE parent_id = ? AND is_hidden = 0 ORDER BY name ASC"
         );
         $stmt->execute([$folderId]);
@@ -532,7 +534,7 @@ class DriveIndex
         $queue = [[$folderId, '']];
         $seen = [$folderId => true];
         $folderStmt = $db->prepare(
-            "SELECT file_id, name, mime_type, size, is_folder FROM drive_index
+            "SELECT file_id, name, mime_type, size, is_folder, matched_sku FROM drive_index
              WHERE parent_id = ? AND is_hidden = 0 ORDER BY name ASC"
         );
         $visited = 0;
