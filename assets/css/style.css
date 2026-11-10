@@ -3387,8 +3387,7 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .wa-toolbar-select input[type="checkbox"] { width: 20px; height: 20px; }
     .wa-toolbar-send { min-height: 40px; padding: 0.45rem 0.8rem; font-size: 0.8rem; }
     /* Deja espacio al final de la página para que la barra no tape la última fila */
-    body:has(.search-wa-toolbar.visible) main,
-    body:has(#galleryWaBar.visible) main { padding-bottom: 5rem; }
+    body:has(.search-wa-toolbar.visible) main { padding-bottom: 5rem; }
 }
 @media (max-width: 420px) {
     .wa-toolbar-select span { font-size: 0; }
@@ -3506,9 +3505,12 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .mnav-item.active { color: var(--color-primary); }
     .mnav-item.active .mnav-icon { filter: none; opacity: 1; }
     body:has(.mnav) { padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
-    /* Con la barra de envío por WhatsApp abierta, la de navegación se esconde (si no, se tapan) */
-    body:has(.search-wa-toolbar.visible) .mnav,
-    body:has(#galleryWaBar.visible) .mnav { display: none; }
+    /* La barra de envío por WhatsApp va encima de la de navegación: lo marcado sigue al cambiar de
+       página (etapa 3), así que se puede pasar a otra carpeta sin cerrar el envío */
+    body:has(.mnav) .search-wa-toolbar { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+    body:has(.mnav):has(.wab-bar.visible) main,
+    body:has(.mnav):has(.wab-bar.visible) .footer { padding-bottom: 9rem; }
+    body:has(.wab-bar.visible) .media-toast { bottom: calc(190px + env(safe-area-inset-bottom, 0px)); }
     .media-toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
 
     /* Encabezado: ya no queda pegado arriba (la barra de abajo lleva la navegación) y sin botones repetidos */
