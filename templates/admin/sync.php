@@ -117,6 +117,27 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
             <div class="sync-result" id="driveResult"></div>
         </section>
 
+        <?php
+        require_once BASE_DIR . '/src/services/ImageSearch.php';
+        $imgStatus = null;
+        if (ImageSearch::enabled()) {
+            try { $imgStatus = ImageSearch::status($db); } catch (\PDOException $e) { /* migración 028 pendiente */ }
+        }
+        ?>
+        <section class="sync-card">
+            <h2>📸 Búsqueda por foto</h2>
+            <p>
+                <?php if (!ImageSearch::enabled()): ?>
+                    Apagada. Para activarla, pon la variable <code>JINA_API_KEY</code> en Railway (clave de jina.ai).
+                <?php elseif ($imgStatus): ?>
+                    <b><?= number_format($imgStatus['indexadas']) ?></b> de <?= number_format($imgStatus['fotos']) ?> portadas listas para comparar.
+                    <br><small>Las nuevas se preparan solas en el sync automático de cada hora (ver logs de Railway: "Búsqueda por foto").</small>
+                <?php else: ?>
+                    Esperando la migración 028 (se aplica al reiniciar el contenedor).
+                <?php endif; ?>
+            </p>
+        </section>
+
         <section class="sync-card">
             <h2>🔎 ¿Por qué no sale la foto?</h2>
             <p>Escribe un código y verás sus fotos en Drive, dónde están y qué las oculta.</p>

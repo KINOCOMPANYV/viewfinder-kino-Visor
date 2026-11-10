@@ -53,6 +53,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
   Lo llena `DriveIndex::sync()` (`src/services/DriveIndex.php`).
 - `shared_catalogs` (migración 027): `code` único, `name`, `items` (JSON `[{id, sku}]`, máx. 300), `contact`, `manage_hash`
   (sha256 del token de gestión), `is_active`, `views`. No se borran: se desactivan.
+- `image_embeddings` (migración 028): `file_id` (portada) → `embedding` (512 float32 empaquetados, jina-clip-v2; NULL = no
+  bajó, se reintenta en 1 día). Búsqueda por foto.
 - `folder_settings`: `folder_id` → `hidden` (decisión del admin; sobrevive a los syncs).
 - `media_search_cache`: `sku` → `files_json` (búsqueda en Drive). Solo se usa mientras `drive_index` está vacío.
 - `drive_cache`: hoy solo guarda la visibilidad por archivo (`visible_publico`) y subcarpetas para la búsqueda.
@@ -138,6 +140,11 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - **Sin resultados** → "¿Quisiste decir…?" (`searchSuggestions()`, helpers): códigos parecidos por distancia de letras
   (completo o el inicio del código), uno por familia, y marcas parecidas (abren el filtro). Sin servicios externos. Con
   filtros puestos no sugiere: avisa que los filtros pueden ocultar resultados.
+- **Por foto** (`src/services/ImageSearch.php`, env `JINA_API_KEY`; sin ella no sale el botón): ícono de cámara dentro de la caja
+  de búsqueda, a la derecha (inicio y búsqueda; con texto el ✕ se corre a su izquierda; `templates/partials/image_search.php`). El navegador achica la foto a 512 px y la manda a `POST /buscar-foto`
+  (`src/controllers/image_search.php`, 20/min por IP): 1 llamada a Jina para su vector, producto punto contra `image_embeddings`
+  de las portadas visibles (foto, no video), 30 más parecidas en una ventana. El sync (`cli_sync.php imagenes`, tras portadas,
+  máx. `IMAGE_INDEX_MAX_SECONDS`=1500 por vuelta) prepara las portadas nuevas (lh3 `=s512`, 8 por llamada). Estado en Admin → Sincronizar.
 
 ## Coincidencia SKU ↔ archivo (regla única, decidida por el dueño)
 - **La foto se llama como el código**: `X6071.jpg`, o el código + separador + lo que sea (`X6071-A.jpg`, `X6071 (2).jpg`).
