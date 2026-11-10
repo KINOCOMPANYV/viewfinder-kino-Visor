@@ -23,6 +23,7 @@
     --color-success: #4ade80;
     --color-warning: #fbbf24;
     --color-danger: #f87171;
+    --color-primary-light: #e8c95a;
     --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --radius: 12px;
     --radius-sm: 8px;
@@ -228,25 +229,7 @@ a:hover {
     transition: opacity 0.3s;
 }
 
-.drive-folders-scroll.scrolled-end::after {
-    opacity: 0;
-}
-
 /* When loading folders via API */
-.drive-folders-loading {
-    display: flex;
-    gap: 0.75rem;
-    padding: 0.5rem 0;
-}
-
-.drive-folder-skeleton {
-    min-width: 80px;
-    height: 76px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    animation: pulse 1.5s ease-in-out infinite;
-}
 
 @keyframes pulse {
     0%, 100% { opacity: 0.6; }
@@ -259,13 +242,13 @@ a:hover {
         max-width: 80px;
         padding: 0.5rem 0.4rem;
     }
-    
+
     .drive-folder-chip .folder-icon {
         width: 34px;
         height: 34px;
         font-size: 1.1rem;
     }
-    
+
     .drive-folder-chip .folder-name {
         font-size: 0.65rem;
     }
@@ -320,7 +303,7 @@ img {
 .logo-icon {
     width: 32px;
     height: 32px;
-    background: linear-gradient(135deg, var(--color-primary), #e8c95a);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -410,15 +393,6 @@ img {
     z-index: 2;
 }
 
-.search-box .search-buttons {
-    position: absolute;
-    right: 0.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    gap: 0.35rem;
-}
-
 .search-box .search-btn {
     padding: 0.7rem 1.5rem;
     background: var(--color-primary);
@@ -435,20 +409,6 @@ img {
 .search-box .search-btn:hover {
     background: var(--color-primary-hover);
     transform: scale(1.02);
-}
-
-.search-box .batch-btn {
-    background: var(--color-surface-3);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-    font-size: 0.82rem;
-    padding: 0.6rem 0.9rem;
-}
-
-.search-box .batch-btn:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-    background: rgba(201, 168, 76, 0.1);
 }
 
 /* === Autocomplete Dropdown === */
@@ -507,12 +467,6 @@ img {
 }
 
 /* === Cards / Product Grid === */
-.product-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
-    padding: 2rem 0;
-}
 
 /* === Parent-Child Grid (Landing) === */
 .section-header-landing {
@@ -553,11 +507,6 @@ img {
     border-color: var(--color-border-hover);
     transform: translateY(-3px);
     box-shadow: var(--shadow-lg);
-}
-
-.parent-image-link {
-    display: block;
-    text-decoration: none;
 }
 
 .parent-card .card-image {
@@ -680,7 +629,6 @@ img {
     margin-top: 0.25rem;
 }
 
-
 .child-thumb {
     width: 44px;
     height: 44px;
@@ -718,28 +666,6 @@ img {
     background: var(--color-surface-3);
 }
 
-.child-more {
-    width: 44px;
-    height: 44px;
-    border-radius: 6px;
-    background: var(--color-surface-2);
-    border: 1px dashed var(--color-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--color-primary);
-    text-decoration: none;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.child-more:hover {
-    background: rgba(201, 168, 76, 0.1);
-    border-color: var(--color-primary);
-}
-
 .children-label {
     font-size: 0.75rem;
     font-weight: 500;
@@ -749,34 +675,6 @@ img {
 }
 
 /* --- Card actions --- */
-.card-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.card-actions .btn-whatsapp {
-    flex: 1;
-}
-
-.btn-ver {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--color-primary);
-    text-decoration: none;
-    padding: 0.4rem 0.7rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-primary);
-    transition: all 0.2s;
-    text-align: center;
-    white-space: nowrap;
-}
-
-.btn-ver:hover {
-    background: var(--color-primary);
-    color: #000;
-}
 
 /* --- Pagination --- */
 .pagination {
@@ -859,8 +757,7 @@ img {
         font-size: 0.7rem;
     }
 
-    .child-thumb,
-    .child-more {
+    .child-thumb {
         width: 32px;
         height: 32px;
     }
@@ -965,72 +862,6 @@ img {
     .parent-card .card-name {
         font-size: 0.85rem;
     }
-}
-
-.product-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    transition: all var(--transition);
-    cursor: pointer;
-}
-
-.product-card:hover {
-    border-color: var(--color-border-hover);
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-}
-
-.product-card .card-image {
-    width: 100%;
-    aspect-ratio: 1;
-    background: var(--color-surface-2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-text-dim);
-    font-size: 3rem;
-    overflow: hidden;
-}
-
-.product-card .card-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.product-card .card-body {
-    padding: 1.25rem;
-}
-
-.product-card .card-sku {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--color-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.25rem;
-}
-
-.product-card .card-name {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    line-height: 1.3;
-}
-
-.product-card .card-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--color-text-muted);
-    font-size: 0.85rem;
-}
-
-.product-card .card-price {
-    font-weight: 700;
-    color: var(--color-text);
 }
 
 /* === Product Detail Page === */
@@ -1171,11 +1002,6 @@ img {
     color: var(--color-text);
 }
 
-.btn-success {
-    background: var(--color-success);
-    color: #000;
-}
-
 .btn-danger {
     background: var(--color-danger);
     color: #000;
@@ -1189,12 +1015,6 @@ img {
 .btn-block {
     width: 100%;
     justify-content: center;
-}
-
-.btn-group {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
 }
 
 /* Copy button */
@@ -1235,8 +1055,7 @@ img {
     margin-bottom: 0.4rem;
 }
 
-.form-input,
-.form-select {
+.form-input {
     width: 100%;
     padding: 0.75rem 1rem;
     background: var(--color-surface-2);
@@ -1249,8 +1068,7 @@ img {
     transition: all var(--transition);
 }
 
-.form-input:focus,
-.form-select:focus {
+.form-input:focus {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
@@ -1261,44 +1079,6 @@ textarea.form-input {
 }
 
 /* === File Upload === */
-.file-upload {
-    border: 2px dashed var(--color-border);
-    border-radius: var(--radius);
-    padding: 3rem 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all var(--transition);
-    position: relative;
-}
-
-.file-upload:hover,
-.file-upload.dragover {
-    border-color: var(--color-primary);
-    background: rgba(201, 168, 76, 0.05);
-}
-
-.file-upload input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-}
-
-.file-upload .upload-icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-}
-
-.file-upload .upload-text {
-    color: var(--color-text-muted);
-    font-size: 0.95rem;
-}
-
-.file-upload .upload-hint {
-    color: var(--color-text-dim);
-    font-size: 0.8rem;
-    margin-top: 0.5rem;
-}
 
 /* === Tables (Admin) === */
 .table-wrapper {
@@ -1345,16 +1125,6 @@ textarea.form-input {
     letter-spacing: 0.3px;
 }
 
-.badge-active {
-    background: rgba(74, 222, 128, 0.15);
-    color: var(--color-success);
-}
-
-.badge-discontinued {
-    background: rgba(248, 113, 113, 0.15);
-    color: var(--color-danger);
-}
-
 /* === Alerts === */
 .alert {
     padding: 1rem 1.25rem;
@@ -1374,18 +1144,6 @@ textarea.form-input {
     background: rgba(248, 113, 113, 0.1);
     border-color: rgba(248, 113, 113, 0.3);
     color: var(--color-danger);
-}
-
-.alert-warning {
-    background: rgba(251, 191, 36, 0.1);
-    border-color: rgba(251, 191, 36, 0.3);
-    color: var(--color-warning);
-}
-
-.alert-info {
-    background: rgba(74, 158, 255, 0.1);
-    border-color: rgba(74, 158, 255, 0.3);
-    color: var(--color-accent);
 }
 
 /* === Admin Nav === */
@@ -1415,29 +1173,6 @@ textarea.form-input {
 }
 
 /* === Import Results === */
-.import-results {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    padding: 1.5rem;
-}
-
-.import-stat {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 0;
-}
-
-.import-stat .stat-number {
-    font-size: 1.25rem;
-    font-weight: 700;
-}
-
-.import-stat .stat-label {
-    color: var(--color-text-muted);
-    font-size: 0.85rem;
-}
 
 /* === Footer === */
 .footer {
@@ -1535,28 +1270,6 @@ textarea.form-input {
         padding: 2.5rem 0 2rem;
     }
 
-    .product-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 1rem;
-    }
-
-    .product-card .card-body {
-        padding: 0.85rem;
-    }
-
-    .product-card .card-name {
-        font-size: 0.875rem;
-    }
-
-    .btn-group {
-        flex-direction: column;
-    }
-
-    .btn-group .btn {
-        width: 100%;
-        justify-content: center;
-    }
-
     .table th,
     .table td {
         padding: 0.65rem 0.75rem;
@@ -1585,16 +1298,22 @@ textarea.form-input {
     }
 }
 
-/* === Card Image Skeleton (shimmer placeholder) === */
-.card-image-skeleton {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg,
-            var(--color-surface-2) 0%,
-            var(--color-surface-3) 50%,
-            var(--color-surface-2) 100%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+/* === Mientras la foto baja: brillo que se mueve en el recuadro (en vez de un hueco quieto) === */
+.card-image:has(.img-fade-in:not(.loaded)),
+.gallery-item:has(> .gallery-lazy:not(.loaded)) {
+    background-image: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.05) 50%, transparent 65%);
+    background-size: 220% 100%;
+    animation: kino-shimmer 1.3s linear infinite;
+}
+
+@keyframes kino-shimmer {
+    from { background-position: 130% 0; }
+    to { background-position: -90% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card-image:has(.img-fade-in:not(.loaded)),
+    .gallery-item:has(> .gallery-lazy:not(.loaded)) { animation: none; }
 }
 
 /* === Image Fade-In (SSR covers) === */
@@ -1678,7 +1397,7 @@ textarea.form-input {
 }
 
 .btn-whatsapp:hover {
-    background: #1da851;
+    background: var(--color-wa-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
 }
@@ -1901,12 +1620,6 @@ textarea.form-input {
 }
 
 @media (max-width: 640px) {
-    .search-box .search-buttons {
-        position: static;
-        transform: none;
-        margin-top: 0.5rem;
-        justify-content: center;
-    }
 
     .search-box input {
         padding-right: 1.25rem;
@@ -2018,7 +1731,7 @@ textarea.form-input {
 }
 
 .batch-wa-send:hover {
-    background: #1fb855;
+    background: var(--color-wa-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
 }
@@ -2482,7 +2195,7 @@ textarea.form-input {
 }
 
 .wa-share-send:hover {
-    background: #1fb855;
+    background: var(--color-wa-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
 }
@@ -2634,102 +2347,11 @@ textarea.form-input {
 }
 
 /* --- Sidebar (desktop lateral / albums section inline) --- */
-.search-sidebar {
-    width: 260px;
-    flex-shrink: 0;
-    position: sticky;
-    top: 5.5rem;
-    height: calc(100vh - 6rem);
-    display: flex;
-    flex-direction: column;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    order: -1;
-}
 
 /* Albums section (aparece dentro de search-main, entre buscador y productos) */
-.albums-section {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-}
 
 .album-hidden {
     display: none;
-}
-
-.album-hidden.album-revealed {
-    display: flex;
-}
-
-.sidebar-header {
-    padding: 1.25rem;
-    border-bottom: 1px solid var(--color-border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.02);
-}
-
-.sidebar-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--color-text);
-}
-
-.sidebar-album-count {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--color-primary);
-    background: rgba(201, 168, 76, 0.12);
-    border: 1px solid rgba(201, 168, 76, 0.25);
-    padding: 0.15rem 0.5rem;
-    border-radius: 10px;
-    line-height: 1.3;
-}
-
-.sidebar-clear {
-    color: var(--color-text-muted);
-    font-size: 0.9rem;
-    text-decoration: none;
-    background: var(--color-surface-3);
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.2s;
-}
-
-.sidebar-clear:hover {
-    color: #fff;
-    background: var(--color-danger);
-}
-
-.sidebar-albums {
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    gap: 0.5rem;
-    padding: 1rem;
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-surface-3) transparent;
-}
-
-.sidebar-albums::-webkit-scrollbar {
-    width: 6px;
-}
-.sidebar-albums::-webkit-scrollbar-track {
-    background: transparent;
-}
-.sidebar-albums::-webkit-scrollbar-thumb {
-    background: var(--color-surface-3);
-    border-radius: 4px;
 }
 
 .sidebar-album-item {
@@ -2789,29 +2411,6 @@ textarea.form-input {
     -webkit-box-orient: vertical;
 }
 
-.sidebar-ver-mas {
-    padding: 0.85rem;
-    text-align: center;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--color-primary);
-    background: var(--color-surface-2);
-    border-top: 1px solid var(--color-border);
-    transition: all 0.2s;
-    display: block;
-    text-decoration: none;
-    width: 100%;
-    border: none;
-    border-top: 1px solid var(--color-border);
-    cursor: pointer;
-    font-family: var(--font);
-}
-
-.sidebar-ver-mas:hover {
-    background: rgba(201, 168, 76, 0.1);
-    color: var(--color-primary-hover);
-}
-
 /* --- Main Area --- */
 .search-main {
     flex: 1;
@@ -2834,21 +2433,6 @@ textarea.form-input {
         width: 100%;
     }
 
-    .search-sidebar {
-        order: 1;
-        width: 100%;
-        height: auto;
-        max-height: none;
-        position: static;
-    }
-
-    .sidebar-albums {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 0.5rem;
-        max-height: none;
-        overflow-y: visible;
-    }
 }
 
 /* ============================================================
@@ -2877,20 +2461,6 @@ textarea.form-input {
     }
 
     /* Albums: compact 2-column grid */
-    .search-sidebar,
-    .albums-section {
-        border-radius: var(--radius);
-    }
-
-    .albums-section .sidebar-header,
-    .search-sidebar .sidebar-header {
-        padding: 0.85rem 1rem;
-    }
-
-    .albums-section .sidebar-title,
-    .search-sidebar .sidebar-title {
-        font-size: 0.95rem;
-    }
 
     /* Removed sidebar-albums grid override to keep horizontal slider on mobile */
 
@@ -3068,15 +2638,15 @@ textarea.form-input {
 }
 
 .toast.success {
-    background: #27ae60;
+    background: var(--color-wa-hover);
 }
 
 .toast.error {
-    background: #e74c3c;
+    background: #d9534f;
 }
 
 .toast.info {
-    background: #2980b9;
+    background: var(--color-accent);
 }
 
 @keyframes toast-in {
@@ -3100,7 +2670,6 @@ textarea.form-input {
         opacity: 0;
     }
 }
-
 
 /* ============================================================
    Móvil (todas las páginas). Va al final para ganar a lo anterior.
@@ -3187,7 +2756,7 @@ img, video, iframe { max-width: 100%; }
     .btn, .btn-sm { min-height: 44px; justify-content: center; }
     .header .btn-sm { min-height: 40px; }
     .btn-whatsapp { min-height: 40px; font-size: 0.78rem; }
-    .btn-ver { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+
     .btn-copy { min-height: 36px; }
     .logo { min-height: 40px; }
 
@@ -3257,8 +2826,7 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     margin: 0 !important;
     padding: 0;
 }
-.child-thumb,
-.child-more {
+.child-thumb {
     width: auto !important;
     height: auto !important;
     aspect-ratio: 1;
@@ -3267,9 +2835,6 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .child-thumb:hover { transform: none; }
 .children-info { margin-top: 0.15rem; }
 .children-label { font-size: 0.62rem; }
-
-.parent-card .card-actions { margin: auto 0.55rem 0.5rem; padding-top: 0.25rem; }
-.parent-card .card-wa-btn { font-size: 0.66rem; padding: 0.3rem 0.4rem; }
 
 /* Carpetas: también en grilla, sin deslizar a los lados */
 .drive-folders-grid {
@@ -3291,8 +2856,7 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .parent-card .card-body { padding: 0.35rem 0.45rem 0.4rem !important; }
     .parent-card .card-name { font-size: 0.72rem !important; }
     .children-row { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); }
-    .parent-card .card-actions { margin: auto 0.45rem 0.4rem; }
-    .parent-card .card-wa-btn { font-size: 0.68rem !important; padding: 0.3rem 0.4rem !important; min-height: 32px; }
+
 }
 
 /* Botones WhatsApp + Descargar en cada foto (tarjetas y carpetas): siempre visibles */
@@ -3317,8 +2881,8 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     white-space: nowrap;
     transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
-.media-btn-wa { background: #25D366; color: #fff; border: none; }
-.media-btn-wa:hover { background: #1da851; }
+.media-btn-wa { background: var(--color-wa); color: #fff; border: none; }
+.media-btn-wa:hover { background: var(--color-wa-hover); }
 .media-btn-dl {
     background: var(--color-surface-3, #1c1c28);
     color: var(--color-text-muted);
@@ -3586,4 +3150,19 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 @media (max-width: 360px) {
     .search-box .search-btn { padding: 0 0.6rem; font-size: 0.82rem; }
     .search-box #btnQrScan { min-width: 42px; }
+}
+
+/* ===== Etapa 4: estética ===== */
+/* Inicio: Buscar y el escáner en una fila centrada, con el mismo estilo de botón */
+.search-actions { display: flex; justify-content: center; align-items: stretch; gap: 0.5rem; }
+#btnQrScan {
+    background: var(--color-surface); color: var(--color-text-muted);
+    border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+    padding: 0.55rem 0.9rem; font: inherit; font-size: 0.95rem; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 0.3rem; transition: all var(--transition);
+}
+#btnQrScan:hover { color: var(--color-primary); border-color: var(--color-primary); }
+@media (max-width: 640px) {
+    .search-actions { gap: 0.4rem; align-items: flex-start; }
+    .qr-label { display: none; }
 }

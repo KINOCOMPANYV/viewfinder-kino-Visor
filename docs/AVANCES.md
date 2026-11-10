@@ -12,9 +12,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   completa (3629 de 3629, sin filas descartadas ni repetidas). En la hoja faltan datos: 124 filas sin PRICE_SUGGESTED (98 POEDAGAR)
   y 33 sin NAME; esas salen sin precio o con el código como nombre. Admin → Sincronizar muestra hoja vs "Solo Drive".
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#36 fusionados.
+- PRs #1–#37 fusionados.
 - Plan de mejora UX/velocidad aprobado por el dueño (2026-11-09), un PR por etapa: 1 velocidad, 2 celular más claro,
-  3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapas 1 (#34), 2 (#35) y 3 (#36).
+  3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapas 1 (#34), 2 (#35), 3 (#36) y 4 (#37).
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -66,7 +66,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan UX: etapas 4 a 6 (ver "Estado actual").
+- Plan UX: etapas 5 y 6 (ver "Estado actual").
 
 ## Historial (1 línea por PR)
 - #1–#7 (oct 2026): carpetas como en Drive (todos los niveles), códigos con prefijo M:/M/M-, búsqueda tolerante,
@@ -111,3 +111,6 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #36: etapa 3, envío más rápido: lo marcado sigue al cambiar de página (sessionStorage), la galería de la ficha usa la
   misma barra y fotos livianas (antes bajaba los originales al tocar Enviar, máx. 10), precarga de 6 en 6, la barra de envío
   queda encima de la barra inferior del celular.
+- #37: etapa 4, estética: se quitan del CSS 76 reglas muertas (~10 KB), un solo verde WhatsApp y un solo dorado (tokens
+  `--color-wa*`, `--color-primary-light`), avisos con la misma paleta, brillo de "cargando" en los recuadros de foto, y en el
+  computador Buscar + "📷 Escanear" en una fila. Capturas de 28 páginas (375/1280 px) antes y después para no romper nada.
