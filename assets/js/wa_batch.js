@@ -7,8 +7,10 @@
  * Marcado de cada tarjeta (.parent-card):
  *   <label class="search-check-footer"><input type="checkbox" class="search-card-check"
  *          data-sku="SKU" data-file-id="…" data-is-video="0"> …</label>
- * La barra se crea sola. Lo marcado se mantiene al hacer otra búsqueda (los resultados llegan por AJAX),
- * así se pueden juntar fotos de varias búsquedas en un mismo envío.
+ * La barra se crea sola. Lo marcado se guarda en la pestaña (sessionStorage) y se mantiene al hacer otra
+ * búsqueda o al pasar a otra carpeta, al inicio o a una ficha: se juntan fotos de varias páginas en un mismo envío.
+ * La galería de la ficha usa las mismas casillas (.search-card-check dentro de .gallery-item) y llama
+ * window.KinoWaBatch.sync() cuando termina de dibujarse.
  */
 (function () {
     const TANDA = 10;
@@ -24,6 +26,24 @@
     const loaded = new Set();
     let tandaNum = 0;
     let bar, el = {};
+
+    // ---- Selección guardada en la pestaña: sobrevive al cambiar de página ----
+    const STORE = 'kinoWaSel';
+    function saveSel() {
+        try { sessionStorage.setItem(STORE, JSON.stringify({ items: Array.from(sel.values()), tanda: tandaNum })); } catch (e) {}
+    }
+    function loadSel() {
+        sel.clear();
+        tandaNum = 0;
+        try {
+            const d = JSON.parse(sessionStorage.getItem(STORE) || 'null');
+            if (d && Array.isArray(d.items)) {
+                d.items.forEach((it) => { if (it && it.id) sel.set(it.id, { id: it.id, sku: it.sku || it.id, wa: !!it.wa }); });
+                tandaNum = d.tanda | 0;
+            }
+        } catch (e) {}
+    }
+    loadSel();
 
     // ---- Fotos ----
     async function fetchPhoto(id) {
@@ -64,14 +84,15 @@
 
     // ---- Tarjetas ----
     // Foto que la tarjeta muestra ahora (la portada puede llegar después por JS o cambiar al elegir variante)
+    const CARD = '.parent-card, .gallery-item';
     function fileIdOf(cb) {
-        const card = cb.closest('.parent-card');
+        const card = cb.closest(CARD);
         const img = card && card.querySelector('.card-image img');
         const m = img && (img.currentSrc || img.src || '').match(/\/d\/([A-Za-z0-9_-]{10,})/);
         return m ? m[1] : (cb.dataset.fileId || '');
     }
     const checks = () => Array.from(document.querySelectorAll('.search-card-check'));
-    const visible = (cb) => { const c = cb.closest('.parent-card'); return !!(c && c.offsetParent !== null); };
+    const visible = (cb) => { const c = cb.closest(CARD); return !!(c && c.offsetParent !== null); };
     // Las que se pueden marcar con "Marcar todas": visibles (filtro), con foto y que no sean video
     const eligible = (cb) => visible(cb) && cb.dataset.isVideo !== '1' && !!fileIdOf(cb);
 
@@ -147,6 +168,7 @@
         el.save.disabled = !n;
         renderSend();
         preload();
+        saveSel();
     }
 
     function renderSend() {
@@ -164,7 +186,8 @@
             : `⏳ ${have}/${next.length}`;
     }
 
-    // Baja las marcadas en segundo plano (4 a la vez), primero la tanda que sigue
+    // Baja las marcadas en segundo plano (6 a la vez), primero la tanda que sigue.
+    // Al cambiar de página vuelven a pedirse, pero salen de la caché del navegador (1 día).
     let run = 0;
     function preload() {
         const r = ++run;
@@ -177,7 +200,7 @@
                 if (r === run) renderSend();
             }
         };
-        for (let k = 0; k < 4; k++) worker();
+        for (let k = 0; k < 6; k++) worker();
     }
     function drop(id) {
         const it = sel.get(id);
@@ -207,6 +230,7 @@
             await navigator.share({ files: await Promise.all(part.map(toFile)) });
             part.forEach((it) => { it.wa = true; });
             tandaNum++;
+            saveSel();
             const left = pending().length;
             msg(left ? `✅ Tanda ${tandaNum} enviada. Faltan ${left}: toca 📲 cuando esté lista.` : `✅ Listo: ${sel.size} foto${sel.size === 1 ? '' : 's'} enviada${sel.size === 1 ? '' : 's'}.`);
             renderSend();
@@ -254,13 +278,18 @@
     document.addEventListener('change', (e) => {
         const cb = e.target;
         if (!cb.classList || !cb.classList.contains('search-card-check')) return;
+        msg('');
         setCheck(cb, cb.checked);
         render();
     });
 
+    window.KinoWaBatch = { sync: syncChecks };
+
     function start() {
-        if (!checks().length && !document.getElementById('searchResultsContainer')) return;
-        render();
+        const restored = sel.size;
+        if (!restored && !checks().length && !document.getElementById('searchResultsContainer')) return;
+        syncChecks();
+        if (restored) msg(`📌 ${restored} marcada${restored === 1 ? '' : 's'}: se mantienen al pasar de una página a otra.`);
         const box = document.getElementById('searchResultsContainer');
         if (box && window.MutationObserver) {
             let t;
@@ -268,4 +297,6 @@
         }
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+    // Botón Atrás (la página vuelve tal cual estaba): traer lo marcado en las otras páginas
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { loadSel(); syncChecks(); } });
 })();

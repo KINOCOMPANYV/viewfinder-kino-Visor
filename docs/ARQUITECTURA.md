@@ -164,8 +164,11 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - **Marcar varias en el catálogo** (inicio, búsqueda, también tras la búsqueda AJAX, y carpetas: una tarjeta por foto; si la carpeta solo tiene subcarpetas, `DriveIndex::descendantImages()` trae las fotos de todas ellas, máx. 300): casilla `.search-card-check`
   (`data-sku`, `data-file-id`, `data-is-video`) en cada tarjeta y `assets/js/wa_batch.js`, que crea la barra `.wab-bar`
   (Marcar todas = visibles con foto, 💾 Guardar, 📲 Enviar por tandas de 10 sin texto). Mismo mecanismo que Enviar catálogo:
-  fotos de `/enviar-catalogo/foto/{id}` (si da 404, foto de carpeta sin código, `/api/download`), precarga de 4 en 4, 3 intentos. Lo marcado vive en memoria y sobrevive a nuevas búsquedas.
-- Galería de la ficha: elegir varias fotos y enviarlas juntas (con el mismo pie de foto).
+  fotos de `/enviar-catalogo/foto/{id}` (si da 404, foto de carpeta sin código, `/api/download`), precarga de 6 en 6 desde que se marca, 3 intentos.
+  Lo marcado se guarda en `sessionStorage` (`kinoWaSel`): sigue al hacer otra búsqueda y al cambiar de página (carpetas,
+  inicio, ficha; también al volver con Atrás, `pageshow`). En el celular la barra va encima de la barra inferior.
+- Galería de la ficha: sus casillas son las mismas (`.search-card-check` dentro de `.gallery-item`, solo fotos; los videos
+  se bajan con su botón) y `product_page.js` llama `KinoWaBatch.sync()` al dibujarla. Ya no hay barra propia ni pie de foto.
 
 ## Caché HTTP
 - Assets (`.htaccess`): 1 año `immutable`; se invalida con `?v=APP_VERSION`.

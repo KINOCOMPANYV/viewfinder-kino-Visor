@@ -405,10 +405,10 @@ function renderGallery(files) {
             mediaHtml = `<div class="video-placeholder">📄</div>`;
         }
 
-        // Checkbox for images AND videos (selectable media)
-        const checkHtml = (isImage || isVideo) ? `
+        // Casilla para marcar la foto (los videos se bajan con su botón: no van en las tandas de WhatsApp)
+        const checkHtml = isImage ? `
             <label class="search-check-footer">
-                <input type="checkbox" class="gallery-check" data-index="${idx}" data-file-id="${f.id}" data-name="${esc(f.name)}" data-type="${isVideo ? 'video' : 'image'}">
+                <input type="checkbox" class="gallery-check search-card-check" data-index="${idx}" data-file-id="${f.id}" data-sku="${esc(f.name.replace(/\.[^.]+$/, ''))}" data-is-video="0">
                 <span class="search-check-icon">✓</span>
                 <span class="search-check-text">Seleccionar</span>
             </label>` : '';
@@ -443,100 +443,9 @@ function renderGallery(files) {
         lazyObserver.observe(img);
     });
 
-    // --- Gallery WhatsApp selection ---
-    const waBar = document.getElementById('galleryWaBar');
-    const selectAllCb = document.getElementById('gallerySelectAll');
-    const countEl = document.getElementById('gallerySelectedCount');
-    const btnSend = document.getElementById('btnGalleryWaSend');
-    const checks = grid.querySelectorAll('.gallery-check');
-
-    if (checks.length > 0) waBar.style.display = '';
-
-    function updateGalleryCount() {
-        const sel = grid.querySelectorAll('.gallery-check:checked').length;
-        countEl.textContent = sel;
-        btnSend.disabled = sel === 0;
-        selectAllCb.checked = sel === checks.length && checks.length > 0;
-        selectAllCb.indeterminate = sel > 0 && sel < checks.length;
-        // Igual que en la búsqueda: la barra de enviar aparece al marcar alguna foto
-        waBar.classList.toggle('visible', sel > 0);
-    }
-
-    checks.forEach(cb => cb.addEventListener('change', updateGalleryCount));
-    selectAllCb.addEventListener('change', () => {
-        checks.forEach(cb => cb.checked = selectAllCb.checked);
-        updateGalleryCount();
-    });
-
-    btnSend.addEventListener('click', async () => {
-        const sel = [];
-        grid.querySelectorAll('.gallery-check:checked').forEach(cb => {
-            const f = allGalleryFiles[parseInt(cb.dataset.index)];
-            if (f) sel.push(f);
-        });
-        if (sel.length === 0) return;
-        if (sel.length > 10) {
-            alert('⚠️ Solo se pueden enviar 10 archivos a la vez.\n\nPor favor deselecciona algunos.');
-            return;
-        }
-
-        const selImages = sel.filter(f => (f.mimeType || '').startsWith('image/'));
-        const selVideos = sel.filter(f => (f.mimeType || '').startsWith('video/'));
-
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (isMobile && navigator.canShare && navigator.share) {
-            // Mobile: share files as blobs (images + videos)
-            btnSend.disabled = true;
-            btnSend.textContent = '⏳ Preparando archivos...';
-            try {
-                const fileObjs = (await Promise.all(sel.map(async (f, i) => {
-                    try {
-                        const isImg = (f.mimeType || '').startsWith('image/');
-                        const isVid = (f.mimeType || '').startsWith('video/');
-                        if (isImg) {
-                            const r = await fetch(`/api/download/${f.id}`);
-                            const b = await r.blob();
-                            const ext = (f.name.match(/\.[^.]+$/) || ['.jpg'])[0];
-                            return new File([b], f.name || `imagen_${i+1}${ext}`, { type: b.type || 'image/jpeg' });
-                        } else if (isVid) {
-                            const r = await fetch(`/api/download/${f.id}`);
-                            const b = await r.blob();
-                            return new File([b], f.name || `video_${i+1}.mp4`, { type: b.type || 'video/mp4' });
-                        }
-                    } catch { return null; }
-                    return null;
-                }))).filter(Boolean);
-                if (fileObjs.length > 0) {
-                    // Con pie de foto: código, nombre y enlace a la ficha (vista previa en WhatsApp)
-                    const sd = { files: fileObjs, text: '*' + SKU + ' — ' + PRODUCT_NAME + '*\n' + SHARE_URL };
-                    if (navigator.canShare(sd)) { await navigator.share(sd); resetGalleryBtn(); return; }
-                }
-            } catch (e) { if (e.name === 'AbortError') { resetGalleryBtn(); return; } }
-            resetGalleryBtn();
-        }
-
-        // Fallback (desktop): open links text
-        let text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n';
-        text += SHARE_URL + '\n\n';
-        if (selImages.length > 0) {
-            text += '📸 *Imágenes (' + selImages.length + '):*\n\n';
-            selImages.forEach((f, i) => {
-                text += (i + 1) + '. https://drive.google.com/uc?export=view&id=' + f.id + '\n\n';
-            });
-        }
-        if (selVideos.length > 0) {
-            text += '🎬 *Videos (' + selVideos.length + '):*\n\n';
-            selVideos.forEach((f, i) => {
-                text += (i + 1) + '. ' + f.name + '\n' + location.origin + '/api/download/' + f.id + '\n\n';
-            });
-        }
-        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
-    });
-
-    function resetGalleryBtn() {
-        btnSend.disabled = false;
-        btnSend.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Enviar por WhatsApp';
-    }
+    // Casillas de la galería: misma barra y selección que el catálogo (assets/js/wa_batch.js):
+    // fotos livianas que bajan al marcar, tandas de 10 y lo marcado sigue al cambiar de página.
+    if (window.KinoWaBatch) KinoWaBatch.sync();
 }
 
 function downloadMedia(type) {

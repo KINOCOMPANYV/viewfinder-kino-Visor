@@ -12,9 +12,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   completa (3629 de 3629, sin filas descartadas ni repetidas). En la hoja faltan datos: 124 filas sin PRICE_SUGGESTED (98 POEDAGAR)
   y 33 sin NAME; esas salen sin precio o con el código como nombre. Admin → Sincronizar muestra hoja vs "Solo Drive".
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#35 fusionados.
+- PRs #1–#36 fusionados.
 - Plan de mejora UX/velocidad aprobado por el dueño (2026-11-09), un PR por etapa: 1 velocidad, 2 celular más claro,
-  3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapa 1 (#34) y etapa 2 (#35).
+  3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapas 1 (#34), 2 (#35) y 3 (#36).
 
 ## Decisiones vigentes (del dueño)
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -41,7 +41,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   copia la foto para pegarla en WhatsApp Web (Ctrl+V).
 - Inicio y resultados de búsqueda/filtro: "Seleccionar" en cada tarjeta → barra abajo con "Marcar todas" (lo visible con el
   filtro), "💾 Guardar" y "📲 Enviar" por tandas de 10 (mismo sistema que Enviar catálogo, solo imágenes). Lo marcado se
-  mantiene al hacer otra búsqueda, así se juntan fotos de varias búsquedas.
+  mantiene al hacer otra búsqueda y al pasar a otra carpeta, al inicio o a una ficha (en la misma pestaña), así se juntan
+  fotos de varias páginas en un solo envío. Las fotos empiezan a bajar apenas se marcan. La galería de la ficha usa la misma
+  barra (solo fotos; ya no manda pie de foto ni archivos originales pesados).
 - Carpetas: cada foto es una tarjeta en la grilla (ya no se agrupan como miniaturas de variantes), con su código, WhatsApp,
   Descargar y "Seleccionar" para mandar varias (misma barra). Una carpeta que solo tiene subcarpetas (p. ej. una línea con
   14 modelos) muestra debajo las fotos de todas sus subcarpetas (hasta 300) para marcarlas sin entrar a cada una; no en la raíz.
@@ -64,7 +66,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan UX: etapas 3 a 6 (ver "Estado actual").
+- Plan UX: etapas 4 a 6 (ver "Estado actual").
 
 ## Historial (1 línea por PR)
 - #1–#7 (oct 2026): carpetas como en Drive (todos los niveles), códigos con prefijo M:/M/M-, búsqueda tolerante,
@@ -106,3 +108,6 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   carpetas, JS de las páginas en archivos cacheables (ficha 57 KB → 20 KB). La búsqueda en BD ya tardaba ~2 ms: sin cambios.
 - #35: etapa 2, celular más claro: barra inferior tipo app, buscador fijo arriba en una fila (✕ y 📷), encabezado sin
   botones repetidos, carpetas compactas (inicio y búsqueda), "Seleccionar" como círculo sobre la foto.
+- #36: etapa 3, envío más rápido: lo marcado sigue al cambiar de página (sessionStorage), la galería de la ficha usa la
+  misma barra y fotos livianas (antes bajaba los originales al tocar Enviar, máx. 10), precarga de 6 en 6, la barra de envío
+  queda encima de la barra inferior del celular.
