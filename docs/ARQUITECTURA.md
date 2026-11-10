@@ -170,6 +170,15 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - Galería de la ficha: sus casillas son las mismas (`.search-card-check` dentro de `.gallery-item`, solo fotos; los videos
   se bajan con su botón) y `product_page.js` llama `KinoWaBatch.sync()` al dibujarla. Ya no hay barra propia ni pie de foto.
 
+## Estética (etapa 4)
+- Colores SOLO con los tokens de `:root` en `style.css` (`--color-*`; WhatsApp: `--color-wa`, `--color-wa-hover`; dorado
+  claro: `--color-primary-light`). No escribas hex sueltos en CSS nuevo.
+- Mientras una foto de tarjeta o galería no carga, su recuadro tiene un brillo animado (`kino-shimmer`, con `:has` sobre
+  `.img-fade-in:not(.loaded)`); se apaga con `prefers-reduced-motion`.
+- Limpieza 2026-11-10: se quitaron las reglas de clases que ningún PHP/JS usa (sidebar de álbumes, tarjetas viejas,
+  importación de Excel). Antes de borrar CSS, comprueba la clase con grep en todo el repo (hay clases armadas por variable,
+  p. ej. `cache-flash--<?= … ?>`).
+
 ## Caché HTTP
 - Assets (`.htaccess`): 1 año `immutable`; se invalida con `?v=APP_VERSION`.
 - Landing `max-age=60`; ficha de producto: ETag + `private, max-age=60`; APIs con `jsonCachedResponse($data, ttl)`.

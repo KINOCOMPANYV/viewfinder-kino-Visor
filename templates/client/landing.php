@@ -98,14 +98,14 @@
                                 autocomplete="off" autofocus></textarea>
                             <button type="button" class="search-clear" aria-label="Borrar búsqueda">✕</button>
                         </span>
-                        <button type="submit" class="search-btn">Buscar</button>
+                        <div class="search-actions">
+                            <button type="submit" class="search-btn">Buscar</button>
+                            <!-- Botón escáner QR (type=button: no envía el formulario) -->
+                            <button type="button" id="btnQrScan" title="Escanear código QR">
+                                📷<span class="qr-label"> Escanear</span>
+                            </button>
+                        </div>
                     </form>
-                    <!-- Botón escáner QR -->
-                    <button type="button" id="btnQrScan" title="Escanear código QR"
-                        style="background:none;border:none;cursor:pointer;padding:0.4rem 0.5rem;color:var(--color-text-muted);font-size:1.3rem;line-height:1;flex-shrink:0;transition:color 0.2s;"
-                        onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-muted)'">
-                        📷
-                    </button>
                     <div class="autocomplete-dropdown" id="autocomplete"></div>
                 </div>
             </div>

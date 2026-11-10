@@ -23,6 +23,7 @@
     --color-success: #4ade80;
     --color-warning: #fbbf24;
     --color-danger: #f87171;
+    --color-primary-light: #e8c95a;
     --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --radius: 12px;
     --radius-sm: 8px;
@@ -302,7 +303,7 @@ img {
 .logo-icon {
     width: 32px;
     height: 32px;
-    background: linear-gradient(135deg, var(--color-primary), #e8c95a);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -1297,7 +1298,23 @@ textarea.form-input {
     }
 }
 
-/* === Card Image Skeleton (shimmer placeholder) === */
+/* === Mientras la foto baja: brillo que se mueve en el recuadro (en vez de un hueco quieto) === */
+.card-image:has(.img-fade-in:not(.loaded)),
+.gallery-item:has(> .gallery-lazy:not(.loaded)) {
+    background-image: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.05) 50%, transparent 65%);
+    background-size: 220% 100%;
+    animation: kino-shimmer 1.3s linear infinite;
+}
+
+@keyframes kino-shimmer {
+    from { background-position: 130% 0; }
+    to { background-position: -90% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card-image:has(.img-fade-in:not(.loaded)),
+    .gallery-item:has(> .gallery-lazy:not(.loaded)) { animation: none; }
+}
 
 /* === Image Fade-In (SSR covers) === */
 .img-fade-in {
@@ -1380,7 +1397,7 @@ textarea.form-input {
 }
 
 .btn-whatsapp:hover {
-    background: #1da851;
+    background: var(--color-wa-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
 }
@@ -1714,7 +1731,7 @@ textarea.form-input {
 }
 
 .batch-wa-send:hover {
-    background: #1fb855;
+    background: var(--color-wa-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
 }
@@ -2178,7 +2195,7 @@ textarea.form-input {
 }
 
 .wa-share-send:hover {
-    background: #1fb855;
+    background: var(--color-wa-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
 }
@@ -2621,15 +2638,15 @@ textarea.form-input {
 }
 
 .toast.success {
-    background: #27ae60;
+    background: var(--color-wa-hover);
 }
 
 .toast.error {
-    background: #e74c3c;
+    background: #d9534f;
 }
 
 .toast.info {
-    background: #2980b9;
+    background: var(--color-accent);
 }
 
 @keyframes toast-in {
@@ -2864,8 +2881,8 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     white-space: nowrap;
     transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
-.media-btn-wa { background: #25D366; color: #fff; border: none; }
-.media-btn-wa:hover { background: #1da851; }
+.media-btn-wa { background: var(--color-wa); color: #fff; border: none; }
+.media-btn-wa:hover { background: var(--color-wa-hover); }
 .media-btn-dl {
     background: var(--color-surface-3, #1c1c28);
     color: var(--color-text-muted);
@@ -3133,4 +3150,19 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 @media (max-width: 360px) {
     .search-box .search-btn { padding: 0 0.6rem; font-size: 0.82rem; }
     .search-box #btnQrScan { min-width: 42px; }
+}
+
+/* ===== Etapa 4: estética ===== */
+/* Inicio: Buscar y el escáner en una fila centrada, con el mismo estilo de botón */
+.search-actions { display: flex; justify-content: center; align-items: stretch; gap: 0.5rem; }
+#btnQrScan {
+    background: var(--color-surface); color: var(--color-text-muted);
+    border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+    padding: 0.55rem 0.9rem; font: inherit; font-size: 0.95rem; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 0.3rem; transition: all var(--transition);
+}
+#btnQrScan:hover { color: var(--color-primary); border-color: var(--color-primary); }
+@media (max-width: 640px) {
+    .search-actions { gap: 0.4rem; align-items: flex-start; }
+    .qr-label { display: none; }
 }
