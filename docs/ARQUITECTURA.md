@@ -152,7 +152,8 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 
 ## Enlace único foto ↔ producto (`DriveIndex::relink`, solo BD)
 1. Cada archivo visible del índice → código con `matchFileToProduct()` contra TODOS los productos (también ocultos,
-   para que su foto no se pegue a un código más corto). Si se llama como la base de una familia que no es producto
+   para que su foto no se pegue a un código más corto). Si el mismo nombre sirve para un visible y un oculto escrito
+   distinto ("M:8291-1" visible vs "M8291-1" oculto), gana el visible (índice de visibles + índice de ocultos). Si se llama como la base de una familia que no es producto
    ("993.jpg", "M8363 (2).jpg") → `matched_sku` = esa base (foto de toda la familia). Se guarda en `drive_index.matched_sku`.
 2. Portada de cada producto: foto propia > foto de la familia > video propio > video de la familia > vacía.
    Se respeta una elegida a mano del mismo nivel; se quitan las viejas (otra raíz, otro código, ocultas, borradas).

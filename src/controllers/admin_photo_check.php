@@ -19,8 +19,9 @@ if (!DriveIndex::isReady($db)) {
 // Producto (acepta "M8363-2" para "M:8363-2")
 $names = skuNameVariants($sku);
 $stmt = $db->prepare("SELECT sku, name, is_active, in_sheet, archived, parent_sku, cover_image_url FROM products
-                      WHERE sku IN (" . implode(',', array_fill(0, count($names), '?')) . ") LIMIT 1");
-$stmt->execute($names);
+                      WHERE sku IN (" . implode(',', array_fill(0, count($names), '?')) . ")
+                      ORDER BY archived ASC, sku = ? DESC LIMIT 1");
+$stmt->execute(array_merge($names, [$sku]));
 $product = $stmt->fetch() ?: null;
 $code = $product['sku'] ?? $sku;
 
