@@ -18,8 +18,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 |---|---|---|
 | `/` | `templates/client/landing.php` | Carpetas de primer nivel (abren `/carpeta/{id}`) + "Productos recientes" (60 referencias/página, una tarjeta por código) |
 | `/buscar` (`?q=`, `?ajax=1`) | `src/controllers/search.php` | Una tarjeta por código (60/página, sin variantes; orden: exacto con/sin "M" vía `skuExactForms()`, empieza por, resto), multi-código, carpetas de `drive_index` (por nombre o código; si el código existe, van tras su tarjeta). `?album=ID` (viejo) redirige a `/carpeta/ID` |
-| `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}` |
-| `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada) |
+| `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}`. Si no hay producto pero es el nombre de un archivo indexado, redirige a su carpeta |
+| `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada). Cada foto enlaza a `/producto/{matched_sku}` solo si ese producto es visible; si no, a la foto en grande |
 | `/og/{fileId}.jpg` | `src/controllers/og_image.php` | Foto de vista previa para WhatsApp (og:image), ver "Compartir por WhatsApp" |
 | `/novedades` (`?dias=7\|30\|90`) | `src/controllers/news.php` | **Novedades** (etapa H): archivos visibles con `drive_index.first_seen_at` en el periodo, marcables para Mi selección. El inicio muestra un enlace si llegó algo en 7 días |
 | `/c/{código}` (+ `POST /c/crear`, `/c/{código}/actualizar`, `/c/{código}/desactivar[?activar=1]`) | `src/controllers/shared_catalog.php` | **Catálogo por enlace** (etapa I): página pública liviana con las fotos en orden, código bajo cada una, contacto opcional y vista previa de WhatsApp. Si una foto se borró u ocultó, muestra la portada actual del código. Se crea/gestiona desde Mi selección; quien lo creó guarda el token en `localStorage` `kinoLinks` (cabecera `X-Manage-Token`). Desactivado = 410 |

@@ -153,3 +153,6 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   primero (con o sin "M") y sus carpetas debajo.
 - #44: fotos que se iban a un código oculto escrito igual al archivo (p. ej. "M8291-1-A.jpg" → producto viejo oculto "M8291-1"
   en vez del visible "M:8291-1"). Ahora en el enlace gana el producto visible. La regla de nombres no cambió.
+- #45: en las carpetas, una foto sin código (IMG_…, WhatsApp…) llevaba a `/producto/IMG_…` y salía vacío. Ahora solo enlaza a
+  la ficha si la foto tiene producto visible (`drive_index.matched_sku`); si no, abre la foto en grande. Enlaces viejos a un
+  archivo sin producto redirigen a su carpeta. La regla de nombres no cambió.

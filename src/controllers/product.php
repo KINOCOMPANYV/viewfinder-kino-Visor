@@ -86,6 +86,21 @@ if ($product && !empty($product['archived']) && !isAdminLoggedIn()) {
 }
 
 if (!$product) {
+    // Enlace viejo a un archivo sin código (/producto/IMG_20260530_102318.jpg): llevar a su carpeta.
+    try {
+        $raw = trim(rawurldecode($_GET['sku'] ?? ''));
+        $stmt = $db->prepare(
+            "SELECT parent_id FROM drive_index WHERE is_folder = 0 AND is_hidden = 0 AND parent_id IS NOT NULL
+               AND (name = ? OR name LIKE ?) LIMIT 1"
+        );
+        $stmt->execute([$raw, str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $sku) . '.%']);
+        $parentId = $stmt->fetchColumn();
+        if ($parentId) {
+            redirect('/carpeta/' . rawurlencode($parentId));
+        }
+    } catch (\PDOException $e) {
+        // índice aún no existe: 404 normal
+    }
     http_response_code(404);
     include __DIR__ . '/../../templates/404.php';
     exit;

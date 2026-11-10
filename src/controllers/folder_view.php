@@ -64,7 +64,19 @@ if (empty($files) && !empty($subfolders) && $folderId !== env('GOOGLE_DRIVE_FOLD
     $fromSubfolders = (bool) $files;
 }
 
+// Solo se enlaza a /producto/ el archivo que tiene un producto visible (matched_sku). Un archivo sin
+// código (IMG_…, WhatsApp…) abre la foto en grande: antes iba a /producto/IMG_… y salía "no encontrado".
+$visibleSkus = [];
+$matched = array_values(array_unique(array_filter(array_column($files, 'matchedSku'))));
+if ($matched) {
+    $stmt = $db->prepare("SELECT sku FROM products WHERE archived = 0 AND sku IN (" . implode(',', array_fill(0, count($matched), '?')) . ")");
+    $stmt->execute($matched);
+    $visibleSkus = array_flip($stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
 foreach ($files as &$item) {
+    $sku = $item['matchedSku'] ?? null;
+    $item['productUrl'] = ($sku !== null && isset($visibleSkus[$sku])) ? '/producto/' . rawurlencode($sku) : null;
     $item['thumb'] = lh3Url($item['id']);
     $item['isVideo'] = str_starts_with($item['mimeType'] ?? '', 'video/');
 }
@@ -186,10 +198,10 @@ $shareDesc = implode(' · ', array_filter([
             <div class="parent-grid" style="padding-top:1rem;">
                 <?php foreach ($files as $idx => $file):
                     $code = pathinfo($file['name'] ?? '', PATHINFO_FILENAME);
-                    $rootSku = extractRootSku($code);
+                    $href = $file['productUrl'] ?? lh3Url($file['id'], 1600);
                 ?>
                     <div class="parent-card search-selectable-card">
-                        <a href="/producto/<?= rawurlencode($rootSku) ?>" style="display:block;color:inherit;text-decoration:none;">
+                        <a href="<?= e($href) ?>"<?= empty($file['productUrl']) ? ' target="_blank" rel="noopener"' : '' ?> style="display:block;color:inherit;text-decoration:none;">
                             <div class="card-image" style="position:relative;">
                                 <?php if ($file['isVideo']): ?>
                                     <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.7rem;z-index:2;">🎬 Video</div>
@@ -208,7 +220,7 @@ $shareDesc = implode(' · ', array_filter([
                                 <?php endif; ?>
                             </div>
                         </a>
-                        <?= mediaActionButtons($file['id'], $file['name'] ?? '', $code, '/producto/' . rawurlencode($rootSku)) ?>
+                        <?= mediaActionButtons($file['id'], $file['name'] ?? '', $code, $file['productUrl'] ?? '/carpeta/' . rawurlencode($folderId)) ?>
                         <?php if (!$file['isVideo']): ?>
                         <label class="search-check-footer" style="border-top: 1px solid var(--color-border); margin-top: auto;">
                             <input type="checkbox" class="search-card-check"
