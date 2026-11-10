@@ -23,7 +23,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
 | 13 | Novedades | ❌ | El índice no guarda cuándo llegó cada archivo. |
 | 14 | Referencias relacionadas | ❌ | No existe (prioridad baja). |
 | 15 | Panel de problemas de fotos | 🟡 parcial | "¿Por qué no sale la foto?", CSV de archivos sin código y productos sin foto (Admin → Media). Están repartidos. |
-| 16 | Control de sincronización | 🟡 parcial | La hoja guarda último éxito/error. **Drive no lo guarda** y **no hay candado**: el sync automático, el cron y el botón pueden correr a la vez. |
+| 16 | Control de sincronización | ✅ etapa A (#39) | Antes: Drive no guardaba último éxito/error y solo la copia del índice tenía candado (hoja, enlace y portadas podían correr a la vez). |
 | 17 | App instalable | ⏸ pausada | Era la etapa 5 del plan anterior; sigue pausada hasta que digas "continuamos". |
 
 ## 2. Qué propongo quitar (no aporta o está repetido)
@@ -38,7 +38,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
 **Ruta de prueba común** (antes y después de cada etapa, en el celular): buscar una referencia → abrir su ficha y marcar
 2 variantes → ir a 2 carpetas distintas y marcar fotos → revisar lo marcado → preparar y mandar una tanda.
 
-### A. Sincronización segura (idea 16) — primero, porque afecta las fotos que recibe el distribuidor
+### A. Sincronización segura (idea 16) — ✅ hecha (#39) — primero, porque afecta las fotos que recibe el distribuidor
 - Candado (`GET_LOCK` de MySQL) para hoja y Drive: si ya hay un sync corriendo, el otro espera o avisa.
 - Guardar último éxito/error de Drive igual que la hoja; Admin → Sincronizar muestra los dos por separado,
   con lo que cambió (archivos nuevos/borrados, portadas) y un botón "Reintentar" en el que falló.

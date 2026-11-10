@@ -12,7 +12,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   completa (3629 de 3629, sin filas descartadas ni repetidas). En la hoja faltan datos: 124 filas sin PRICE_SUGGESTED (98 POEDAGAR)
   y 33 sin NAME; esas salen sin precio o con el código como nombre. Admin → Sincronizar muestra hoja vs "Solo Drive".
 - Primer sync completo (2026-10-30): ~12 000 archivos, ~4400 portadas; ~600 productos sin foto (lista en Admin → Media).
-- PRs #1–#37 fusionados.
+- PRs #1–#38 fusionados. Plan de mejoras para distribuidores aprobado (2026-11-10, `docs/PLAN_MEJORAS.md`, etapas A-J).
 - Plan de mejora UX/velocidad aprobado por el dueño (2026-11-09), un PR por etapa: 1 velocidad, 2 celular más claro,
   3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapas 1 (#34), 2 (#35), 3 (#36) y 4 (#37).
 
@@ -62,11 +62,13 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   para borrar y 📷 al lado; carpetas del inicio de 3 en 3; "Seleccionar" es un círculo sobre la foto. El computador no cambia
   (solo gana la ✕ del buscador).
 - Admin: Productos (activar/desactivar), Carpetas (ocultar), Sincronizar (hoja + Drive, "¿Por qué no sale la foto?"), Media.
+  Sincronizar muestra hoja y Drive por separado (último éxito con qué cambió, último error y "🔁 Reintentar"); solo corre
+  una sincronización a la vez.
 
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`, 17 ideas en etapas A-J): pendiente de aprobación.
+- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapa A hecha; siguen B-J, un PR cada una.
   Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
@@ -116,3 +118,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   `--color-wa*`, `--color-primary-light`), avisos con la misma paleta, brillo de "cargando" en los recuadros de foto, y en el
   computador Buscar + "📷 Escanear" en una fila. Capturas de 28 páginas (375/1280 px) antes y después para no romper nada.
 - #38: `docs/PLAN_MEJORAS.md`: plan de mejoras para distribuidores (qué ya existe, qué quitar, etapas A-J). Solo documento.
+- #39: etapa A, sync seguro: un solo sync a la vez (hoja, Drive, cron, webhook; `acquireSyncLock`), Drive guarda último
+  éxito/error en `sync_status` con archivos nuevos/quitados y portadas, Admin → Sincronizar los muestra por separado con Reintentar.

@@ -3,9 +3,9 @@
  * Admin — Sincronizar: hoja maestra (datos de productos) y Drive (fotos, carpetas y portadas).
  */
 $db = getDB();
-$sheetStatus = null;
+$syncStatus = [];
 try {
-    $sheetStatus = $db->query("SELECT * FROM sync_status WHERE name = 'hoja'")->fetch() ?: null;
+    foreach ($db->query("SELECT * FROM sync_status WHERE name IN ('hoja', 'drive')") as $row) $syncStatus[$row['name']] = $row;
 } catch (\PDOException $e) { /* migración 025 pendiente */ }
 // Qué hay cargado: de la hoja vs "Solo Drive" (y datos que faltan en la hoja)
 $loaded = $db->query(
@@ -24,6 +24,17 @@ try {
     $lastDriveSync = $db->query("SELECT MAX(synced_at) FROM drive_index")->fetchColumn();
 } catch (\PDOException $e) { /* índice aún no creado */ }
 $sheetId = env('GOOGLE_SHEET_ID', '');
+// Último éxito, qué cambió y (si es más reciente) el último error con botón Reintentar
+$statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDate): string {
+    $st = $syncStatus[$name] ?? [];
+    $html = 'Última sincronización con éxito: <strong>' . $fmtDate($st['last_ok_at'] ?? null) . '</strong>';
+    if (!empty($st['last_ok_message'])) $html .= '<br><small>' . e($st['last_ok_message']) . '</small>';
+    if (!empty($st['last_error_at']) && $st['last_error_at'] > ($st['last_ok_at'] ?? '')) {
+        $html .= '<br><strong style="color:#f87171;">Último intento falló (' . $fmtDate($st['last_error_at']) . '): '
+            . e($st['last_error']) . '</strong> <button class="btn btn-sm btn-secondary" onclick="' . $retryJs . '">🔁 Reintentar</button>';
+    }
+    return $html;
+};
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -73,11 +84,7 @@ $sheetId = env('GOOGLE_SHEET_ID', '');
                 <?php else: ?>
                     <br><strong style="color:#f87171;">Falta la variable GOOGLE_SHEET_ID en Railway.</strong>
                 <?php endif; ?>
-                <br>Última sincronización con éxito: <strong><?= $fmtDate($sheetStatus['last_ok_at'] ?? null) ?></strong>
-                <?php if (!empty($sheetStatus['last_ok_message'])): ?><br><small><?= e($sheetStatus['last_ok_message']) ?></small><?php endif; ?>
-                <?php if (!empty($sheetStatus['last_error_at']) && $sheetStatus['last_error_at'] > ($sheetStatus['last_ok_at'] ?? '')): ?>
-                    <br><strong style="color:#f87171;">Último intento falló (<?= $fmtDate($sheetStatus['last_error_at']) ?>): <?= e($sheetStatus['last_error']) ?></strong>
-                <?php endif; ?>
+                <br><?= $statusBlock('hoja', 'syncSheet(false, this)') ?>
             </p>
             <div class="sync-loaded">
                 <div><b><?= number_format((int) $loaded['hoja']) ?></b> códigos de la hoja <small>(<?= number_format((int) $loaded['hoja_visibles']) ?> visibles)</small></div>
@@ -99,7 +106,9 @@ $sheetId = env('GOOGLE_SHEET_ID', '');
             <p>
                 Copia el árbol de Drive, elige una foto al azar para cada carpeta y asigna la portada de los productos
                 que no tienen (la foto se llama como el código). "Reasignar todas" vuelve a elegir la portada de todos.
-                <br>Última copia de Drive: <?= $lastDriveSync ? date('d/m/Y H:i', strtotime($lastDriveSync)) : '—' ?>
+                <br><?= $statusBlock('drive', 'syncDrive(false, this)') ?>
+                <br><small>Última copia del índice de Drive: <?= $fmtDate($lastDriveSync) ?>. Solo corre una sincronización a la vez
+                (hoja o Drive); si ya hay una, el botón avisa y no hace nada.</small>
             </p>
             <div class="sync-actions">
                 <button class="btn btn-primary" onclick="syncDrive(false, this)">🔄 Sincronizar portadas</button>
@@ -155,6 +164,8 @@ $sheetId = env('GOOGLE_SHEET_ID', '');
                 if (status === 409) {
                     showResult('sheetResult', 'warn', '⚠️ ' + esc(data.error) +
                         ` <button class="btn btn-sm btn-secondary" style="margin-left:0.5rem;" onclick="syncSheet(false, this, true)">Sincronizar igual</button>`);
+                } else if (data.busy) {
+                    showResult('sheetResult', 'warn', '⏳ ' + esc(data.error));
                 } else if (data.error) {
                     showResult('sheetResult', 'error', '❌ ' + esc(data.error));
                 } else {
@@ -216,7 +227,9 @@ $sheetId = env('GOOGLE_SHEET_ID', '');
             showResult('driveResult', '', '⏳ Recorriendo Drive (puede tardar uno o dos minutos)...');
             try {
                 const { data } = await postJson('/admin/media/sync-covers' + (force ? '?force=1' : ''));
-                if (!data.ok) {
+                if (data.busy) {
+                    showResult('driveResult', 'warn', '⏳ ' + esc(data.error));
+                } else if (!data.ok) {
                     showResult('driveResult', 'error', '❌ ' + esc(data.error || data.message || 'Error al sincronizar'));
                 } else {
                     let html = `<strong>${esc(data.message || 'Listo')}</strong>`;
