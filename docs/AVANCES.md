@@ -66,7 +66,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan UX: etapas 5 y 6 (ver "Estado actual").
+- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`, 17 ideas en etapas A-J): pendiente de aprobación.
+  Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
 - #1–#7 (oct 2026): carpetas como en Drive (todos los niveles), códigos con prefijo M:/M/M-, búsqueda tolerante,
@@ -114,3 +115,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #37: etapa 4, estética: se quitan del CSS 76 reglas muertas (~10 KB), un solo verde WhatsApp y un solo dorado (tokens
   `--color-wa*`, `--color-primary-light`), avisos con la misma paleta, brillo de "cargando" en los recuadros de foto, y en el
   computador Buscar + "📷 Escanear" en una fila. Capturas de 28 páginas (375/1280 px) antes y después para no romper nada.
+- #38: `docs/PLAN_MEJORAS.md`: plan de mejoras para distribuidores (qué ya existe, qué quitar, etapas A-J). Solo documento.
