@@ -180,3 +180,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (rightBtn) rightBtn.classList.toggle('hidden', !needsScroll);
     });
 });
+
+// Filtros de la búsqueda (etapa B): cambiar uno vuelve a buscar con lo escrito en el buscador.
+// Los vacíos no van en la URL. El precio espera a que se termine de escribir (change / Enter).
+(function () {
+    const ff = document.getElementById('filterForm');
+    if (!ff) return;
+    const go = () => {
+        const input = document.getElementById('searchInput');
+        const qs = new URLSearchParams();
+        const q = input ? input.value.trim() : '';
+        if (q) qs.set('q', q);
+        new FormData(ff).forEach((v, k) => { if (k !== 'q' && String(v).trim() !== '') qs.set(k, v); });
+        window.location.href = '/buscar' + (qs.toString() ? '?' + qs.toString() : '');
+    };
+    ff.addEventListener('change', go);
+    ff.addEventListener('submit', e => { e.preventDefault(); go(); });
+})();

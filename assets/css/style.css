@@ -2531,7 +2531,7 @@ textarea.form-input {
 }
 
 /* ============================================================
-   Filtros de Categoría — chips client-side (Paso 3)
+   Filtros de la búsqueda (marca, categoría, precio, con foto) y "¿Quisiste decir…?"
    ============================================================ */
 
 @keyframes fadeInCard {
@@ -2539,53 +2539,86 @@ textarea.form-input {
     to   { opacity: 1; transform: translateY(0); }
 }
 
-.cat-filter-bar {
+.filter-bar {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-bottom: 1.25rem;
-    padding: 0.5rem 0;
+    max-width: 800px;
+    margin: -0.5rem auto 0.75rem;
 }
-
-.cat-chip {
-    padding: 0.35rem 0.9rem;
+.filter-field {
+    padding: 0.4rem 0.7rem;
     border-radius: 20px;
     border: 1.5px solid var(--color-border);
-    background: var(--color-surface-2, #1a1a25);
-    color: var(--color-text-muted);
-    font-size: 0.8rem;
-    font-weight: 600;
-    font-family: var(--font);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    letter-spacing: 0.02em;
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    font: 600 0.8rem var(--font);
+    min-height: 36px;
 }
-
-.cat-chip:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-    background: rgba(201, 168, 76, 0.08);
+.filter-field.on { border-color: var(--color-primary); color: var(--color-primary); }
+.filter-price { display: inline-flex; gap: 0.35rem; }
+.filter-price .filter-field { width: 8.5rem; }
+.filter-check { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+.filter-check input { accent-color: var(--color-primary); }
+.filter-active {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    max-width: 800px;
+    margin: 0 auto 1rem;
 }
-
-.cat-chip.active {
+.filter-chip {
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
     background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: #0a0a0f;
+    color: var(--color-bg);
+    font-size: 0.78rem;
     font-weight: 700;
-    box-shadow: 0 2px 12px rgba(201, 168, 76, 0.3);
+    text-decoration: none;
 }
+.filter-chip span { margin-left: 0.25rem; opacity: 0.75; }
+.filter-clear { font-size: 0.8rem; color: var(--color-text-muted); text-decoration: underline; }
+.search-empty {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+.search-empty p + p { margin-top: 0.5rem; }
+.search-empty a { color: var(--color-primary); }
+.search-empty-title { color: var(--color-text); font-weight: 700; margin-bottom: 0.6rem; }
+.suggest-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.suggest-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.8rem 0.3rem 0.3rem;
+    min-height: 40px;
+    border-radius: 24px;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-surface-2);
+    color: var(--color-text) !important;
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+.suggest-chip:hover { border-color: var(--color-primary); }
+.suggest-chip img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 
 @media (max-width: 640px) {
-    .cat-filter-bar {
-        gap: 0.4rem;
-        overflow-x: auto;
+    .filter-bar {
         flex-wrap: nowrap;
-        padding-bottom: 0.4rem;
+        overflow-x: auto;
         scrollbar-width: none;
+        margin-top: 0;
+        padding-bottom: 0.25rem;
     }
-    .cat-filter-bar::-webkit-scrollbar { display: none; }
-    .cat-chip { flex-shrink: 0; font-size: 0.75rem; padding: 0.3rem 0.75rem; }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-bar > * { flex-shrink: 0; }
+    .filter-price .filter-field { width: 7rem; }
 }
 
 /* ===== Admin: interruptor (productos, carpetas) ===== */
