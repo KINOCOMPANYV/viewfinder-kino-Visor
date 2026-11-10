@@ -72,7 +72,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 ## Pendiente / ideas
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
-- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A-D hechas; siguen E-J, un PR cada una.
+- Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A-D hechas, E-I en PR (el dueño pidió hacerlas seguidas y fusionar al final; respaldo del main en la rama `respaldo-2026-11-10`), un PR cada una.
   Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
@@ -133,3 +133,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   `precache-drive` sigue y hace lo mismo que `sync-covers`) y restos de "álbum" en JS (~700 líneas, 317 de CSS). Arreglo: el
   cron de Drive ya no corre sin `?token=` (una sesión sin token pasaba el control).
   Se dejan: `media_search_cache`/`drive_cache` (los usa el camino de respaldo y la visibilidad) y las tablas viejas sin código.
+- #42 (etapa E): catálogos guardados en el dispositivo dentro de Mi selección (guardar como, abrir, actualizar, duplicar,
+  renombrar, borrar); avisa cuántas fotos de cada catálogo ya no están (`/api/fotos-vigentes`).

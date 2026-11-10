@@ -2957,3 +2957,17 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .ms-item img { width: 48px; height: 48px; }
 }
 
+/* Catálogos guardados (etapa E) */
+.ms-cats { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 0.9rem 1rem; margin-bottom: 1rem; }
+.ms-cats-head { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.ms-cats-head h2 { font-size: 1rem; }
+.ms-cats-head small { color: var(--color-text-muted); font-weight: 400; font-size: 0.75rem; }
+.ms-cat-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+.ms-cat { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-top: 1px solid var(--color-border); }
+.ms-cat-info { display: flex; flex-direction: column; min-width: 0; }
+.ms-cat-info small { color: var(--color-text-muted); font-size: 0.75rem; }
+.ms-cat-act { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.ms-cat-act .btn { min-height: 36px; }
+.ms-cats-bottom { margin-top: 1.25rem; }
+.ms-cat-empty { color: var(--color-text-muted); font-size: 0.82rem; }
+

@@ -344,6 +344,12 @@
             syncChecks();
         },
         clear() { sel.clear(); tandaNum = 0; msg(''); syncChecks(); },
+        // Abrir un catálogo guardado: la selección pasa a ser esa lista, en su orden
+        replace(list) {
+            sel = new Map();
+            (list || []).forEach((x) => { if (x && x.id && !sel.has(x.id)) sel.set(x.id, { id: x.id, sku: x.sku || x.id, wa: false, err: false }); });
+            tandaNum = 0; msg(''); syncChecks();
+        },
         last: () => last ? { count: last.ids.length, at: last.at, ready: last.ids.every((id) => loaded.has(id)) } : null,
         resendLast,
         onChange(fn) { listeners.push(fn); },

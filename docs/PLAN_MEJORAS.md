@@ -62,7 +62,7 @@ Este plan reemplaza las etapas 5 y 6 del plan UX anterior (se incluyen aquí: et
 - Quitar lo de la sección 2 tras comprobar que no se usa. Sin cambios visibles.
 - Prueba: ruta común completa + admin (Sincronizar, Media, Carpetas) siguen igual.
 
-### E. Catálogos guardados (idea 9)
+### E. Catálogos guardados (idea 9) — ✅ hecha (#42)
 - En Mi selección: "Guardar como…" («Poedagar dorados»), lista para abrir, duplicar, renombrar, actualizar y borrar.
 - Se guardan **en este dispositivo** (se dice claro en pantalla). Si un código ya no está visible, se marca.
 - Prueba: guardar 2 catálogos, cerrar, abrir uno, quitarle una foto y actualizarlo.

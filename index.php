@@ -566,6 +566,23 @@ if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
 // Responde: {"covers": {"sku1": {"url":"...","video":false}, ...}}
 // ============================================================
 
+// Qué fotos de una lista siguen visibles (catálogos guardados y Mi selección marcan las que ya no están). Solo BD.
+if ($uri === '/api/fotos-vigentes' && $method === 'POST') {
+    session_write_close();
+    checkRateLimit(60);
+    $ids = json_decode(file_get_contents('php://input') ?: '[]', true);
+    $ids = array_values(array_unique(array_filter(is_array($ids) ? $ids : [], fn($v) => is_string($v) && preg_match('/^[A-Za-z0-9_-]{10,100}$/', $v))));
+    $ids = array_slice($ids, 0, 500);
+    $ok = [];
+    if ($ids) {
+        $st = getDB()->prepare("SELECT file_id FROM drive_index WHERE is_folder = 0 AND is_hidden = 0 AND file_id IN ("
+            . implode(',', array_fill(0, count($ids), '?')) . ")");
+        $st->execute($ids);
+        $ok = $st->fetchAll(PDO::FETCH_COLUMN);
+    }
+    jsonResponse(['vigentes' => $ok]);
+}
+
 if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     checkRateLimit(60); // 60 req/min
     session_write_close(); // Unlock session to prevent blocking concurrent searches

@@ -31,6 +31,7 @@
         <p class="ms-help">Las fotos que marcaste en el catálogo, en el orden en que se envían. Se guardan <strong>en este
             dispositivo</strong> (siguen aquí si cierras la página), no en otros celulares.</p>
 
+
         <div class="ms-last" id="msLast" hidden></div>
 
         <div class="ms-tools" id="msTools" hidden>
@@ -43,6 +44,15 @@
             <p>Toca el círculo de una foto en <a href="/buscar">Buscar</a>, en una carpeta o en una ficha, o usa
                 <a href="/enviar-catalogo">Enviar catálogo</a>.</p>
         </div>
+
+        <section class="ms-cats ms-cats-bottom" id="msCats">
+            <div class="ms-cats-head">
+                <h2>📚 Catálogos guardados <small>(en este dispositivo)</small></h2>
+                <button type="button" class="btn btn-sm btn-primary" id="msSaveAs">💾 Guardar como…</button>
+            </div>
+            <ul class="ms-cat-list" id="msCatList"></ul>
+            <p class="ms-cat-empty" id="msCatEmpty">Guarda la selección con un nombre («Poedagar dorados», «Catálogo de noviembre») para volver a abrirla.</p>
+        </section>
     </main>
 
     <script src="/assets/js/wa_batch.js?v=<?= APP_VERSION ?>"></script>
