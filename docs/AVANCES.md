@@ -18,6 +18,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapas 1 (#34), 2 (#35), 3 (#36) y 4 (#37).
 
 ## Decisiones vigentes (del dueño)
+- **Búsqueda por foto con IA de imágenes** (2026-11-10): se eligió comparar "huellas" (jina-clip-v2, servicio de pago por uso,
+  centavos) sobre la huella gratis (solo reconoce la misma foto) y sobre describir la foto con IA (lenta y cara).
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
   código. El nombre de la carpeta no cuenta. Lo que no coincide se lista para renombrar (Admin → Media, CSV).
 - **Un solo flujo de enlace**: `DriveIndex::relink()` → `drive_index.matched_sku`. Portada: propia > familia > video. Todo lo
@@ -80,6 +82,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   una sincronización a la vez.
 
 ## Pendiente / ideas
+- **Búsqueda por foto** (#48, #49): `JINA_API_KEY` puesta en Railway (producción) el 2026-11-10 y la búsqueda ya responde.
+  La primera vez prepara ~4400 portadas (ciclo propio cada 5 min, varias horas según el límite de la clave); el avance
+  sale en la ventana de resultados y en Admin → Sincronizar. Confirmar que termine y que los parecidos sean buenos.
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
 - Ideas técnicas en `docs/RENDIMIENTO.md` → "Pendiente / ideas".
 - Plan de mejoras para distribuidores (`docs/PLAN_MEJORAS.md`): etapas A-C hechas, D-I en el PR #42 (el dueño pidió hacerlas seguidas y fusionar al final; respaldo del main en la rama `respaldo-2026-11-10`). J (app instalable) sigue pausada.
@@ -161,6 +166,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   la ficha si la foto tiene producto visible (`drive_index.matched_sku`); si no, abre la foto en grande. Enlaces viejos a un
   archivo sin producto redirigen a su carpeta. La regla de nombres no cambió.
 - #46: lo público solo muestra productos con foto o video en PRODUCTOS (los demás quedan en el admin, sin desactivarlos).
+- #48: búsqueda por foto. Ícono de cámara dentro de la caja de búsqueda (inicio y búsqueda): tomar o subir una foto muestra los
+  30 productos visibles más parecidos. Huellas de las portadas en `image_embeddings`, preparadas por el sync. Requiere `JINA_API_KEY`.
+- #49: búsqueda por foto: la ventana avisa "N de M fotos listas" mientras se preparan (sin ninguna lista no gasta tokens), la
+  preparación corre en su propio ciclo cada 5 min (no espera la hora) y Admin → Sincronizar muestra la última vuelta y errores de Jina.
 - #47: reconectar Google Drive más robusto: si la sesión del admin caducó, tras el login sigue con la vuelta de Google;
   los errores se ven en Admin → Media con la causa; se conserva el refresh_token si Google no manda uno nuevo. «Conectar» avisa si `GOOGLE_REDIRECT_URI`
   apunta a otro dominio (causa real del fallo del 2026-11-10: el sitio es `viewfinder-k.up.railway.app`).

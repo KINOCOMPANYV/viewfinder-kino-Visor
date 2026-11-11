@@ -281,6 +281,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
                         placeholder="Buscar por SKU, referencia o nombre..." data-ph-short="Código o nombre…"
                         autocomplete="off"><?= e($q) ?></textarea>
                     <button type="button" class="search-clear" aria-label="Borrar búsqueda">✕</button>
+                    <?php $imgSearchPart = 'button'; include __DIR__ . '/../../templates/partials/image_search.php'; ?>
                 </span>
                 <button type="submit" class="search-btn">Buscar</button>
             </form>
@@ -548,6 +549,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
     <script src="/assets/js/wa_batch.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
     <?php include __DIR__ . '/../../templates/partials/loading_overlay.php'; ?>
+    <?php $imgSearchPart = 'modal'; include __DIR__ . '/../../templates/partials/image_search.php'; ?>
     <?php $mnavActive = 'buscar'; include __DIR__ . '/../../templates/partials/mobile_nav.php'; ?>
 </body>
 

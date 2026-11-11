@@ -5,6 +5,8 @@
  *   php scripts/cli_sync.php portadas   = Admin → "Sincronizar portadas" (índice de Drive, carpetas, enlace y portadas)
  *   php scripts/cli_sync.php carpetas   = solo BD: oculta carpetas "archivado"/"desactivados" y recalcula carpetas ocultas
  *                                         (rápido; corre primero para no esperar a la hoja ni a Drive)
+ *   php scripts/cli_sync.php imagenes   = búsqueda por foto: huella de las portadas nuevas (solo con JINA_API_KEY;
+ *                                         sync_loop.sh la corre en su propio ciclo cada 5 min)
  * Ejecuta el MISMO controlador que el botón del admin (con su seguro de "no ocultar medio catálogo").
  * Un proceso por paso: los controladores terminan con exit al responder.
  */
@@ -30,8 +32,20 @@ if ($step === 'carpetas') {
     echo '[' . date('Y-m-d H:i:s') . '] Sincronizar carpetas: ' . json_encode($s + ['relinked' => (bool) $link]) . "\n";
     exit(0);
 }
+if ($step === 'imagenes') {
+    require_once __DIR__ . '/../src/services/ImageSearch.php';
+    if (!ImageSearch::enabled()) {
+        exit(0); // sin JINA_API_KEY la búsqueda por foto está apagada
+    }
+    $r = ImageSearch::indexPending(getDB(), (int) env('IMAGE_INDEX_MAX_SECONDS', '1500'));
+    if ($r['pendientes'] > 0 || $r['error']) { // sin nada pendiente no ensucia el log (corre cada 5 min)
+        ImageSearch::saveLastRun($r);
+        echo '[' . date('Y-m-d H:i:s') . '] Búsqueda por foto: ' . json_encode($r, JSON_UNESCAPED_UNICODE) . "\n";
+    }
+    exit(0);
+}
 if (!isset($controllers[$step])) {
-    fwrite(STDERR, "Uso: php scripts/cli_sync.php hoja|portadas|carpetas\n");
+    fwrite(STDERR, "Uso: php scripts/cli_sync.php hoja|portadas|carpetas|imagenes\n");
     exit(1);
 }
 

@@ -97,6 +97,7 @@
                                 placeholder="Buscar por SKU, referencia o nombre..." data-ph-short="Código o nombre…"
                                 autocomplete="off" autofocus></textarea>
                             <button type="button" class="search-clear" aria-label="Borrar búsqueda">✕</button>
+                            <?php $imgSearchPart = 'button'; include __DIR__ . '/../partials/image_search.php'; ?>
                         </span>
                         <div class="search-actions">
                             <button type="submit" class="search-btn">Buscar</button>
@@ -382,6 +383,7 @@
     <!-- QR Scanner: qr-scanner.js descarga html5-qrcode solo al abrir el escáner -->
     <script src="/assets/js/qr-scanner.js?v=<?= APP_VERSION ?>" defer></script>
     <?php include __DIR__ . '/../partials/loading_overlay.php'; ?>
+    <?php $imgSearchPart = 'modal'; include __DIR__ . '/../partials/image_search.php'; ?>
     <?php $mnavActive = 'inicio'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 

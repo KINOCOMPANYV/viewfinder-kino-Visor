@@ -7,7 +7,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 - Al arrancar el contenedor: `php migrate.php` aplica `migrations/*.sql` pendientes (tabla `migrations`).
 - Luego, en segundo plano, `scripts/sync_loop.sh`: **sincronización automática** al arrancar (cada deploy) y cada
   `SYNC_INTERVAL_MINUTES` (60): `php scripts/cli_sync.php carpetas` (solo BD, carpetas ocultas), `hoja` y después `portadas` (los mismos controladores que los
-  botones del admin). `AUTO_SYNC=0` la apaga. El resultado sale en los logs de Railway.
+  botones del admin). Aparte, cada 5 min, `imagenes` (búsqueda por foto). `AUTO_SYNC=0` la apaga. El resultado sale en los logs de Railway.
 - Config: `config/database.php` (`env()`, `getDB()` singleton PDO), `config/app.php` (constantes, `APP_VERSION` para cache-busting).
   La clave del admin se comprueba solo al entrar (`adminPasswordMatches`); nada de bcrypt en cada petición (costaba ~60 ms).
 - Variables clave: `GOOGLE_DRIVE_FOLDER_ID` (carpeta raíz de fotos), `GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI`,
@@ -53,6 +53,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
   Lo llena `DriveIndex::sync()` (`src/services/DriveIndex.php`).
 - `shared_catalogs` (migración 027): `code` único, `name`, `items` (JSON `[{id, sku}]`, máx. 300), `contact`, `manage_hash`
   (sha256 del token de gestión), `is_active`, `views`. No se borran: se desactivan.
+- `image_embeddings` (migración 028): `file_id` (portada) → `embedding` (512 float32 empaquetados, jina-clip-v2; NULL = no
+  bajó, se reintenta en 1 día). Búsqueda por foto.
 - `folder_settings`: `folder_id` → `hidden` (decisión del admin; sobrevive a los syncs).
 - `media_search_cache`: `sku` → `files_json` (búsqueda en Drive). Solo se usa mientras `drive_index` está vacío.
 - `drive_cache`: hoy solo guarda la visibilidad por archivo (`visible_publico`) y subcarpetas para la búsqueda.
@@ -139,6 +141,13 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
 - **Sin resultados** → "¿Quisiste decir…?" (`searchSuggestions()`, helpers): códigos parecidos por distancia de letras
   (completo o el inicio del código), uno por familia, y marcas parecidas (abren el filtro). Sin servicios externos. Con
   filtros puestos no sugiere: avisa que los filtros pueden ocultar resultados.
+- **Por foto** (`src/services/ImageSearch.php`, env `JINA_API_KEY`; sin ella no sale el botón): ícono de cámara dentro de la caja
+  de búsqueda, a la derecha (inicio y búsqueda; con texto el ✕ se corre a su izquierda; `templates/partials/image_search.php`). El navegador achica la foto a 512 px y la manda a `POST /buscar-foto`
+  (`src/controllers/image_search.php`, 20/min por IP): 1 llamada a Jina para su vector, producto punto contra `image_embeddings`
+  de las portadas visibles (foto, no video), 30 más parecidas en una ventana; mientras faltan portadas por preparar avisa
+  "N de M listas" (sin ninguna lista no llama a Jina). `cli_sync.php imagenes` corre en su propio ciclo cada 5 min en
+  `sync_loop.sh` (máx. `IMAGE_INDEX_MAX_SECONDS`=1500 por vuelta) y prepara las portadas nuevas (lh3 `=s512`, 8 por llamada).
+  Última vuelta en `storage/image_index_status.json`; estado y errores de Jina en Admin → Sincronizar.
 
 ## Coincidencia SKU ↔ archivo (regla única, decidida por el dueño)
 - **La foto se llama como el código**: `X6071.jpg`, o el código + separador + lo que sea (`X6071-A.jpg`, `X6071 (2).jpg`).
