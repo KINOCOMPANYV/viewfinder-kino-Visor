@@ -332,8 +332,12 @@
             $('csResult').hidden = false;
             buildTiles(); renderGrid(); refresh();
             const nf = data.not_found || [];
-            $('csNotFound').hidden = !nf.length;
-            $('csNotFound').textContent = nf.length ? '⚠️ No están en el catálogo: ' + nf.join(', ') : '';
+            const fx = data.corrected || [];
+            const parts = [];
+            if (fx.length) parts.push('🔤 Corregidos (el texto decía otra cosa, revisa que sea el código correcto): ' + fx.map((x) => x.read + ' → ' + x.sku).join(', ') + '.');
+            if (nf.length) parts.push('⚠️ No están en el catálogo: ' + nf.join(', '));
+            $('csNotFound').hidden = !parts.length;
+            $('csNotFound').textContent = parts.join(' ');
             msg(canShareFiles ? '' : 'En el computador: "💾 Guardar" baja las fotos marcadas; arrástralas juntas al chat de WhatsApp Web. El 📲 de cada foto la copia.');
             $('csResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (e) {

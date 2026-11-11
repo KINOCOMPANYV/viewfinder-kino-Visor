@@ -70,7 +70,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Compartir por WhatsApp con vista previa (foto, título, enlace) vía Open Graph (`/og/{id}.jpg`).
 - "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto (o «📷 Leer lista de una foto»: el texto de la foto se lee
   en el celular con Tesseract y se pone en la caja para revisarlo; decisión del dueño 2026-11-11: lector gratis en el
-  celular, no IA de pago; si falla mucho con letra a mano, la opción es IA de imágenes) → códigos → galería de fotos (tocar = marcar/desmarcar).
+  celular, no IA de pago; si falla mucho con letra a mano, la opción es IA de imágenes) → códigos. Si un código no existe
+  tal cual, se prueba con las confusiones del lector (B↔8, O/D↔0, I/L↔1, S↔5, Z↔2, G↔6) y, si da un solo código, se usa
+  y se avisa «🔤 Corregidos: M:B363-3 → M:8363-3» (pedido del dueño 2026-11-11: confundía la B con el 8) → galería de fotos (tocar = marcar/desmarcar).
   "💾 Guardar N en el celular" (Android/PC: descargas; iPhone: Compartir → Guardar imágenes) y luego se mandan desde
   WhatsApp (📎 → Galería, hasta 100). "📲 Enviar por tandas": las fotos bajan en segundo plano; el botón verde se activa cuando la
   tanda siguiente (10) está completa ("Preparando tanda 2 de 3: 6/10" mientras tanto). 📲 en cada foto = solo esa.
@@ -196,3 +198,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #53: etapa P2 del PDF: botón en el enlace `/c/…`, en Enviar catálogo (las marcadas) y en cada catálogo guardado; la lista va a `/catalogo-pdf?desde=lista` sin cambiar Mi selección. Además, diseño del PDF: franja de color con logo/título/subtítulo, colores primario y secundario, subtítulos de sección y pie de contacto (el campo «Contacto» pasó al pie).
 - #54: navegación: botón ← Atrás en el encabezado del celular y migas de pan (`breadcrumbs()`) en Mi selección, Catálogo en PDF, Enviar catálogo y Novedades.
 - #55: Enviar catálogo: «📷 Leer lista de una foto» (Tesseract.js 6 en `assets/vendor/tesseract`, en el celular, sin CDN ni servidor; ~6 MB la primera vez).
+- #56: Enviar catálogo: un código que no existe tal cual se corrige con las confusiones típicas del lector de fotos (B↔8, O↔0, I↔1, S↔5…) si da un solo código; se muestra qué se corrigió.

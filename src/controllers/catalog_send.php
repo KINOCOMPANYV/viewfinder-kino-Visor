@@ -44,6 +44,15 @@ function catalogSendKey(string $code): string
 }
 
 /**
+ * Clave "a prueba de lector de fotos" (📷 Leer lista de una foto): las letras que el lector confunde con números
+ * se vuelven ese número (B→8, O/D/Q→0, I/L→1, S→5, Z→2, G→6). Solo se usa si el código leído no existe tal cual.
+ */
+function catalogSendOcrKey(string $code): string
+{
+    return strtr(catalogSendKey($code), ['B' => '8', 'O' => '0', 'D' => '0', 'Q' => '0', 'I' => '1', 'L' => '1', 'S' => '5', 'Z' => '2', 'G' => '6']);
+}
+
+/**
  * Saca del texto los códigos que existen en products, en el orden en que aparecen y sin repetir.
  * @return array{items: array, not_found: string[], total_tokens: int}
  */
@@ -55,14 +64,26 @@ function catalogSendExtract(PDO $db, string $text): array
     )->fetchAll(PDO::FETCH_ASSOC);
     $exact = [];
     $norm = [];
+    $ocr = [];      // clave del lector → productos (si hay más de uno, es ambiguo y no se usa)
     foreach ($rows as $r) {
         $u = strtoupper($r['sku']);
         $exact[$u] ??= $r;
-        $norm[catalogSendKey($r['sku'])] ??= $r;
+        $k = catalogSendKey($r['sku']);
+        if (!isset($norm[$k])) {
+            $norm[$k] = $r;
+            $ocr[catalogSendOcrKey($r['sku'])][] = $r;
+        }
     }
     $find = function (string $tok) use ($exact, $norm): ?array {
         if ($tok === '') return null;
         return $exact[strtoupper($tok)] ?? $norm[catalogSendKey($tok)] ?? null;
+    };
+    // Segundo intento, solo para lo que no existe tal cual y tiene números: corrige B↔8, O↔0, I↔1, S↔5…
+    // si eso lleva a un único código.
+    $findOcr = function (string $tok) use ($ocr): ?array {
+        if ($tok === '' || !preg_match('/\d/', $tok) || mb_strlen($tok) < 3) return null;
+        $c = $ocr[catalogSendOcrKey($tok)] ?? [];
+        return count($c) === 1 ? $c[0] : null;
     };
 
     // Palabras: se corta por espacios, comas, punto y coma, barras y saltos de línea
@@ -76,6 +97,7 @@ function catalogSendExtract(PDO $db, string $text): array
 
     $found = [];
     $notFound = [];
+    $corrected = [];   // código del catálogo → como venía escrito (corregido B↔8, O↔0…)
     $n = count($clean);
     for ($i = 0; $i < $n; $i++) {
         $tok = $clean[$i];
@@ -86,6 +108,20 @@ function catalogSendExtract(PDO $db, string $text): array
         if (!$p && $i + 1 < $n && preg_match('/^\p{L}{1,4}$/u', $tok) && !$find($clean[$i + 1])) {
             $pair = $find($tok . $clean[$i + 1]);
             if ($pair) { $p = $pair; $used = 2; }
+        }
+        // Lo leído de una foto puede traer B por 8, O por 0…: se corrige si da un solo código
+        $fixed = null;
+        if (!$p) {
+            $fixed = $findOcr($tok);
+            if (!$fixed && $i + 1 < $n && preg_match('/^\p{L}{1,4}$/u', $tok) && !$findOcr($clean[$i + 1])) {
+                $fixed = $findOcr($tok . $clean[$i + 1]);
+                if ($fixed) $used = 2;
+            }
+            if ($fixed) {
+                $p = $fixed;
+                $read = $used === 2 ? $tok . ' ' . $clean[$i + 1] : $tok;
+                if (catalogSendKey($read) !== catalogSendKey($p['sku'])) $corrected[$p['sku']] ??= $read;
+            }
         }
         if ($p) {
             $found[$p['sku']] ??= $p;
@@ -104,13 +140,16 @@ function catalogSendExtract(PDO $db, string $text): array
     foreach ($found as $sku => $p) {
         $items[] = [
             'sku' => $sku,
+            'read_as' => $corrected[$sku] ?? null,
             'name' => (string) ($p['name'] ?? ''),
             'price' => (float) ($p['price_suggested'] ?? 0),
             'photos' => catalogSendPhotos($db, $sku, (string) ($p['cover_image_url'] ?? ''), $indexReady),
         ];
     }
 
-    return ['items' => $items, 'not_found' => array_values($notFound), 'total_tokens' => $n];
+    $fixes = [];
+    foreach ($corrected as $sku => $read) $fixes[] = ['read' => $read, 'sku' => $sku];
+    return ['items' => $items, 'not_found' => array_values($notFound), 'corrected' => $fixes, 'total_tokens' => $n];
 }
 
 /**
