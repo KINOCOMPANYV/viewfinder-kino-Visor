@@ -52,7 +52,7 @@
                     <div class="cp-prev-band"><span class="cp-prev-logo" id="cpPrevLogo"></span><span class="cp-prev-tt"><b id="cpPrevTitle">Catálogo</b><i id="cpPrevSub"></i></span></div>
                     <div class="cp-prev-line"></div>
                     <div class="cp-prev-sec"><b>Sección</b><span></span></div>
-                    <div class="cp-prev-grid"><span><em></em><b>M:8363-3</b><i></i><small>$120.000</small></span><span><em></em><b>M:8291-1</b><i></i><small>$95.000</small></span><span><em></em><b>M:1401-5</b><i></i><small></small></span></div>
+                    <div class="cp-prev-grid"><span><em></em><b>M:8363-3</b><i></i><small>$120.000</small><u>Abrir foto</u></span><span><em></em><b>M:8291-1</b><i></i><small>$95.000</small><u>Abrir foto</u></span><span><em></em><b>M:1401-5</b><i></i><small></small><u>Abrir foto</u></span></div>
                     <div class="cp-prev-foot"><span id="cpPrevFoot">Pie de catálogo</span><b>1 / 3</b></div>
                 </div>
             </section>
@@ -78,6 +78,8 @@
                     <label><input type="radio" name="cpPer" value="6"> 6</label>
                     <label><input type="radio" name="cpPer" value="9"> 9</label>
                 </div>
+                <label class="cp-check"><input type="checkbox" id="cpOpen"> Botón «Abrir foto» debajo de cada foto
+                    <small>(al tocarlo abre la foto en Google Drive; el enlace no se ve en el PDF)</small></label>
                 <small class="cp-tip">Para separar por secciones (p. ej. «Dama», «Caballero»), toca «＋ Subtítulo» en la foto donde empieza cada una.</small>
             </section>
 

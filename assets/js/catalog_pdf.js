@@ -60,7 +60,7 @@
     const saved = asMap(readJson(ls, 'kinoPdfOpts', {}));
     // Antes había un campo "Contacto" (arriba); ahora es el pie de catálogo
     if (saved.footer == null && saved.contact) saved.footer = saved.contact;
-    const opts = Object.assign({ title: '', subtitle: '', footer: '', per: 6, c1: '#1c1c1e', c2: '#c9a84c' }, saved);
+    const opts = Object.assign({ title: '', subtitle: '', footer: '', per: 6, c1: '#1c1c1e', c2: '#c9a84c', open: true }, saved);
     delete opts.contact;
     if (![4, 6, 9].includes(+opts.per)) opts.per = 6;
     const HEX = /^#[0-9a-f]{6}$/i;
@@ -124,6 +124,7 @@
     $('cpC1').value = opts.c1;
     $('cpC2').value = opts.c2;
     document.querySelectorAll('input[name="cpPer"]').forEach((r) => { r.checked = +r.value === +opts.per; });
+    $('cpOpen').checked = opts.open !== false;
     if (src.cut) warn(`El PDF admite hasta ${MAX_ITEMS} fotos: se dejaron las primeras ${MAX_ITEMS} (sobran ${src.cut}).`);
 
     function warn(t) { const w = $('cpWarn'); w.textContent = t || ''; w.hidden = !t; }
@@ -142,6 +143,7 @@
         $('cpPrevFoot').textContent = opts.footer.trim() || 'Pie de catálogo (contacto)';
         $('cpPrevLogo').innerHTML = logo ? `<img src="${logo.src}" alt="">` : '';
         $('cpPrevLogo').hidden = !logo;
+        p.classList.toggle('no-open', opts.open === false);
         document.querySelectorAll('.cp-preset').forEach((b) => {
             const [, a, c] = PRESETS[+b.dataset.i];
             b.classList.toggle('on', a === opts.c1.toLowerCase() && c === opts.c2.toLowerCase());
@@ -200,6 +202,7 @@
         saveOpts(); stale();
     });
     document.querySelectorAll('input[name="cpPer"]').forEach((r) => r.addEventListener('change', () => { opts.per = +r.value; saveOpts(); stale(); }));
+    $('cpOpen').addEventListener('change', (e) => { opts.open = e.target.checked; saveOpts(); stale(); });
 
     function bulk(mode) {
         const t = $('cpBulkText').value.trim();
@@ -408,7 +411,9 @@
             const codePt = cols === 2 ? 12 : 10, textPt = cols === 2 ? 10 : 8.5;
             const lh = (pt) => pt * 0.3528 * 1.25;
             const anyText = rows.some((r) => clean(texts[r.it.code]));
-            const textH = lh(codePt) + 3 + (anyText ? 3 * lh(textPt) : 0) + 3;
+            // Botón «Abrir foto» (activado por defecto): enlace a la foto en Drive, sin mostrar la dirección
+            const openBtn = opts.open !== false, BTN_H = cols === 2 ? 6.5 : 5.5, btnPt = cols === 2 ? 9 : 7.5;
+            const textH = lh(codePt) + 3 + (anyText ? 3 * lh(textPt) : 0) + 3 + (openBtn ? BTN_H + 2 : 0);
             const c1 = rgb(opts.c1), c2 = rgb(opts.c2), on1 = rgb(onColor(opts.c1)), sub1 = rgb(subOnBand()), ink1 = rgb(onWhite(opts.c1));
             const { boxes, pages } = layout(rows, { M, top, bottom, cw, ch, cols, gap: GAP, headH: HEAD_H }, headsUse);
             const emojis = rows.some((r) => lostChars(texts[r.it.code]) || lostChars(heads[r.it.id])) || lostChars(opts.title) || lostChars(opts.subtitle) || lostChars(opts.footer);
@@ -504,6 +509,15 @@
                     doc.setFont('helvetica', 'normal'); doc.setFontSize(textPt); doc.setTextColor(60, 60, 60);
                     ty += 1;
                     ls2.forEach((ln) => { ty += lh(textPt); doc.text(ln, cx + cw / 2, ty, { align: 'center' }); });
+                }
+                if (openBtn) {
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(btnPt);
+                    const label = 'Abrir foto';
+                    const pw = Math.min(bw, doc.getTextWidth(label) + 8), px = cx + (cw - pw) / 2, py = cy + ch - 3 - BTN_H;
+                    doc.setFillColor(...c1); doc.roundedRect(px, py, pw, BTN_H, BTN_H / 2, BTN_H / 2, 'F');
+                    doc.setTextColor(...on1);
+                    doc.text(label, cx + cw / 2, py + BTN_H / 2 + btnPt * 0.3528 * 0.35, { align: 'center' });
+                    doc.link(px, py, pw, BTN_H, { url: 'https://drive.google.com/file/d/' + encodeURIComponent(r.it.id) + '/view' });
                 }
             }
 

@@ -3131,6 +3131,10 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .cp-prev-grid b { color: var(--pcode); font-size: 8px; }
 .cp-prev-grid i { width: 12px; height: 1px; background: var(--p2); }
 .cp-prev-grid small { font-size: 7px; color: #555; min-height: 9px; }
+.cp-prev-grid u { text-decoration: none; font-size: 6px; font-weight: 700; background: var(--p1); color: var(--pon); border-radius: 6px; padding: 1px 6px; margin-top: 1px; }
+.cp-prev.no-open .cp-prev-grid u { display: none; }
+.cp-check { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 0.85rem; cursor: pointer; }
+.cp-check small { color: var(--color-text-muted); font-size: 0.75rem; }
 .cp-prev-foot { display: flex; justify-content: space-between; gap: 6px; margin: 0 10px 8px; padding-top: 4px; border-top: 1px solid var(--p2); font-size: 7px; color: #555; }
 .cp-prev-foot b { color: var(--pcode); white-space: nowrap; flex-shrink: 0; }
 .cp-prev-foot span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
