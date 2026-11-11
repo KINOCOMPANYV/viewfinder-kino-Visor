@@ -27,6 +27,7 @@
     </header>
 
     <main class="container ms-main">
+        <?= breadcrumbs([['Mi selección', null]]) ?>
         <h1 class="ms-title">📌 Mi selección <span id="msCount"></span></h1>
         <p class="ms-help">Las fotos que marcaste en el catálogo, en el orden en que se envían. Se guardan <strong>en este
             dispositivo</strong> (siguen aquí si cierras la página), no en otros celulares.</p>

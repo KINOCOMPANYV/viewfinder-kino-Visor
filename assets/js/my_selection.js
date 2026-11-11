@@ -121,7 +121,7 @@
             // PDF de este catálogo sin cambiar lo marcado ahora (docs/PLAN_PDF.md, P2)
             const its = c.items.filter((x) => !gone[x.id]);
             if (!its.length) { alert('Las fotos de «' + c.name + '» ya no están en el catálogo.'); return; }
-            try { sessionStorage.setItem('kinoPdfSrc', JSON.stringify({ name: c.name, items: its })); } catch (err) { alert('No se pudo preparar el PDF en este dispositivo.'); return; }
+            try { sessionStorage.setItem('kinoPdfSrc', JSON.stringify({ name: c.name, items: its, from: ['Mi selección', '/mi-seleccion'] })); } catch (err) { alert('No se pudo preparar el PDF en este dispositivo.'); return; }
             location.href = '/catalogo-pdf?desde=lista';
             return;
         }

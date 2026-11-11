@@ -33,10 +33,11 @@
     function loadItems() {
         let raw = [];
         let name = '';
+        let from = null;
         const fromList = new URLSearchParams(location.search).get('desde') === 'lista';
         if (fromList) {
             const d = readJson(sessionStorage, 'kinoPdfSrc', null);
-            if (d && Array.isArray(d.items)) { raw = d.items; name = String(d.name || ''); }
+            if (d && Array.isArray(d.items)) { raw = d.items; name = String(d.name || ''); from = Array.isArray(d.from) ? d.from : null; }
         } else {
             let d = readJson(ls, 'kinoWaSel', null);
             if (!d || !Array.isArray(d.items)) d = readJson(sessionStorage, 'kinoWaSel', null);
@@ -49,7 +50,7 @@
             seen.add(x.id);
             items.push({ id: String(x.id), code: code(x.sku || x.id) });
         });
-        return { items, name, fromList, cut: Math.max(0, items.length - MAX_ITEMS) };
+        return { items, name, fromList, from, cut: Math.max(0, items.length - MAX_ITEMS) };
     }
 
     const src = loadItems();
@@ -67,6 +68,11 @@
     if (!HEX.test(opts.c2)) opts.c2 = '#c9a84c';
     // Lista de un catálogo con nombre (enlace /c/…, catálogo guardado): ese nombre es el título (se puede cambiar)
     if (src.name) opts.title = src.name;
+    // Miga del medio: de dónde vino la lista (enlace /c/…, Enviar catálogo, catálogo guardado)
+    if (src.from && typeof src.from[0] === 'string' && /^\/[\w\/-]*$/.test(String(src.from[1] || ''))) {
+        const mid = document.querySelector('#cpCrumbs a[href="/mi-seleccion"]');
+        if (mid) { mid.textContent = src.from[0].slice(0, 40); mid.setAttribute('href', src.from[1]); }
+    }
     if (src.fromList) {
         const back = document.querySelector('.header-inner a.btn');
         if (back && history.length > 1) { back.textContent = '← Volver'; back.addEventListener('click', (e) => { e.preventDefault(); history.back(); }); }

@@ -137,9 +137,9 @@ $shareDesc = implode(' · ', array_filter([
             <div class="folder-breadcrumb" style="font-size:0.85rem; color:var(--color-text-muted); margin-bottom:0.5rem;">
                 <a href="/" style="color:var(--color-primary);">Inicio</a>
                 <?php foreach (array_slice($folderPath, 0, -1) as $crumb): ?>
-                    / <a href="/carpeta/<?= urlencode($crumb['id']) ?>" style="color:var(--color-primary);"><?= e($crumb['name']) ?></a>
+                    › <a href="/carpeta/<?= urlencode($crumb['id']) ?>" style="color:var(--color-primary);"><?= e($crumb['name']) ?></a>
                 <?php endforeach; ?>
-                / <span><?= e($folderName) ?></span>
+                › <span><?= e($folderName) ?></span>
             </div>
             <h1 style="font-size:1.5rem; margin:0;">📂 <?= e($folderName) ?></h1>
             <p style="color:var(--color-text-muted); font-size:0.9rem; margin-top:0.25rem;">

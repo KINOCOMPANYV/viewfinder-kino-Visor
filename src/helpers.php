@@ -92,6 +92,23 @@ function e(?string $text): string
 }
 
 /**
+ * Migas de pan: "Inicio › Sección › Página". $items = [[texto, href|null], ...]; el último es la página actual.
+ * Inicio va siempre primero. Estilos: .crumbs (style.css).
+ */
+function breadcrumbs(array $items, string $id = ''): string
+{
+    $parts = ['<a href="/">Inicio</a>'];
+    $last = count($items) - 1;
+    foreach (array_values($items) as $i => [$text, $href]) {
+        $parts[] = ($i === $last || !$href)
+            ? '<span' . ($i === $last ? ' aria-current="page"' : '') . '>' . e($text) . '</span>'
+            : '<a href="' . e($href) . '">' . e($text) . '</a>';
+    }
+    return '<nav class="crumbs"' . ($id !== '' ? ' id="' . e($id) . '"' : '') . ' aria-label="Estás aquí">'
+        . implode('<span class="crumbs-sep" aria-hidden="true">›</span>', $parts) . '</nav>';
+}
+
+/**
  * Obtiene la IP real del cliente (detrás de proxy).
  */
 function getClientIP(): string

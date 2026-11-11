@@ -3178,3 +3178,23 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     body:has(.mnav) .cp-bar { bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
     body:has(.mnav) .cp-main { padding-bottom: 12rem; }
 }
+
+/* Botón ← Atrás del encabezado (templates/partials/mobile_nav.php): solo en el celular */
+.hdr-back { display: none; }
+@media (max-width: 640px) {
+    .hdr-back {
+        display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+        width: 40px; height: 40px; border-radius: 12px; margin-right: 0.25rem;
+        background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text);
+        font-size: 1.25rem; font-weight: 700; text-decoration: none;
+    }
+    .hdr-back:active { background: var(--color-surface-3); }
+    .header-inner .hdr-back + .logo { margin-right: auto; }
+}
+
+/* Migas de pan (breadcrumbs() en helpers.php): Inicio › Sección › Página */
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.4rem; font-size: 0.82rem; color: var(--color-text-muted); margin-bottom: 0.6rem; }
+.crumbs a { color: var(--color-primary); text-decoration: none; padding: 0.3rem 0; }
+.crumbs a:hover { text-decoration: underline; }
+.crumbs [aria-current] { color: var(--color-text); font-weight: 600; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumbs-sep { color: var(--color-text-dim); }

@@ -22,6 +22,27 @@ $mnavItems = [
 <script>
     // Si la página ya tiene lo que se toca, no recarga: Buscar sube y abre el teclado en el buscador,
     // Carpetas baja a la sección del inicio, Inicio en el inicio sube arriba.
+    // Botón ← Atrás en el encabezado (solo celular, todas las páginas menos el inicio): vuelve a la pantalla
+    // anterior del visor; si se llegó desde fuera (enlace de WhatsApp, pestaña nueva), va a la página "de arriba"
+    // (la del botón ← que el encabezado esconde en el celular) o al inicio.
+    (function () {
+        var inner = document.querySelector('.header .header-inner');
+        if (!inner || location.pathname === '/' || inner.querySelector('.hdr-back')) return;
+        var up = inner.querySelector('a.btn[href^="/"]:not([href="/enviar-catalogo"])');
+        var back = document.createElement('a');
+        back.className = 'hdr-back';
+        back.href = up ? up.getAttribute('href') : '/';
+        back.setAttribute('aria-label', 'Atrás');
+        back.title = 'Atrás';
+        back.textContent = '←';
+        back.addEventListener('click', function (ev) {
+            var fromHere = false;
+            try { fromHere = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (err) {}
+            if (fromHere && history.length > 1) { ev.preventDefault(); history.back(); }
+        });
+        inner.insertBefore(back, inner.firstChild);
+    })();
+
     document.getElementById('mobileNav').addEventListener('click', function (e) {
         var a = e.target.closest('a');
         if (!a) return;
