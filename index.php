@@ -323,6 +323,18 @@ if ($uri === '/admin/media') {
 if ($uri === '/admin/google/auth') {
     requireAdmin();
     require_once __DIR__ . '/src/services/GoogleDriveService.php';
+    // Google devuelve el código a GOOGLE_REDIRECT_URI. Si ese dominio no es este,
+    // la vuelta cae en otro servidor sin tu sesión y la conexión se pierde sin aviso.
+    $cbHost = strtolower((string) parse_url(env('GOOGLE_REDIRECT_URI', ''), PHP_URL_HOST));
+    $here = strtolower(explode(':', $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? '')[0]);
+    if ($cbHost === '' || ($here !== '' && $cbHost !== $here)) {
+        $_SESSION['flash_error'] = 'No se puede conectar Google Drive: GOOGLE_REDIRECT_URI apunta a «'
+            . htmlspecialchars($cbHost ?: '(vacío)', ENT_QUOTES, 'UTF-8') . '» pero este sitio es «'
+            . htmlspecialchars($here, ENT_QUOTES, 'UTF-8') . '». En Railway pon GOOGLE_REDIRECT_URI = https://'
+            . htmlspecialchars($here, ENT_QUOTES, 'UTF-8') . '/admin/google/callback y agrega esa misma URL en Google Cloud'
+            . ' (Credenciales → cliente OAuth → URIs de redireccionamiento autorizados).';
+        redirect('/admin/media');
+    }
     $drive = new GoogleDriveService();
     header('Location: ' . $drive->getAuthUrl());
     exit;

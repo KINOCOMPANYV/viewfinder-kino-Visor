@@ -5,7 +5,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 **Regla: al terminar cada trabajo (PR fusionado), actualiza este archivo** (estado, decisiones, historial en 1 línea).
 
 ## Estado actual (2026-11-09)
-- Producción: `viewfinder-kino-visor.up.railway.app` (Railway, deploy automático desde `main`).
+- Producción: `viewfinder-k.up.railway.app` según los logs de Railway del 2026-11-10 (deploy automático desde `main`).
+  `GOOGLE_REDIRECT_URI` debe usar ese mismo dominio.
   El entorno "PRUEBAS" (`…-pruebas.up.railway.app`) no cuenta: las variables se ponen en el entorno de producción.
 - Drive raíz: env `GOOGLE_DRIVE_FOLDER_ID` = carpeta **PRODUCTOS**. Se indexan todos los niveles en `drive_index`.
 - Hoja maestra: **"MAESTRA DE PRODUCTOS KINO"** (env `GOOGLE_SHEET_ID`), 3629 códigos. Revisión 2026-11-09: se lee
@@ -169,3 +170,6 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   30 productos visibles más parecidos. Huellas de las portadas en `image_embeddings`, preparadas por el sync. Requiere `JINA_API_KEY`.
 - #49: búsqueda por foto: la ventana avisa "N de M fotos listas" mientras se preparan (sin ninguna lista no gasta tokens), la
   preparación corre en su propio ciclo cada 5 min (no espera la hora) y Admin → Sincronizar muestra la última vuelta y errores de Jina.
+- #47: reconectar Google Drive más robusto: si la sesión del admin caducó, tras el login sigue con la vuelta de Google;
+  los errores se ven en Admin → Media con la causa; se conserva el refresh_token si Google no manda uno nuevo. «Conectar» avisa si `GOOGLE_REDIRECT_URI`
+  apunta a otro dominio (causa real del fallo del 2026-11-10: el sitio es `viewfinder-k.up.railway.app`).
