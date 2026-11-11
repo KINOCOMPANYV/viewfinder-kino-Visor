@@ -82,6 +82,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   una sincronización a la vez.
 
 ## Pendiente / ideas
+- **Catálogo en PDF** (`docs/PLAN_PDF.md`, 2026-11-11): plan por etapas P1-P3 (PDF armado en el dispositivo con foto,
+  código y texto opcional del cliente; descargar o compartir). Esperando aprobación del dueño.
 - **Búsqueda por foto** (#48-#50): `JINA_API_KEY` puesta en Railway (producción) el 2026-11-10 y la búsqueda ya responde.
   La primera vez prepara ~4400 portadas (ciclo propio cada 5 min, varias horas según el límite de la clave); el avance
   sale en la ventana de resultados y en Admin → Sincronizar. Confirmar que termine y que los parecidos sean buenos.
@@ -175,3 +177,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   apunta a otro dominio (causa real del fallo del 2026-11-10: el sitio es `viewfinder-k.up.railway.app`).
 - #50: búsqueda por foto: el 2026-11-11 salía "No se pudo analizar la foto" sin saber por qué. Ahora la ventana dice la causa
   (sin saldo en Jina, clave mala, muchas búsquedas) y `/buscar-foto/estado` muestra el avance y el estado sin entrar al admin.
+- #51: `docs/PLAN_PDF.md`: plan del catálogo en PDF con textos del cliente (etapas P1-P3). Solo documento.
