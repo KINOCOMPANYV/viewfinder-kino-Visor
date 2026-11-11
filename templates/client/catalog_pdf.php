@@ -29,7 +29,7 @@
 
     <main class="container cp-main">
         <h1 class="ms-title">📄 Catálogo en PDF <span id="cpCount"></span></h1>
-        <p class="ms-help">Cada foto sale con su código. Debajo puedes escribir el precio u otra información:
+        <p class="ms-help">Elige colores y textos, y debajo de cada código escribe el precio u otra información:
             si lo dejas vacío, no sale nada. Todo se arma <strong>en este dispositivo</strong> y lo que escribes se
             recuerda aquí para la próxima vez.</p>
 
@@ -40,11 +40,28 @@
         </div>
 
         <div id="cpBody" hidden>
+            <section class="ms-look cp-design">
+                <h2>🎨 Diseño</h2>
+                <div class="cp-presets" id="cpPresets" aria-label="Combinaciones de colores"></div>
+                <div class="cp-colors">
+                    <label><input type="color" id="cpC1" value="#1c1c1e"> Color primario</label>
+                    <label><input type="color" id="cpC2" value="#c9a84c"> Color secundario</label>
+                </div>
+                <div class="cp-prev" id="cpPrev" aria-hidden="true">
+                    <div class="cp-prev-band"><span class="cp-prev-logo" id="cpPrevLogo"></span><span class="cp-prev-tt"><b id="cpPrevTitle">Catálogo</b><i id="cpPrevSub"></i></span></div>
+                    <div class="cp-prev-line"></div>
+                    <div class="cp-prev-sec"><b>Sección</b><span></span></div>
+                    <div class="cp-prev-grid"><span><em></em><b>M:8363-3</b><i></i><small>$120.000</small></span><span><em></em><b>M:8291-1</b><i></i><small>$95.000</small></span><span><em></em><b>M:1401-5</b><i></i><small></small></span></div>
+                    <div class="cp-prev-foot"><span id="cpPrevFoot">Pie de catálogo</span><b>1 / 3</b></div>
+                </div>
+            </section>
+
             <section class="ms-look cp-doc">
-                <h2>🗂️ Datos del documento <small>(opcionales)</small></h2>
+                <h2>🗂️ Textos del catálogo <small>(opcionales)</small></h2>
                 <div class="cp-fields">
                     <label>Título<input type="text" id="cpTitle" maxlength="60" placeholder="Ej.: Relojes noviembre"></label>
-                    <label>Contacto<input type="text" id="cpContact" maxlength="80" placeholder="Ej.: Ana · 300 123 4567"></label>
+                    <label>Subtítulo<input type="text" id="cpSub" maxlength="80" placeholder="Ej.: Colección 2026 · Precios al por mayor"></label>
+                    <label class="cp-wide">Pie de catálogo (contacto)<textarea id="cpFoot" rows="2" maxlength="160" placeholder="Ej.: Ana Peña · WhatsApp 300 123 4567 · Instagram @tienda"></textarea></label>
                 </div>
                 <div class="cp-logo">
                     <div class="cp-logo-box" id="cpLogoBox"><img id="cpLogoImg" alt="Tu logo" hidden><span id="cpLogoNone">Sin logo</span></div>
@@ -60,6 +77,7 @@
                     <label><input type="radio" name="cpPer" value="6"> 6</label>
                     <label><input type="radio" name="cpPer" value="9"> 9</label>
                 </div>
+                <small class="cp-tip">Para separar por secciones (p. ej. «Dama», «Caballero»), toca «＋ Subtítulo» en la foto donde empieza cada una.</small>
             </section>
 
             <section class="ms-look cp-bulk">

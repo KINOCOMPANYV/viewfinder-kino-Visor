@@ -133,6 +133,7 @@ $title = $cat && $cat['is_active'] ? $cat['name'] : 'Catálogo no disponible';
             <h1 class="sc-title"><?= e($cat['name']) ?></h1>
             <p class="sc-sub"><?= count($photos) ?> referencia<?= count($photos) === 1 ? '' : 's' ?></p>
             <?php if ($cat['contact']): ?><p class="sc-contact">📞 <?= e($cat['contact']) ?></p><?php endif; ?>
+            <button type="button" class="btn btn-sm btn-primary sc-pdf" id="scPdf">📄 Crear catálogo PDF</button>
             <div class="sc-grid">
                 <?php foreach ($photos as $i => $ph): ?>
                     <a class="sc-item" href="<?= e(lh3Url($ph['id'], 1600)) ?>" target="_blank" rel="noopener">
@@ -143,6 +144,17 @@ $title = $cat && $cat['is_active'] ? $cat['name'] : 'Catálogo no disponible';
             </div>
         <?php endif; ?>
     </main>
+    <?php if ($photos): ?>
+    <script>
+        // Catálogo en PDF (docs/PLAN_PDF.md, P2): pasa estas fotos a /catalogo-pdf en esta pestaña
+        document.getElementById('scPdf').addEventListener('click', function () {
+            try {
+                sessionStorage.setItem('kinoPdfSrc', JSON.stringify(<?= json_encode(['name' => $cat['name'], 'items' => $photos], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>));
+                location.href = '/catalogo-pdf?desde=lista';
+            } catch (e) { alert('Este navegador no deja crear el PDF (¿navegación privada?).'); }
+        });
+    </script>
+    <?php endif; ?>
 </body>
 
 </html>

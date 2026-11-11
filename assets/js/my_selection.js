@@ -79,6 +79,7 @@
                     <small>${c.items.length} foto${c.items.length === 1 ? '' : 's'} · ${esc(when)}${missing ? ' · <b class="ms-bad">' + missing + ' ya no está' + (missing === 1 ? '' : 'n') + '</b>' : ''}</small></span>
                 <span class="ms-cat-act">
                     <button type="button" class="btn btn-sm btn-primary" data-c="open">Abrir</button>
+                    <button type="button" class="btn btn-sm btn-secondary" data-c="pdf" title="Catálogo en PDF con tus precios">📄 PDF</button>
                     <button type="button" class="btn btn-sm btn-secondary" data-c="update" title="Reemplazar con la selección actual">Actualizar</button>
                     <button type="button" class="btn btn-sm btn-secondary" data-c="dup">Duplicar</button>
                     <button type="button" class="btn btn-sm btn-secondary" data-c="ren">Renombrar</button>
@@ -116,6 +117,14 @@
         const c = cats.find((x) => x.id === b.closest('.ms-cat').dataset.id);
         if (!c) return;
         const act = b.dataset.c;
+        if (act === 'pdf') {
+            // PDF de este catálogo sin cambiar lo marcado ahora (docs/PLAN_PDF.md, P2)
+            const its = c.items.filter((x) => !gone[x.id]);
+            if (!its.length) { alert('Las fotos de «' + c.name + '» ya no están en el catálogo.'); return; }
+            try { sessionStorage.setItem('kinoPdfSrc', JSON.stringify({ name: c.name, items: its })); } catch (err) { alert('No se pudo preparar el PDF en este dispositivo.'); return; }
+            location.href = '/catalogo-pdf?desde=lista';
+            return;
+        }
         if (act === 'open') {
             if (W.items().length && !confirm('Se reemplaza lo marcado ahora (' + W.items().length + ' fotos) por «' + c.name + '». ¿Seguir?')) return;
             W.replace(c.items.filter((x) => !gone[x.id]));

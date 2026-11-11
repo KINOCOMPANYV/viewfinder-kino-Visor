@@ -393,6 +393,14 @@
         try { store.setItem('kinoWaSel', JSON.stringify(d)); } catch (e) { msg('No se pudo guardar en este dispositivo.'); return; }
         location.href = '/mi-seleccion';
     });
+    // Catálogo en PDF (docs/PLAN_PDF.md, P2): las marcadas, en orden, sin tocar Mi selección
+    $('csPdf').addEventListener('click', () => {
+        const ts = selected();
+        if (!ts.length) { msg('Marca al menos una foto.'); return; }
+        try { sessionStorage.setItem('kinoPdfSrc', JSON.stringify({ items: ts.map((t) => ({ id: t.photo.id, sku: t.item.sku })) })); }
+        catch (e) { msg('No se pudo preparar el PDF en este dispositivo.'); return; }
+        location.href = '/catalogo-pdf?desde=lista';
+    });
     $('csNone').addEventListener('click', () => setAll(false));
 
     $('csCopyList').addEventListener('click', async () => {
