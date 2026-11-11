@@ -197,7 +197,47 @@ class ImageSearch
             'total_indexadas' => $indexed,
             'segundos' => time() - $start,
             'error' => $error,
+            'causa' => $error !== null ? self::classify($error) : null,
         ];
+    }
+
+    /**
+     * Causa de un error de Jina, por su código HTTP: saldo (sin tokens), clave (inválida), limite (muchas
+     * solicitudes por minuto) o error (cualquier otra cosa, p. ej. red o caída).
+     */
+    public static function classify(string $message): string
+    {
+        $status = preg_match('/^Jina respondió (\d{3})/', $message, $m) ? (int) $m[1] : 0;
+        if ($status === 0) {
+            return 'error';
+        }
+        if ($status === 402 || preg_match('/insufficient|balance|credit|payment|top.?up/i', $message)) {
+            return 'saldo';
+        }
+        if ($status === 401 || $status === 403) {
+            return 'clave';
+        }
+        return $status === 429 ? 'limite' : 'error';
+    }
+
+    /**
+     * Estado público (GET /buscar-foto/estado): solo cuentas y la causa general, sin datos de la clave.
+     * estado: listo | preparando | saldo | clave | limite | error | sin_datos (aún no corre la primera vuelta).
+     */
+    public static function publicStatus(PDO $db): array
+    {
+        $st = self::status($db);
+        $run = self::lastRun();
+        if ($st['fotos'] > 0 && $st['indexadas'] >= $st['fotos']) {
+            $estado = 'listo';
+        } elseif (!$run) {
+            $estado = 'sin_datos';
+        } elseif (!empty($run['error'])) {
+            $estado = $run['causa'] ?? self::classify((string) $run['error']);
+        } else {
+            $estado = 'preparando';
+        }
+        return $st + ['ultima_vuelta' => $run['at'] ?? null, 'estado' => $estado];
     }
 
     /** Cuántas portadas visibles tienen huella (para el admin). */

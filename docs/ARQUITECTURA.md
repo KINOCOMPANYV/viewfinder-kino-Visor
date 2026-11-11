@@ -148,6 +148,9 @@ Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600
   "N de M listas" (sin ninguna lista no llama a Jina). `cli_sync.php imagenes` corre en su propio ciclo cada 5 min en
   `sync_loop.sh` (máx. `IMAGE_INDEX_MAX_SECONDS`=1500 por vuelta) y prepara las portadas nuevas (lh3 `=s512`, 8 por llamada).
   Última vuelta en `storage/image_index_status.json`; estado y errores de Jina en Admin → Sincronizar.
+  Si Jina falla, la ventana dice la causa (`ImageSearch::classify`: saldo 402, clave 401/403, límite 429, otro) y el detalle va
+  al log. `GET /buscar-foto/estado` (público, solo cuentas): fotos, listas, última vuelta y estado
+  (listo/preparando/saldo/clave/limite/error/sin_datos).
 
 ## Coincidencia SKU ↔ archivo (regla única, decidida por el dueño)
 - **La foto se llama como el código**: `X6071.jpg`, o el código + separador + lo que sea (`X6071-A.jpg`, `X6071 (2).jpg`).

@@ -82,7 +82,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   una sincronización a la vez.
 
 ## Pendiente / ideas
-- **Búsqueda por foto** (#48, #49): `JINA_API_KEY` puesta en Railway (producción) el 2026-11-10 y la búsqueda ya responde.
+- **Búsqueda por foto** (#48-#50): `JINA_API_KEY` puesta en Railway (producción) el 2026-11-10 y la búsqueda ya responde.
   La primera vez prepara ~4400 portadas (ciclo propio cada 5 min, varias horas según el límite de la clave); el avance
   sale en la ventana de resultados y en Admin → Sincronizar. Confirmar que termine y que los parecidos sean buenos.
 - Probar en Railway la vista previa de WhatsApp con enlaces nunca compartidos (WhatsApp cachea por URL).
@@ -173,3 +173,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #47: reconectar Google Drive más robusto: si la sesión del admin caducó, tras el login sigue con la vuelta de Google;
   los errores se ven en Admin → Media con la causa; se conserva el refresh_token si Google no manda uno nuevo. «Conectar» avisa si `GOOGLE_REDIRECT_URI`
   apunta a otro dominio (causa real del fallo del 2026-11-10: el sitio es `viewfinder-k.up.railway.app`).
+- #50: búsqueda por foto: el 2026-11-11 salía "No se pudo analizar la foto" sin saber por qué. Ahora la ventana dice la causa
+  (sin saldo en Jina, clave mala, muchas búsquedas) y `/buscar-foto/estado` muestra el avance y el estado sin entrar al admin.
