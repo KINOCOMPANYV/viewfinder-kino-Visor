@@ -104,6 +104,7 @@
                 <button type="button" id="csAll" class="btn btn-secondary btn-sm">Marcar todas</button>
                 <button type="button" id="csNone" class="btn btn-secondary btn-sm">Desmarcar todas</button>
                 <button type="button" id="csToSel" class="btn btn-secondary btn-sm" title="Suma las marcadas a lo que marcaste en el catálogo">📌 Pasar a Mi selección</button>
+                <button type="button" id="csPdf" class="btn btn-secondary btn-sm" title="Catálogo en PDF con las marcadas, su código y tus precios">📄 Crear PDF</button>
             </div>
             <div class="cs-grid" id="csGrid"></div>
             <div class="cs-nophoto" id="csNoPhoto" hidden></div>

@@ -64,7 +64,7 @@ Encabezado con logo (si lo subió), título y contacto en la primera página; pi
 | Etapa | Qué incluye | Archivos principales |
 |---|---|---|
 | **P1. Armar PDF desde la selección** ✅ #52 | Pantalla `/catalogo-pdf` (filas con foto, código, texto), opciones (título, contacto, logo opcional, 4/6/9 por página), «lo mismo en todas / solo vacías», generar con avance, Compartir y Descargar, textos recordados por código. Botón «📄 Crear catálogo PDF» en la barra de envío y en Mi selección. | `index.php` (ruta), `templates/client/catalog_pdf.php`, `assets/js/catalog_pdf.js`, `assets/vendor/jspdf.umd.min.js`, `wa_batch.js`, `my_selection.js`, CSS |
-| **P2. Más entradas** | «📄 Crear catálogo PDF» al abrir un enlace `/c/…`, en Enviar catálogo (con las marcadas) y en cada catálogo guardado (abre con sus textos). La lista se pasa a `/catalogo-pdf` en el dispositivo sin tocar Mi selección. | `shared_catalog.php`, `catalog_send.js`, `my_selection.js` |
+| **P2. Más entradas** ✅ #53 | «📄 Crear catálogo PDF» al abrir un enlace `/c/…`, en Enviar catálogo (con las marcadas) y en cada catálogo guardado (abre con sus textos). La lista se pasa a `/catalogo-pdf` en el dispositivo sin tocar Mi selección. | `shared_catalog.php`, `catalog_send.js`, `my_selection.js` |
 | **P3. Precios rápidos (opcional)** | Pegar una lista «código precio» (como en Enviar catálogo) y rellenar los textos de golpe; vista previa de la 1.ª página antes de generar. | `catalog_pdf.js` |
 
 Pruebas de cada etapa: Android (Chrome), iPhone (Safari) y computador; catálogos de 1, 30 y 300 referencias; texto vacío

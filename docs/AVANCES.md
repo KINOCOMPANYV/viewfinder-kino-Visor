@@ -58,7 +58,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   fotos de varias páginas en un solo envío. Desde la etapa C se guarda en el dispositivo (sigue al cerrar la página) y
   "👁 Ver" abre **Mi selección** (`/mi-seleccion`): ordenar, quitar, reintentar las que no bajaron, repetir la última tanda.
   Enviar catálogo tiene "📌 Pasar a Mi selección". "📄 PDF" (barra) / "📄 Crear catálogo PDF" (Mi selección) abre
-  `/catalogo-pdf`: texto opcional bajo cada código, título, contacto, logo propio, 4/6/9 por página → Compartir o Descargar. Las fotos empiezan a bajar apenas se marcan. La galería de la ficha usa la misma
+  `/catalogo-pdf`: texto opcional bajo cada código, título, contacto, logo propio, 4/6/9 por página → Compartir o Descargar.
+  También «📄 Crear catálogo PDF» en el enlace `/c/…`, «📄 Crear PDF» en Enviar catálogo y «📄 PDF» en cada catálogo guardado. Las fotos empiezan a bajar apenas se marcan. La galería de la ficha usa la misma
   barra (solo fotos; ya no manda pie de foto ni archivos originales pesados).
 - Carpetas: cada foto es una tarjeta en la grilla (ya no se agrupan como miniaturas de variantes), con su código, WhatsApp,
   Descargar y "Seleccionar" para mandar varias (misma barra). Una carpeta que solo tiene subcarpetas (p. ej. una línea con
@@ -86,8 +87,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   una sincronización a la vez.
 
 ## Pendiente / ideas
-- **Catálogo en PDF** (`docs/PLAN_PDF.md`, aprobado 2026-11-11): P1 hecha (#52). Sigue P2: botón en el enlace `/c/…`,
-  Enviar catálogo y catálogos guardados. P3 (pegar «código precio») opcional.
+- **Catálogo en PDF** (`docs/PLAN_PDF.md`, aprobado 2026-11-11): P1 (#52) y P2 (#53) hechas. Probar en Railway con fotos
+  reales y compartir a WhatsApp (Android/iPhone). P3 (pegar «código precio») opcional, sin pedir.
 - **Búsqueda por foto** (#48-#50): `JINA_API_KEY` puesta en Railway (producción) el 2026-11-10 y la búsqueda ya responde.
   La primera vez prepara ~4400 portadas (ciclo propio cada 5 min, varias horas según el límite de la clave); el avance
   sale en la ventana de resultados y en Admin → Sincronizar. Confirmar que termine y que los parecidos sean buenos.
@@ -183,3 +184,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   (sin saldo en Jina, clave mala, muchas búsquedas) y `/buscar-foto/estado` muestra el avance y el estado sin entrar al admin.
 - #51: `docs/PLAN_PDF.md`: plan del catálogo en PDF con textos del cliente (etapas P1-P3). Solo documento.
 - #52: etapa P1 del PDF: `/catalogo-pdf` desde la selección (texto por código recordado en el dispositivo, logo propio, 4/6/9 por página, Compartir/Descargar; jsPDF 4.2.1 en `assets/vendor`).
+- #53: etapa P2 del PDF: botón en el enlace `/c/…`, en Enviar catálogo (las marcadas) y en cada catálogo guardado; la lista va a `/catalogo-pdf?desde=lista` sin cambiar Mi selección.

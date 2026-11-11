@@ -31,7 +31,8 @@
     function loadItems() {
         let raw = [];
         let name = '';
-        if (new URLSearchParams(location.search).get('desde') === 'lista') {
+        const fromList = new URLSearchParams(location.search).get('desde') === 'lista';
+        if (fromList) {
             const d = readJson(sessionStorage, 'kinoPdfSrc', null);
             if (d && Array.isArray(d.items)) { raw = d.items; name = String(d.name || ''); }
         } else {
@@ -46,7 +47,7 @@
             seen.add(x.id);
             items.push({ id: String(x.id), code: code(x.sku || x.id) });
         });
-        return { items, name, cut: Math.max(0, items.length - MAX_ITEMS) };
+        return { items, name, fromList, cut: Math.max(0, items.length - MAX_ITEMS) };
     }
 
     const src = loadItems();
@@ -55,7 +56,12 @@
     if (typeof texts !== 'object' || Array.isArray(texts)) texts = {};
     const opts = Object.assign({ title: '', contact: '', per: 6 }, readJson(ls, 'kinoPdfOpts', {}));
     if (![4, 6, 9].includes(+opts.per)) opts.per = 6;
-    if (src.name && !opts.title) opts.title = src.name;
+    // Lista de un catálogo con nombre (enlace /c/…, catálogo guardado): ese nombre es el título (se puede cambiar)
+    if (src.name) opts.title = src.name;
+    if (src.fromList) {
+        const back = document.querySelector('.header-inner a.btn');
+        if (back && history.length > 1) { back.textContent = '← Volver'; back.addEventListener('click', (e) => { e.preventDefault(); history.back(); }); }
+    }
     let logo = readJson(ls, 'kinoPdfLogo', null); // {src: dataURL PNG, w, h}
     if (!logo || !logo.src) logo = null;
 
