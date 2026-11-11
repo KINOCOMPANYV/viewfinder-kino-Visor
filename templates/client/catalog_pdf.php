@@ -28,6 +28,7 @@
     </header>
 
     <main class="container cp-main">
+        <?= breadcrumbs([['Mi selección', '/mi-seleccion'], ['Catálogo en PDF', null]], 'cpCrumbs') ?>
         <h1 class="ms-title">📄 Catálogo en PDF <span id="cpCount"></span></h1>
         <p class="ms-help">Elige colores y textos, y debajo de cada código escribe el precio u otra información:
             si lo dejas vacío, no sale nada. Todo se arma <strong>en este dispositivo</strong> y lo que escribes se

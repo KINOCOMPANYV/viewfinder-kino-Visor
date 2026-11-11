@@ -76,6 +76,7 @@
     </header>
 
     <main class="container" style="padding-top:2rem; padding-bottom:3rem; max-width:860px;">
+        <?= breadcrumbs([['Enviar catálogo', null]]) ?>
         <h1 style="font-size:1.5rem; margin-bottom:1.25rem;">📤 Enviar catálogo por lista</h1>
 
         <section class="cs-card">

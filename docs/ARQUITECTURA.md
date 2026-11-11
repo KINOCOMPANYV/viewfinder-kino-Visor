@@ -238,5 +238,6 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
   se esconde cuando está abierta la barra de WhatsApp), encabezado no fijo y sin botones `.hdr-hide-m`, `.hero` con
   `display: contents` para que `.search-box` quede `sticky` en toda la página, carpetas `#carpetas` de 3 en 3,
   `.folder-hits` (carpetas en la búsqueda) como filas, y la casilla `.search-check-footer` como círculo sobre la foto.
+- Navegación: `mobile_nav.php` también agrega el botón `.hdr-back` (←, solo ≤ 640 px, no en `/`): `history.back()` si se llegó desde el sitio; si no, va al `href` del botón ← que el encabezado esconde en el celular, o a `/`. Migas de pan con `breadcrumbs([[texto, href], …])` de `helpers.php` (clase `.crumbs`); en `/catalogo-pdf` la del medio sale de `kinoPdfSrc.from`.
 - Buscador: la ✕ (`.search-clear`, todas las pantallas) se ve solo con texto (`:placeholder-shown`); en el celular el texto
   de ayuda corto sale de `data-ph-short` (`search.js`). El overlay "cargando" ignora clics ya manejados (`defaultPrevented`).

@@ -80,6 +80,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Búsqueda: el código exacto primero ("8363-3" = "M:8363-3"), luego los que empiezan por él y el resto; carpetas cuyo
   nombre coincide (también como código), arriba o, si el código existe, justo debajo de su tarjeta. Filtros por marca, categoría, precio y "solo con foto" (combinables, en la URL); si no encuentra nada,
   "¿Quisiste decir…?" con los códigos y marcas más parecidos.
+- Navegación (2026-11-11): en el celular, botón **←** junto al logo en todas las páginas menos el inicio (vuelve a la
+  pantalla anterior; si se llegó por un enlace de fuera, va a la página de arriba). **Migas de pan** «Inicio › Sección ›
+  Página» en Mi selección, Catálogo en PDF (la del medio dice de dónde vino la lista), Enviar catálogo y Novedades;
+  carpetas y ficha ya las tenían (carpetas ahora con ›).
 - Todo el visor y el admin se revisan a 320/360/375 px (celular): sin scroll lateral, letra legible, botones de dedo.
 - Celular (etapa 2): barra abajo tipo app (Inicio, Buscar, Carpetas, Enviar); buscador pegado arriba en una fila con ✕
   para borrar y 📷 al lado; carpetas del inicio de 3 en 3; "Seleccionar" es un círculo sobre la foto. El computador no cambia
@@ -188,3 +192,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #51: `docs/PLAN_PDF.md`: plan del catálogo en PDF con textos del cliente (etapas P1-P3). Solo documento.
 - #52: etapa P1 del PDF: `/catalogo-pdf` desde la selección (texto por código recordado en el dispositivo, logo propio, 4/6/9 por página, Compartir/Descargar; jsPDF 4.2.1 en `assets/vendor`).
 - #53: etapa P2 del PDF: botón en el enlace `/c/…`, en Enviar catálogo (las marcadas) y en cada catálogo guardado; la lista va a `/catalogo-pdf?desde=lista` sin cambiar Mi selección. Además, diseño del PDF: franja de color con logo/título/subtítulo, colores primario y secundario, subtítulos de sección y pie de contacto (el campo «Contacto» pasó al pie).
+- #54: navegación: botón ← Atrás en el encabezado del celular y migas de pan (`breadcrumbs()`) en Mi selección, Catálogo en PDF, Enviar catálogo y Novedades.

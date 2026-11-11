@@ -51,6 +51,7 @@ $fmtDay = function (string $d): string {
     </header>
 
     <section class="container nw-main">
+        <?= breadcrumbs([['Novedades', null]]) ?>
         <h1 class="nw-title">🆕 Novedades</h1>
         <p class="nw-help">Fotos y videos que llegaron a Drive en este periodo (los que solo se volvieron a sincronizar no cuentan).
             Márcalas para sumarlas a tu selección.</p>

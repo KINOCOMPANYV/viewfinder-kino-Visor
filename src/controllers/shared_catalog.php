@@ -149,7 +149,7 @@ $title = $cat && $cat['is_active'] ? $cat['name'] : 'Catálogo no disponible';
         // Catálogo en PDF (docs/PLAN_PDF.md, P2): pasa estas fotos a /catalogo-pdf en esta pestaña
         document.getElementById('scPdf').addEventListener('click', function () {
             try {
-                sessionStorage.setItem('kinoPdfSrc', JSON.stringify(<?= json_encode(['name' => $cat['name'], 'items' => $photos], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>));
+                sessionStorage.setItem('kinoPdfSrc', JSON.stringify(<?= json_encode(['name' => $cat['name'], 'items' => $photos, 'from' => [$cat['name'], '/c/' . $cat['code']]], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>));
                 location.href = '/catalogo-pdf?desde=lista';
             } catch (e) { alert('Este navegador no deja crear el PDF (¿navegación privada?).'); }
         });
