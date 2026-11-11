@@ -45,6 +45,7 @@
         <div class="ms-last" id="msLast" hidden></div>
 
         <div class="ms-tools" id="msTools" hidden>
+            <a href="/catalogo-pdf" class="btn btn-sm btn-primary" id="msPdf">📄 Crear catálogo PDF</a>
             <button type="button" class="btn btn-sm btn-secondary" id="msOne">Dejar 1 foto por código</button>
             <button type="button" class="btn btn-sm btn-secondary" id="msEmpty">Vaciar</button>
         </div>

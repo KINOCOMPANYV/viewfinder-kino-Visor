@@ -167,6 +167,7 @@
             + '<label class="wa-toolbar-select" title="Marca o desmarca las fotos que se ven en esta página"><input type="checkbox" class="wab-all"><span>Marcar todas <small>(esta vista)</small></span></label>'
             + '<a class="wab-view" href="/mi-seleccion" title="Revisar, ordenar y quitar"><span class="wa-toolbar-count wab-count">0</span> 👁 Ver</a>'
             + '<button type="button" class="wab-clear" title="Desmarcar todo">✕</button>'
+            + '<a class="wab-pdf" href="/catalogo-pdf" title="Crear un catálogo en PDF con estas fotos, su código y tus precios">📄 PDF</a>'
             + '<button type="button" class="wab-save">💾 Guardar</button>'
             + '<button type="button" class="wa-toolbar-send wab-send">📲 Enviar</button>'
             + '</div><div class="wab-msg"></div>';
