@@ -232,6 +232,11 @@ if ($uri === '/mi-seleccion') {
     exit;
 }
 
+if ($uri === '/catalogo-pdf') {
+    include __DIR__ . '/templates/client/catalog_pdf.php';
+    exit;
+}
+
 if ($uri === '/enviar-catalogo') {
     include __DIR__ . '/templates/client/catalog_send.php';
     exit;

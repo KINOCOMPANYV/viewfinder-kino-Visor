@@ -2723,24 +2723,26 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .search-wa-toolbar.wab-bar { flex-direction: column; align-items: stretch; gap: 0.3rem; border-radius: 18px; max-width: 680px; }
 .wab-row { display: flex; align-items: center; gap: 0.5rem; }
 .wab-row .wa-toolbar-send { margin-left: auto; }
-.wab-clear, .wab-save {
+.wab-clear, .wab-save, .wab-pdf {
     background: var(--color-surface-2); color: var(--color-text); border: 1px solid var(--color-border);
     border-radius: 20px; padding: 0.5rem 0.8rem; font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; white-space: nowrap;
 }
 .wab-clear { padding: 0.45rem 0.6rem; }
+.wab-pdf { display: inline-flex; align-items: center; text-decoration: none; }
+.wab-pdf:hover { border-color: var(--color-primary); }
 .wab-save:disabled { opacity: 0.5; cursor: not-allowed; }
 .wab-msg { font-size: 0.78rem; color: var(--color-text-muted); text-align: center; }
 .wab-msg:empty { display: none; }
 @media (max-width: 640px) {
     .wab-row { gap: 0.35rem; }
-    .wab-save { padding: 0.45rem 0.6rem; min-height: 40px; }
+    .wab-save, .wab-pdf { padding: 0.45rem 0.6rem; min-height: 40px; }
     .wab-clear { min-height: 40px; }
     body:has(.wab-bar.visible) main, body:has(.wab-bar.visible) .footer { padding-bottom: 6rem; }
 }
 @media (max-width: 420px) {
     .wab-row { flex-wrap: wrap; }
     .wab-row .wa-toolbar-send { flex: 1 1 100%; justify-content: center; margin-left: 0; }
-    .wab-save { margin-left: auto; }
+    .wab-pdf { margin-left: auto; }
 }
 
 /* Aviso corto del botón WhatsApp de una foto (assets/js/media_actions.js) */
@@ -3067,3 +3069,57 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .grid-span-all { grid-column: 1 / -1; min-width: 0; }
 .parent-card.exact-hit { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .exact-hit-label { font-size: 0.7rem; font-weight: 700; color: var(--color-primary); margin-bottom: 0.15rem; }
+
+/* ============================================================
+   Catálogo en PDF (/catalogo-pdf, docs/PLAN_PDF.md etapa P1): reusa .ms-* de Mi selección
+   ============================================================ */
+.cp-main { padding-top: 1.5rem; padding-bottom: 9rem; max-width: 760px; }
+.cp-main [hidden], .cp-bar [hidden] { display: none !important; }
+.cp-doc h2 small { color: var(--color-text-muted); font-weight: 400; font-size: 0.75rem; }
+.cp-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; margin-bottom: 0.75rem; }
+.cp-fields label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: var(--color-text-muted); }
+.cp-main input[type="text"], .cp-item textarea {
+    width: 100%; background: var(--color-surface-2); color: var(--color-text); border: 1px solid var(--color-border);
+    border-radius: 10px; padding: 0.55rem 0.7rem; font: inherit; font-size: 16px; /* 16 px: el iPhone no hace zoom */
+}
+.cp-main input[type="text"]:focus, .cp-item textarea:focus { outline: none; border-color: var(--color-primary); }
+.cp-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+.cp-logo-box {
+    width: 96px; height: 56px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    background: #fff; border-radius: 8px; color: #888; font-size: 0.75rem; overflow: hidden;
+}
+.cp-logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.cp-logo-act { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.cp-logo-act small { flex-basis: 100%; color: var(--color-text-muted); font-size: 0.75rem; }
+.cp-file { position: relative; overflow: hidden; cursor: pointer; }
+.cp-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.cp-per { align-items: center; margin-bottom: 0; }
+.cp-per > span { font-size: 0.85rem; color: var(--color-text-muted); }
+.cp-bulk h2 { margin-bottom: 0.5rem; }
+.cp-bulk-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.cp-bulk-row input { flex: 1 1 100%; }
+.cp-warn { color: var(--color-warning); font-size: 0.85rem; margin: 0 0 0.75rem; }
+.cp-item { align-items: flex-start; }
+.cp-item .ms-n { margin-top: 0.4rem; }
+.cp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; }
+.cp-info strong { font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-item textarea { resize: vertical; min-height: 2.6rem; padding: 0.4rem 0.6rem; line-height: 1.3; }
+.cp-item.is-bad::after { content: 'No bajó'; color: var(--color-danger); font-size: 0.72rem; font-weight: 700; align-self: center; }
+.cp-bar {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    width: calc(100% - 2rem); max-width: 680px; z-index: 900;
+    background: var(--color-surface-2); border: 1px solid var(--color-border-hover); border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); padding: 0.6rem 0.75rem; display: flex; flex-direction: column; gap: 0.35rem;
+}
+.cp-bar-row { display: flex; gap: 0.5rem; }
+.cp-bar-row .btn { flex: 1; justify-content: center; min-height: 44px; }
+.cp-bar-row .btn:disabled { opacity: 0.7; cursor: wait; }
+.cp-share { background: var(--color-wa); color: #fff; border: none; }
+.cp-share:hover { background: var(--color-wa-hover); }
+.cp-msg { font-size: 0.8rem; color: var(--color-text-muted); text-align: center; }
+.cp-msg:empty { display: none; }
+@media (max-width: 640px) {
+    .cp-fields { grid-template-columns: minmax(0, 1fr); }
+    body:has(.mnav) .cp-bar { bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
+    body:has(.mnav) .cp-main { padding-bottom: 12rem; }
+}
