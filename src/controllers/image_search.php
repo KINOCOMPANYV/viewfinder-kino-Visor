@@ -2,8 +2,20 @@
 /**
  * POST /buscar-foto (campo "foto"): devuelve en JSON los productos visibles más parecidos a la foto.
  * El navegador ya la achica a 512 px (1 "tile" del modelo = lo más barato). Solo lee la BD + 1 llamada a Jina.
+ * GET /buscar-foto/estado ($imgAction = 'estado'): cuántas portadas están listas y si Jina falla (causa general).
  */
 require_once __DIR__ . '/../services/ImageSearch.php';
+
+if (($imgAction ?? '') === 'estado') {
+    if (!ImageSearch::enabled()) {
+        jsonResponse(['activa' => false]);
+    }
+    try {
+        jsonResponse(['activa' => true] + ImageSearch::publicStatus(getDB()));
+    } catch (\Throwable $e) {
+        jsonResponse(['activa' => true, 'estado' => 'error'], 500);
+    }
+}
 
 if (!ImageSearch::enabled()) {
     jsonResponse(['error' => 'La búsqueda por foto no está activada.'], 503);
@@ -25,7 +37,14 @@ try {
     $found = ImageSearch::search(getDB(), $bytes, 30);
 } catch (\Throwable $e) {
     error_log('[buscar-foto] ' . $e->getMessage());
-    jsonResponse(['error' => 'No se pudo analizar la foto ahora. Intenta en un momento.'], 502);
+    // Mensaje según la causa (sin datos de la clave); el detalle técnico queda en el log de Railway
+    $causa = ImageSearch::classify($e->getMessage());
+    $mensajes = [
+        'saldo' => 'La búsqueda por foto no está disponible: el servicio de IA (Jina) se quedó sin saldo. Avísale al administrador.',
+        'clave' => 'La búsqueda por foto no está bien configurada (clave de Jina). Avísale al administrador.',
+        'limite' => 'Hay muchas búsquedas por foto en este momento. Intenta de nuevo en un minuto.',
+    ];
+    jsonResponse(['error' => $mensajes[$causa] ?? 'No se pudo analizar la foto ahora. Intenta en un momento.', 'causa' => $causa], 502);
 }
 $p = $found['progress'];
 $resp = ['results' => $found['results']];

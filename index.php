@@ -180,6 +180,15 @@ if (preg_match('#^/og/([A-Za-z0-9_-]+)\.jpg$#', $uri, $matches)) {
     exit;
 }
 
+if ($uri === '/buscar-foto/estado') {
+    // Búsqueda por foto: avance y causa general de error (sin datos de la clave)
+    checkRateLimit(30);
+    session_write_close();
+    $imgAction = 'estado';
+    include __DIR__ . '/src/controllers/image_search.php';
+    exit;
+}
+
 if ($uri === '/buscar-foto' && $method === 'POST') {
     // Búsqueda por foto (botón 📸 junto a la búsqueda)
     checkRateLimit(20);
