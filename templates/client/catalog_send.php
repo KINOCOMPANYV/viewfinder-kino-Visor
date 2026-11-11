@@ -81,9 +81,13 @@
 
         <section class="cs-card">
             <h2>1. Pega el texto</h2>
-            <p class="help">Pega cualquier texto: un chat, un pedido o una lista. El sistema saca los códigos que existen
+            <p class="help">Pega cualquier texto (un chat, un pedido o una lista) o léelo de una foto con 📷. El sistema saca los códigos que existen
                 en el catálogo (acepta M8363-3, M:8363-3, M-8363-3…) y arma la lista con sus fotos.</p>
             <textarea id="csText" class="cs-text" placeholder="Ej.: Hola, me mandas fotos de M8363-3, X6071 y 1416-1 por favor"></textarea>
+            <div class="cs-ocr">
+                <label class="btn btn-secondary btn-sm cs-ocr-btn" title="Toma o sube la foto de una lista: el texto se lee en este celular y se pone en la caja">📷 Leer lista de una foto<input type="file" id="csOcrFile" accept="image/*"></label>
+                <span class="cs-ocr-msg" id="csOcrMsg" aria-live="polite"></span>
+            </div>
             <div class="cs-options">
                 <label><input type="radio" name="csMode" value="cover" checked> Solo la foto principal</label>
                 <label><input type="radio" name="csMode" value="all"> Todas las fotos de cada código</label>
@@ -134,6 +138,7 @@
 
     <script>window.CS_CSRF = '<?= csrfToken() ?>';</script>
     <script src="/assets/js/catalog_send.js?v=<?= APP_VERSION ?>"></script>
+    <script src="/assets/js/list_ocr.js?v=<?= APP_VERSION ?>"></script>
     <?php $mnavActive = 'enviar'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 
