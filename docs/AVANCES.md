@@ -68,7 +68,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Descargar y "Seleccionar" para mandar varias (misma barra). Una carpeta que solo tiene subcarpetas (p. ej. una línea con
   14 modelos) muestra debajo las fotos de todas sus subcarpetas (hasta 300) para marcarlas sin entrar a cada una; no en la raíz.
 - Compartir por WhatsApp con vista previa (foto, título, enlace) vía Open Graph (`/og/{id}.jpg`).
-- "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto → códigos → galería de fotos (tocar = marcar/desmarcar).
+- "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto (o «📷 Leer lista de una foto»: el texto de la foto se lee
+  en el celular con Tesseract y se pone en la caja para revisarlo; decisión del dueño 2026-11-11: lector gratis en el
+  celular, no IA de pago; si falla mucho con letra a mano, la opción es IA de imágenes) → códigos → galería de fotos (tocar = marcar/desmarcar).
   "💾 Guardar N en el celular" (Android/PC: descargas; iPhone: Compartir → Guardar imágenes) y luego se mandan desde
   WhatsApp (📎 → Galería, hasta 100). "📲 Enviar por tandas": las fotos bajan en segundo plano; el botón verde se activa cuando la
   tanda siguiente (10) está completa ("Preparando tanda 2 de 3: 6/10" mientras tanto). 📲 en cada foto = solo esa.
@@ -193,3 +195,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #52: etapa P1 del PDF: `/catalogo-pdf` desde la selección (texto por código recordado en el dispositivo, logo propio, 4/6/9 por página, Compartir/Descargar; jsPDF 4.2.1 en `assets/vendor`).
 - #53: etapa P2 del PDF: botón en el enlace `/c/…`, en Enviar catálogo (las marcadas) y en cada catálogo guardado; la lista va a `/catalogo-pdf?desde=lista` sin cambiar Mi selección. Además, diseño del PDF: franja de color con logo/título/subtítulo, colores primario y secundario, subtítulos de sección y pie de contacto (el campo «Contacto» pasó al pie).
 - #54: navegación: botón ← Atrás en el encabezado del celular y migas de pan (`breadcrumbs()`) en Mi selección, Catálogo en PDF, Enviar catálogo y Novedades.
+- #55: Enviar catálogo: «📷 Leer lista de una foto» (Tesseract.js 6 en `assets/vendor/tesseract`, en el celular, sin CDN ni servidor; ~6 MB la primera vez).

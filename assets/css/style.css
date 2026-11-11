@@ -3198,3 +3198,10 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .crumbs a:hover { text-decoration: underline; }
 .crumbs [aria-current] { color: var(--color-text); font-weight: 600; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .crumbs-sep { color: var(--color-text-dim); }
+
+/* Enviar catálogo: 📷 Leer lista de una foto (assets/js/list_ocr.js) */
+.cs-ocr { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; margin: 0.5rem 0 0.25rem; }
+.cs-ocr-btn { position: relative; overflow: hidden; cursor: pointer; min-height: 40px; }
+.cs-ocr-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.cs-ocr-btn.is-busy { opacity: 0.6; pointer-events: none; }
+.cs-ocr-msg { font-size: 0.82rem; color: var(--color-text-muted); }
