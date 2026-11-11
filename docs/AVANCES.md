@@ -83,7 +83,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 
 ## Pendiente / ideas
 - **Catálogo en PDF** (`docs/PLAN_PDF.md`, 2026-11-11): plan por etapas P1-P3 (PDF armado en el dispositivo con foto,
-  código y texto opcional del cliente; descargar o compartir). Esperando aprobación del dueño.
+  código, texto opcional y logo opcional del usuario; descargar o compartir). Preguntas respondidas; falta aprobar para empezar P1.
 - **Búsqueda por foto** (#48-#50): `JINA_API_KEY` puesta en Railway (producción) el 2026-11-10 y la búsqueda ya responde.
   La primera vez prepara ~4400 portadas (ciclo propio cada 5 min, varias horas según el límite de la clave); el avance
   sale en la ventana de resultados y en Admin → Sincronizar. Confirmar que termine y que los parecidos sean buenos.

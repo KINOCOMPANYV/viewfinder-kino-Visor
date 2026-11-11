@@ -21,14 +21,17 @@ Un PR por etapa; cada PR actualiza `docs/AVANCES.md` (y `docs/ARQUITECTURA.md` s
 | Fotos livianas 800 px con caché | `/enviar-catalogo/foto/{id}`, `fetchPhoto()` (3 intentos) | Las fotos del PDF salen de aquí (mismo dominio, sin problemas de permisos). |
 | Compartir archivos | Web Share (`navigator.share({files})`) ya usado en las tandas | Mismo mecanismo para compartir el PDF a WhatsApp. |
 
-Lectura que propongo de «la sección Catálogo»: los catálogos guardados de Mi selección y el catálogo por enlace (`/c/…`).
-Lo que se marca en el catálogo público (inicio, búsqueda, carpetas) ya llega a Mi selección, así que también queda cubierto.
+Dónde sale «📄 Crear catálogo PDF» (decisión del dueño 2026-11-11): al tener una selección lista para enviar (barra de
+envío de inicio, búsqueda, carpetas, Novedades y ficha, y en Mi selección junto a Enviar), en Enviar catálogo por lista y al
+abrir un enlace creado desde la selección (`/c/…`). También en cada catálogo guardado.
 
 ## 3. Cómo se vería (para el cliente)
-1. En Mi selección, Enviar catálogo o un enlace `/c/…`, toca **📄 Crear PDF**.
+1. Con fotos marcadas (barra de envío o Mi selección), en Enviar catálogo o en un enlace `/c/…`, toca **📄 Crear catálogo PDF**.
 2. Se abre la pantalla **Armar PDF** (`/catalogo-pdf`): una fila por referencia con su foto chica, el código y una caja
    de texto «Precio u otra información (opcional)». Arriba, opciones del documento:
    - Título (p. ej. «Relojes noviembre») y contacto (nombre/teléfono), ambos opcionales.
+   - **Espacio para el logo del usuario** (opcional): «Subir mi logo» desde el celular. Si no sube nada, no sale logo
+     (el PDF no lleva logo de Kino). El logo se guarda en el dispositivo para la próxima vez.
    - Fotos por página: 4, 6 (por defecto) o 9.
    - «Escribir lo mismo en todas» y «Solo en las vacías» (para poner un precio o texto común rápido).
 3. Toca **Generar PDF**: barra de avance «Armando página 3 de 12». Al terminar, dos botones:
@@ -37,7 +40,7 @@ Lo que se marca en el catálogo público (inicio, búsqueda, carpetas) ya llega 
 
 Diseño de cada página (A4 vertical, fondo blanco): cuadrícula de fotos; bajo cada foto, el código en negrita y, si hay,
 el texto del cliente (hasta 3 líneas; si es más largo se corta con «…» y se avisa antes de generar).
-Encabezado con título y contacto en la primera página; pie con «Página N de M». Nombre del archivo: título + fecha.
+Encabezado con logo (si lo subió), título y contacto en la primera página; pie con «Página N de M». Nombre del archivo: título + fecha.
 
 ## 4. Decisiones técnicas (recomendadas)
 - **El PDF se arma en el celular/computador, no en el servidor.** Se usa la librería jsPDF (MIT, ~360 KB) guardada en
@@ -47,6 +50,7 @@ Encabezado con título y contacto en la primera página; pie con «Página N de 
   el servidor tendría que bajar cientos de fotos por PDF y recibiría los precios de cada cliente.
 - **Tamaño**: cada foto se reduce a ~600 px JPEG antes de entrar al PDF (~60-90 KB). 100 referencias ≈ 6-9 MB.
   Máximo 300 referencias por PDF (mismo límite que el catálogo por enlace). Se arma página por página para no llenar la memoria.
+- **Logo**: se reduce a ~300 px en el dispositivo y se guarda en `localStorage kinoPdfLogo`; nunca se sube al servidor.
 - **Textos**: `localStorage kinoPdfTexts` = `{código: texto}` (se recuerda por código) + opciones `kinoPdfOpts`.
   Al guardar un catálogo (etapa E) se guardan también sus textos. Nada se envía al servidor.
 - **Letras**: la fuente estándar del PDF tiene tildes y ñ, pero no emojis; si el texto trae emojis se quitan y se avisa.
@@ -54,23 +58,21 @@ Encabezado con título y contacto en la primera página; pie con «Página N de 
 - **Fotos que no bajan**: 3 intentos (como hoy); si una falla, el PDF sale sin ella y se dice cuál.
 - **Compartir**: Android y iPhone (Safari 15+) comparten el PDF directo a WhatsApp como documento. En el computador se
   descarga y se adjunta en WhatsApp Web. Si el celular no deja compartir archivos, queda solo Descargar.
-- **Precio de la hoja**: no se rellena solo. Sigue la decisión F (2026-11-10: el material no lleva precio por defecto);
-  aquí el precio lo escribe el cliente. Ver pregunta 2.
+- **Precio de la hoja**: no se rellena solo. Cada usuario escribe su precio al armar el PDF (decisión del dueño 2026-11-11).
 
 ## 5. Etapas (un PR cada una)
 | Etapa | Qué incluye | Archivos principales |
 |---|---|---|
-| **P1. Armar PDF desde Mi selección** | Pantalla `/catalogo-pdf` (filas con foto, código, texto), opciones (título, contacto, 4/6/9 por página), «lo mismo en todas / solo vacías», generar con avance, Compartir y Descargar, textos recordados por código. Botón «📄 Crear PDF» en Mi selección. | `index.php` (ruta), `templates/client/catalog_pdf.php`, `assets/js/catalog_pdf.js`, `assets/vendor/jspdf.umd.min.js`, `my_selection.js`, CSS |
-| **P2. Más entradas** | «📄 Crear PDF» en Enviar catálogo (con las marcadas), en cada catálogo guardado (abre con sus textos) y en el catálogo por enlace `/c/…`. La lista se pasa a `/catalogo-pdf` en el dispositivo sin tocar Mi selección. | `catalog_send.js`, `my_selection.js`, `shared_catalog.php` |
+| **P1. Armar PDF desde la selección** | Pantalla `/catalogo-pdf` (filas con foto, código, texto), opciones (título, contacto, logo opcional, 4/6/9 por página), «lo mismo en todas / solo vacías», generar con avance, Compartir y Descargar, textos recordados por código. Botón «📄 Crear catálogo PDF» en la barra de envío y en Mi selección. | `index.php` (ruta), `templates/client/catalog_pdf.php`, `assets/js/catalog_pdf.js`, `assets/vendor/jspdf.umd.min.js`, `wa_batch.js`, `my_selection.js`, CSS |
+| **P2. Más entradas** | «📄 Crear catálogo PDF» al abrir un enlace `/c/…`, en Enviar catálogo (con las marcadas) y en cada catálogo guardado (abre con sus textos). La lista se pasa a `/catalogo-pdf` en el dispositivo sin tocar Mi selección. | `shared_catalog.php`, `catalog_send.js`, `my_selection.js` |
 | **P3. Precios rápidos (opcional)** | Pegar una lista «código precio» (como en Enviar catálogo) y rellenar los textos de golpe; vista previa de la 1.ª página antes de generar. | `catalog_pdf.js` |
 
 Pruebas de cada etapa: Android (Chrome), iPhone (Safari) y computador; catálogos de 1, 30 y 300 referencias; texto vacío
 (no sale), texto largo, tildes/ñ; compartir a WhatsApp; celular a 320-375 px sin scroll lateral.
 
-## 6. Preguntas para el dueño (con lo que haría si no hay respuesta)
-1. ¿«Sección Catálogo» es lo que leí arriba (catálogos guardados + enlace `/c/…`)? → Sí, salvo que digas otra cosa.
-2. ¿Ofrecer un botón «Usar precio sugerido de la hoja» para rellenar los textos? → No, por la decisión F.
-3. ¿Poner el logo/nombre «Kino» en el PDF o dejarlo neutro para que cada distribuidor lo use como suyo? → Neutro
-   (solo el título y contacto que escriba el cliente).
-4. ¿El PDF lleva una foto por código o todas las fotos marcadas? → Todas las marcadas, en el orden de la lista
-   (Mi selección ya tiene «Dejar 1 foto por código»).
+## 6. Decisiones del dueño (2026-11-11)
+1. **Dónde**: al tener la selección lista para enviar (barra de envío y Mi selección) y al abrir el enlace `/c/…` creado
+   desde la selección; también Enviar catálogo por lista y catálogos guardados.
+2. **Precio**: lo escribe cada usuario al crear el PDF. No se rellena con el precio de la hoja.
+3. **Logo**: no se pone logo de Kino; hay un espacio opcional para que el usuario suba el suyo.
+4. **Fotos**: entran todas las fotos marcadas, en el orden de la lista.
