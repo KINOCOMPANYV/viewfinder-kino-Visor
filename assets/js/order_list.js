@@ -95,7 +95,7 @@
             const worker = async () => {
                 while (next < ids.length) {
                     const id = ids[next++];
-                    try { imgs.set(id, await KP.prepare(id, 320)); } catch (e) { imgs.set(id, null); failed++; }
+                    try { imgs.set(id, await KP.prepare(id, 500)); } catch (e) { imgs.set(id, null); failed++; }
                     done++;
                     btn.textContent = `⏳ Fotos ${done}/${ids.length}`;
                 }
@@ -105,8 +105,10 @@
             // 2) Medidas (mm)
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-            const W = 210, H = 297, M = 12, BAND = 16, ROW = 30, PH = 26, FOOT = 14, TH = 8;
-            const cN = M + 2, cPh = M + 12, cCode = cPh + PH + 6, cQty = W - M - 2;
+            const W = 210, H = 297, M = 12, BAND = 16, ROW = 41, FOOT = 13, TH = 8.5;
+            // Columnas como la proforma de muestra: foto grande, código y cantidad, con bordes
+            const COLS = [12, 64, W - 2 * M - 12 - 64 - 34, 34];
+            const xN = M, xPh = xN + COLS[0], xCode = xPh + COLS[1], xQty = xCode + COLS[2];
             const clean = KP.clean;
             const val = (v) => has(v) ? clean(v) : null;
 
@@ -119,11 +121,13 @@
                 if (has(order.number)) { doc.setFontSize(11); doc.setTextColor(...C2); doc.text(clean(order.number), W - M, 10.5, { align: 'right' }); }
             };
             const tableHead = () => {
-                doc.setFillColor(242, 242, 242); doc.rect(M, y, W - 2 * M, TH, 'F');
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...GREY);
-                doc.text('N.º', cN, y + 5.4); doc.text('Foto', cPh, y + 5.4); doc.text('Código', cCode, y + 5.4);
-                doc.text('Cantidad', cQty, y + 5.4, { align: 'right' });
-                y += TH + 1;
+                doc.setFillColor(...C1); doc.setDrawColor(40, 40, 40); doc.setLineWidth(0.35);
+                let x = M;
+                COLS.forEach((w) => { doc.rect(x, y, w, TH, 'FD'); x += w; });
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(255, 255, 255);
+                [['N.º', xN, 0], ['Foto', xPh, 1], ['Código', xCode, 2], ['Cantidad', xQty, 3]]
+                    .forEach(([t, cx, i]) => doc.text(t, cx + COLS[i] / 2, y + 5.6, { align: 'center' }));
+                y += TH;
             };
             const newPage = () => { if (page) doc.addPage(); page++; band(); y = BAND + 7; };
 
@@ -151,31 +155,33 @@
                 ls.forEach((ln, i) => doc.text(ln, M + 3, y + 8.5 + i * 3.8));
                 y += h + 4;
             }
-            doc.setDrawColor(...C2); doc.setLineWidth(0.5); doc.line(M, y, W - M, y);
-            y += 4;
+            y += 2;
             tableHead();
 
-            // Productos
+            // Productos: tabla con bordes, una fila por línea del pedido (N.º | Foto | Código | Cantidad)
             for (const l of lines) {
                 if (y + ROW > H - FOOT) { newPage(); tableHead(); }
                 const img = l.photo ? imgs.get(l.photo.id) : null;
-                const cy = y + (ROW - PH) / 2;
+                doc.setDrawColor(40, 40, 40); doc.setLineWidth(0.35);
+                let x = M;
+                COLS.forEach((w) => { doc.rect(x, y, w, ROW, 'S'); x += w; });
+                const mid = y + ROW / 2;
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GREY);
-                doc.text(String(l.n), cN, y + ROW / 2 + 1.5);
-                doc.setDrawColor(225, 225, 225); doc.setLineWidth(0.25); doc.roundedRect(cPh, cy, PH, PH, 1.5, 1.5, 'S');
+                doc.text(String(l.n), xN + COLS[0] / 2, mid + 1.2, { align: 'center' });
+                const pw = COLS[1] - 4, ph = ROW - 4;
                 if (img) {
-                    const s = Math.min((PH - 2) / img.w, (PH - 2) / img.h), iw = img.w * s, ih = img.h * s;
-                    doc.addImage(img.data, 'JPEG', cPh + (PH - iw) / 2, cy + (PH - ih) / 2, iw, ih, undefined, 'FAST');
+                    const s = Math.min(pw / img.w, ph / img.h), iw = img.w * s, ih = img.h * s;
+                    doc.addImage(img.data, 'JPEG', xPh + 2 + (pw - iw) / 2, y + 2 + (ph - ih) / 2, iw, ih, undefined, 'FAST');
                 } else {
-                    doc.setFillColor(246, 246, 246); doc.roundedRect(cPh + 0.3, cy + 0.3, PH - 0.6, PH - 0.6, 1.5, 1.5, 'F');
-                    doc.setFontSize(7.5); doc.setTextColor(...GREY);
-                    doc.text(['Foto no', 'disponible'], cPh + PH / 2, cy + PH / 2 - 0.8, { align: 'center' });
+                    doc.setFillColor(246, 246, 246); doc.rect(xPh + 2, y + 2, pw, ph, 'F');
+                    doc.setFontSize(9); doc.setTextColor(...GREY);
+                    doc.text('Foto no disponible', xPh + COLS[1] / 2, mid + 1.2, { align: 'center' });
                 }
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...INK);
-                doc.text(doc.splitTextToSize(clean(l.code), cQty - 30 - cCode)[0] || '', cCode, y + ROW / 2 + 1.8);
-                doc.setFontSize(l.qty == null ? 9 : 14); doc.setTextColor(...(l.qty == null ? WARN : INK));
-                doc.text(l.qty == null ? 'sin cantidad' : String(l.qty), cQty, y + ROW / 2 + 2, { align: 'right' });
-                doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.2); doc.line(M, y + ROW, W - M, y + ROW);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(...INK);
+                const cl = doc.splitTextToSize(clean(l.code), COLS[2] - 6).slice(0, 2);
+                doc.text(cl, xCode + COLS[2] / 2, mid + 1.8 - (cl.length - 1) * 3, { align: 'center' });
+                doc.setFontSize(l.qty == null ? 10 : 16); doc.setTextColor(...(l.qty == null ? WARN : INK));
+                doc.text(l.qty == null ? 'sin cantidad' : String(l.qty), xQty + COLS[3] / 2, mid + 2, { align: 'center' });
                 y += ROW;
             }
 
@@ -216,7 +222,7 @@
         const none = lines.filter((l) => !l.photo).length;
         $('olMake').disabled = false; $('olMake').textContent = '📄 Generar PDF';
         msg(none ? `${none} de ${lines.length} referencia${lines.length === 1 ? '' : 's'} sin foto: salen igual con «Foto no disponible».` : 'Todas las referencias tienen foto.');
-        lines.slice(0, 12).forEach((l) => { if (l.photo) KP.prepare(l.photo.id, 320).catch(() => {}); });
+        lines.slice(0, 12).forEach((l) => { if (l.photo) KP.prepare(l.photo.id, 500).catch(() => {}); });
     }).catch((e) => {
         msg('⚠️ No se pudieron buscar las fotos (' + (e && e.message ? e.message : e) + '). Recarga la página para intentar otra vez.');
         $('olMake').textContent = '📄 Generar PDF';
