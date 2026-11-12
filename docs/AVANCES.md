@@ -62,6 +62,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   KINO MEDELLIN (CODIGO · PRODUCTO · CANT · UNIDAD · DESC · PRECIO · TOTAL, encabezado repetido por página, «TOTAL : $» solo
   en la última). Se detecta solo. Ese formato no dice cuántas referencias ni unidades trae: quedan «sin dato del PDF», no se
   rellenan solos. Se revisa cada línea (cantidad × precio = TOTAL de la línea) y la suma contra el TOTAL.
+- **Remisión y Lista pedido** (2026-11-12, decisión del dueño): son dos documentos distintos según el PDF que entra al
+  Extractor. Factura en tabla (Colombia, «COTIZACION No») → **Remisión**, azul oscuro, archivo `Remision_N.pdf`, con NIT,
+  dirección y ciudad, y columnas Precio y Total de entrada. Recibo (receipt-c-…) → **Lista pedido**, negro y dorado como
+  antes. Se detecta solo; en la pantalla hay un selector «Tipo» por si falla. Cada tipo recuerda sus casillas.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -244,3 +248,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   igual). Probado con 5 recibos reales (#c-5845, #c-5856, #c-5865, #c-5867, #c-5868) contra las fotos de producción.
 - Rama `lista-pedido-2-columnas`: Lista pedido en dos tablas lado a lado (~26 referencias por página; el pedido de 184 líneas
   pasa de 15 a 8 páginas), pedido del dueño para ahorrar páginas.
+- Rama `claude/project-thread-joh3t8` (2.ª parte): Remisión (factura en tabla, azul) separada de Lista pedido (recibo, negro y
+  dorado); NIT, dirección, ciudad, teléfono y vendedor leídos de la factura. Probado con la 00106511 y el recibo #c-5872.

@@ -1,5 +1,6 @@
 /**
- * Lista pedido (/lista-pedido): PDF del pedido leído en el Extractor (sessionStorage kinoPedido).
+ * Lista pedido / Remisión (/lista-pedido): PDF del documento leído en el Extractor (sessionStorage kinoPedido).
+ * Recibo (pedido) → «Lista pedido» negro y dorado; factura en tabla → «Remisión» azul (data.docType, se puede cambiar).
  * Encabezado con cliente, fecha, total de ítems, unidades y valor total TAL CUAL vienen del PDF (no se recalculan con
  * las fotos ni se pone la fecha de hoy); si un dato no se pudo leer, se dice. Luego cada línea del pedido, en el mismo
  * orden: foto, código y cantidad del PDF (solo lectura). Cada línea guarda su código y su foto juntos desde el
@@ -26,20 +27,42 @@
     // Datos del encabezado: solo lo que vino del PDF. Si el PDF no trae el total de ítems o de unidades (p. ej. la
     // cotización en tabla), se puede usar lo contado en sus líneas, marcado «(contado)»: es un dato del PDF, no inventado.
     const counted = { items: lines.length, units: order.noQty ? null : lines.reduce((s, l) => s + (l.qty || 0), 0) };
+    // Dos documentos: «Lista pedido» (recibo = pedido) y «Remisión» (factura en tabla). El tipo lo decide el Extractor
+    // según el formato del PDF; se puede cambiar a mano. Cada tipo tiene su título, sus colores y sus casillas guardadas.
+    const TYPES = {
+        pedido: { name: 'Lista pedido', title: 'Lista de pedido', file: 'Lista_pedido_', icon: '🧾', pref: 'kinoOlFields',
+            numLabel: 'N.º de pedido', c1: [28, 28, 30], c2: [201, 168, 76],
+            def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: false, address: false, city: false, phone: false, seller: false,
+                review: true, useCount: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: false, cTotal: false } },
+        remision: { name: 'Remisión', title: 'Remisión', file: 'Remision_', icon: '🚚', pref: 'kinoOlFieldsRemision',
+            numLabel: 'N.º de cotización', c1: [31, 58, 95], c2: [110, 168, 220],
+            def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: true, address: true, city: true, phone: false, seller: false,
+                review: true, useCount: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: true, cTotal: true } },
+    };
+    let type = TYPES[data.docType] ? data.docType : 'pedido';
+    const T = () => TYPES[type];
     const allFields = [
-        { key: 'number', label: 'N.º de pedido', v: order.number },
+        { key: 'number', label: 'N.º', v: order.number },
         { key: 'client', label: 'Cliente', v: order.client },
-        { key: 'date', label: 'Fecha del pedido', v: order.date },
+        { key: 'nit', label: 'NIT', v: order.nit, opt: true },
+        { key: 'address', label: 'Dirección', v: order.address, opt: true },
+        { key: 'city', label: 'Ciudad', v: order.city, opt: true },
+        { key: 'phone', label: 'Teléfono', v: order.phone, opt: true },
+        { key: 'seller', label: 'Vendedor', v: order.seller, opt: true },
+        { key: 'date', label: 'Fecha', v: order.date },
         { key: 'items', label: 'Total de ítems', v: order.itemsPdf, count: counted.items },
         { key: 'units', label: 'Unidades', v: order.noQty ? null : order.unitsPdf, count: counted.units },
         { key: 'total', label: 'Valor total', v: order.totalText },
-    ];
-    // Qué sale en el PDF: lo elige el usuario y se recuerda en este dispositivo
-    const PREF = 'kinoOlFields';
-    let show = { number: true, client: true, date: true, items: true, units: true, total: true, review: true, useCount: true,
-        cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: false, cTotal: false };
-    try { Object.assign(show, JSON.parse(localStorage.getItem(PREF) || '{}')); } catch (e) { /* sin preferencias */ }
-    const savePrefs = () => { try { localStorage.setItem(PREF, JSON.stringify(show)); } catch (e) { /* sin almacenamiento */ } };
+    ].filter((f) => !f.opt || has(f.v)); // NIT, dirección… solo si el PDF los trae (la factura en tabla sí)
+    const labelOf = (f) => f.key === 'number' ? T().numLabel : f.key === 'date' && type === 'pedido' ? 'Fecha del pedido' : f.label;
+    // Qué sale en el PDF: lo elige el usuario y se recuerda en este dispositivo, aparte para cada tipo
+    let show = {};
+    const loadPrefs = () => {
+        show = Object.assign({}, T().def);
+        try { Object.assign(show, JSON.parse(localStorage.getItem(T().pref) || '{}')); } catch (e) { /* sin preferencias */ }
+    };
+    loadPrefs();
+    const savePrefs = () => { try { localStorage.setItem(T().pref, JSON.stringify(show)); } catch (e) { /* sin almacenamiento */ } };
     // Valor que se usa: el del PDF; si falta y hay conteo (y se eligió usarlo), el conteo con «(contado)»
     const valueOf = (f) => has(f.v) ? String(f.v) : (show.useCount && f.count != null ? f.count + ' (contado)' : null);
     // Columnas de la tabla; Producto, Precio y Total solo si el PDF los trae (la cotización en tabla sí; el recibo, precio)
@@ -56,10 +79,10 @@
     const canCount = allFields.some((f) => !has(f.v) && f.count != null);
     let fields = [], problems = [];
     function refresh() {
-        fields = allFields.filter((f) => show[f.key]).map((f) => [f.label, valueOf(f)]);
+        fields = allFields.filter((f) => show[f.key]).map((f) => [labelOf(f), valueOf(f), f.key]);
         problems = [];
         if (show.review) {
-            fields.forEach(([k, v]) => { if (k !== 'N.º de pedido' && !has(v)) problems.push(k + ': no se pudo leer del PDF; no se inventó un valor.'); });
+            fields.forEach(([k, v, key]) => { if (key !== 'number' && !has(v)) problems.push(k + ': no se pudo leer del PDF; no se inventó un valor.'); });
             if (order.noQty) problems.push('El PDF no trae cantidades: cada referencia sale como «sin cantidad».');
             else if (lines.some((l) => l.qty == null)) problems.push('Alguna referencia no trae cantidad en el PDF.');
             (data.warnings || []).forEach((w) => { if (!problems.includes(w)) problems.push('Extractor: ' + w); });
@@ -67,10 +90,23 @@
     }
     refresh();
 
+    // Título, colores de la pantalla y selector de tipo
+    function drawType() {
+        document.body.classList.toggle('ol-remision', type === 'remision');
+        $('olTitle').textContent = T().icon + ' ' + T().name;
+        document.title = T().name + ' · Viewfinder';
+        const crumb = document.querySelector('.crumbs [aria-current="page"]');
+        if (crumb) crumb.textContent = T().name;
+        $('olType').innerHTML = '<b>Tipo:</b> ' + Object.keys(TYPES).map((k) => '<label><input type="radio" name="olType" value="' + k + '"' +
+            (k === type ? ' checked' : '') + '> ' + TYPES[k].icon + ' ' + esc(TYPES[k].name) + '</label>').join('') +
+            '<small>' + (data.docType === 'remision' ? 'El PDF es una factura en tabla → Remisión.' : 'El PDF es un recibo (pedido) → Lista pedido.') + '</small>';
+    }
+    drawType();
+
     function drawOrder() {
         $('olOrder').innerHTML = allFields.map((f) => {
             const v = valueOf(f);
-            return '<label class="ol-field' + (show[f.key] ? '' : ' off') + '"><span><input type="checkbox" data-k="' + f.key + '"' + (show[f.key] ? ' checked' : '') + '> ' + esc(f.label) + '</span>' +
+            return '<label class="ol-field' + (show[f.key] ? '' : ' off') + '"><span><input type="checkbox" data-k="' + f.key + '"' + (show[f.key] ? ' checked' : '') + '> ' + esc(labelOf(f)) + '</span>' +
                 (has(v) ? esc(v) : (f.key === 'number' ? '—' : '<b class="ol-miss">⚠ ' + MISSING + '</b>')) + '</label>';
         }).join('');
         $('olOpts').innerHTML = '<label><input type="checkbox" data-k="review"' + (show.review ? ' checked' : '') + '> Recuadro «Revisar» con avisos</label>' +
@@ -81,13 +117,21 @@
         warnBox.innerHTML = problems.length ? '<strong>Revisar</strong><ul>' + problems.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>' : '';
     }
     drawOrder();
+    const resetPdf = (why) => { if (pdfFile) { pdfFile = null; $('olShare').hidden = true; $('olDown').hidden = true; $('olMake').textContent = '📄 Generar PDF'; msg(why); } };
+    $('olType').addEventListener('change', (e) => {
+        if (!e.target || e.target.name !== 'olType' || !TYPES[e.target.value]) return;
+        type = e.target.value;
+        loadPrefs(); refresh(); drawType(); drawOrder();
+        resetPdf('Cambiaste el tipo: vuelve a generar el PDF.');
+    });
     $('olBody').addEventListener('change', (e) => {
+        if (e.target && e.target.name === 'olType') return;
         const k = e.target && e.target.dataset ? e.target.dataset.k : null;
         if (!k) return;
         if (!e.target.checked && /^c[A-Z]/.test(k) && pickedCols().length <= 1) { e.target.checked = true; msg('Deja al menos una columna.'); return; }
         show[k] = e.target.checked;
         savePrefs(); refresh(); drawOrder();
-        if (pdfFile) { pdfFile = null; $('olShare').hidden = true; $('olDown').hidden = true; $('olMake').textContent = '📄 Generar PDF'; msg('Cambiaste lo que sale en el PDF: vuelve a generarlo.'); }
+        resetPdf('Cambiaste lo que sale en el PDF: vuelve a generarlo.');
     });
     $('olBody').hidden = false;
     $('olBar').hidden = false;
@@ -122,9 +166,9 @@
 
     // ---- PDF ----
     let busy = false;
-    const C1 = [28, 28, 30], C2 = [201, 168, 76], INK = [30, 30, 30], GREY = [110, 110, 110], WARN = [190, 90, 20];
+    const INK = [30, 30, 30], GREY = [110, 110, 110], WARN = [190, 90, 20];
     const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-    const fileName = () => 'Lista_pedido_' + ((KP.clean(order.number || order.client).replace(/[^\wÁÉÍÓÚÜÑáéíóúüñ -]+/g, '').trim().replace(/\s+/g, '_')) || today()) + '.pdf';
+    const fileName = () => T().file + ((KP.clean(order.number || order.client).replace(/[^\wÁÉÍÓÚÜÑáéíóúüñ -]+/g, '').trim().replace(/\s+/g, '_')) || today()) + '.pdf';
 
     async function make() {
         if (busy) return;
@@ -150,6 +194,7 @@
             // 2) Medidas (mm)
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+            const C1 = T().c1, C2 = T().c2;
             const W = 210, H = 297, M = 12, BAND = 16, FOOT = 13, TH = 8.5;
             // Columnas elegidas. Si caben en media hoja: dos tablas lado a lado (~26 por página); si no, una a todo el ancho.
             const cols = pickedCols();
@@ -168,7 +213,7 @@
                 doc.setFillColor(...C1); doc.rect(0, 0, W, BAND, 'F');
                 doc.setFillColor(...C2); doc.rect(0, BAND, W, 1, 'F');
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(255, 255, 255);
-                doc.text('Lista de pedido', M, 10.5);
+                doc.text(T().title, M, 10.5);
                 if (show.number && has(order.number)) { doc.setFontSize(11); doc.setTextColor(...C2); doc.text(clean(order.number), W - M, 10.5, { align: 'right' }); }
             };
             const tableHead = (c) => {
@@ -185,17 +230,19 @@
 
             // Encabezado del pedido (primera página)
             newPage();
-            const cells = fields.filter(([k]) => k !== 'N.º de pedido');
-            const colW = (W - 2 * M) / 2;
+            const cells = fields.filter(([, , key]) => key !== 'number');
+            const per = cells.length > 6 ? 3 : 2, colW = (W - 2 * M) / per, RH = per === 3 ? 14 : 13; // con muchos datos (remisión), 3 por fila
             cells.forEach(([k, v], i) => {
-                const x = M + (i % 2) * colW, yy = y + Math.floor(i / 2) * 13;
+                const x = M + (i % per) * colW, yy = y + Math.floor(i / per) * RH;
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...GREY);
                 doc.text(k.toUpperCase(), x, yy + 3);
                 const s = val(v);
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(s ? 12.5 : 10.5); doc.setTextColor(...(s ? INK : WARN));
-                doc.text(doc.splitTextToSize(s || MISSING, colW - 4)[0], x, yy + 9);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(s ? (per === 3 ? 11 : 12.5) : 10.5); doc.setTextColor(...(s ? INK : WARN));
+                let tl = doc.splitTextToSize(s || MISSING, colW - 4);
+                if (tl.length > 1 && per === 3) { doc.setFontSize(9); tl = doc.splitTextToSize(s, colW - 4).slice(0, 2); doc.text(tl, x, yy + 7.6); }
+                else doc.text(tl[0], x, yy + 9);
             });
-            if (cells.length) y += Math.ceil(cells.length / 2) * 13 + 2;
+            if (cells.length) y += Math.ceil(cells.length / per) * RH + 2;
             if (problems.length) {
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
                 const ls = problems.slice(0, 6).flatMap((p) => doc.splitTextToSize('• ' + clean(p), W - 2 * M - 6)).slice(0, 8);
@@ -288,7 +335,7 @@
     }
 
     $('olMake').addEventListener('click', make);
-    $('olShare').addEventListener('click', () => KP.share(pdfFile, 'Lista de pedido', msg));
+    $('olShare').addEventListener('click', () => KP.share(pdfFile, T().title, msg));
     $('olDown').addEventListener('click', () => KP.download(pdfFile, msg));
 
     lookup().then(() => {
