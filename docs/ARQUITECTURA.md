@@ -251,4 +251,6 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
   «código producto cant unidad desc precio total», encabezado repetido por página). Datos: n.º «COTIZACION No», `CLIENTE:`,
   `FECHA:` (aaaa/mm/dd; no `VENCE:`), último «TOTAL : $» con valor. Precio = unitario; revisa cantidad × precio por línea y
   la suma contra el TOTAL. `order.format = 'tabla'`; `itemsPdf`/`unitsPdf` = null (el PDF no los trae).
+- Lista pedido: casillas por dato (`localStorage kinoOlFields`: number, client, date, items, units, total, review, useCount)
+  deciden qué sale en el PDF (encabezado, banda, pie y «Revisar»). Sin ítems/unidades del PDF y `useCount` → «N (contado)».
 - Si no hay esa tabla, sigue el recibo de siempre («N artículos» … «Total:», `5x código … $`).

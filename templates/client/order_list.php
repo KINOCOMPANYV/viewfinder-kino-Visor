@@ -23,8 +23,13 @@
         .ol-card h2 { font-size:1.05rem; margin:0 0 0.6rem; }
         .ol-help { color:#a0a0b0; font-size:0.88rem; margin:0 0 0.8rem; }
         .ol-order { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:0.5rem 1rem; font-size:0.95rem; }
-        .ol-order div span { color:#a0a0b0; display:block; font-size:0.78rem; }
+        .ol-order > * > span { color:#a0a0b0; display:block; font-size:0.78rem; }
         .ol-miss { color:#ff9f43; }
+        .ol-field { cursor:pointer; }
+        .ol-field.off { opacity:0.45; text-decoration:line-through; }
+        .ol-field input, .ol-opts input { accent-color:#c9a84c; vertical-align:middle; }
+        .ol-opts { display:flex; flex-wrap:wrap; gap:0.4rem 1.2rem; margin-top:0.8rem; font-size:0.85rem; color:#c8c8d0; }
+        .ol-opts label { cursor:pointer; }
         .ol-warn { background:rgba(255,159,67,0.08); border:1px solid rgba(255,159,67,0.5); border-radius:10px; padding:0.7rem 0.9rem; margin-bottom:1rem; font-size:0.9rem; }
         .ol-warn ul { margin:0.3rem 0 0; padding-left:1.1rem; }
         .ol-list { list-style:none; margin:0; padding:0; }
@@ -65,8 +70,9 @@
         <div id="olBody" hidden>
             <div class="ol-warn" id="olWarn" hidden></div>
             <section class="ol-card">
-                <h2>Datos del pedido <small class="ol-help">(tal como vienen en el PDF)</small></h2>
+                <h2>Datos del pedido <small class="ol-help">(tal como vienen en el PDF · marca lo que sale en el PDF)</small></h2>
                 <div class="ol-order" id="olOrder"></div>
+                <div class="ol-opts" id="olOpts"></div>
             </section>
             <section class="ol-card">
                 <h2>Productos <small class="ol-help">(las cantidades son las del PDF y no se pueden cambiar)</small></h2>

@@ -13,7 +13,7 @@
     const MISSING = 'No se pudo leer del PDF';
     const msg = (t) => { $('olMsg').textContent = t || ''; };
 
-    let data = null;
+    let data = null, pdfFile = null;
     try { data = JSON.parse(sessionStorage.getItem('kinoPedido') || 'null'); } catch (e) { data = null; }
     if (!data || !Array.isArray(data.items) || !data.items.length) { $('olEmpty').hidden = false; return; }
 
@@ -22,28 +22,58 @@
     const lines = data.items.map((it, i) => ({ n: i + 1, code: String(it.code || ''), qty: it.qty == null ? null : Number(it.qty), photo: undefined }));
     const has = (v) => v !== null && v !== undefined && String(v).trim() !== '';
 
-    // Datos del encabezado: solo lo que vino del PDF
-    const fields = [
-        ['Cliente', order.client],
-        ['Fecha del pedido', order.date],
-        ['Total de ítems', order.itemsPdf],
-        ['Unidades', order.noQty ? null : order.unitsPdf],
-        ['Valor total', order.totalText],
+    // Datos del encabezado: solo lo que vino del PDF. Si el PDF no trae el total de ítems o de unidades (p. ej. la
+    // cotización en tabla), se puede usar lo contado en sus líneas, marcado «(contado)»: es un dato del PDF, no inventado.
+    const counted = { items: lines.length, units: order.noQty ? null : lines.reduce((s, l) => s + (l.qty || 0), 0) };
+    const allFields = [
+        { key: 'number', label: 'N.º de pedido', v: order.number },
+        { key: 'client', label: 'Cliente', v: order.client },
+        { key: 'date', label: 'Fecha del pedido', v: order.date },
+        { key: 'items', label: 'Total de ítems', v: order.itemsPdf, count: counted.items },
+        { key: 'units', label: 'Unidades', v: order.noQty ? null : order.unitsPdf, count: counted.units },
+        { key: 'total', label: 'Valor total', v: order.totalText },
     ];
-    if (has(order.number)) fields.unshift(['N.º de pedido', order.number]);
-    const problems = [];
-    fields.forEach(([k, v]) => { if (!has(v)) problems.push(k + ': no se pudo leer del PDF; no se inventó un valor.'); });
-    if (order.noQty) problems.push('El PDF no trae cantidades: cada referencia sale como «sin cantidad».');
-    else if (lines.some((l) => l.qty == null)) problems.push('Alguna referencia no trae cantidad en el PDF.');
-    (data.warnings || []).forEach((w) => { if (!problems.includes(w)) problems.push('Extractor: ' + w); });
-
-    $('olOrder').innerHTML = fields.map(([k, v]) => '<div><span>' + esc(k) + '</span>' +
-        (has(v) ? esc(v) : '<b class="ol-miss">⚠ ' + MISSING + '</b>') + '</div>').join('');
-    const warnBox = $('olWarn');
-    if (problems.length) {
-        warnBox.hidden = false;
-        warnBox.innerHTML = '<strong>Revisar</strong><ul>' + problems.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>';
+    // Qué sale en el PDF: lo elige el usuario y se recuerda en este dispositivo
+    const PREF = 'kinoOlFields';
+    let show = { number: true, client: true, date: true, items: true, units: true, total: true, review: true, useCount: true };
+    try { Object.assign(show, JSON.parse(localStorage.getItem(PREF) || '{}')); } catch (e) { /* sin preferencias */ }
+    const savePrefs = () => { try { localStorage.setItem(PREF, JSON.stringify(show)); } catch (e) { /* sin almacenamiento */ } };
+    // Valor que se usa: el del PDF; si falta y hay conteo (y se eligió usarlo), el conteo con «(contado)»
+    const valueOf = (f) => has(f.v) ? String(f.v) : (show.useCount && f.count != null ? f.count + ' (contado)' : null);
+    const canCount = allFields.some((f) => !has(f.v) && f.count != null);
+    let fields = [], problems = [];
+    function refresh() {
+        fields = allFields.filter((f) => show[f.key]).map((f) => [f.label, valueOf(f)]);
+        problems = [];
+        if (show.review) {
+            fields.forEach(([k, v]) => { if (k !== 'N.º de pedido' && !has(v)) problems.push(k + ': no se pudo leer del PDF; no se inventó un valor.'); });
+            if (order.noQty) problems.push('El PDF no trae cantidades: cada referencia sale como «sin cantidad».');
+            else if (lines.some((l) => l.qty == null)) problems.push('Alguna referencia no trae cantidad en el PDF.');
+            (data.warnings || []).forEach((w) => { if (!problems.includes(w)) problems.push('Extractor: ' + w); });
+        }
     }
+    refresh();
+
+    function drawOrder() {
+        $('olOrder').innerHTML = allFields.map((f) => {
+            const v = valueOf(f);
+            return '<label class="ol-field' + (show[f.key] ? '' : ' off') + '"><span><input type="checkbox" data-k="' + f.key + '"' + (show[f.key] ? ' checked' : '') + '> ' + esc(f.label) + '</span>' +
+                (has(v) ? esc(v) : (f.key === 'number' ? '—' : '<b class="ol-miss">⚠ ' + MISSING + '</b>')) + '</label>';
+        }).join('');
+        $('olOpts').innerHTML = '<label><input type="checkbox" data-k="review"' + (show.review ? ' checked' : '') + '> Recuadro «Revisar» con avisos</label>' +
+            (canCount ? '<label><input type="checkbox" data-k="useCount"' + (show.useCount ? ' checked' : '') + '> Si el PDF no trae ítems o unidades, usar lo contado en sus líneas</label>' : '');
+        const warnBox = $('olWarn');
+        warnBox.hidden = !problems.length;
+        warnBox.innerHTML = problems.length ? '<strong>Revisar</strong><ul>' + problems.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>' : '';
+    }
+    drawOrder();
+    $('olBody').addEventListener('change', (e) => {
+        const k = e.target && e.target.dataset ? e.target.dataset.k : null;
+        if (!k) return;
+        show[k] = e.target.checked;
+        savePrefs(); refresh(); drawOrder();
+        if (pdfFile) { pdfFile = null; $('olShare').hidden = true; $('olDown').hidden = true; $('olMake').textContent = '📄 Generar PDF'; msg('Cambiaste lo que sale en el PDF: vuelve a generarlo.'); }
+    });
     $('olBody').hidden = false;
     $('olBar').hidden = false;
 
@@ -76,7 +106,7 @@
     }
 
     // ---- PDF ----
-    let pdfFile = null, busy = false;
+    let busy = false;
     const C1 = [28, 28, 30], C2 = [201, 168, 76], INK = [30, 30, 30], GREY = [110, 110, 110], WARN = [190, 90, 20];
     const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     const fileName = () => 'Lista_pedido_' + ((KP.clean(order.number || order.client).replace(/[^\wÁÉÍÓÚÜÑáéíóúüñ -]+/g, '').trim().replace(/\s+/g, '_')) || today()) + '.pdf';
@@ -118,7 +148,7 @@
                 doc.setFillColor(...C2); doc.rect(0, BAND, W, 1, 'F');
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(255, 255, 255);
                 doc.text('Lista de pedido', M, 10.5);
-                if (has(order.number)) { doc.setFontSize(11); doc.setTextColor(...C2); doc.text(clean(order.number), W - M, 10.5, { align: 'right' }); }
+                if (show.number && has(order.number)) { doc.setFontSize(11); doc.setTextColor(...C2); doc.text(clean(order.number), W - M, 10.5, { align: 'right' }); }
             };
             const tableHead = (c) => {
                 const x0 = M + c * (TW + GAP);
@@ -144,7 +174,7 @@
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(s ? 12.5 : 10.5); doc.setTextColor(...(s ? INK : WARN));
                 doc.text(doc.splitTextToSize(s || MISSING, colW - 4)[0], x, yy + 9);
             });
-            y += Math.ceil(cells.length / 2) * 13 + 2;
+            if (cells.length) y += Math.ceil(cells.length / 2) * 13 + 2;
             if (problems.length) {
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
                 const ls = problems.slice(0, 6).flatMap((p) => doc.splitTextToSize('• ' + clean(p), W - 2 * M - 6)).slice(0, 8);
@@ -196,7 +226,7 @@
 
             // Pie en cada página
             const pages = doc.getNumberOfPages();
-            const footL = clean([order.number, order.client, order.date].filter(has).join(' · '));
+            const footL = clean([show.number && order.number, show.client && order.client, show.date && order.date].filter(has).join(' · '));
             for (let p = 1; p <= pages; p++) {
                 doc.setPage(p);
                 doc.setDrawColor(...C2); doc.setLineWidth(0.4); doc.line(M, H - 10, W - M, H - 10);
