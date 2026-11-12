@@ -231,7 +231,7 @@ export function parseTable(lines) {
         const m = t.match(TABLE_ROW);
         if (m && looksLikeCode(m[1], false)) {
             const qty = +m[3], disc = readPrice(m[5]) || 0, price = readPrice(m[6]), lineTotal = readPrice(m[7]);
-            const it = { code: m[1], qty, priceText: m[6].replace(/\s+/g, ''), price, lineTotal, desc: m[2], n: items.length + 1 };
+            const it = { code: m[1], qty, priceText: m[6].replace(/\s+/g, ''), price, lineTotal, lineTotalText: m[7].replace(/\s+/g, ''), desc: m[2], n: items.length + 1 };
             items.push(it);
             sumLines += lineTotal || 0;
             map[i].tag = 'Artículo ' + it.code;

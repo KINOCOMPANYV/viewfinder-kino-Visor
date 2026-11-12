@@ -173,7 +173,7 @@ $('exToOrder').addEventListener('click', () => {
         file: file ? file.name : '',
         order: { number: o.number || '', client: o.client || '', date: o.date || '', totalText: o.totalText || '',
             itemsPdf: o.itemsPdf ?? null, unitsPdf: o.unitsPdf ?? null, noQty: !!o.noQty },
-        items: rows.map((it) => ({ code: it.code, qty: it.qty ?? null })),
+        items: rows.map((it) => ({ code: it.code, qty: it.qty ?? null, desc: it.desc || '', priceText: it.priceText || '', lineTotalText: it.lineTotalText || '' })),
         warnings: result.warnings.slice(),
     };
     try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (e) { alert('No se pudo pasar el pedido en este dispositivo.'); return; }

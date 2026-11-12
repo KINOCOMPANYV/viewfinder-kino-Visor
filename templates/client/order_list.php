@@ -30,6 +30,8 @@
         .ol-field input, .ol-opts input { accent-color:#c9a84c; vertical-align:middle; }
         .ol-opts { display:flex; flex-wrap:wrap; gap:0.4rem 1.2rem; margin-top:0.8rem; font-size:0.85rem; color:#c8c8d0; }
         .ol-opts label { cursor:pointer; }
+        .ol-cols { flex-basis:100%; display:flex; flex-wrap:wrap; gap:0.3rem 1rem; padding:0.6rem 0.7rem; border:1px solid #2a2a35; border-radius:8px; }
+        .ol-cols b { color:#e8e8ee; font-weight:600; }
         .ol-warn { background:rgba(255,159,67,0.08); border:1px solid rgba(255,159,67,0.5); border-radius:10px; padding:0.7rem 0.9rem; margin-bottom:1rem; font-size:0.9rem; }
         .ol-warn ul { margin:0.3rem 0 0; padding-left:1.1rem; }
         .ol-list { list-style:none; margin:0; padding:0; }

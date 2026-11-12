@@ -228,7 +228,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   probado con la 00106511 (CURREN COLOMBIA): 195 líneas, 310 unidades, $15,174,000 cuadra con el TOTAL. Además, en Lista
   pedido el dueño elige con casillas qué datos salen en el PDF (n.º, cliente, fecha, ítems, unidades, valor, recuadro
   «Revisar»; se recuerda en el dispositivo) y si usar lo contado en las líneas cuando el PDF no trae ítems/unidades
-  (sale «195 (contado)»).
+  (sale «195 (contado)»). También elige las columnas de la tabla: N.º, Foto, Código, Producto, Cantidad, Precio, Total
+  (Producto/Precio/Total solo si el PDF los trae). Si caben en media hoja salen dos tablas lado a lado; si no, una a todo
+  el ancho. Sin la columna Foto las filas son bajas (~23 por página).
 - Rama `seguridad-y-fotos-jpeg` (auditoría 2026-11-12): `/api/download` solo baja archivos del índice no ocultos (antes, cualquier
   archivo del Drive del dueño); login del admin con límite (10 fallos/15 min por IP) y cookie HttpOnly/Secure/SameSite;
   fotos grandes (≥ 600 px) pedidas en JPEG a lh3 (`-rj`): un PNG de 826 KB pasa a 147 KB.

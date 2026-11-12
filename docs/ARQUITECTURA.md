@@ -252,5 +252,7 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
   `FECHA:` (aaaa/mm/dd; no `VENCE:`), último «TOTAL : $» con valor. Precio = unitario; revisa cantidad × precio por línea y
   la suma contra el TOTAL. `order.format = 'tabla'`; `itemsPdf`/`unitsPdf` = null (el PDF no los trae).
 - Lista pedido: casillas por dato (`localStorage kinoOlFields`: number, client, date, items, units, total, review, useCount)
-  deciden qué sale en el PDF (encabezado, banda, pie y «Revisar»). Sin ítems/unidades del PDF y `useCount` → «N (contado)».
+  deciden qué sale en el PDF (encabezado, banda, pie y «Revisar»). Columnas `cN, cPhoto, cCode, cDesc, cQty, cPrice,
+  cTotal` (desc/priceText/lineTotalText llegan en `kinoPedido.items`); dos tablas si la suma de anchos mínimos cabe en
+  media hoja, si no una; fila 19 mm con foto, 9 mm sin foto. Sin ítems/unidades del PDF y `useCount` → «N (contado)».
 - Si no hay esa tabla, sigue el recibo de siempre («N artículos» … «Total:», `5x código … $`).
