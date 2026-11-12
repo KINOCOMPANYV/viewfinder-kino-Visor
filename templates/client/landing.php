@@ -44,6 +44,7 @@
             </a>
             <div style="display:flex; gap:0.5rem; align-items:center;">
                 <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar catálogo</a>
+                <a href="/extractor" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Leer un recibo o pedido en PDF">🧾 Extractor</a>
                 <a href="/admin/login" class="btn btn-sm btn-secondary"
                     style="font-size:0.75rem; padding:0.4rem 0.8rem; opacity:0.4;">Admin</a>
             </div>

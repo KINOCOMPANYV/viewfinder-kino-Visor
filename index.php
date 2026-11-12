@@ -242,6 +242,11 @@ if ($uri === '/enviar-catalogo') {
     exit;
 }
 
+if ($uri === '/extractor') {
+    include __DIR__ . '/templates/client/extractor.php';
+    exit;
+}
+
 if ($uri === '/enviar-catalogo/extraer' && $method === 'POST') {
     checkRateLimit(30);
     $catalogAction = 'extract';

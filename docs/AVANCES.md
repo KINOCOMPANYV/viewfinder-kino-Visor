@@ -47,6 +47,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   (precios, textos y logo no van al servidor). Botón al tener la selección lista para enviar y al abrir un enlace `/c/…`.
   Diseño sobrio y elegante con colores primario y secundario elegibles, subtítulo, secciones y pie de contacto (pedido 2026-11-11).
   Por defecto, botón «Abrir foto» bajo cada foto: enlace a la foto en Drive sin mostrar la dirección larga (se puede quitar).
+- **Extractor de pedidos PDF dentro del visor** (2026-11-12): la app Flask EXTRACTOR (carpeta local, fuera del repo) se pasó
+  a JavaScript en `/extractor`, lo más simple y escalable: sin servicio Python aparte, el PDF se lee en el dispositivo. La lista
+  pasa al visor con un botón (no automático) y solo para buscar fotos; precio al PDF del catálogo: después, si se pide.
+  La carpeta EXTRACTOR local queda igual.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -80,6 +84,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Si una foto no baja (3 intentos), se desmarca, se avisa cuál y se sigue con las demás. Fotos a 800 px con copia en disco
   (`storage/send_cache`).
   Decisión del dueño 2026-11-09: ofrecer las dos vías; ir foto por foto era lento y el lote de 30+ fallaba.
+- "🧾 Extractor" (`/extractor`, en el inicio del computador y en Enviar catálogo): subir un recibo o pedido PDF → código,
+  cantidad y precio; «Revisión» (✓ si cuadra con Total, artículos y unidades del PDF, o la lista de lo que no cuadra), datos
+  del pedido, Mapa del PDF; mostrar precio y precio con descuento (40 % por defecto), Organizar, Copiar para Excel. «📷 Ver
+  fotos en el visor» abre Enviar catálogo con esos códigos (encontrados/no encontrados, PDF, WhatsApp, Mi selección).
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
 - Búsqueda: el código exacto primero ("8363-3" = "M:8363-3"), luego los que empiezan por él y el resto; carpetas cuyo
@@ -201,3 +209,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #55: Enviar catálogo: «📷 Leer lista de una foto» (Tesseract.js 6 en `assets/vendor/tesseract`, en el celular, sin CDN ni servidor; ~6 MB la primera vez).
 - #56: Enviar catálogo: un código que no existe tal cual se corrige con las confusiones típicas del lector de fotos (B↔8, O↔0, I↔1, S↔5…) si da un solo código; se muestra qué se corrigió.
 - #57: PDF: botón «Abrir foto» (activado por defecto) bajo cada foto con enlace oculto a la foto en Google Drive.
+- Rama `extractor-pdf`: «🧾 Extractor» de pedidos PDF en `/extractor` (pdf.js en el dispositivo, port de la app Flask) y
+  «📷 Ver fotos en el visor» → Enviar catálogo. Probado con 5 recibos reales: total, artículos y unidades cuadran.
