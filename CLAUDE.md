@@ -30,7 +30,7 @@ Si cambias cómo funciona algo, actualiza también `docs/ARQUITECTURA.md`. Mant�
 ## Archivos grandes (no leer enteros si no hace falta)
 `assets/css/style.css` (~3000 líneas), `templates/admin/media.php` (~1200), `src/controllers/product.php` (~1000),
 `templates/client/landing.php` (~950), `src/controllers/search.php` (~900). Usa `grep -n` y lee rangos.
-`Auditoria_Tecnica_ViewfinderKino.docx` y `VISOR KINO.txt` son notas antiguas, no código.
+Las notas antiguas (`Auditoria_Tecnica_ViewfinderKino.docx`, `VISOR KINO.txt`) se quitaron el 2026-11-12; siguen en el historial de git.
 
 ## Verificar
 - Sintaxis: `find . -name '*.php' -not -path './vendor/*' -exec php -l {} \; | grep -v 'No syntax errors'`

@@ -2,7 +2,7 @@
 /**
  * Controlador: Borrado de caché del sistema.
  * POST /admin/cache/clear
- * Parámetro: cache_type = media_search | drive_cache | zip_files | all
+ * Parámetro: cache_type = media_search | drive_cache | all
  */
 
 if (!verifyCsrf()) {
@@ -29,21 +29,6 @@ try {
         $results[] = 'Drive Cache limpiada (se conservan las fotos ocultas)';
     }
 
-    // --- ZIP Files Cache ---
-    if ($type === 'zip_files' || $type === 'all') {
-        $dir = BASE_DIR . '/storage/zip_cache';
-        $count = 0;
-        if (is_dir($dir)) {
-            $files = glob($dir . '/*');
-            foreach ($files as $file) {
-                if (is_file($file) && basename($file) !== '.gitkeep') {
-                    unlink($file);
-                    $count++;
-                }
-            }
-        }
-        $results[] = "ZIP Cache limpiada ({$count} archivos eliminados)";
-    }
 
     if (empty($results)) {
         $_SESSION['cache_flash'] = ['type' => 'warning', 'msg' => 'Tipo de caché no reconocido.'];

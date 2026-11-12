@@ -39,8 +39,6 @@ $genderStats = $db->query(
 // Cache stats
 $mediaSearchCount = 0;
 $driveCacheCount = 0;
-$zipCacheCount = 0;
-$zipCacheSize = 0;
 
 try {
     $mediaSearchCount = (int) $db->query("SELECT COUNT(*) FROM media_search_cache")->fetchColumn();
@@ -49,17 +47,6 @@ try {
 try {
     $driveCacheCount = (int) $db->query("SELECT COUNT(*) FROM drive_cache")->fetchColumn();
 } catch (Exception $e) {
-}
-
-$zipDir = BASE_DIR . '/storage/zip_cache';
-if (is_dir($zipDir)) {
-    $zipFiles = glob($zipDir . '/*');
-    foreach ($zipFiles as $f) {
-        if (is_file($f) && basename($f) !== '.gitkeep') {
-            $zipCacheCount++;
-            $zipCacheSize += filesize($f);
-        }
-    }
 }
 
 // Flash message
@@ -271,35 +258,13 @@ unset($_SESSION['cache_flash']);
                         </form>
                     </div>
 
-                    <!-- ZIP Files Cache -->
-                    <div class="cache-card">
-                        <div class="cache-card__icon">📦</div>
-                        <div class="cache-card__info">
-                            <div class="cache-card__name">ZIP Downloads</div>
-                            <div class="cache-card__desc">Archivos ZIP temporales de descargas</div>
-                            <div class="cache-card__stat">
-                                <span class="cache-card__count"><?= $zipCacheCount ?></span> archivos
-                                <?php if ($zipCacheSize > 0): ?>
-                                    <span class="cache-card__size">(<?= round($zipCacheSize / 1048576, 1) ?> MB)</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <form method="POST" action="/admin/cache/clear" class="cache-card__action">
-                            <input type="hidden" name="cache_type" value="zip_files">
-                            <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
-                            <button type="submit" class="btn btn-sm btn-danger" <?= $zipCacheCount === 0 ? 'disabled' : '' ?>
-                                onclick="return confirm('¿Eliminar archivos ZIP temporales?')">
-                                🧹 Limpiar
-                            </button>
-                        </form>
-                    </div>
                 </div>
 
                 <!-- Limpiar todo -->
                 <form method="POST" action="/admin/cache/clear" style="margin-top:1rem; text-align:right;">
                     <input type="hidden" name="cache_type" value="all">
                     <input type="hidden" name="csrf_token" value="<?= csrfToken() ?>">
-                    <button type="submit" class="btn btn-danger" <?= ($mediaSearchCount + $driveCacheCount + $zipCacheCount) === 0 ? 'disabled' : '' ?> onclick="return confirm('¿Limpiar TODAS las cachés del sistema?')">
+                    <button type="submit" class="btn btn-danger" <?= ($mediaSearchCount + $driveCacheCount) === 0 ? 'disabled' : '' ?> onclick="return confirm('¿Limpiar TODAS las cachés del sistema?')">
                         🗑️ Limpiar Toda la Caché
                     </button>
                 </form>
