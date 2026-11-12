@@ -95,7 +95,7 @@
             const worker = async () => {
                 while (next < ids.length) {
                     const id = ids[next++];
-                    try { imgs.set(id, await KP.prepare(id, 500)); } catch (e) { imgs.set(id, null); failed++; }
+                    try { imgs.set(id, await KP.prepare(id, 300)); } catch (e) { imgs.set(id, null); failed++; }
                     done++;
                     btn.textContent = `⏳ Fotos ${done}/${ids.length}`;
                 }
@@ -105,9 +105,9 @@
             // 2) Medidas (mm)
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-            const W = 210, H = 297, M = 12, BAND = 16, ROW = 41, FOOT = 13, TH = 8.5;
+            const W = 210, H = 297, M = 12, BAND = 16, ROW = 19, FOOT = 13, TH = 8.5;
             // Columnas como la proforma de muestra: foto grande, código y cantidad, con bordes
-            const COLS = [12, 64, W - 2 * M - 12 - 64 - 34, 34];
+            const COLS = [12, 30, W - 2 * M - 12 - 30 - 34, 34];
             const xN = M, xPh = xN + COLS[0], xCode = xPh + COLS[1], xQty = xCode + COLS[2];
             const clean = KP.clean;
             const val = (v) => has(v) ? clean(v) : null;
@@ -168,20 +168,20 @@
                 const mid = y + ROW / 2;
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GREY);
                 doc.text(String(l.n), xN + COLS[0] / 2, mid + 1.2, { align: 'center' });
-                const pw = COLS[1] - 4, ph = ROW - 4;
+                const pw = COLS[1] - 3, ph = ROW - 3;
                 if (img) {
                     const s = Math.min(pw / img.w, ph / img.h), iw = img.w * s, ih = img.h * s;
-                    doc.addImage(img.data, 'JPEG', xPh + 2 + (pw - iw) / 2, y + 2 + (ph - ih) / 2, iw, ih, undefined, 'FAST');
+                    doc.addImage(img.data, "JPEG", xPh + 1.5 + (pw - iw) / 2, y + 1.5 + (ph - ih) / 2, iw, ih, undefined, 'FAST');
                 } else {
-                    doc.setFillColor(246, 246, 246); doc.rect(xPh + 2, y + 2, pw, ph, 'F');
-                    doc.setFontSize(9); doc.setTextColor(...GREY);
-                    doc.text('Foto no disponible', xPh + COLS[1] / 2, mid + 1.2, { align: 'center' });
+                    doc.setFillColor(246, 246, 246); doc.rect(xPh + 1.5, y + 1.5, pw, ph, "F");
+                    doc.setFontSize(7); doc.setTextColor(...GREY);
+                    doc.text(['Foto no', 'disponible'], xPh + COLS[1] / 2, mid - 0.4, { align: 'center' });
                 }
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(...INK);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...INK);
                 const cl = doc.splitTextToSize(clean(l.code), COLS[2] - 6).slice(0, 2);
-                doc.text(cl, xCode + COLS[2] / 2, mid + 1.8 - (cl.length - 1) * 3, { align: 'center' });
-                doc.setFontSize(l.qty == null ? 10 : 16); doc.setTextColor(...(l.qty == null ? WARN : INK));
-                doc.text(l.qty == null ? 'sin cantidad' : String(l.qty), xQty + COLS[3] / 2, mid + 2, { align: 'center' });
+                doc.text(cl, xCode + COLS[2] / 2, mid + 1.5 - (cl.length - 1) * 2.5, { align: 'center' });
+                doc.setFontSize(l.qty == null ? 9 : 13); doc.setTextColor(...(l.qty == null ? WARN : INK));
+                doc.text(l.qty == null ? 'sin cantidad' : String(l.qty), xQty + COLS[3] / 2, mid + 1.7, { align: 'center' });
                 y += ROW;
             }
 
@@ -222,7 +222,7 @@
         const none = lines.filter((l) => !l.photo).length;
         $('olMake').disabled = false; $('olMake').textContent = '📄 Generar PDF';
         msg(none ? `${none} de ${lines.length} referencia${lines.length === 1 ? '' : 's'} sin foto: salen igual con «Foto no disponible».` : 'Todas las referencias tienen foto.');
-        lines.slice(0, 12).forEach((l) => { if (l.photo) KP.prepare(l.photo.id, 500).catch(() => {}); });
+        lines.slice(0, 12).forEach((l) => { if (l.photo) KP.prepare(l.photo.id, 300).catch(() => {}); });
     }).catch((e) => {
         msg('⚠️ No se pudieron buscar las fotos (' + (e && e.message ? e.message : e) + '). Recarga la página para intentar otra vez.');
         $('olMake').textContent = '📄 Generar PDF';

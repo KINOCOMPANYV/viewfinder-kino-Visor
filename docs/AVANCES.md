@@ -229,5 +229,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   en la barra de selección y en Enviar catálogo; «⬇️ Descargar todas (N)» arriba en Mi selección; en el celular la barra de
   Enviar catálogo ya no queda tapada por el menú de abajo. Usa `/enviar-catalogo/foto` (no `/api/download`).
 - Rama `lista-pedido`: «🧾 Lista pedido» en el Extractor → `/lista-pedido` (PDF de pedido: encabezado con los datos del PDF,
-  tabla con bordes foto grande | código | cantidad, como la proforma que mandó el dueño). Piezas comunes de PDF movidas a `assets/js/pdf_shared.js` (el Catálogo en PDF las usa
+  tabla con bordes foto | código | cantidad, 13 por página, como la proforma que mandó el dueño). Piezas comunes de PDF movidas a `assets/js/pdf_shared.js` (el Catálogo en PDF las usa
   igual). Probado con 5 recibos reales (#c-5845, #c-5856, #c-5865, #c-5867, #c-5868) contra las fotos de producción.
