@@ -2731,6 +2731,8 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .wab-pdf { display: inline-flex; align-items: center; text-decoration: none; }
 .wab-pdf:hover { border-color: var(--color-primary); }
 .wab-save:disabled { opacity: 0.5; cursor: not-allowed; }
+/* ⬇️ Descargar destacado: el dueño no lo encontraba cuando decía "💾 Guardar" en gris */
+.wab-save { background: var(--color-primary); color: #000; border-color: var(--color-primary); }
 .wab-msg { font-size: 0.78rem; color: var(--color-text-muted); text-align: center; }
 .wab-msg:empty { display: none; }
 @media (max-width: 640px) {
