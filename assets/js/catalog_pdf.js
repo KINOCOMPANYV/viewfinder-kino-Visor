@@ -12,11 +12,8 @@
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const code = (sku) => String(sku || '').replace(/\.\w{2,4}$/i, ''); // como cleanSkuDisplay()
-    const canShareFiles = (() => {
-        try {
-            return !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob(['x'], { type: 'application/pdf' })], 'x.pdf', { type: 'application/pdf' })] }));
-        } catch (e) { return false; }
-    })();
+    const KP = window.KinoPdf;
+    const canShareFiles = KP.canShareFiles;
 
     // ---- Guardado en el dispositivo ----
     const ls = (() => { try { localStorage.setItem('kinoT', '1'); localStorage.removeItem('kinoT'); return localStorage; } catch (e) { return null; } })();
@@ -252,67 +249,8 @@
         drawLogo(); stale();
     });
 
-    // ---- Fotos ----
-    async function bitmap(blob) {
-        if (window.createImageBitmap) {
-            try { return await createImageBitmap(blob); } catch (e) { /* Safari viejo: con <img> */ }
-        }
-        return await new Promise((ok, bad) => {
-            const u = URL.createObjectURL(blob);
-            const im = new Image();
-            im.onload = () => { URL.revokeObjectURL(u); ok(im); };
-            im.onerror = () => { URL.revokeObjectURL(u); bad(new Error('imagen dañada')); };
-            im.src = u;
-        });
-    }
-    async function fetchPhoto(id) {
-        let last;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            if (attempt) await new Promise((ok) => setTimeout(ok, 700 * attempt));
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 30000);
-            try {
-                let r = await fetch('/enviar-catalogo/foto/' + encodeURIComponent(id), { credentials: 'same-origin', signal: ctrl.signal });
-                // Foto de carpeta sin código enlazado: no hay liviana, va la original
-                if (r.status === 404) r = await fetch('/api/download/' + encodeURIComponent(id), { signal: ctrl.signal });
-                if (!r.ok) throw new Error('error ' + r.status);
-                const b = await r.blob();
-                if (!b.size) throw new Error('foto vacía');
-                return b;
-            } catch (e) {
-                last = e;
-                if (e && /error 404/.test(e.message)) break;
-            } finally { clearTimeout(timer); }
-        }
-        throw last;
-    }
-    // Foto lista para el PDF: JPEG reducido sobre fondo blanco ({data: Uint8Array, w, h})
-    const prepared = new Map();
-    function prepare(id, maxPx) {
-        const key = id + '@' + maxPx;
-        if (!prepared.has(key)) {
-            const p = (async () => {
-                const img = await bitmap(await fetchPhoto(id));
-                const k = Math.min(1, maxPx / Math.max(img.width, img.height));
-                const c = document.createElement('canvas');
-                c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
-                const g = c.getContext('2d');
-                g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height);
-                g.drawImage(img, 0, 0, c.width, c.height);
-                if (img.close) img.close();
-                const b = await new Promise((ok, bad) => c.toBlob((x) => x ? ok(x) : bad(new Error('sin memoria')), 'image/jpeg', 0.82));
-                return { data: new Uint8Array(await b.arrayBuffer()), w: c.width, h: c.height };
-            })();
-            p.catch(() => prepared.delete(key));
-            prepared.set(key, p);
-        }
-        return prepared.get(key);
-    }
-
-    // ---- Texto del PDF: la letra estándar del PDF tiene tildes y ñ, pero no emojis ----
-    const OK_CHARS = /[^ -~ -ÿ€•–—‘’“”…]/g;
-    const clean = (s) => String(s || '').replace(/\s+/g, ' ').replace(OK_CHARS, '').replace(/\s+/g, ' ').trim();
-    const lostChars = (s) => String(s || '').replace(/\s+/g, ' ').trim() !== clean(s);
+    // ---- Fotos y texto del PDF: piezas comunes en pdf_shared.js (window.KinoPdf) ----
+    const { bitmap, prepare, clean, lostChars } = KP;
 
     // ---- Generar ----
     let pdfFile = null;
@@ -329,7 +267,7 @@
     const MAXPX = { 4: 900, 6: 750, 9: 560 };
     const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     const fileName = () => (clean(opts.title).replace(/[^\wÁÉÍÓÚÜÑáéíóúüñ -]+/g, '').trim().replace(/\s+/g, '_') || 'Catalogo') + '_' + today() + '.pdf';
-    const mb = (n) => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' MB';
+    const mb = KP.mb;
 
     // Ubica cada foto (y cada subtítulo de sección) en su página. Un subtítulo empieza fila nueva y nunca queda
     // solo al final de una página.
@@ -543,26 +481,8 @@
     }
     $('cpMake').addEventListener('click', make);
 
-    $('cpShare').addEventListener('click', async () => {
-        if (!pdfFile) return;
-        try {
-            await navigator.share({ files: [pdfFile], title: clean(opts.title) || 'Catálogo' });
-            msg('✅ Compartido. Si no lo viste en WhatsApp, toca 📲 otra vez.');
-        } catch (e) {
-            if (e && e.name === 'AbortError') msg('Cancelado.');
-            else if (e && e.name === 'NotAllowedError') msg('El teléfono pidió otro toque: vuelve a tocar 📲 Compartir.');
-            else msg('No se pudo compartir: usa ⬇️ Descargar y adjúntalo en WhatsApp.');
-        }
-    });
-    $('cpDown').addEventListener('click', () => {
-        if (!pdfFile) return;
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(pdfFile);
-        a.download = pdfFile.name;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-        msg('⬇️ Descargado: ' + pdfFile.name + '. En WhatsApp: 📎 → Documento.');
-    });
+    $('cpShare').addEventListener('click', () => KP.share(pdfFile, clean(opts.title) || 'Catálogo', msg));
+    $('cpDown').addEventListener('click', () => KP.download(pdfFile, msg));
 
     // Las fotos empiezan a bajar desde que se abre la página (las primeras), así Generar tarda menos
     items.slice(0, 12).forEach((it) => prepare(it.id, MAXPX[+opts.per]).catch(() => {}));

@@ -161,3 +161,18 @@ $('exToVisor').addEventListener('click', () => {
     try { sessionStorage.setItem('kinoCsText', codes.join('\n')); } catch (e) { alert('No se pudo pasar la lista en este dispositivo.'); return; }
     location.href = '/enviar-catalogo?desde=extractor';
 });
+
+// Lista pedido: pasa el pedido tal cual (datos del encabezado, y cada línea con su código y su cantidad, en el
+// orden mostrado) a /lista-pedido, que busca la foto de cada código y arma el PDF.
+$('exToOrder').addEventListener('click', () => {
+    const o = result.order;
+    const data = {
+        file: file ? file.name : '',
+        order: { number: o.number || '', client: o.client || '', date: o.date || '', totalText: o.totalText || '',
+            itemsPdf: o.itemsPdf ?? null, unitsPdf: o.unitsPdf ?? null, noQty: !!o.noQty },
+        items: rows.map((it) => ({ code: it.code, qty: it.qty ?? null })),
+        warnings: result.warnings.slice(),
+    };
+    try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (e) { alert('No se pudo pasar el pedido en este dispositivo.'); return; }
+    location.href = '/lista-pedido';
+});
