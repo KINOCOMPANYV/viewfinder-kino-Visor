@@ -11,7 +11,7 @@ function previewVariant(thumbEl, skuEnc, skuLabel) {
     // 2. Actualizar imagen principal (agrandar si es de drive thumbnail=s120 -> s600)
     const mainImgContainer = card.querySelector('.card-image');
     const mainImg = mainImgContainer.querySelector('img');
-    const hiresUrl = newSrc.replace(/=s\d+/, '=s600'); 
+    const hiresUrl = newSrc.replace(/=s\d+(-rj)?/, '=s600-rj'); 
 
     if (mainImg) {
         mainImg.removeAttribute('srcset');

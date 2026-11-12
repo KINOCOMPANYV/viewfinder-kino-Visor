@@ -980,7 +980,7 @@ function coverUrlAtSize(string $url, int $size): string
     if (!str_contains($url, 'googleusercontent.com/')) {
         return $url;
     }
-    $resized = preg_replace('/=s\d+$/', "=s{$size}", $url, 1, $count);
+    $resized = preg_replace('/=s\d+(-rj)?$/', "=s{$size}" . lh3JpegSuffix($size), $url, 1, $count);
     if ($count) {
         return $resized;
     }
@@ -994,7 +994,16 @@ function coverUrlAtSize(string $url, int $size): string
  */
 function lh3Url(string $fileId, int $size = 400): string
 {
-    return "https://lh3.googleusercontent.com/d/{$fileId}=s{$size}";
+    return "https://lh3.googleusercontent.com/d/{$fileId}=s{$size}" . lh3JpegSuffix($size);
+}
+
+/**
+ * "-rj" (pedir JPEG) en tamaños grandes: si el original es PNG, lh3 lo entrega en PNG desde =s800
+ * (826 KB vs 147 KB en JPEG; =s1600: 1,3 MB vs 192 KB). Las tarjetas (=s400) ya salen en JPEG.
+ */
+function lh3JpegSuffix(int $size): string
+{
+    return $size >= 600 ? '-rj' : '';
 }
 
 /**

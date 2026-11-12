@@ -63,8 +63,8 @@
         if (!f || !(f.mimeType || '').startsWith('image/')) return;
 
         const url = f.thumbnailLink
-            ? f.thumbnailLink.replace(/=s\d+/, '=s1200')
-            : `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
+            ? f.thumbnailLink.replace(/=s\d+(-rj)?/, '=s1200-rj')
+            : `https://lh3.googleusercontent.com/d/${f.id}=s1200-rj`;
 
         img.src = url;
         img.alt = f.name || '';

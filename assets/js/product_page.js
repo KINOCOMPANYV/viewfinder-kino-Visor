@@ -72,7 +72,7 @@ function loadMainCover(files) {
         if (vid) {
             const idx = files.indexOf(vid);
             const thumbUrl = vid.thumbnailLink
-                ? vid.thumbnailLink.replace(/=s\d+/, '=s800')
+                ? vid.thumbnailLink.replace(/=s\d+(-rj)?/, '=s800-rj')
                 : '';
             const thumbImg = thumbUrl
                 ? `<img src="${thumbUrl}" alt="${esc(vid.name)}" style="width:100%;height:100%;object-fit:cover;">`
@@ -99,8 +99,8 @@ function loadMainCover(files) {
         const img = files.find(f => (f.mimeType || '').startsWith('image/'));
         if (img) {
             const url = img.thumbnailLink
-                ? img.thumbnailLink.replace(/=s\d+/, '=s600')
-                : `https://lh3.googleusercontent.com/d/${img.id}=s600`;
+                ? img.thumbnailLink.replace(/=s\d+(-rj)?/, '=s600-rj')
+                : `https://lh3.googleusercontent.com/d/${img.id}=s600-rj`;
             setCoverImage(main, url, img.id, img.name, showVideoCover);
             return;
         }
@@ -201,7 +201,7 @@ function showInMain(idx) {
     if (isVideo) {
         // Show video preview thumbnail in main area with play overlay
         const videoThumb = f.thumbnailLink
-            ? f.thumbnailLink.replace(/=s\d+/, '=s600')
+            ? f.thumbnailLink.replace(/=s\d+(-rj)?/, '=s600-rj')
             : '';
         const thumbImg = videoThumb
             ? `<img src="${videoThumb}" alt="${esc(f.name)}" style="width:100%;height:100%;object-fit:contain;">`
@@ -223,8 +223,8 @@ function showInMain(idx) {
         document.getElementById('mainImageDownload').style.display = '';
     } else {
         const url = f.thumbnailLink
-            ? f.thumbnailLink.replace(/=s\d+/, '=s600')
-            : `https://lh3.googleusercontent.com/d/${f.id}=s600`;
+            ? f.thumbnailLink.replace(/=s\d+(-rj)?/, '=s600-rj')
+            : `https://lh3.googleusercontent.com/d/${f.id}=s600-rj`;
         setCoverImage(main, url, f.id, f.name, () => { main.innerHTML = '📷'; });
     }
 
@@ -533,7 +533,7 @@ async function shareMainImageWa() {
         window.open('https://wa.me/?text=' + encodeURIComponent('*' + SKU + ' — ' + PRODUCT_NAME + '*\n' + SHARE_URL), '_blank');
         return;
     }
-    const imgUrl = 'https://lh3.googleusercontent.com/d/' + currentMainFileId + '=s1200';
+    const imgUrl = 'https://lh3.googleusercontent.com/d/' + currentMainFileId + '=s1200-rj';
     const productUrl = SHARE_URL;
     const text = '📦 *' + SKU + ' - ' + PRODUCT_NAME + '*\n\n🔗 Ver producto: ' + productUrl;
 
@@ -572,7 +572,7 @@ function openMainLightbox() {
     const mainImg = document.querySelector('#mainCover img');
     const images = allGalleryFiles
         .filter(f => (f.mimeType || '').startsWith('image/'))
-        .map(f => ({ id: f.id, name: f.name, src: (f.thumbnailLink || '').replace(/=s\d+/, '=s600') }));
+        .map(f => ({ id: f.id, name: f.name, src: (f.thumbnailLink || '').replace(/=s\d+(-rj)?/, '=s600-rj') }));
     let start = images.findIndex(it => it.id === currentMainFileId);
     if (start < 0 && mainImg) {
         // Portada guardada (aún sin galería o sin id conocido): buscarla por id en la URL
@@ -590,7 +590,7 @@ function openMainLightbox() {
 // Download the current main image
 function downloadMainImage() {
     if (!currentMainFileId) return;
-    const url = `https://lh3.googleusercontent.com/d/${currentMainFileId}=s1200`;
+    const url = `https://lh3.googleusercontent.com/d/${currentMainFileId}=s1200-rj`;
     const a = document.createElement('a');
     a.href = url;
     a.download = currentMainFileName || 'image.jpg';

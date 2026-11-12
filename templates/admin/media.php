@@ -801,7 +801,7 @@
                             data-visible="<?= $file['visible_publico'] ?>" data-file-id="<?= e($file['id']) ?>">
                             <?php if ($isImage && $thumbUrl): ?>
                                 <img src="<?= e($thumbUrl) ?>" alt="<?= e($file['name']) ?>" class="thumbnail" loading="lazy"
-                                    onclick="openLightbox('https://lh3.googleusercontent.com/d/<?= e($file['id']) ?>=s1200', '<?= e(addslashes($file['name'])) ?>')">
+                                    onclick="openLightbox('https://lh3.googleusercontent.com/d/<?= e($file['id']) ?>=s1200-rj', '<?= e(addslashes($file['name'])) ?>')">
                             <?php elseif ($isVideo): ?>
                                 <div class="video-thumb">🎬</div>
                             <?php else: ?>

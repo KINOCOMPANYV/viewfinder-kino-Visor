@@ -12,6 +12,11 @@ if (in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true) && strp
     session_cache_limiter('');
     header('Cache-Control: private, no-cache');
 }
+// Cookie de sesión protegida: JavaScript no la lee (HttpOnly), solo viaja por HTTPS en Railway
+// (el proxy avisa con X-Forwarded-Proto) y no se manda desde otros sitios en peticiones POST (SameSite=Lax).
+$isHttps = (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+ini_set('session.use_strict_mode', '1');
+session_set_cookie_params(['path' => '/', 'httponly' => true, 'secure' => $isHttps, 'samesite' => 'Lax']);
 session_start();
 
 require_once __DIR__ . '/config/database.php';
@@ -569,6 +574,19 @@ if (preg_match('#^/api/download/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
 
     $fileId = $matches[1];
     $db = getDB();
+
+    // Solo se descargan archivos del catálogo: del índice de Drive y no ocultos. Sin esto, el token del
+    // dueño (acceso a todo su Drive) bajaría cualquier archivo cuyo ID alguien conozca. El admin baja todo.
+    if (!isAdminLoggedIn()) {
+        $chk = $db->prepare("SELECT 1 FROM drive_index WHERE file_id = ? AND is_folder = 0 AND is_hidden = 0 LIMIT 1");
+        $chk->execute([$fileId]);
+        if (!$chk->fetchColumn()) {
+            http_response_code(404);
+            echo 'File not found';
+            exit;
+        }
+    }
+
     $drive = new GoogleDriveService();
     $token = $drive->getValidToken($db);
 

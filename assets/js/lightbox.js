@@ -16,8 +16,8 @@
     let touchStartX = null;
 
     function bigUrl(item) {
-        if (item.id) return `https://lh3.googleusercontent.com/d/${item.id}=s${BIG}`;
-        return String(item.src || '').replace(/=s\d+(-[a-z0-9-]+)?$/i, `=s${BIG}`);
+        if (item.id) return `https://lh3.googleusercontent.com/d/${item.id}=s${BIG}-rj`;
+        return String(item.src || '').replace(/=s\d+(-[a-z0-9-]+)?$/i, `=s${BIG}-rj`);
     }
 
     function preload(itemOrUrl) {
