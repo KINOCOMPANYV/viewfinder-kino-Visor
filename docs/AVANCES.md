@@ -62,7 +62,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Botón WhatsApp de cada foto: manda solo la imagen liviana (800 px) con el código como pie, sin enlace. En el computador
   copia la foto para pegarla en WhatsApp Web (Ctrl+V).
 - Inicio y resultados de búsqueda/filtro: "Seleccionar" en cada tarjeta → barra abajo con "Marcar todas" (lo visible con el
-  filtro), "💾 Guardar" y "📲 Enviar" por tandas de 10 (mismo sistema que Enviar catálogo, solo imágenes). Lo marcado se
+  filtro), "⬇️ Descargar" y "📲 Enviar" por tandas de 10 (mismo sistema que Enviar catálogo, solo imágenes). Lo marcado se
   mantiene al hacer otra búsqueda y al pasar a otra carpeta, al inicio o a una ficha (en la misma pestaña), así se juntan
   fotos de varias páginas en un solo envío. Desde la etapa C se guarda en el dispositivo (sigue al cerrar la página) y
   "👁 Ver" abre **Mi selección** (`/mi-seleccion`): ordenar, quitar, reintentar las que no bajaron, repetir la última tanda.
@@ -81,7 +81,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   celular, no IA de pago; si falla mucho con letra a mano, la opción es IA de imágenes) → códigos. Si un código no existe
   tal cual, se prueba con las confusiones del lector (B↔8, O/D↔0, I/L↔1, S↔5, Z↔2, G↔6) y, si da un solo código, se usa
   y se avisa «🔤 Corregidos: M:B363-3 → M:8363-3» (pedido del dueño 2026-11-11: confundía la B con el 8) → galería de fotos (tocar = marcar/desmarcar).
-  "💾 Guardar N en el celular" (Android/PC: descargas; iPhone: Compartir → Guardar imágenes) y luego se mandan desde
+  "⬇️ Descargar N fotos" (Android/PC: descargas; iPhone: Compartir → Guardar imágenes) y luego se mandan desde
   WhatsApp (📎 → Galería, hasta 100). "📲 Enviar por tandas": las fotos bajan en segundo plano; el botón verde se activa cuando la
   tanda siguiente (10) está completa ("Preparando tanda 2 de 3: 6/10" mientras tanto). 📲 en cada foto = solo esa.
   Si una foto no baja (3 intentos), se desmarca, se avisa cuál y se sigue con las demás. Fotos a 800 px con copia en disco
@@ -217,3 +217,6 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `seguridad-y-fotos-jpeg` (auditoría 2026-11-12): `/api/download` solo baja archivos del índice no ocultos (antes, cualquier
   archivo del Drive del dueño); login del admin con límite (10 fallos/15 min por IP) y cookie HttpOnly/Secure/SameSite;
   fotos grandes (≥ 600 px) pedidas en JPEG a lh3 (`-rj`): un PNG de 826 KB pasa a 147 KB.
+- Rama `claude/project-thread-wdaaf8`: el dueño no encontraba cómo bajar las fotos: «💾 Guardar» pasa a «⬇️ Descargar» (destacado)
+  en la barra de selección y en Enviar catálogo; «⬇️ Descargar todas (N)» arriba en Mi selección; en el celular la barra de
+  Enviar catálogo ya no queda tapada por el menú de abajo. Usa `/enviar-catalogo/foto` (no `/api/download`).

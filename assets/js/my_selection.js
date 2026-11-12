@@ -17,6 +17,7 @@
         items.forEach((it) => { perCode[it.sku] = (perCode[it.sku] || 0) + 1; });
         $('msCount').textContent = items.length ? '(' + items.length + ')' : '';
         $('msTools').hidden = !items.length;
+        $('msDownload').textContent = '⬇️ Descargar todas (' + items.length + ')';
         $('msEmptyMsg').hidden = !!items.length;
         $('msOne').hidden = !items.some((it) => perCode[it.sku] > 1);
         const html = items.map((it, i) => {
@@ -57,6 +58,7 @@
     });
     $('msOne').addEventListener('click', () => W.onePerCode());
     $('msEmpty').addEventListener('click', () => { if (confirm('¿Quitar todas las fotos de la selección?')) W.clear(); });
+    $('msDownload').addEventListener('click', () => W.download());
     document.addEventListener('click', (e) => { if (e.target.id === 'msResend') W.resendLast(); });
 
     // ---- Catálogos guardados (etapa E): en el dispositivo, localStorage 'kinoCatalogs' ----
