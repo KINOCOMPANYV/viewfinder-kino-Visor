@@ -58,6 +58,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   dueño). Los datos del pedido salen del PDF de origen, nunca recalculados con las fotos ni con la fecha de hoy; lo que no
   se pudo leer se avisa («No se pudo leer del PDF»), no se inventa. Foto por coincidencia exacta del código (con o sin «M»),
   sin la corrección del lector de fotos, para que no se crucen referencias.
+- **Extractor: dos formatos de PDF** (2026-11-12): además del recibo («5x 674B-1 … $»), lee la cotización en tabla de
+  KINO MEDELLIN (CODIGO · PRODUCTO · CANT · UNIDAD · DESC · PRECIO · TOTAL, encabezado repetido por página, «TOTAL : $» solo
+  en la última). Se detecta solo. Ese formato no dice cuántas referencias ni unidades trae: quedan «sin dato del PDF», no se
+  rellenan solos. Se revisa cada línea (cantidad × precio = TOTAL de la línea) y la suma contra el TOTAL.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -220,6 +224,13 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #57: PDF: botón «Abrir foto» (activado por defecto) bajo cada foto con enlace oculto a la foto en Google Drive.
 - #58: «🧾 Extractor» de pedidos PDF en `/extractor` (pdf.js en el dispositivo, port de la app Flask) y
   «📷 Ver fotos en el visor» → Enviar catálogo. Probado con 5 recibos reales: total, artículos y unidades cuadran.
+- Rama `claude/project-thread-joh3t8`: el Extractor también lee la cotización en tabla (COTIZACION No …), detectada sola;
+  probado con la 00106511 (CURREN COLOMBIA): 195 líneas, 310 unidades, $15,174,000 cuadra con el TOTAL. Además, en Lista
+  pedido el dueño elige con casillas qué datos salen en el PDF (n.º, cliente, fecha, ítems, unidades, valor, recuadro
+  «Revisar»; se recuerda en el dispositivo) y si usar lo contado en las líneas cuando el PDF no trae ítems/unidades
+  (sale «195 (contado)»). También elige las columnas de la tabla: N.º, Foto, Código, Producto, Cantidad, Precio, Total
+  (Producto/Precio/Total solo si el PDF los trae). Si caben en media hoja salen dos tablas lado a lado; si no, una a todo
+  el ancho. Sin la columna Foto las filas son bajas (~23 por página).
 - Rama `seguridad-y-fotos-jpeg` (auditoría 2026-11-12): `/api/download` solo baja archivos del índice no ocultos (antes, cualquier
   archivo del Drive del dueño); login del admin con límite (10 fallos/15 min por IP) y cookie HttpOnly/Secure/SameSite;
   fotos grandes (≥ 600 px) pedidas en JPEG a lh3 (`-rj`): un PNG de 826 KB pasa a 147 KB.
@@ -231,3 +242,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `lista-pedido`: «🧾 Lista pedido» en el Extractor → `/lista-pedido` (PDF de pedido: encabezado con los datos del PDF,
   tabla con bordes foto | código | cantidad, 13 por página, como la proforma que mandó el dueño). Piezas comunes de PDF movidas a `assets/js/pdf_shared.js` (el Catálogo en PDF las usa
   igual). Probado con 5 recibos reales (#c-5845, #c-5856, #c-5865, #c-5867, #c-5868) contra las fotos de producción.
+- Rama `lista-pedido-2-columnas`: Lista pedido en dos tablas lado a lado (~26 referencias por página; el pedido de 184 líneas
+  pasa de 15 a 8 páginas), pedido del dueño para ahorrar páginas.

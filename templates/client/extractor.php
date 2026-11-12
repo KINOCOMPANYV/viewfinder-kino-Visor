@@ -84,7 +84,7 @@
                 <input type="file" id="exFile" accept="application/pdf,.pdf">
                 <span style="font-size:1.6rem">📎</span>
                 <b id="exFileName">Arrastra tu PDF aquí o toca para elegirlo</b>
-                <small>Recibos de KINO («5x 674B-1 … $430,000.00»)</small>
+                <small>Recibos de KINO («5x 674B-1 … $430,000.00») o cotizaciones en tabla (CODIGO · CANT · PRECIO · TOTAL); se detecta solo</small>
             </label>
             <div class="ex-actions">
                 <button type="button" id="exRun" class="btn btn-primary" disabled>🚀 Procesar PDF</button>

@@ -4,6 +4,8 @@
  * datos del pedido, avisos de «Revisión» y el «Mapa del PDF». Pensado para los recibos de KINO
  * («5x 674B-1 POEDAGAR … $430,000.00»), con descripciones en varias líneas y artículos partidos entre páginas.
  * Port de la app Flask EXTRACTOR (ver su FUNCIONAMIENTO.md). Nada sale del dispositivo.
+ * Segundo formato (se detecta solo): cotización/factura en tabla «CODIGO | PRODUCTO | CANT | UNIDAD | DESC | PRECIO | TOTAL»,
+ * con el encabezado repetido en cada página y el «TOTAL : $…» solo en la última → parseTable().
  *
  * Línea = { page, text, cells: [texto por columna], bold: [bool por celda] }.
  */
@@ -101,6 +103,8 @@ function classify(line) {
  * @returns {{items, order, warnings, map}}
  */
 export function parseOrder(lines) {
+    const table = parseTable(lines);
+    if (table) return table;
     let start = 0, end = lines.length;
     const si = lines.findIndex((l) => START.test(l.text.trim()));
     if (si >= 0) start = si + 1;
@@ -196,6 +200,87 @@ export function parseOrder(lines) {
         warnings.push('El PDF indica ' + order.unitsPdf + ' unidades y se extrajeron ' + units + '.');
     order.canCheck = order.total != null || order.itemsPdf != null || order.unitsPdf != null;
     return { items, order, warnings, map };
+}
+
+// ── Formato «cotización en tabla» (KINO MEDELLIN, COTIZACION No …) ──
+const isTableHead = (t) => /^CODIGO\b/i.test(t) && /\bCANT\b/i.test(t) && /\bPRECIO\b/i.test(t) && /\bTOTAL\b/i.test(t);
+// código · producto · cantidad · unidad · desc · precio · total («302B-1 POEDAGAR … 1 UNIDAD 0.00 50,000.00 50,000»)
+const TABLE_ROW = /^(\S+)\s+(.*\S)\s+(\d{1,5})\s+([A-Za-zÁÉÍÓÚÑáéíóúñ.]{1,12})\s+(-?\d[\d.,]*)\s+(\$?\s?\d[\d.,]*)\s+(\$?\s?\d[\d.,]*)$/;
+const isTableEnd = (t) => /^(NOTA\b|TOTAL\s*:|RECIBIDO\b|SUBTOTAL\b)/i.test(t);
+
+/**
+ * Lee el formato en tabla. Devuelve null si el PDF no lo es (entonces se usa el formato de recibo de siempre).
+ * No inventa datos: el PDF no dice cuántas referencias ni unidades trae, así que esos quedan sin dato del PDF.
+ */
+export function parseTable(lines) {
+    const texts = lines.map((l) => l.text.trim());
+    if (!texts.some(isTableHead) || !texts.some((t) => TABLE_ROW.test(t) && looksLikeCode(t.split(/\s+/)[0], false))) return null;
+
+    const items = [], warnings = [];
+    const map = lines.map((l) => ({ page: l.page, text: l.text, tag: '' }));
+    let inTable = false, afterTable = false, sumLines = 0;
+    texts.forEach((t, i) => {
+        if (i > 0 && lines[i].page !== lines[i - 1].page) { inTable = false; afterTable = false; }
+        if (isTableHead(t)) { map[i].tag = 'Títulos de la tabla'; inTable = true; return; }
+        if (inTable && isTableEnd(t)) { inTable = false; afterTable = true; }
+        if (!inTable) {
+            if (/^TOTAL\s*:/i.test(t)) map[i].tag = /\d/.test(t) ? 'Total' : 'Total (vacío en esta página)';
+            else map[i].tag = afterTable ? 'Pie' : 'Encabezado';
+            return;
+        }
+        const m = t.match(TABLE_ROW);
+        if (m && looksLikeCode(m[1], false)) {
+            const qty = +m[3], disc = readPrice(m[5]) || 0, price = readPrice(m[6]), lineTotal = readPrice(m[7]);
+            const it = { code: m[1], qty, priceText: m[6].replace(/\s+/g, ''), price, lineTotal, lineTotalText: m[7].replace(/\s+/g, ''), desc: m[2], n: items.length + 1 };
+            items.push(it);
+            sumLines += lineTotal || 0;
+            map[i].tag = 'Artículo ' + it.code;
+            if (price != null && lineTotal != null) {
+                const plain = qty * price, withDisc = plain * (1 - disc / 100);
+                if (Math.abs(plain - lineTotal) > 0.5 && Math.abs(withDisc - lineTotal) > 0.5 && Math.abs(plain - disc - lineTotal) > 0.5)
+                    warnings.push(it.code + ': ' + qty + ' × ' + m[6] + ' no da el TOTAL de su línea (' + m[7] + ').');
+            }
+        } else if (looksLikeCode(t.split(/\s+/)[0], true)) {
+            map[i].tag = '⚠ línea sin leer';
+            warnings.push('«' + t + '» parece un artículo pero no se pudo leer su cantidad o precio. No se incluyó.');
+        } else map[i].tag = 'Descripción';
+    });
+
+    const order = tableOrderData(texts);
+    const sumUnit = items.reduce((s, it) => s + (it.price || 0) * it.qty, 0);
+    order.sumPrice = sumUnit;
+    order.unitPrices = true;
+    order.format = 'tabla';
+    if (order.total != null) {
+        order.totalOk = Math.abs(sumUnit - order.total) < 0.5 || Math.abs(sumLines - order.total) < 0.5;
+        if (!order.totalOk) {
+            const diff = order.total - sumLines;
+            warnings.unshift('La suma de la columna TOTAL no coincide con el TOTAL del PDF: ' + (diff > 0 ? 'faltan ' : 'sobran ') + formatPrice(Math.abs(diff), priceStyle(order.totalText)) + '.');
+        }
+    } else warnings.push('No se encontró el «TOTAL :» con valor (suele estar en la última página).');
+    items.forEach((it) => { if (it.price == null) warnings.push(it.code + ': no se encontró su precio.'); });
+    order.itemsFound = items.length;
+    order.unitsFound = items.reduce((s, it) => s + it.qty, 0);
+    order.canCheck = order.total != null;
+    return { items, order, warnings, map };
+}
+
+function tableOrderData(texts) {
+    const o = { number: '', client: '', date: '', total: null, totalText: '', itemsPdf: null, unitsPdf: null };
+    for (const t of texts) {
+        const m = t.match(/\b(?:COTIZACI[ÓO]N|FACTURA|PEDIDO|REMISI[ÓO]N)\s*(?:No\.?|N[º°]\.?|#)?\s*:?\s*(\d[\w-]*)/i);
+        if (m) { o.number = '#' + m[1]; break; }
+    }
+    for (const t of texts) { const m = t.match(/^cliente\s*:\s*(.+)$/i); if (m) { o.client = m[1].trim(); break; } }
+    for (const t of texts) {
+        const m = t.match(/\bFECHA\s*:\s*(\d{4}[\/-]\d{1,2}[\/-]\d{1,2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
+        if (m) { o.date = m[1]; break; }
+    }
+    for (const t of texts) {
+        const m = t.match(/^total\s*:\s*(-?\$?\s*\d[\d.,]*)/i);
+        if (m) { o.totalText = m[1].replace(/\s+/g, ''); o.total = readPrice(m[1]); }
+    }
+    return o;
 }
 
 const MONTHS = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre';

@@ -13,37 +13,82 @@
     const MISSING = 'No se pudo leer del PDF';
     const msg = (t) => { $('olMsg').textContent = t || ''; };
 
-    let data = null;
+    let data = null, pdfFile = null;
     try { data = JSON.parse(sessionStorage.getItem('kinoPedido') || 'null'); } catch (e) { data = null; }
     if (!data || !Array.isArray(data.items) || !data.items.length) { $('olEmpty').hidden = false; return; }
 
     const order = data.order || {};
     // Cada línea del pedido, en el orden del Extractor; la foto se le pone a esta misma línea (por su código)
-    const lines = data.items.map((it, i) => ({ n: i + 1, code: String(it.code || ''), qty: it.qty == null ? null : Number(it.qty), photo: undefined }));
+    const lines = data.items.map((it, i) => ({ n: i + 1, code: String(it.code || ''), qty: it.qty == null ? null : Number(it.qty),
+        desc: String(it.desc || ''), price: String(it.priceText || ''), total: String(it.lineTotalText || ''), photo: undefined }));
     const has = (v) => v !== null && v !== undefined && String(v).trim() !== '';
 
-    // Datos del encabezado: solo lo que vino del PDF
-    const fields = [
-        ['Cliente', order.client],
-        ['Fecha del pedido', order.date],
-        ['Total de ítems', order.itemsPdf],
-        ['Unidades', order.noQty ? null : order.unitsPdf],
-        ['Valor total', order.totalText],
+    // Datos del encabezado: solo lo que vino del PDF. Si el PDF no trae el total de ítems o de unidades (p. ej. la
+    // cotización en tabla), se puede usar lo contado en sus líneas, marcado «(contado)»: es un dato del PDF, no inventado.
+    const counted = { items: lines.length, units: order.noQty ? null : lines.reduce((s, l) => s + (l.qty || 0), 0) };
+    const allFields = [
+        { key: 'number', label: 'N.º de pedido', v: order.number },
+        { key: 'client', label: 'Cliente', v: order.client },
+        { key: 'date', label: 'Fecha del pedido', v: order.date },
+        { key: 'items', label: 'Total de ítems', v: order.itemsPdf, count: counted.items },
+        { key: 'units', label: 'Unidades', v: order.noQty ? null : order.unitsPdf, count: counted.units },
+        { key: 'total', label: 'Valor total', v: order.totalText },
     ];
-    if (has(order.number)) fields.unshift(['N.º de pedido', order.number]);
-    const problems = [];
-    fields.forEach(([k, v]) => { if (!has(v)) problems.push(k + ': no se pudo leer del PDF; no se inventó un valor.'); });
-    if (order.noQty) problems.push('El PDF no trae cantidades: cada referencia sale como «sin cantidad».');
-    else if (lines.some((l) => l.qty == null)) problems.push('Alguna referencia no trae cantidad en el PDF.');
-    (data.warnings || []).forEach((w) => { if (!problems.includes(w)) problems.push('Extractor: ' + w); });
-
-    $('olOrder').innerHTML = fields.map(([k, v]) => '<div><span>' + esc(k) + '</span>' +
-        (has(v) ? esc(v) : '<b class="ol-miss">⚠ ' + MISSING + '</b>') + '</div>').join('');
-    const warnBox = $('olWarn');
-    if (problems.length) {
-        warnBox.hidden = false;
-        warnBox.innerHTML = '<strong>Revisar</strong><ul>' + problems.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>';
+    // Qué sale en el PDF: lo elige el usuario y se recuerda en este dispositivo
+    const PREF = 'kinoOlFields';
+    let show = { number: true, client: true, date: true, items: true, units: true, total: true, review: true, useCount: true,
+        cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: false, cTotal: false };
+    try { Object.assign(show, JSON.parse(localStorage.getItem(PREF) || '{}')); } catch (e) { /* sin preferencias */ }
+    const savePrefs = () => { try { localStorage.setItem(PREF, JSON.stringify(show)); } catch (e) { /* sin almacenamiento */ } };
+    // Valor que se usa: el del PDF; si falta y hay conteo (y se eligió usarlo), el conteo con «(contado)»
+    const valueOf = (f) => has(f.v) ? String(f.v) : (show.useCount && f.count != null ? f.count + ' (contado)' : null);
+    // Columnas de la tabla; Producto, Precio y Total solo si el PDF los trae (la cotización en tabla sí; el recibo, precio)
+    const allCols = [
+        { key: 'cN', label: 'N.º', min: 8 },
+        { key: 'cPhoto', label: 'Foto', min: 24 },
+        { key: 'cCode', label: 'Código', min: 26, flex: 1 },
+        { key: 'cDesc', label: 'Producto', min: 50, flex: 3, avail: lines.some((l) => l.desc) },
+        { key: 'cQty', label: 'Cantidad', min: 17 },
+        { key: 'cPrice', label: 'Precio', min: 24, avail: lines.some((l) => l.price) },
+        { key: 'cTotal', label: 'Total', min: 26, avail: lines.some((l) => l.total) },
+    ].filter((c) => c.avail !== false);
+    const pickedCols = () => allCols.filter((c) => show[c.key]);
+    const canCount = allFields.some((f) => !has(f.v) && f.count != null);
+    let fields = [], problems = [];
+    function refresh() {
+        fields = allFields.filter((f) => show[f.key]).map((f) => [f.label, valueOf(f)]);
+        problems = [];
+        if (show.review) {
+            fields.forEach(([k, v]) => { if (k !== 'N.º de pedido' && !has(v)) problems.push(k + ': no se pudo leer del PDF; no se inventó un valor.'); });
+            if (order.noQty) problems.push('El PDF no trae cantidades: cada referencia sale como «sin cantidad».');
+            else if (lines.some((l) => l.qty == null)) problems.push('Alguna referencia no trae cantidad en el PDF.');
+            (data.warnings || []).forEach((w) => { if (!problems.includes(w)) problems.push('Extractor: ' + w); });
+        }
     }
+    refresh();
+
+    function drawOrder() {
+        $('olOrder').innerHTML = allFields.map((f) => {
+            const v = valueOf(f);
+            return '<label class="ol-field' + (show[f.key] ? '' : ' off') + '"><span><input type="checkbox" data-k="' + f.key + '"' + (show[f.key] ? ' checked' : '') + '> ' + esc(f.label) + '</span>' +
+                (has(v) ? esc(v) : (f.key === 'number' ? '—' : '<b class="ol-miss">⚠ ' + MISSING + '</b>')) + '</label>';
+        }).join('');
+        $('olOpts').innerHTML = '<label><input type="checkbox" data-k="review"' + (show.review ? ' checked' : '') + '> Recuadro «Revisar» con avisos</label>' +
+            '<div class="ol-cols"><b>Columnas de la tabla:</b> ' + allCols.map((c) => '<label><input type="checkbox" data-k="' + c.key + '"' + (show[c.key] ? ' checked' : '') + '> ' + esc(c.label) + '</label>').join('') + '</div>' +
+            (canCount ? '<label><input type="checkbox" data-k="useCount"' + (show.useCount ? ' checked' : '') + '> Si el PDF no trae ítems o unidades, usar lo contado en sus líneas</label>' : '');
+        const warnBox = $('olWarn');
+        warnBox.hidden = !problems.length;
+        warnBox.innerHTML = problems.length ? '<strong>Revisar</strong><ul>' + problems.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>' : '';
+    }
+    drawOrder();
+    $('olBody').addEventListener('change', (e) => {
+        const k = e.target && e.target.dataset ? e.target.dataset.k : null;
+        if (!k) return;
+        if (!e.target.checked && /^c[A-Z]/.test(k) && pickedCols().length <= 1) { e.target.checked = true; msg('Deja al menos una columna.'); return; }
+        show[k] = e.target.checked;
+        savePrefs(); refresh(); drawOrder();
+        if (pdfFile) { pdfFile = null; $('olShare').hidden = true; $('olDown').hidden = true; $('olMake').textContent = '📄 Generar PDF'; msg('Cambiaste lo que sale en el PDF: vuelve a generarlo.'); }
+    });
     $('olBody').hidden = false;
     $('olBar').hidden = false;
 
@@ -76,7 +121,7 @@
     }
 
     // ---- PDF ----
-    let pdfFile = null, busy = false;
+    let busy = false;
     const C1 = [28, 28, 30], C2 = [201, 168, 76], INK = [30, 30, 30], GREY = [110, 110, 110], WARN = [190, 90, 20];
     const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     const fileName = () => 'Lista_pedido_' + ((KP.clean(order.number || order.client).replace(/[^\wÁÉÍÓÚÜÑáéíóúüñ -]+/g, '').trim().replace(/\s+/g, '_')) || today()) + '.pdf';
@@ -89,7 +134,7 @@
         btn.disabled = true; $('olShare').hidden = true; $('olDown').hidden = true; pdfFile = null;
         try {
             // 1) Fotos (una vez por foto, 4 a la vez); la que no baje queda como «Foto no disponible»
-            const ids = [...new Set(lines.filter((l) => l.photo).map((l) => l.photo.id))];
+            const ids = !show.cPhoto ? [] : [...new Set(lines.filter((l) => l.photo).map((l) => l.photo.id))];
             const imgs = new Map();
             let done = 0, next = 0, failed = 0;
             const worker = async () => {
@@ -105,10 +150,16 @@
             // 2) Medidas (mm)
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-            const W = 210, H = 297, M = 12, BAND = 16, ROW = 19, FOOT = 13, TH = 8.5;
-            // Columnas como la proforma de muestra: foto grande, código y cantidad, con bordes
-            const COLS = [12, 30, W - 2 * M - 12 - 30 - 34, 34];
-            const xN = M, xPh = xN + COLS[0], xCode = xPh + COLS[1], xQty = xCode + COLS[2];
+            const W = 210, H = 297, M = 12, BAND = 16, FOOT = 13, TH = 8.5;
+            // Columnas elegidas. Si caben en media hoja: dos tablas lado a lado (~26 por página); si no, una a todo el ancho.
+            const cols = pickedCols();
+            const ROW = show.cPhoto ? 19 : 9;
+            const GAP = 4, half = (W - 2 * M - GAP) / 2;
+            const two = cols.reduce((s, c) => s + c.min, 0) <= half;
+            const TW = two ? half : W - 2 * M;
+            const spare = TW - cols.reduce((s, c) => s + c.min, 0);
+            const flexSum = cols.reduce((s, c) => s + (c.flex || 0), 0);
+            const COLS = cols.map((c) => c.min + (flexSum ? spare * (c.flex || 0) / flexSum : spare / cols.length));
             const clean = KP.clean;
             const val = (v) => has(v) ? clean(v) : null;
 
@@ -118,15 +169,16 @@
                 doc.setFillColor(...C2); doc.rect(0, BAND, W, 1, 'F');
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(255, 255, 255);
                 doc.text('Lista de pedido', M, 10.5);
-                if (has(order.number)) { doc.setFontSize(11); doc.setTextColor(...C2); doc.text(clean(order.number), W - M, 10.5, { align: 'right' }); }
+                if (show.number && has(order.number)) { doc.setFontSize(11); doc.setTextColor(...C2); doc.text(clean(order.number), W - M, 10.5, { align: 'right' }); }
             };
-            const tableHead = () => {
+            const tableHead = (c) => {
+                const x0 = M + c * (TW + GAP);
                 doc.setFillColor(...C1); doc.setDrawColor(40, 40, 40); doc.setLineWidth(0.35);
-                let x = M;
+                let x = x0;
                 COLS.forEach((w) => { doc.rect(x, y, w, TH, 'FD'); x += w; });
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(255, 255, 255);
-                [['N.º', xN, 0], ['Foto', xPh, 1], ['Código', xCode, 2], ['Cantidad', xQty, 3]]
-                    .forEach(([t, cx, i]) => doc.text(t, cx + COLS[i] / 2, y + 5.6, { align: 'center' }));
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255);
+                x = x0;
+                cols.map((c) => c.label).forEach((t, i) => { doc.text(t, x + COLS[i] / 2, y + 5.6, { align: 'center' }); x += COLS[i]; });
                 y += TH;
             };
             const newPage = () => { if (page) doc.addPage(); page++; band(); y = BAND + 7; };
@@ -143,7 +195,7 @@
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(s ? 12.5 : 10.5); doc.setTextColor(...(s ? INK : WARN));
                 doc.text(doc.splitTextToSize(s || MISSING, colW - 4)[0], x, yy + 9);
             });
-            y += Math.ceil(cells.length / 2) * 13 + 2;
+            if (cells.length) y += Math.ceil(cells.length / 2) * 13 + 2;
             if (problems.length) {
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
                 const ls = problems.slice(0, 6).flatMap((p) => doc.splitTextToSize('• ' + clean(p), W - 2 * M - 6)).slice(0, 8);
@@ -156,38 +208,60 @@
                 y += h + 4;
             }
             y += 2;
-            tableHead();
 
-            // Productos: tabla con bordes, una fila por línea del pedido (N.º | Foto | Código | Cantidad)
+            // Productos: tabla(s) con bordes; en dos tablas, primero la de la izquierda y luego la de la derecha.
+            let col = 0, top = y;
+            tableHead(0);
             for (const l of lines) {
-                if (y + ROW > H - FOOT) { newPage(); tableHead(); }
+                if (y + ROW > H - FOOT) {
+                    if (two && col === 0) { col = 1; y = top; }
+                    else { newPage(); col = 0; top = y; }
+                    tableHead(col);
+                }
                 const img = l.photo ? imgs.get(l.photo.id) : null;
                 doc.setDrawColor(40, 40, 40); doc.setLineWidth(0.35);
-                let x = M;
-                COLS.forEach((w) => { doc.rect(x, y, w, ROW, 'S'); x += w; });
                 const mid = y + ROW / 2;
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GREY);
-                doc.text(String(l.n), xN + COLS[0] / 2, mid + 1.2, { align: 'center' });
-                const pw = COLS[1] - 3, ph = ROW - 3;
-                if (img) {
-                    const s = Math.min(pw / img.w, ph / img.h), iw = img.w * s, ih = img.h * s;
-                    doc.addImage(img.data, "JPEG", xPh + 1.5 + (pw - iw) / 2, y + 1.5 + (ph - ih) / 2, iw, ih, undefined, 'FAST');
-                } else {
-                    doc.setFillColor(246, 246, 246); doc.rect(xPh + 1.5, y + 1.5, pw, ph, "F");
-                    doc.setFontSize(7); doc.setTextColor(...GREY);
-                    doc.text(['Foto no', 'disponible'], xPh + COLS[1] / 2, mid - 0.4, { align: 'center' });
-                }
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...INK);
-                const cl = doc.splitTextToSize(clean(l.code), COLS[2] - 6).slice(0, 2);
-                doc.text(cl, xCode + COLS[2] / 2, mid + 1.5 - (cl.length - 1) * 2.5, { align: 'center' });
-                doc.setFontSize(l.qty == null ? 9 : 13); doc.setTextColor(...(l.qty == null ? WARN : INK));
-                doc.text(l.qty == null ? 'sin cantidad' : String(l.qty), xQty + COLS[3] / 2, mid + 1.7, { align: 'center' });
+                let x = M + col * (TW + GAP);
+                cols.forEach((c, i) => {
+                    const w = COLS[i], cx = x + w / 2;
+                    doc.rect(x, y, w, ROW, 'S');
+                    if (c.key === 'cN') {
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GREY);
+                        doc.text(String(l.n), cx, mid + 1.1, { align: 'center' });
+                    } else if (c.key === 'cPhoto') {
+                        const pw = w - 3, ph = ROW - 3;
+                        if (img) {
+                            const s = Math.min(pw / img.w, ph / img.h), iw = img.w * s, ih = img.h * s;
+                            doc.addImage(img.data, 'JPEG', x + 1.5 + (pw - iw) / 2, y + 1.5 + (ph - ih) / 2, iw, ih, undefined, 'FAST');
+                        } else {
+                            doc.setFillColor(246, 246, 246); doc.rect(x + 1.5, y + 1.5, pw, ph, 'F');
+                            doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...GREY);
+                            doc.text(['Foto no', 'disponible'], cx, mid - 0.4, { align: 'center' });
+                        }
+                    } else if (c.key === 'cCode') {
+                        doc.setFont('helvetica', 'bold'); doc.setFontSize(ROW > 10 ? 11 : 9.5); doc.setTextColor(...INK);
+                        const cl = doc.splitTextToSize(clean(l.code), w - 4).slice(0, ROW > 10 ? 2 : 1);
+                        doc.text(cl, cx, mid + 1.4 - (cl.length - 1) * 2.3, { align: 'center' });
+                    } else if (c.key === 'cDesc') {
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...INK);
+                        const dl = doc.splitTextToSize(clean(l.desc), w - 4).slice(0, ROW > 10 ? 3 : 1);
+                        doc.text(dl, x + 2, mid + 1 - (dl.length - 1) * 1.6);
+                    } else if (c.key === 'cQty') {
+                        doc.setFont('helvetica', 'bold'); doc.setFontSize(l.qty == null ? 7.5 : (ROW > 10 ? 12 : 10)); doc.setTextColor(...(l.qty == null ? WARN : INK));
+                        doc.text(l.qty == null ? 'sin cant.' : String(l.qty), cx, mid + 1.4, { align: 'center' });
+                    } else {
+                        const t = c.key === 'cPrice' ? l.price : l.total;
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...INK);
+                        doc.text(t ? clean(t) : '', x + w - 2, mid + 1.2, { align: 'right' });
+                    }
+                    x += w;
+                });
                 y += ROW;
             }
 
             // Pie en cada página
             const pages = doc.getNumberOfPages();
-            const footL = clean([order.number, order.client, order.date].filter(has).join(' · '));
+            const footL = clean([show.number && order.number, show.client && order.client, show.date && order.date].filter(has).join(' · '));
             for (let p = 1; p <= pages; p++) {
                 doc.setPage(p);
                 doc.setDrawColor(...C2); doc.setLineWidth(0.4); doc.line(M, H - 10, W - M, H - 10);
@@ -200,7 +274,7 @@
             pdfFile = new File([blob], fileName(), { type: 'application/pdf' });
             const noPhoto = lines.filter((l) => !l.photo || !imgs.get(l.photo.id)).length;
             msg(`✅ PDF listo: ${lines.length} referencia${lines.length === 1 ? '' : 's'}, ${pages} página${pages === 1 ? '' : 's'} · ${KP.mb(blob.size)}.`
-                + (noPhoto ? ` ${noPhoto} sin foto (salen con «Foto no disponible»).` : '')
+                + (show.cPhoto && noPhoto ? ` ${noPhoto} sin foto (salen con «Foto no disponible»).` : '')
                 + (failed ? ` ${failed} foto${failed === 1 ? '' : 's'} no bajó.` : ''));
             $('olShare').hidden = !KP.canShareFiles;
             $('olDown').hidden = false;
