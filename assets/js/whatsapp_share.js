@@ -130,7 +130,7 @@
                     const thumbUrl = f.thumbnailLink
                         ? f.thumbnailLink.replace(/=s\d+/, '=s300')
                         : `https://lh3.googleusercontent.com/d/${f.id}=s300`;
-                    const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200`;
+                    const fullUrl = `https://lh3.googleusercontent.com/d/${f.id}=s1200-rj`;
                     const driveUrl = f.webViewLink || `https://drive.google.com/file/d/${f.id}/view`;
                     return { id: f.id, url: fullUrl, thumbUrl, name: f.name, driveUrl };
                 });

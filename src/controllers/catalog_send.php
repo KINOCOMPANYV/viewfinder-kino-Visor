@@ -208,7 +208,7 @@ function catalogSendPhoto(PDO $db, string $fileId): void
 
     // Copia en disco: la segunda vez sale al instante y no depende de que lh3 responda a tiempo
     $cacheDir = BASE_DIR . '/storage/send_cache';
-    $cacheFile = $cacheDir . '/' . $fileId . '_800.img';
+    $cacheFile = $cacheDir . '/' . $fileId . '_800j.img';
     if (is_file($cacheFile) && filesize($cacheFile) > 0) {
         $body = (string) file_get_contents($cacheFile);
         $info = new finfo(FILEINFO_MIME_TYPE);

@@ -51,6 +51,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   a JavaScript en `/extractor`, lo más simple y escalable: sin servicio Python aparte, el PDF se lee en el dispositivo. La lista
   pasa al visor con un botón (no automático) y solo para buscar fotos; precio al PDF del catálogo: después, si se pide.
   La carpeta EXTRACTOR local queda igual.
+- **Auditoría 2026-11-12**: respaldo en la rama `respaldo-2026-11-12` y en `C:\Users\USAURIO\Respaldos` (zip + gitbundle).
+  El dueño aprobó: seguridad de descargas y login + fotos en JPEG (un cambio) y limpieza de lo que no se usa (otro cambio).
+  Búsqueda por foto parada: Jina sin saldo (14 de 5950 listas); recargar la cuenta lo hace el dueño.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -209,5 +212,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #55: Enviar catálogo: «📷 Leer lista de una foto» (Tesseract.js 6 en `assets/vendor/tesseract`, en el celular, sin CDN ni servidor; ~6 MB la primera vez).
 - #56: Enviar catálogo: un código que no existe tal cual se corrige con las confusiones típicas del lector de fotos (B↔8, O↔0, I↔1, S↔5…) si da un solo código; se muestra qué se corrigió.
 - #57: PDF: botón «Abrir foto» (activado por defecto) bajo cada foto con enlace oculto a la foto en Google Drive.
-- Rama `extractor-pdf`: «🧾 Extractor» de pedidos PDF en `/extractor` (pdf.js en el dispositivo, port de la app Flask) y
+- #58: «🧾 Extractor» de pedidos PDF en `/extractor` (pdf.js en el dispositivo, port de la app Flask) y
   «📷 Ver fotos en el visor» → Enviar catálogo. Probado con 5 recibos reales: total, artículos y unidades cuadran.
+- Rama `seguridad-y-fotos-jpeg` (auditoría 2026-11-12): `/api/download` solo baja archivos del índice no ocultos (antes, cualquier
+  archivo del Drive del dueño); login del admin con límite (10 fallos/15 min por IP) y cookie HttpOnly/Secure/SameSite;
+  fotos grandes (≥ 600 px) pedidas en JPEG a lh3 (`-rj`): un PNG de 826 KB pasa a 147 KB.

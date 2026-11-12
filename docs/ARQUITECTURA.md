@@ -30,7 +30,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/api/search` | `src/controllers/api_search.php` | Autocomplete JSON |
 | `/api/covers/batch` POST | inline en `index.php` | Portadas para SKUs sin `cover_image_url` (desde `drive_index`) |
 | `/api/media/{sku}` | inline en `index.php` | Archivos de un SKU para la galería (desde `drive_index`) |
-| `/api/download/{fileId}` | inline en `index.php` | Proxy de descarga autenticado |
+| `/api/download/{fileId}` | inline en `index.php` | Proxy de descarga autenticado. Solo archivos de `drive_index` no ocultos (el admin, todo): el token tiene acceso a todo el Drive del dueño |
 | `/api/cron/sync-covers?token=` | `admin_sync_covers.php` | **Actualiza el índice de Drive** y asigna portada + álbum |
 | `/api/cron/precache-drive?token=` | `admin_sync_covers.php` | Nombre viejo del cron = `sync-covers` (compatibilidad) |
 | `/api/webhook/sheets` POST | `webhook_sheets.php` | Sync incremental desde Apps Script (misma regla que el sync completo) |
@@ -86,6 +86,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
    llega por JS desde `/api/media/{sku}` (índice local; `Cache-Control` 60 s).
 
 Tamaños de lh3: `=s120` chips, `=s150/200` miniaturas, `=s400` tarjetas, `=s600/800` vista principal, `=s1200` compartir.
+Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-7 veces más pesado). `lh3Url()` y
+`coverUrlAtSize()` lo ponen solos (`lh3JpegSuffix()`); en JS va escrito (`=s600-rj`, `=s1200-rj`, lightbox `=s1600-rj`).
 
 ## Álbumes (marcas)
 - En la interfaz ya no hay "álbumes": se muestran como **carpetas** y se navegan como en Drive. La tabla `albums` sigue

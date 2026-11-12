@@ -119,7 +119,7 @@ async function previewVariant(thumbEl, skuEnc, skuLabel) {
 
     // Chip con portada REAL propia: usarla directo
     if (thumbImg && !isFallback) {
-        setMain(thumbImg.src.replace(/=s\d+/, '=s600'));
+        setMain(thumbImg.src.replace(/=s\d+(-rj)?/, '=s600-rj'));
         return;
     }
 
@@ -133,8 +133,8 @@ async function previewVariant(thumbEl, skuEnc, skuLabel) {
         const img = (data.files || []).find(f => (f.mimeType || '').startsWith('image/'));
         if (img) {
             const big = img.thumbnailLink
-                ? img.thumbnailLink.replace(/=s\d+/, '=s600')
-                : `https://lh3.googleusercontent.com/d/${img.id}=s600`;
+                ? img.thumbnailLink.replace(/=s\d+(-rj)?/, '=s600-rj')
+                : `https://lh3.googleusercontent.com/d/${img.id}=s600-rj`;
             setMain(big);
             // Actualizar el chip con su foto real
             const small = img.thumbnailLink
@@ -149,10 +149,10 @@ async function previewVariant(thumbEl, skuEnc, skuLabel) {
             thumbEl.dataset.fallback = '0';
         } else if (thumbImg) {
             // La variante no tiene fotos propias en Drive: mostrar el fallback
-            setMain(thumbImg.src.replace(/=s\d+/, '=s600'));
+            setMain(thumbImg.src.replace(/=s\d+(-rj)?/, '=s600-rj'));
         }
     } catch (e) {
-        if (thumbImg) setMain(thumbImg.src.replace(/=s\d+/, '=s600'));
+        if (thumbImg) setMain(thumbImg.src.replace(/=s\d+(-rj)?/, '=s600-rj'));
     }
     thumbEl.style.opacity = '';
 }
