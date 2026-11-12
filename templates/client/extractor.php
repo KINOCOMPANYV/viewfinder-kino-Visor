@@ -114,8 +114,9 @@
                     <button type="button" id="exToVisor" class="btn btn-primary">📷 Ver fotos en el visor</button>
                     <button type="button" id="exToOrder" class="btn btn-secondary">🧾 Lista pedido</button>
                 </div>
-                <p class="ex-help" style="margin:0.5rem 0 0">«Lista pedido» arma un PDF con cliente, fecha, total de ítems,
-                    valor total y cada referencia con su foto y su cantidad, tal como vienen en el PDF.</p>
+                <p class="ex-help" style="margin:0.5rem 0 0">Arma un PDF con los datos del cliente, el total y cada referencia con su
+                    foto y su cantidad, tal como vienen en el PDF: «🧾 Lista pedido» si es un recibo (pedido) o «🚚 Remisión» si
+                    es una factura en tabla.</p>
             </section>
 
             <section class="ex-card">

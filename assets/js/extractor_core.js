@@ -265,8 +265,18 @@ export function parseTable(lines) {
     return { items, order, warnings, map };
 }
 
+const HEAD_LABELS = 'CLIENTE|DIRECCI[ÓO]N|FECHA|N\\.?\\s?I\\.?\\s?T\\.?|CIUDAD|VENCE|TEL[ÉE]FONO|VENDEDOR';
+/** Valor de una etiqueta del encabezado («CIUDAD: BOGOTÁ …») hasta la siguiente etiqueta; '' si no está. */
+function headValue(texts, label) {
+    const re = new RegExp('(?:^|\\s)(?:' + label + ')\\s*:\\s*(.*?)(?=\\s+(?:' + HEAD_LABELS + ')\\s*:|$)', 'i');
+    for (const t of texts) { const m = t.match(re); if (m && m[1].trim()) return m[1].trim(); }
+    return '';
+}
+
 function tableOrderData(texts) {
-    const o = { number: '', client: '', date: '', total: null, totalText: '', itemsPdf: null, unitsPdf: null };
+    const o = { number: '', client: '', date: '', total: null, totalText: '', itemsPdf: null, unitsPdf: null,
+        nit: headValue(texts, 'N\\.?\\s?I\\.?\\s?T\\.?'), address: headValue(texts, 'DIRECCI[ÓO]N'), city: headValue(texts, 'CIUDAD'),
+        phone: headValue(texts, 'TEL[ÉE]FONO'), seller: headValue(texts, 'VENDEDOR') };
     for (const t of texts) {
         const m = t.match(/\b(?:COTIZACI[ÓO]N|FACTURA|PEDIDO|REMISI[ÓO]N)\s*(?:No\.?|N[º°]\.?|#)?\s*:?\s*(\d[\w-]*)/i);
         if (m) { o.number = '#' + m[1]; break; }

@@ -26,6 +26,15 @@
         .ol-order > * > span { color:#a0a0b0; display:block; font-size:0.78rem; }
         .ol-miss { color:#ff9f43; }
         .ol-field { cursor:pointer; }
+        .ol-type { display:flex; flex-wrap:wrap; align-items:center; gap:0.4rem 1.2rem; margin:0 0 1rem; padding:0.7rem 1rem; border-radius:10px;
+            border:1px solid #c9a84c55; background:#c9a84c14; font-size:0.92rem; }
+        .ol-type label { cursor:pointer; }
+        .ol-type input { accent-color:#c9a84c; vertical-align:middle; }
+        .ol-type small { flex-basis:100%; color:#a0a0b0; }
+        body.ol-remision .ol-type { border-color:#6ea8dc66; background:#6ea8dc14; }
+        body.ol-remision .ol-type input, body.ol-remision .ol-field input, body.ol-remision .ol-opts input { accent-color:#6ea8dc; }
+        body.ol-remision #olTitle { color:#8cc0ee; }
+        body.ol-remision #olMake { background:#1f3a5f; border-color:#6ea8dc; color:#fff; }
         .ol-field.off { opacity:0.45; text-decoration:line-through; }
         .ol-field input, .ol-opts input { accent-color:#c9a84c; vertical-align:middle; }
         .ol-opts { display:flex; flex-wrap:wrap; gap:0.4rem 1.2rem; margin-top:0.8rem; font-size:0.85rem; color:#c8c8d0; }
@@ -62,7 +71,7 @@
 
     <main class="container ol-main" style="padding-top:2rem; padding-bottom:9rem; max-width:900px;">
         <?= breadcrumbs([['Extractor', '/extractor'], ['Lista pedido', null]]) ?>
-        <h1 style="font-size:1.5rem; margin-bottom:1rem;">🧾 Lista pedido</h1>
+        <h1 id="olTitle" style="font-size:1.5rem; margin-bottom:1rem;">🧾 Lista pedido</h1>
 
         <div class="ol-card" id="olEmpty" hidden>
             <p>No hay un pedido para mostrar.</p>
@@ -70,6 +79,7 @@
         </div>
 
         <div id="olBody" hidden>
+            <div class="ol-type" id="olType"></div>
             <div class="ol-warn" id="olWarn" hidden></div>
             <section class="ol-card">
                 <h2>Datos del pedido <small class="ol-help">(tal como vienen en el PDF · marca lo que sale en el PDF)</small></h2>
