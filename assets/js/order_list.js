@@ -106,9 +106,9 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
             const W = 210, H = 297, M = 12, BAND = 16, ROW = 19, FOOT = 13, TH = 8.5;
-            // Columnas como la proforma de muestra: foto grande, código y cantidad, con bordes
-            const COLS = [12, 30, W - 2 * M - 12 - 30 - 34, 34];
-            const xN = M, xPh = xN + COLS[0], xCode = xPh + COLS[1], xQty = xCode + COLS[2];
+            // Dos tablas lado a lado, cada una con columnas como la proforma de muestra: N.º | Foto | Código | Cantidad
+            const GAP = 4, TW = (W - 2 * M - GAP) / 2;
+            const COLS = [8, 24, TW - 8 - 24 - 21, 21];
             const clean = KP.clean;
             const val = (v) => has(v) ? clean(v) : null;
 
@@ -120,13 +120,14 @@
                 doc.text('Lista de pedido', M, 10.5);
                 if (has(order.number)) { doc.setFontSize(11); doc.setTextColor(...C2); doc.text(clean(order.number), W - M, 10.5, { align: 'right' }); }
             };
-            const tableHead = () => {
+            const tableHead = (c) => {
+                const x0 = M + c * (TW + GAP);
                 doc.setFillColor(...C1); doc.setDrawColor(40, 40, 40); doc.setLineWidth(0.35);
-                let x = M;
+                let x = x0;
                 COLS.forEach((w) => { doc.rect(x, y, w, TH, 'FD'); x += w; });
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(255, 255, 255);
-                [['N.º', xN, 0], ['Foto', xPh, 1], ['Código', xCode, 2], ['Cantidad', xQty, 3]]
-                    .forEach(([t, cx, i]) => doc.text(t, cx + COLS[i] / 2, y + 5.6, { align: 'center' }));
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255);
+                x = x0;
+                ['N.º', 'Foto', 'Código', 'Cantidad'].forEach((t, i) => { doc.text(t, x + COLS[i] / 2, y + 5.6, { align: 'center' }); x += COLS[i]; });
                 y += TH;
             };
             const newPage = () => { if (page) doc.addPage(); page++; band(); y = BAND + 7; };
@@ -156,32 +157,40 @@
                 y += h + 4;
             }
             y += 2;
-            tableHead();
 
-            // Productos: tabla con bordes, una fila por línea del pedido (N.º | Foto | Código | Cantidad)
+            // Productos en dos tablas lado a lado (primero la de la izquierda, luego la de la derecha), así caben ~26 por
+            // página. Cada fila: N.º | Foto | Código | Cantidad, con bordes.
+            let col = 0, top = y;
+            tableHead(0);
             for (const l of lines) {
-                if (y + ROW > H - FOOT) { newPage(); tableHead(); }
+                if (y + ROW > H - FOOT) {
+                    if (col === 0) { col = 1; y = top; }
+                    else { newPage(); col = 0; top = y; }
+                    tableHead(col);
+                }
+                const x0 = M + col * (TW + GAP);
+                const xN = x0, xPh = xN + COLS[0], xCode = xPh + COLS[1], xQty = xCode + COLS[2];
                 const img = l.photo ? imgs.get(l.photo.id) : null;
                 doc.setDrawColor(40, 40, 40); doc.setLineWidth(0.35);
-                let x = M;
+                let x = x0;
                 COLS.forEach((w) => { doc.rect(x, y, w, ROW, 'S'); x += w; });
                 const mid = y + ROW / 2;
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GREY);
-                doc.text(String(l.n), xN + COLS[0] / 2, mid + 1.2, { align: 'center' });
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GREY);
+                doc.text(String(l.n), xN + COLS[0] / 2, mid + 1.1, { align: 'center' });
                 const pw = COLS[1] - 3, ph = ROW - 3;
                 if (img) {
                     const s = Math.min(pw / img.w, ph / img.h), iw = img.w * s, ih = img.h * s;
-                    doc.addImage(img.data, "JPEG", xPh + 1.5 + (pw - iw) / 2, y + 1.5 + (ph - ih) / 2, iw, ih, undefined, 'FAST');
+                    doc.addImage(img.data, 'JPEG', xPh + 1.5 + (pw - iw) / 2, y + 1.5 + (ph - ih) / 2, iw, ih, undefined, 'FAST');
                 } else {
-                    doc.setFillColor(246, 246, 246); doc.rect(xPh + 1.5, y + 1.5, pw, ph, "F");
-                    doc.setFontSize(7); doc.setTextColor(...GREY);
+                    doc.setFillColor(246, 246, 246); doc.rect(xPh + 1.5, y + 1.5, pw, ph, 'F');
+                    doc.setFontSize(6.5); doc.setTextColor(...GREY);
                     doc.text(['Foto no', 'disponible'], xPh + COLS[1] / 2, mid - 0.4, { align: 'center' });
                 }
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...INK);
-                const cl = doc.splitTextToSize(clean(l.code), COLS[2] - 6).slice(0, 2);
-                doc.text(cl, xCode + COLS[2] / 2, mid + 1.5 - (cl.length - 1) * 2.5, { align: 'center' });
-                doc.setFontSize(l.qty == null ? 9 : 13); doc.setTextColor(...(l.qty == null ? WARN : INK));
-                doc.text(l.qty == null ? 'sin cantidad' : String(l.qty), xQty + COLS[3] / 2, mid + 1.7, { align: 'center' });
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...INK);
+                const cl = doc.splitTextToSize(clean(l.code), COLS[2] - 4).slice(0, 2);
+                doc.text(cl, xCode + COLS[2] / 2, mid + 1.4 - (cl.length - 1) * 2.3, { align: 'center' });
+                doc.setFontSize(l.qty == null ? 7.5 : 12); doc.setTextColor(...(l.qty == null ? WARN : INK));
+                doc.text(l.qty == null ? 'sin cant.' : String(l.qty), xQty + COLS[3] / 2, mid + 1.6, { align: 'center' });
                 y += ROW;
             }
 
