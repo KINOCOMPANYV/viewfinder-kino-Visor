@@ -83,7 +83,9 @@ function render() {
         rv.className = 'ex-review ' + (warnings.length ? 'bad' : 'ok');
         rv.innerHTML = warnings.length
             ? '<strong>Revisión: ' + warnings.length + ' punto' + (warnings.length > 1 ? 's' : '') + ' a revisar</strong><ul>' + warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>'
-            : '<strong>Revisión: ✓ todo cuadra</strong> con el Total, los artículos y las unidades del PDF.';
+            : order.format === 'tabla'
+                ? '<strong>Revisión: ✓ todo cuadra</strong>: cada línea (cantidad × precio) y la suma con el TOTAL del PDF. Este formato no indica cuántas referencias ni unidades trae.'
+                : '<strong>Revisión: ✓ todo cuadra</strong> con el Total, los artículos y las unidades del PDF.';
     } else if (warnings.length) {
         rv.hidden = false; rv.className = 'ex-review bad';
         rv.innerHTML = '<strong>Revisión</strong><ul>' + warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>';
@@ -96,6 +98,7 @@ function render() {
     const st = core.priceStyle(order.totalText || (result.items.find((i) => i.priceText) || {}).priceText || '$0');
     const cell = (label, val) => '<div><span>' + esc(label) + '</span>' + (val === '' || val == null ? '—' : val) + '</div>';
     $('exOrder').innerHTML = [
+        cell('Formato', order.format === 'tabla' ? 'Cotización en tabla' : 'Recibo'),
         cell('N.º de pedido', esc(order.number)),
         cell('Cliente', esc(order.client)),
         cell('Fecha', esc(order.date)),

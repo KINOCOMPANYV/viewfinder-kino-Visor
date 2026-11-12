@@ -58,6 +58,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   dueño). Los datos del pedido salen del PDF de origen, nunca recalculados con las fotos ni con la fecha de hoy; lo que no
   se pudo leer se avisa («No se pudo leer del PDF»), no se inventa. Foto por coincidencia exacta del código (con o sin «M»),
   sin la corrección del lector de fotos, para que no se crucen referencias.
+- **Extractor: dos formatos de PDF** (2026-11-12): además del recibo («5x 674B-1 … $»), lee la cotización en tabla de
+  KINO MEDELLIN (CODIGO · PRODUCTO · CANT · UNIDAD · DESC · PRECIO · TOTAL, encabezado repetido por página, «TOTAL : $» solo
+  en la última). Se detecta solo. Ese formato no dice cuántas referencias ni unidades trae: quedan «sin dato del PDF», no se
+  rellenan con lo contado. Se revisa cada línea (cantidad × precio = TOTAL de la línea) y la suma contra el TOTAL.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -220,6 +224,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - #57: PDF: botón «Abrir foto» (activado por defecto) bajo cada foto con enlace oculto a la foto en Google Drive.
 - #58: «🧾 Extractor» de pedidos PDF en `/extractor` (pdf.js en el dispositivo, port de la app Flask) y
   «📷 Ver fotos en el visor» → Enviar catálogo. Probado con 5 recibos reales: total, artículos y unidades cuadran.
+- Rama `claude/project-thread-joh3t8`: el Extractor también lee la cotización en tabla (COTIZACION No …), detectada sola;
+  probado con la 00106511 (CURREN COLOMBIA): 195 líneas, 310 unidades, $15,174,000 cuadra con el TOTAL.
 - Rama `seguridad-y-fotos-jpeg` (auditoría 2026-11-12): `/api/download` solo baja archivos del índice no ocultos (antes, cualquier
   archivo del Drive del dueño); login del admin con límite (10 fallos/15 min por IP) y cookie HttpOnly/Secure/SameSite;
   fotos grandes (≥ 600 px) pedidas en JPEG a lh3 (`-rj`): un PNG de 826 KB pasa a 147 KB.
