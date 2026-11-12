@@ -2,7 +2,7 @@
  * Marcar varias fotos en el catálogo (inicio, resultados de búsqueda/filtro y carpetas) y mandarlas por WhatsApp.
  * Mismo mecanismo que "Enviar catálogo" (/enviar-catalogo): fotos livianas de /enviar-catalogo/foto/{id}
  * que bajan en segundo plano (3 intentos), envío por tandas de 10 con el menú Compartir del celular
- * (solo imágenes, sin texto) y "💾 Guardar" para bajarlas al celular o al computador.
+ * (solo imágenes, sin texto) y "⬇️ Descargar" para bajarlas al celular o al computador.
  *
  * Marcado de cada tarjeta (.parent-card):
  *   <label class="search-check-footer"><input type="checkbox" class="search-card-check"
@@ -168,7 +168,7 @@
             + '<a class="wab-view" href="/mi-seleccion" title="Revisar, ordenar y quitar"><span class="wa-toolbar-count wab-count">0</span> 👁 Ver</a>'
             + '<button type="button" class="wab-clear" title="Desmarcar todo">✕</button>'
             + '<a class="wab-pdf" href="/catalogo-pdf" title="Crear un catálogo en PDF con estas fotos, su código y tus precios">📄 PDF</a>'
-            + '<button type="button" class="wab-save">💾 Guardar</button>'
+            + '<button type="button" class="wab-save" title="Bajar las fotos marcadas al celular o al computador">⬇️ Descargar</button>'
             + '<button type="button" class="wa-toolbar-send wab-send">📲 Enviar</button>'
             + '</div><div class="wab-msg"></div>';
         document.body.appendChild(bar);
@@ -257,7 +257,7 @@
     // 📲 Tanda de hasta 10 fotos al menú Compartir (WhatsApp). Solo las imágenes, sin texto.
     async function sendTanda() {
         if (!canShareFiles) {
-            msg('En el computador WhatsApp no recibe varias fotos desde la página: usa "💾 Guardar" y arrástralas al chat de WhatsApp Web.');
+            msg('En el computador WhatsApp no recibe varias fotos desde la página: usa "⬇️ Descargar" y arrástralas al chat de WhatsApp Web.');
             return;
         }
         if (!pending().length) { sel.forEach((it) => { it.wa = false; }); tandaNum = 0; msg(''); render(); return; }
@@ -275,20 +275,20 @@
         } catch (e) { shareError(e); }
     }
 
-    // 💾 Guardar: Android/PC = descargas; iPhone = Compartir → "Guardar imágenes" (de 10 en 10)
+    // ⬇️ Descargar: Android/PC = descargas; iPhone = Compartir → "Guardar imágenes" (de 10 en 10)
     let savePart = 0;
     async function save() {
         const items = Array.from(sel.values());
-        if (!items.length) return;
+        if (!items.length || el.save.disabled) return; // ya está descargando
         const btn = el.save;
         if (isIOS && canShareFiles) {
             const part = items.slice(savePart * TANDA, savePart * TANDA + TANDA);
-            if (!part.every((x) => loaded.has(x.id))) { msg('Las fotos siguen bajando: toca 💾 otra vez en un momento.'); preload(); return; }
+            if (!part.every((x) => loaded.has(x.id))) { msg('Las fotos siguen bajando: toca ⬇️ otra vez en un momento.'); preload(); return; }
             try {
                 await navigator.share({ files: await Promise.all(part.map(toFile)) });
                 const left = items.length - (savePart + 1) * TANDA;
                 savePart = left > 0 ? savePart + 1 : 0;
-                msg(left > 0 ? 'Elige "Guardar imágenes". Faltan ' + left + ': toca 💾 otra vez.' : '✅ Listo. En WhatsApp: 📎 → Galería y selecciónalas.');
+                msg(left > 0 ? 'Elige "Guardar imágenes". Faltan ' + left + ': toca ⬇️ otra vez.' : '✅ Listo. En WhatsApp: 📎 → Galería y selecciónalas.');
             } catch (e) { shareError(e); }
             return;
         }
@@ -296,7 +296,7 @@
         let ok = 0;
         const bad = [];
         for (let i = 0; i < items.length; i++) {
-            btn.textContent = `💾 ${i + 1}/${items.length}…`;
+            btn.textContent = `⬇️ ${i + 1}/${items.length}…`;
             try {
                 let b = await getBlob(items[i].id);
                 if (labelMode === 'code') b = await withCode(b, items[i].sku);
@@ -309,8 +309,8 @@
                 await new Promise((r) => setTimeout(r, 300));
             } catch (e) { bad.push(items[i].sku); }
         }
-        btn.disabled = false; btn.textContent = '💾 Guardar';
-        msg((bad.length ? '⚠️ No se pudo bajar: ' + bad.join(', ') + '. ' : '') + `✅ ${ok} guardada${ok === 1 ? '' : 's'}. En WhatsApp: 📎 → Galería (álbum Download).`);
+        btn.disabled = false; btn.textContent = '⬇️ Descargar';
+        msg((bad.length ? '⚠️ No se pudo bajar: ' + bad.join(', ') + '. ' : '') + `✅ ${ok} descargada${ok === 1 ? '' : 's'}. En WhatsApp: 📎 → Galería (álbum Download).`);
     }
 
     // Un solo manejador para todas las casillas (también las que llegan por AJAX)
@@ -332,7 +332,7 @@
     }
     async function resendLast() {
         if (!last || !last.ids.length) return;
-        if (!canShareFiles) { msg('En el computador usa "💾 Guardar" y arrastra las fotos a WhatsApp Web.'); return; }
+        if (!canShareFiles) { msg('En el computador usa "⬇️ Descargar" y arrastra las fotos a WhatsApp Web.'); return; }
         const its = last.ids.map((id) => sel.get(id) || { id, sku: id });
         if (!its.every((x) => loaded.has(x.id))) {
             msg('Preparando la tanda…');
@@ -349,6 +349,7 @@
         } catch (e) { shareError(e); }
     }
     window.KinoWaBatch = {
+        download: () => save(), // mismo ⬇️ Descargar de la barra (Mi selección lo usa arriba)
         sync: syncChecks,
         items: () => Array.from(sel.values()).map((it) => Object.assign({ status: statusOf(it.id) }, it)),
         remove(id) { sel.delete(id); syncChecks(); },

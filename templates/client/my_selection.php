@@ -40,13 +40,14 @@
                 <label><input type="radio" name="msLabel" value="code"> Foto con su código abajo</label>
             </div>
             <div class="ms-look-prev"><img id="msPrev" alt="Vista previa"><span id="msPrevMsg">Preparando vista previa…</span></div>
-            <small>Se aplica al 💾 Guardar y al 📲 Enviar por tandas. Se arma en este celular.</small>
+            <small>Se aplica al ⬇️ Descargar y al 📲 Enviar por tandas. Se arma en este celular.</small>
         </section>
 
         <div class="ms-last" id="msLast" hidden></div>
 
         <div class="ms-tools" id="msTools" hidden>
-            <a href="/catalogo-pdf" class="btn btn-sm btn-primary" id="msPdf">📄 Crear catálogo PDF</a>
+            <button type="button" class="btn btn-sm btn-primary" id="msDownload">⬇️ Descargar todas</button>
+            <a href="/catalogo-pdf" class="btn btn-sm btn-secondary" id="msPdf">📄 Crear catálogo PDF</a>
             <button type="button" class="btn btn-sm btn-secondary" id="msOne">Dejar 1 foto por código</button>
             <button type="button" class="btn btn-sm btn-secondary" id="msEmpty">Vaciar</button>
         </div>

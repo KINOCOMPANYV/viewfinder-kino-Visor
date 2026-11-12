@@ -117,7 +117,7 @@
         $('csSummary').innerHTML = `<strong>${items.length}</strong> referencias · <strong>${tiles.length}</strong> fotos · `
             + `<strong style="color:#25D366">${sel}</strong> marcadas`;
         $('csSave').disabled = !sel;
-        $('csSave').textContent = sel ? `💾 Guardar ${sel} en el celular` : '💾 Guardar en el celular';
+        $('csSave').textContent = sel ? `⬇️ Descargar ${sel} foto${sel === 1 ? '' : 's'}` : '⬇️ Descargar fotos';
         preload();
         renderBatchBtn();
     }
@@ -222,7 +222,7 @@
     // 📲 Enviar por tandas: Compartir del celular con las fotos ya bajadas (hasta 10 por toque)
     $('csBatch').addEventListener('click', async () => {
         if (!canShareFiles) {
-            msg('En el computador no se pueden pasar varias fotos directo a WhatsApp: usa "💾 Guardar" y arrástralas juntas al chat de WhatsApp Web.');
+            msg('En el computador no se pueden pasar varias fotos directo a WhatsApp: usa "⬇️ Descargar fotos" y arrástralas juntas al chat de WhatsApp Web.');
             return;
         }
         if (!pending().length) { // todo enviado: empezar de nuevo
@@ -243,7 +243,7 @@
         } catch (e) { shareError(e, 'el botón verde'); }
     });
 
-    // 💾 Guardar en el celular: Android/PC = descargas (aparecen en la galería, álbum "Download");
+    // ⬇️ Descargar fotos: Android/PC = descargas (aparecen en la galería, álbum "Download");
     // iPhone = menú Compartir → "Guardar imágenes" (va a Fotos).
     $('csSave').addEventListener('click', async () => {
         const sel = selected();
@@ -267,7 +267,7 @@
         let ok = 0;
         const bad = [];
         for (let i = 0; i < sel.length; i++) {
-            btn.textContent = `💾 Guardando ${i + 1}/${sel.length}…`;
+            btn.textContent = `⬇️ Descargando ${i + 1}/${sel.length}…`;
             try {
                 const blob = await getBlob(sel[i].photo.id);
                 const a = document.createElement('a');
@@ -283,7 +283,7 @@
         btn.disabled = false;
         refresh();
         msg((bad.length ? `⚠️ No se pudo bajar: ${bad.map(skuOf).join(', ')}. ` : '')
-            + `✅ ${ok} de ${sel.length} fotos guardadas. Si el navegador pregunta, permite "descargar varios archivos". `
+            + `✅ ${ok} de ${sel.length} fotos descargadas. Si el navegador pregunta, permite "descargar varios archivos". `
             + 'Ahora en WhatsApp: 📎 → Galería (álbum Download) y selecciónalas todas.');
     });
 
@@ -338,7 +338,7 @@
             if (nf.length) parts.push('⚠️ No están en el catálogo: ' + nf.join(', '));
             $('csNotFound').hidden = !parts.length;
             $('csNotFound').textContent = parts.join(' ');
-            msg(canShareFiles ? '' : 'En el computador: "💾 Guardar" baja las fotos marcadas; arrástralas juntas al chat de WhatsApp Web. El 📲 de cada foto la copia.');
+            msg(canShareFiles ? '' : 'En el computador: "⬇️ Descargar fotos" baja las fotos marcadas; arrástralas juntas al chat de WhatsApp Web. El 📲 de cada foto la copia.');
             $('csResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (e) {
             alert('No se pudo generar la lista: ' + e.message);
@@ -369,7 +369,7 @@
 
     async function copyPhoto(t) {
         if (!navigator.clipboard || !window.ClipboardItem) {
-            msg('Este navegador no permite copiar imágenes. Usa "💾 Guardar".');
+            msg('Este navegador no permite copiar imágenes. Usa "⬇️ Descargar fotos".');
             return;
         }
         try {

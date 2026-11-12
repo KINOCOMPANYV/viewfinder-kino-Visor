@@ -63,6 +63,8 @@
             .cs-bar .cs-actions .btn { flex:1 1 100%; }
             .cs-row { flex-direction:column; align-items:stretch; }
             .cs-row input[type=tel] { width:100%; }
+            /* el menú fijo de abajo (mobile_nav) tapaba la barra: va encima de él */
+            body:has(.mnav) .cs-bar { bottom:calc(64px + env(safe-area-inset-bottom, 0px)); }
         }
     </style>
 </head>
@@ -104,7 +106,7 @@
             <h2>2. Elige las fotos</h2>
             <div class="cs-summary" id="csSummary"></div>
             <p class="help">Toca una foto para marcarla o desmarcarla (verde = va). Luego, abajo:
-                <strong>💾 Guardar en el celular</strong> y las mandas desde WhatsApp (📎 → Galería, hasta 100 juntas), o
+                <strong>⬇️ Descargar fotos</strong> (quedan en la galería del celular o en Descargas del computador) y las mandas desde WhatsApp (📎 → Galería, hasta 100 juntas), o
                 <strong>📲 Enviar por tandas</strong> directo a WhatsApp, 10 por toque (solo las fotos, sin texto). El 📲 de cada foto la manda sola con su código.</p>
             <div class="cs-bulk">
                 <button type="button" id="csAll" class="btn btn-secondary btn-sm">Marcar todas</button>
@@ -118,7 +120,7 @@
 
             <div class="cs-bar" id="csBar">
                 <div class="cs-actions">
-                    <button type="button" id="csSave" class="btn btn-secondary cs-big">💾 Guardar en el celular</button>
+                    <button type="button" id="csSave" class="btn btn-primary cs-big">⬇️ Descargar fotos</button>
                     <button type="button" id="csBatch" class="btn btn-wa cs-big">📲 Enviar por tandas</button>
                 </div>
                 <div class="cs-msg" id="csProgress"></div>
