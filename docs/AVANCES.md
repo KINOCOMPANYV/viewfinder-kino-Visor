@@ -217,3 +217,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `seguridad-y-fotos-jpeg` (auditoría 2026-11-12): `/api/download` solo baja archivos del índice no ocultos (antes, cualquier
   archivo del Drive del dueño); login del admin con límite (10 fallos/15 min por IP) y cookie HttpOnly/Secure/SameSite;
   fotos grandes (≥ 600 px) pedidas en JPEG a lh3 (`-rj`): un PNG de 826 KB pasa a 147 KB.
+- Rama `limpieza-codigo-viejo` (auditoría 2026-11-12): fuera Composer y phpspreadsheet (nada los usaba), extensión zip y la
+  caché de ZIP del admin, `plantilla_catalogo.csv`, `desktop.ini`, `scripts/populate_parents.php` y las notas viejas.

@@ -2,13 +2,11 @@ FROM php:8.2-apache
 
 # Instalar extensiones necesarias
 RUN apt-get update && apt-get install -y \
-    libzip-dev \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
-    unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql zip gd opcache \
+    && docker-php-ext-install pdo pdo_mysql gd opcache \
     && rm -rf /var/lib/apt/lists/*
 
 # OPcache: el PHP se compila una vez por arranque del contenedor (el código no
@@ -32,17 +30,11 @@ RUN echo "upload_max_filesize = 500M" >> /usr/local/etc/php/conf.d/uploads.ini \
 # Habilitar mod_rewrite
 RUN a2dismod mpm_event && a2enmod mpm_prefork && a2enmod rewrite headers expires
 
-# Instalar Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
 # Copiar aplicación
 COPY . /var/www/html/
 
-# Instalar dependencias PHP
-RUN cd /var/www/html && composer install --no-dev --optimize-autoloader
-
 # Permisos
-RUN mkdir -p /var/www/html/storage/zip_cache /var/www/html/storage/ratelimit \
+RUN mkdir -p /var/www/html/storage/ratelimit \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html \
     && chmod -R 777 /var/www/html/storage

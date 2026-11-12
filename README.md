@@ -5,24 +5,20 @@ Centro de contenido para distribuidores. Busca por SKU, consulta fichas de produ
 ## Requisitos
 
 - PHP 8.1+
-- MySQL 8.0
-- Composer
+- MySQL 8.0 (sin Composer: no hay dependencias PHP)
 - Docker (para Railway)
 
 ## Desarrollo local
 
 ```bash
-# 1. Instalar dependencias
-composer install
-
-# 2. Copiar variables de entorno
+# 1. Copiar variables de entorno
 cp .env.example .env
 # Editar .env con tus credenciales de MySQL local
 
-# 3. Ejecutar migraciones
+# 2. Ejecutar migraciones
 php migrate.php
 
-# 4. Iniciar servidor
+# 3. Iniciar servidor
 php -S localhost:8080
 ```
 
