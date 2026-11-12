@@ -86,6 +86,7 @@
             <textarea id="csText" class="cs-text" placeholder="Ej.: Hola, me mandas fotos de M8363-3, X6071 y 1416-1 por favor"></textarea>
             <div class="cs-ocr">
                 <label class="btn btn-secondary btn-sm cs-ocr-btn" title="Toma o sube la foto de una lista: el texto se lee en este celular y se pone en la caja">📷 Leer lista de una foto<input type="file" id="csOcrFile" accept="image/*"></label>
+                <a href="/extractor" class="btn btn-secondary btn-sm cs-ocr-btn" title="Sube un recibo o pedido en PDF: saca códigos, cantidades y precios">🧾 Extractor (pedido en PDF)</a>
                 <span class="cs-ocr-msg" id="csOcrMsg" aria-live="polite"></span>
             </div>
             <div class="cs-options">

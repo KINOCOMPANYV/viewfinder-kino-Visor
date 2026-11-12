@@ -417,4 +417,14 @@
         const url = (phone ? 'https://wa.me/' + phone : 'https://wa.me/') + '?text=' + encodeURIComponent(listTextOf(selected()));
         window.open(url, '_blank', 'noopener');
     });
+
+    // Llegada desde el Extractor de pedidos PDF: trae los códigos en sessionStorage y genera la lista sola.
+    try {
+        const fromEx = sessionStorage.getItem('kinoCsText');
+        if (fromEx) {
+            sessionStorage.removeItem('kinoCsText');
+            $('csText').value = fromEx;
+            $('csGenerate').click();
+        }
+    } catch (e) { /* sin sessionStorage: se pega a mano */ }
 })();
