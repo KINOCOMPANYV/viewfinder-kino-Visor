@@ -112,7 +112,10 @@
                     y puedes marcar, crear el PDF, guardarlas o mandarlas por WhatsApp.</p>
                 <div class="ex-send">
                     <button type="button" id="exToVisor" class="btn btn-primary">📷 Ver fotos en el visor</button>
+                    <button type="button" id="exToOrder" class="btn btn-secondary">🧾 Lista pedido</button>
                 </div>
+                <p class="ex-help" style="margin:0.5rem 0 0">«Lista pedido» arma un PDF con cliente, fecha, total de ítems,
+                    valor total y cada referencia con su foto y su cantidad, tal como vienen en el PDF.</p>
             </section>
 
             <section class="ex-card">

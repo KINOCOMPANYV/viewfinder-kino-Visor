@@ -108,6 +108,7 @@
     </div>
 
     <script src="/assets/vendor/jspdf-4.2.1.umd.min.js" defer></script>
+    <script src="/assets/js/pdf_shared.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="/assets/js/catalog_pdf.js?v=<?= APP_VERSION ?>" defer></script>
     <?php $mnavActive = 'enviar'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>

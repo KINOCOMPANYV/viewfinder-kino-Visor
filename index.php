@@ -252,6 +252,11 @@ if ($uri === '/extractor') {
     exit;
 }
 
+if ($uri === '/lista-pedido') {
+    include __DIR__ . '/templates/client/order_list.php';
+    exit;
+}
+
 if ($uri === '/enviar-catalogo/extraer' && $method === 'POST') {
     checkRateLimit(30);
     $catalogAction = 'extract';

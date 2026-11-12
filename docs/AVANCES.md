@@ -54,6 +54,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Auditoría 2026-11-12**: respaldo en la rama `respaldo-2026-11-12` y en `C:\Users\USAURIO\Respaldos` (zip + gitbundle).
   El dueño aprobó: seguridad de descargas y login + fotos en JPEG (un cambio) y limpieza de lo que no se usa (otro cambio).
   Búsqueda por foto parada: Jina sin saldo (14 de 5950 listas); recargar la cuenta lo hace el dueño.
+- **Lista pedido** (2026-11-12): botón adicional en el Extractor, junto a «Ver fotos en el visor» (lugar elegido por el
+  dueño). Los datos del pedido salen del PDF de origen, nunca recalculados con las fotos ni con la fecha de hoy; lo que no
+  se pudo leer se avisa («No se pudo leer del PDF»), no se inventa. Foto por coincidencia exacta del código (con o sin «M»),
+  sin la corrección del lector de fotos, para que no se crucen referencias.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -91,6 +95,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   cantidad y precio; «Revisión» (✓ si cuadra con Total, artículos y unidades del PDF, o la lista de lo que no cuadra), datos
   del pedido, Mapa del PDF; mostrar precio y precio con descuento (40 % por defecto), Organizar, Copiar para Excel. «📷 Ver
   fotos en el visor» abre Enviar catálogo con esos códigos (encontrados/no encontrados, PDF, WhatsApp, Mi selección).
+  «🧾 Lista pedido» (al lado) abre `/lista-pedido`: PDF del pedido con cliente, fecha, total de ítems, unidades y valor
+  total tal como vienen en el PDF, y cada línea con foto, código y cantidad (no editables); sin foto → «Foto no disponible».
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
 - Búsqueda: el código exacto primero ("8363-3" = "M:8363-3"), luego los que empiezan por él y el resto; carpetas cuyo
@@ -222,3 +228,6 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-wdaaf8`: el dueño no encontraba cómo bajar las fotos: «💾 Guardar» pasa a «⬇️ Descargar» (destacado)
   en la barra de selección y en Enviar catálogo; «⬇️ Descargar todas (N)» arriba en Mi selección; en el celular la barra de
   Enviar catálogo ya no queda tapada por el menú de abajo. Usa `/enviar-catalogo/foto` (no `/api/download`).
+- Rama `lista-pedido`: «🧾 Lista pedido» en el Extractor → `/lista-pedido` (PDF de pedido: encabezado con los datos del PDF,
+  foto + código + cantidad por línea). Piezas comunes de PDF movidas a `assets/js/pdf_shared.js` (el Catálogo en PDF las usa
+  igual). Probado con 5 recibos reales (#c-5845, #c-5856, #c-5865, #c-5867, #c-5868) contra las fotos de producción.

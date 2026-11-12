@@ -29,6 +29,11 @@ if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrf)) {
 session_write_close();
 
 $input = json_decode(file_get_contents('php://input'), true);
+// Lista pedido (/lista-pedido): códigos exactos del PDF, uno por uno, sin corregir lo leído
+if (is_array($input['codes'] ?? null)) {
+    echo json_encode(catalogSendLookup($db, array_slice($input['codes'], 0, 1000)), JSON_UNESCAPED_UNICODE);
+    exit;
+}
 $text = (string) ($input['text'] ?? '');
 if (mb_strlen($text) > 50000) {
     $text = mb_substr($text, 0, 50000);
@@ -150,6 +155,40 @@ function catalogSendExtract(PDO $db, string $text): array
     $fixes = [];
     foreach ($corrected as $sku => $read) $fixes[] = ['read' => $read, 'sku' => $sku];
     return ['items' => $items, 'not_found' => array_values($notFound), 'corrected' => $fixes, 'total_tokens' => $n];
+}
+
+/**
+ * Lista pedido: para cada código del PDF (tal cual), su producto visible y su foto principal, o null si no hay.
+ * Solo coincidencia exacta (con o sin "M", "M:", "M-"; sin espacios, guiones, ":" ni "."): sin la corrección del
+ * lector de fotos (B↔8…) ni juntar palabras, para que un código nunca tome la foto de otro.
+ * @return array{photos: array<string, ?array{sku: string, id: string}>}
+ */
+function catalogSendLookup(PDO $db, array $codes): array
+{
+    $rows = $db->query(
+        "SELECT sku, cover_image_url FROM products WHERE archived = 0 AND cover_image_url > '' ORDER BY id ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    $exact = [];
+    $norm = [];
+    foreach ($rows as $r) {
+        $exact[strtoupper($r['sku'])] ??= $r;
+        $norm[catalogSendKey($r['sku'])] ??= $r;
+    }
+    $indexReady = DriveIndex::isReady($db);
+    $out = [];
+    foreach ($codes as $code) {
+        $code = trim((string) $code);
+        if ($code === '' || isset($out[$code])) continue;
+        $p = $exact[strtoupper($code)] ?? null;
+        if (!$p) {
+            foreach (skuExactForms($code) as $form) {
+                if ($p = $norm[strtoupper($form)] ?? null) break;
+            }
+        }
+        $photo = $p ? (catalogSendPhotos($db, $p['sku'], (string) $p['cover_image_url'], $indexReady)[0] ?? null) : null;
+        $out[$code] = $photo ? ['sku' => $p['sku'], 'id' => $photo['id']] : null;
+    }
+    return ['photos' => (object) $out];
 }
 
 /**
