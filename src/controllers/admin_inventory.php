@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/../services/MasterSheet.php';
 require_once __DIR__ . '/../services/InventoryImport.php';
+require_once __DIR__ . '/../services/XlsxWriter.php';
 
 $dir = BASE_DIR . '/storage/inventario';
 $file = $dir . '/ultimo.json';
@@ -22,7 +23,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $parsed = InventoryImport::parseItems(InventoryImport::readFile($up['tmp_name'], $up['name']));
         if (!$parsed['items']) throw new RuntimeException('El archivo no tiene artículos.');
         $sheet = InventoryImport::sheetRows(getDB());
-        if (!$sheet['rows']) throw new RuntimeException('No hay filas de la hoja maestra para comparar.');
+        if (!$sheet['rows']) throw new RuntimeException('No hay filas de la Hoja master para comparar.');
         $result = InventoryImport::compare($parsed['items'], $sheet['rows'], !empty($_POST['neg_cero']));
         $result['meta'] = ['archivo' => $up['name'], 'fecha' => date('Y-m-d H:i'), 'columnas' => $parsed['columns'],
             'fuente_hoja' => $sheet['source'], 'neg_cero' => !empty($_POST['neg_cero'])];
@@ -36,29 +37,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
 $result = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
 
-if (isset($_GET['csv']) && $result) {
-    $kind = $_GET['csv'] === 'stock' ? 'stock' : 'reporte';
-    $rows = $kind === 'stock' ? $result['paste'] : $result['report'];
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . ($kind === 'stock' ? 'STOCK_para_pegar_en_hoja_' : 'inventario_vs_hoja_') . date('Y-m-d') . '.csv"');
-    $out = fopen('php://output', 'w');
-    fwrite($out, "\xEF\xBB\xBF");
-    if ($rows) fputcsv($out, array_keys($rows[0]));
-    foreach ($rows as $r) fputcsv($out, array_values($r));
-    fclose($out);
+// Descargas en Excel (.xlsx): un CSV con comas lo abre todo en la columna A en Excel en español
+$dl = $_GET['descargar'] ?? $_GET['csv'] ?? null;
+if ($dl && $result) {
+    $isStock = $dl === 'stock';
+    $bin = $isStock ? InventoryImport::stockXlsx($result) : InventoryImport::reportXlsx($result);
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . ($isStock ? 'STOCK_para_pegar_en_Hoja_master_' : 'Reporte_SYS_vs_Hoja_master_') . date('Y-m-d') . '.xlsx"');
+    header('Content-Length: ' . strlen($bin));
+    echo $bin;
     exit;
 }
 
-$labels = [
-    'duplicado_inventario' => 'Duplicado en el inventario',
-    'duplicado_hoja' => 'Duplicado en la hoja',
-    'varias_filas_inventario' => 'Varias filas del inventario → un código',
-    'stock_negativo' => 'Stock negativo',
-    'solo_hoja' => 'En la hoja, no en el inventario',
-    'precio_diferente' => 'Precio distinto',
-    'stock_diferente' => 'Stock distinto',
-    'solo_inventario' => 'En el inventario, no en la hoja (con stock)',
-];
+$labels = array_map(fn($t) => $t[0], InventoryImport::TYPES);
 $tab = $_GET['tipo'] ?? '';
 $counts = [];
 foreach ($result['report'] ?? [] as $r) $counts[$r['tipo']] = ($counts[$r['tipo']] ?? 0) + 1;
@@ -88,58 +79,59 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
 
     <main class="container pb-main">
         <?php $adminNav = 'inventario'; include __DIR__ . '/../../templates/admin/partials/nav.php'; ?>
-        <h1 class="pb-title">📦 Importar inventario</h1>
-        <p class="pb-help">Sube el Excel de existencias del sistema (por ejemplo «INVENTARIO GENERAL.xlsx»: Artículo, Exist. unidades, Precio).
-            Se cruza con la hoja maestra por código (exacto primero; «M:», «M» y «M-» cuentan igual) y te da la columna
-            <b>STOCK</b> lista para pegar en la hoja, en el mismo orden de filas. No se escribe nada en la hoja: tú la pegas
+        <h1 class="pb-title">📦 Importar inventario SYS</h1>
+        <p class="pb-help">Sube el Excel de existencias de <b>SYS</b> (por ejemplo «INVENTARIO GENERAL.xlsx»: Artículo, Exist. unidades, Precio).
+            Se cruza con la <b>Hoja master</b> por código (exacto primero; «M:», «M» y «M-» cuentan igual) y te da la columna
+            <b>STOCK</b> lista para pegar en la Hoja master, en el mismo orden de filas. No se escribe nada en la Hoja master: tú la pegas
             y el visor la toma en la siguiente sincronización.</p>
 
         <form method="post" enctype="multipart/form-data" class="pb-bar" style="flex-wrap:wrap;gap:10px">
             <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
             <input type="file" name="archivo" accept=".xlsx,.csv,.txt" required>
             <label><input type="checkbox" name="neg_cero" value="1" checked> Negativos → 0</label>
-            <button type="submit" class="btn btn-sm btn-primary">Comparar con la hoja</button>
+            <button type="submit" class="btn btn-sm btn-primary">Comparar con la Hoja master</button>
         </form>
         <?php if ($error): ?><p class="pb-empty" style="color:#ff8080">⚠️ <?= e($error) ?></p><?php endif; ?>
 
         <?php if ($result): ?>
-            <p class="pb-help">Último archivo: <b><?= e($result['meta']['archivo']) ?></b> · <?= e($result['meta']['fecha']) ?> ·
+            <p class="pb-help">Último archivo SYS: <b><?= e($result['meta']['archivo']) ?></b> · <?= e($result['meta']['fecha']) ?> ·
                 columnas: <?= e(implode(', ', array_map(fn($k, $v) => "$k = «{$v}»", array_keys($result['meta']['columnas']), $result['meta']['columnas']))) ?> ·
-                hoja: <?= e($result['meta']['fuente_hoja']) ?></p>
+                Hoja master: <?= e($result['meta']['fuente_hoja']) ?></p>
             <p class="pb-help">
-                <?= $n($s['articulos']) ?> artículos en el archivo · <?= $n($s['filas_hoja']) ?> filas en la hoja ·
-                <b><?= $n($s['encontrados']) ?></b> códigos de la hoja encontrados · <?= $n($s['iguales']) ?> con el mismo stock ·
+                <?= $n($s['articulos']) ?> artículos en SYS · <?= $n($s['filas_hoja']) ?> filas en la Hoja master ·
+                <b><?= $n($s['encontrados']) ?></b> códigos de la Hoja master encontrados · <?= $n($s['iguales']) ?> con el mismo stock ·
                 <b><?= $n($s['diferentes']) ?></b> cambian · <?= $n($s['negativos']) ?> negativos ·
-                <?= $n($s['solo_hoja']) ?> de la hoja no están en el archivo (se deja su stock) ·
-                <?= $n($s['solo_inventario']) ?> códigos del archivo no están en la hoja (<?= $n($s['solo_inventario_con_stock']) ?> con existencias distintas de 0) ·
-                duplicados: <?= $n($s['duplicados_inventario']) ?> en el archivo, <?= $n($s['duplicados_hoja']) ?> en la hoja.
+                <?= $n($s['solo_hoja']) ?> de la Hoja master no están en SYS (se deja su stock) ·
+                <?= $n($s['solo_inventario']) ?> códigos de SYS no están en la Hoja master (<?= $n($s['solo_inventario_con_stock']) ?> con existencias distintas de 0) ·
+                duplicados: <?= $n($s['duplicados_inventario']) ?> en SYS, <?= $n($s['duplicados_hoja']) ?> en la Hoja master.
             </p>
             <div class="pb-bar">
-                <a class="btn btn-sm btn-primary" href="/admin/inventario?csv=stock">📥 Columna STOCK para pegar</a>
-                <a class="btn btn-sm btn-secondary" href="/admin/inventario?csv=reporte">📥 Reporte de diferencias</a>
+                <a class="btn btn-sm btn-primary" href="/admin/inventario?descargar=stock">📥 Columna STOCK para pegar (Excel)</a>
+                <a class="btn btn-sm btn-secondary" href="/admin/inventario?descargar=reporte">📥 Reporte de diferencias (Excel)</a>
             </div>
-            <p class="pb-help">Para pegar: abre el CSV de la columna, copia <b>STOCK_nuevo</b> desde la fila 2 y pégalo en la columna STOCK de la hoja desde la fila 2 (mismo orden de filas).</p>
+            <p class="pb-help">Para pegar: abre el Excel de la columna, copia <b>STOCK nuevo</b> desde la fila 2 y pégalo en la columna STOCK de la Hoja master desde la fila 2 (mismo orden de filas).</p>
 
             <nav class="pb-tabs">
                 <?php foreach ($labels as $k => $label): if (empty($counts[$k])) continue; ?>
                     <a href="/admin/inventario?tipo=<?= $k ?>" class="<?= $k === $tab ? 'active' : '' ?>"><?= e($label) ?> <b><?= number_format($counts[$k]) ?></b></a>
                 <?php endforeach; ?>
             </nav>
+            <?php if ($tab): ?><p class="pb-help"><b><?= e(InventoryImport::TYPES[$tab][1]) ?></b> <?= e(InventoryImport::TYPES[$tab][2]) ?></p><?php endif; ?>
             <?php if ($shown): ?>
-                <?php if (($counts[$tab] ?? 0) > 300): ?><p class="pb-help">Se muestran los primeros 300; el reporte CSV trae todos.</p><?php endif; ?>
+                <?php if (($counts[$tab] ?? 0) > 300): ?><p class="pb-help">Se muestran los primeros 300; el reporte en Excel trae todos.</p><?php endif; ?>
                 <div class="pb-table-wrap">
                     <table class="pb-table">
-                        <thead><tr><th>Código archivo</th><th>Código hoja</th><th>Descripción</th><th>Stock archivo</th><th>Stock hoja</th><th>Precio archivo</th><th>PRICE hoja</th><th>Nota</th></tr></thead>
+                        <thead><tr><th>Código SYS</th><th>Código Hoja master</th><th>Descripción</th><th>Stock SYS</th><th>Stock Hoja master</th><th>Precio SYS</th><th>PRICE Hoja master</th><th>Nota</th></tr></thead>
                         <tbody>
                             <?php foreach ($shown as $r): ?>
                                 <tr>
-                                    <td data-h="Código archivo"><?= e($r['codigo_inventario']) ?></td>
-                                    <td data-h="Código hoja"><?= e($r['codigo_hoja']) ?></td>
+                                    <td data-h="Código SYS"><?= e($r['codigo_inventario']) ?></td>
+                                    <td data-h="Código Hoja master"><?= e($r['codigo_hoja']) ?></td>
                                     <td data-h="Descripción"><?= e($r['descripcion']) ?></td>
-                                    <td data-h="Stock archivo"><?= $n($r['stock_inventario']) ?></td>
-                                    <td data-h="Stock hoja"><?= $n($r['stock_hoja']) ?></td>
-                                    <td data-h="Precio archivo"><?= $n($r['precio_inventario']) ?></td>
-                                    <td data-h="PRICE hoja"><?= $n($r['PRICE_hoja']) ?></td>
+                                    <td data-h="Stock SYS"><?= $n($r['stock_inventario']) ?></td>
+                                    <td data-h="Stock Hoja master"><?= $n($r['stock_hoja']) ?></td>
+                                    <td data-h="Precio SYS"><?= $n($r['precio_inventario']) ?></td>
+                                    <td data-h="PRICE Hoja master"><?= $n($r['PRICE_hoja']) ?></td>
                                     <td data-h="Nota"><?= e($r['nota']) ?></td>
                                 </tr>
                             <?php endforeach; ?>
