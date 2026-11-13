@@ -2330,6 +2330,7 @@ textarea.form-input {
 .folder-admin-name:hover { color:var(--color-primary); }
 .folder-admin-meta { font-size:0.78rem; color:var(--color-text-muted); }
 .folder-admin-state { font-size:0.78rem; color:var(--color-text-muted); width:110px; text-align:right; }
+.folder-admin-lists { display:flex; align-items:center; gap:0.4rem; font-size:0.72rem; color:var(--color-text-muted); cursor:pointer; flex-shrink:0; }
 
 /* ===== Admin: avisos (toast) ===== */
 .toast-container {
@@ -2449,6 +2450,7 @@ img, video, iframe { max-width: 100%; }
     .folder-admin-row { align-items: flex-start; }
     .folder-admin-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
     .folder-admin-state { width: auto; max-width: 5.5rem; flex-shrink: 0; }
+    .folder-admin-lists { flex-direction: column; gap: 0.2rem; text-align: center; }
 
     /* Dashboard: acciones rápidas a lo ancho */
     .dash-actions { flex-direction: column; align-items: stretch; }

@@ -520,9 +520,13 @@ class DriveIndex
             if ($name === false) return null;
         }
 
+        // Las carpetas "fuera de listas" (folder_settings.hide_in_lists) no se listan como subcarpeta;
+        // su contenido sí se ve (búsqueda, fichas, "ver todas las fotos" de la carpeta superior).
         $stmt = $db->prepare(
             "SELECT file_id, name, mime_type, size, is_folder, cover_file_id, matched_sku FROM drive_index
-             WHERE parent_id = ? AND is_hidden = 0 ORDER BY name ASC"
+             WHERE parent_id = ? AND is_hidden = 0
+               AND NOT (is_folder = 1 AND file_id IN (SELECT folder_id FROM folder_settings WHERE hide_in_lists = 1))
+             ORDER BY name ASC"
         );
         $stmt->execute([$folderId]);
         $subfolders = [];
@@ -804,6 +808,18 @@ class DriveIndex
             // migración 021 aún no aplicada
         }
         return $out;
+    }
+
+    /**
+     * Saca (o vuelve a poner) una carpeta de las listas de carpetas: inicio y su carpeta superior.
+     * No oculta su contenido ni cambia la búsqueda; por eso no hace falta recalcular nada.
+     */
+    public static function setFolderInLists(PDO $db, string $folderId, bool $inLists): void
+    {
+        $db->prepare(
+            "INSERT INTO folder_settings (folder_id, hidden, hide_in_lists) VALUES (?, 0, ?)
+             ON DUPLICATE KEY UPDATE hide_in_lists = VALUES(hide_in_lists)"
+        )->execute([$folderId, $inLists ? 0 : 1]);
     }
 
     /** Guarda la decisión del admin de mostrar u ocultar una carpeta y recalcula el estado. */
