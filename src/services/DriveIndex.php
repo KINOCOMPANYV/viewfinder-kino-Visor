@@ -811,7 +811,58 @@ class DriveIndex
     }
 
     /**
+     * Códigos cuyas fotos visibles están todas dentro de carpetas con «Como carpeta» apagado
+     * (folder_settings.hide_in_lists, a cualquier profundidad). Inicio no los muestra en
+     * «Productos recientes»; la búsqueda, la ficha y la carpeta sí.
+     * @return array<string, true> sku => true
+     */
+    public static function skusOnlyInUnlistedFolders(PDO $db): array
+    {
+        try {
+            $seeds = $db->query("SELECT folder_id FROM folder_settings WHERE hide_in_lists = 1")->fetchAll(PDO::FETCH_COLUMN);
+        } catch (\PDOException $e) {
+            return []; // migración 029 pendiente
+        }
+        if (!$seeds) return [];
+
+        // Carpetas dentro de las apagadas (todas las profundidades)
+        $children = [];
+        foreach ($db->query("SELECT file_id, parent_id FROM drive_index WHERE is_folder = 1")->fetchAll(PDO::FETCH_NUM) as [$id, $parent]) {
+            $children[(string) $parent][] = $id;
+        }
+        $inside = [];
+        $queue = $seeds;
+        while ($queue) {
+            $id = array_pop($queue);
+            if (isset($inside[$id])) continue;
+            $inside[$id] = true;
+            foreach ($children[$id] ?? [] as $c) $queue[] = $c;
+        }
+
+        // Fotos visibles con código dentro de esas carpetas; luego se descartan los códigos con foto fuera
+        $skus = [];
+        foreach (array_chunk(array_keys($inside), 500) as $chunk) {
+            $stmt = $db->prepare("SELECT DISTINCT matched_sku FROM drive_index
+                WHERE is_folder = 0 AND is_hidden = 0 AND matched_sku IS NOT NULL
+                  AND parent_id IN (" . implode(',', array_fill(0, count($chunk), '?')) . ")");
+            $stmt->execute($chunk);
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $sku) $skus[$sku] = true;
+        }
+        foreach (array_chunk(array_keys($skus), 500) as $chunk) {
+            $stmt = $db->prepare("SELECT matched_sku, parent_id FROM drive_index
+                WHERE is_folder = 0 AND is_hidden = 0
+                  AND matched_sku IN (" . implode(',', array_fill(0, count($chunk), '?')) . ")");
+            $stmt->execute($chunk);
+            foreach ($stmt->fetchAll(PDO::FETCH_NUM) as [$sku, $parent]) {
+                if (!isset($inside[(string) $parent])) unset($skus[$sku]);
+            }
+        }
+        return $skus;
+    }
+
+    /**
      * Saca (o vuelve a poner) una carpeta de las listas de carpetas: inicio y su carpeta superior.
+     * Sus productos tampoco salen en «Productos recientes» de inicio (skusOnlyInUnlistedFolders).
      * No oculta su contenido ni cambia la búsqueda; por eso no hace falta recalcular nada.
      */
     public static function setFolderInLists(PDO $db, string $folderId, bool $inLists): void

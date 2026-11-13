@@ -31,8 +31,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Activación**: solo el switch del admin (`is_active`). La hoja nunca reactiva. No se borra nada, solo se desactiva.
 - **Carpetas**: se navegan como en Drive (ya no se muestran "álbumes"). Cada carpeta tiene switch mostrar/ocultar y portada al azar.
 - **Carpeta fuera de la lista** (2026-11-13): en Admin → Carpetas cada carpeta tiene, aparte de mostrar/ocultar, el interruptor
-  «Como carpeta». Apagado (p. ej. ECONOMICOS): la carpeta no sale en la lista de inicio ni en la de su carpeta superior, pero
-  sus fotos y productos se siguen viendo y la carpeta sigue saliendo al buscar y por enlace.
+  «Como carpeta». Apagado (p. ej. ECONOMICOS): la carpeta no sale en la lista de inicio ni en la de su carpeta superior, y sus
+  productos no salen en «Productos recientes» de inicio (si tienen foto en otra carpeta, sí). Siguen saliendo al buscar, en su
+  ficha, dentro de la carpeta y por enlace.
 - **Carpetas "archivado" y "desactivados"** (2026-11-09): toda carpeta cuyo nombre diga archivado(s)/desactivado(s) (sin importar
   mayúsculas ni tildes) queda oculta por defecto con todo su contenido, ya indexada o nueva. Si el admin la muestra, el
   sync no la vuelve a ocultar. Mientras está oculta tampoco crea productos "Solo Drive".
@@ -257,4 +258,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-4us9xl`: un código con foto fuera de la hoja (fila vieja oculta, p. ej. M8324-1) vuelve a salir
   como «Solo Drive» en la búsqueda; el punto final del nombre ya no crea duplicados («M8324-4.», «M8324-4-A.»).
 - Rama `claude/project-thread-shhu3r`: interruptor «Como carpeta» en Admin → Carpetas (saca la carpeta de inicio y de su carpeta
-  superior sin ocultar su contenido ni quitarla de la búsqueda). Migración 029.
+  superior, y sus productos de «Productos recientes» de inicio, sin quitarlos de la búsqueda). Migración 029.

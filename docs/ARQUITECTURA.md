@@ -123,7 +123,8 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
 - Carpetas "archivado" y "desactivados" (`isArchivedFolderName()`): `DriveIndex::hideArchivedFolders()` (al inicio de `refreshFolderState`) crea
   `folder_settings.hidden = 1` solo si la carpeta no tiene fila; si el admin la muestra (`hidden = 0`) se respeta.
 - «Como carpeta» apagado → `folder_settings.hide_in_lists = 1` (`DriveIndex::setFolderInLists`, `field=lists` en el toggle): la carpeta
-  no sale en la lista de inicio (`albums`) ni como subcarpeta en `folderContents()`. No toca `is_hidden`: contenido, búsqueda y enlace siguen.
+  no sale en la lista de inicio (`albums`) ni como subcarpeta en `folderContents()`, y inicio quita de «Productos recientes» los códigos
+  con fotos solo ahí (`DriveIndex::skusOnlyInUnlistedFolders`). No toca `is_hidden`: búsqueda, ficha y enlace siguen.
 - Todo lo público filtra `is_hidden = 0`: `/carpeta/{id}`, carpetas de la búsqueda, galería (`filesForSku`) y el sync de portadas.
 
 ## Familias (padre ↔ variantes)
