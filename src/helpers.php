@@ -598,6 +598,7 @@ function matchFileToProduct(string $filename, array $index): ?array
 function driveCodeFromName(string $filename): ?string
 {
     $stem = genericMediaStem($filename);
+    $stem = rtrim($stem, '.-_ '); // "M8324-4..jpg" (punto de más al final) = "M8324-4"
     $stem = preg_replace('/[-_ ][vf]\d{1,2}$/', '', $stem); // "-V1" video, "-F2" foto
     if (!preg_match('/^[a-z0-9][a-z0-9:.\-_]{2,39}$/', $stem) || !preg_match('/\d/', $stem)) return null;
     if (preg_match('/^(img|dsc|dscn|vid|pxl|mvimg|screenshot|captura|photo|image|imagen|foto|video|copia|copy|whatsapp|wa\d)/', $stem)) return null;
