@@ -13,7 +13,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enviar catálogo · Viewfinder</title>
+    <title>Enviar fotos con lista · Viewfinder</title>
     <style>body{background:#0a0a0f;color:#e8e8f0}</style>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
@@ -78,8 +78,8 @@
     </header>
 
     <main class="container" style="padding-top:2rem; padding-bottom:3rem; max-width:860px;">
-        <?= breadcrumbs([['Enviar catálogo', null]]) ?>
-        <h1 style="font-size:1.5rem; margin-bottom:1.25rem;">📤 Enviar catálogo por lista</h1>
+        <?= breadcrumbs([['Enviar fotos con lista', null]]) ?>
+        <h1 style="font-size:1.5rem; margin-bottom:1.25rem;">📤 Enviar fotos con lista</h1>
 
         <section class="cs-card">
             <h2>1. Pega el texto</h2>

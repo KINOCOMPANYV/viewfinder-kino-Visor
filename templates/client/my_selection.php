@@ -55,7 +55,7 @@
         <div class="ms-empty" id="msEmptyMsg" hidden>
             <p>No hay fotos marcadas.</p>
             <p>Toca el círculo de una foto en <a href="/buscar">Buscar</a>, en una carpeta o en una ficha, o usa
-                <a href="/enviar-catalogo">Enviar catálogo</a>.</p>
+                <a href="/enviar-catalogo">Enviar fotos con lista</a>.</p>
         </div>
 
         <section class="ms-cats ms-cats-bottom" id="msLinks">
