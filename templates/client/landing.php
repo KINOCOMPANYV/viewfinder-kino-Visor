@@ -234,11 +234,6 @@
                  WHERE archived = 0 AND cover_image_url > '' 
                  {$orderClause}"
             )->fetchAll();
-            // Productos cuyas fotos están solo en carpetas con «Como carpeta» apagado: no van en inicio
-            // (siguen en la búsqueda, su ficha y su carpeta)
-            require_once __DIR__ . '/../../src/services/DriveIndex.php';
-            $offHome = DriveIndex::skusOnlyInUnlistedFolders($db);
-            if ($offHome) $skuRows = array_values(array_filter($skuRows, fn($r) => !isset($offHome[$r['sku']])));
             $totalSkus = count($skuRows); // códigos visibles (cada variante cuenta)
 
             // Una tarjeta por referencia (código), en el orden de la consulta. Las variantes

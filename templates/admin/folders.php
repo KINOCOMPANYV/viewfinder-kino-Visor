@@ -33,8 +33,8 @@
 
         <p style="color:var(--color-text-muted); font-size:0.85rem; margin-bottom:1rem;">
             Apaga una carpeta para ocultarla en el visor con todo lo que tiene dentro (subcarpetas, fotos y videos).
-            El interruptor <strong>«Como carpeta»</strong> quita la carpeta de la lista de carpetas (inicio y su carpeta superior)
-            y sus productos de «Productos recientes» en inicio. Siguen saliendo al buscar, en su ficha y dentro de la carpeta.
+            El interruptor <strong>«Como carpeta»</strong> solo quita la carpeta de la lista de carpetas (inicio y su carpeta
+            superior): sus fotos y productos se siguen viendo, y la carpeta sigue saliendo al buscar.
             La foto de portada de cada carpeta se elige al azar de su contenido en cada sincronización.
         </p>
 

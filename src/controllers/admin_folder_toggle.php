@@ -29,7 +29,7 @@ if (($_POST['field'] ?? '') === 'lists') {
         'ok' => true,
         'visible' => $visible,
         'message' => $visible ? "📂 «{$name}» vuelve a salir como carpeta"
-            : "📂 «{$name}» y sus productos ya no salen en inicio; en la búsqueda siguen igual",
+            : "📂 «{$name}» ya no sale como carpeta en inicio ni en su carpeta superior; sus fotos y la búsqueda siguen igual",
     ]);
 }
 
