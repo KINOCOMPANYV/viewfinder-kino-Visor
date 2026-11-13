@@ -288,3 +288,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Textos con los nombres del dueño: «Hoja master» y «SYS» (pantalla, Excel y nombres de archivo).
 - Rama `claude/project-thread-705w0p` (2026-11-13): tarjetas del Dashboard clicables → listado filtrado; filtros nuevos
   `estado=conportada|sinportada|hoy` y `genero` en `adminProductFilter()`.
+- Misma rama (2026-11-13): arreglo del Dashboard descuadrado tras #74 (una tarjeta quedó sin cerrar y los enlaces corridos).
