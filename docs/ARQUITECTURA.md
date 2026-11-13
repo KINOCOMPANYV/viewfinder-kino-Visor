@@ -262,4 +262,7 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
 - Tipo de documento: `kinoPedido.docType` = `remision` (formato tabla) o `pedido` (recibo). `/lista-pedido` cambia título,
   colores (`TYPES` en `order_list.js`), nombre del archivo y casillas guardadas (`kinoOlFields` / `kinoOlFieldsRemision`);
   selector «Tipo» para corregirlo. `tableOrderData()` también lee NIT, dirección, ciudad, teléfono y vendedor (`headValue()`).
+- `/lista-pedido` muestra «Lista Bodega» (recibo) o «Remisión». Botón «👁 Previo» (`#olMake`): arma el PDF con jsPDF y lo pinta
+  con pdf.js (`assets/vendor/pdfjs`) en un panel (`#olPv`) con Descargar / Enviar / Cerrar. La Remisión agrega al final el
+  recuadro «TOTAL REMISIÓN» con `order.totalText`.
 - Si no hay esa tabla, sigue el recibo de siempre («N artículos» … «Total:», `5x código … $`).

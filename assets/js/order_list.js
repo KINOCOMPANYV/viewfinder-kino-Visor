@@ -1,6 +1,6 @@
 /**
- * Lista pedido / Remisión (/lista-pedido): PDF del documento leído en el Extractor (sessionStorage kinoPedido).
- * Recibo (pedido) → «Lista pedido» negro y dorado; factura en tabla → «Remisión» azul (data.docType, se puede cambiar).
+ * Lista Bodega / Remisión (/lista-pedido): PDF del documento leído en el Extractor (sessionStorage kinoPedido).
+ * Recibo (pedido) → «Lista Bodega» negro y dorado; factura en tabla → «Remisión» azul (data.docType, se puede cambiar).
  * Encabezado con cliente, fecha, total de ítems, unidades y valor total TAL CUAL vienen del PDF (no se recalculan con
  * las fotos ni se pone la fecha de hoy); si un dato no se pudo leer, se dice. Luego cada línea del pedido, en el mismo
  * orden: foto, código y cantidad del PDF (solo lectura). Cada línea guarda su código y su foto juntos desde el
@@ -12,6 +12,7 @@
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const MISSING = 'No se pudo leer del PDF';
+    const PREVIEW = '👁 Previo';
     const msg = (t) => { $('olMsg').textContent = t || ''; };
 
     let data = null, pdfFile = null;
@@ -27,10 +28,10 @@
     // Datos del encabezado: solo lo que vino del PDF. Si el PDF no trae el total de ítems o de unidades (p. ej. la
     // cotización en tabla), se puede usar lo contado en sus líneas, marcado «(contado)»: es un dato del PDF, no inventado.
     const counted = { items: lines.length, units: order.noQty ? null : lines.reduce((s, l) => s + (l.qty || 0), 0) };
-    // Dos documentos: «Lista pedido» (recibo = pedido) y «Remisión» (factura en tabla). El tipo lo decide el Extractor
+    // Dos documentos: «Lista Bodega» (recibo = pedido) y «Remisión» (factura en tabla). El tipo lo decide el Extractor
     // según el formato del PDF; se puede cambiar a mano. Cada tipo tiene su título, sus colores y sus casillas guardadas.
     const TYPES = {
-        pedido: { name: 'Lista pedido', title: 'Lista de pedido', file: 'Lista_pedido_', icon: '🧾', pref: 'kinoOlFields',
+        pedido: { name: 'Lista Bodega', title: 'Lista Bodega', file: 'Lista_Bodega_', icon: '🧾', pref: 'kinoOlFields',
             numLabel: 'N.º de pedido', c1: [28, 28, 30], c2: [201, 168, 76],
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: false, address: false, city: false, phone: false, seller: false,
                 review: true, useCount: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: false, cTotal: false } },
@@ -99,7 +100,7 @@
         if (crumb) crumb.textContent = T().name;
         $('olType').innerHTML = '<b>Tipo:</b> ' + Object.keys(TYPES).map((k) => '<label><input type="radio" name="olType" value="' + k + '"' +
             (k === type ? ' checked' : '') + '> ' + TYPES[k].icon + ' ' + esc(TYPES[k].name) + '</label>').join('') +
-            '<small>' + (data.docType === 'remision' ? 'El PDF es una factura en tabla → Remisión.' : 'El PDF es un recibo (pedido) → Lista pedido.') + '</small>';
+            '<small>' + (data.docType === 'remision' ? 'El PDF es una factura en tabla → Remisión.' : 'El PDF es un recibo (pedido) → Lista Bodega.') + '</small>';
     }
     drawType();
 
@@ -117,7 +118,7 @@
         warnBox.innerHTML = problems.length ? '<strong>Revisar</strong><ul>' + problems.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>' : '';
     }
     drawOrder();
-    const resetPdf = (why) => { if (pdfFile) { pdfFile = null; $('olShare').hidden = true; $('olDown').hidden = true; $('olMake').textContent = '📄 Generar PDF'; msg(why); } };
+    const resetPdf = (why) => { if (pdfFile) { pdfFile = null; $('olShare').hidden = true; $('olDown').hidden = true; $('olMake').textContent = PREVIEW; msg(why); } };
     $('olType').addEventListener('change', (e) => {
         if (!e.target || e.target.name !== 'olType' || !TYPES[e.target.value]) return;
         type = e.target.value;
@@ -257,12 +258,12 @@
             y += 2;
 
             // Productos: tabla(s) con bordes; en dos tablas, primero la de la izquierda y luego la de la derecha.
-            let col = 0, top = y;
+            let col = 0, top = y, leftEnd = 0;
             tableHead(0);
             for (const l of lines) {
                 if (y + ROW > H - FOOT) {
-                    if (two && col === 0) { col = 1; y = top; }
-                    else { newPage(); col = 0; top = y; }
+                    if (two && col === 0) { col = 1; leftEnd = y; y = top; }
+                    else { newPage(); col = 0; top = y; leftEnd = 0; }
                     tableHead(col);
                 }
                 const img = l.photo ? imgs.get(l.photo.id) : null;
@@ -306,6 +307,18 @@
                 y += ROW;
             }
 
+            // Remisión: el valor total también al final, debajo de la tabla (tal cual viene en el PDF)
+            if (type === 'remision' && has(order.totalText)) {
+                let ty = Math.max(y, col === 1 ? leftEnd : 0) + 4;
+                if (ty + 12 > H - FOOT) { newPage(); ty = y; }
+                const bw = 95, bx = W - M - bw;
+                doc.setFillColor(...C1); doc.roundedRect(bx, ty, bw, 12, 1.5, 1.5, 'F');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...C2);
+                doc.text('TOTAL REMISIÓN', bx + 4, ty + 7.6);
+                doc.setFontSize(13); doc.setTextColor(255, 255, 255);
+                doc.text(clean(order.totalText), bx + bw - 4, ty + 8, { align: 'right' });
+            }
+
             // Pie en cada página
             const pages = doc.getNumberOfPages();
             const footL = clean([show.number && order.number, show.client && order.client, show.date && order.date].filter(has).join(' · '));
@@ -325,27 +338,68 @@
                 + (failed ? ` ${failed} foto${failed === 1 ? '' : 's'} no bajó.` : ''));
             $('olShare').hidden = !KP.canShareFiles;
             $('olDown').hidden = false;
-            btn.textContent = '🔄 Rehacer';
+            btn.textContent = PREVIEW;
+            await showPreview();
         } catch (e) {
             msg('No se pudo generar el PDF: ' + (e && e.message ? e.message : e));
-            btn.textContent = '📄 Generar PDF';
+            btn.textContent = PREVIEW;
         } finally {
             busy = false; btn.disabled = false;
         }
     }
 
-    $('olMake').addEventListener('click', make);
+    // ---- Previo: el PDF ya armado, pintado página por página con pdf.js (funciona igual en celular y computador) ----
+    let pdfjs = null, pvToken = 0;
+    async function showPreview() {
+        if (!pdfFile) return;
+        const box = $('olPv'), pages = $('olPvPages');
+        $('olPvTitle').textContent = '👁 Previo: ' + T().name + ' · ' + pdfFile.name;
+        $('olPvShare').hidden = !KP.canShareFiles;
+        pages.innerHTML = '<p>Cargando el previo…</p>';
+        box.hidden = false; document.body.style.overflow = 'hidden';
+        const my = ++pvToken;
+        try {
+            if (!pdfjs) {
+                pdfjs = await import('/assets/vendor/pdfjs/pdf.min.js');
+                pdfjs.GlobalWorkerOptions.workerSrc = '/assets/vendor/pdfjs/pdf.worker.min.js';
+            }
+            const doc = await pdfjs.getDocument({ data: new Uint8Array(await pdfFile.arrayBuffer()) }).promise;
+            if (my !== pvToken) return;
+            pages.innerHTML = '';
+            const width = Math.min(820, pages.clientWidth - 32) * (window.devicePixelRatio || 1);
+            for (let n = 1; n <= doc.numPages; n++) {
+                const page = await doc.getPage(n);
+                if (my !== pvToken) return;
+                const vp = page.getViewport({ scale: 1 });
+                const v = page.getViewport({ scale: width / vp.width });
+                const cv = document.createElement('canvas');
+                cv.width = v.width; cv.height = v.height;
+                pages.appendChild(cv);
+                await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+            }
+        } catch (e) {
+            pages.innerHTML = '<p>No se pudo mostrar el previo (' + esc(e && e.message ? e.message : e) + '). Puedes descargarlo igual.</p>';
+        }
+    }
+    const closePreview = () => { pvToken++; $('olPv').hidden = true; $('olPvPages').innerHTML = ''; document.body.style.overflow = ''; };
+    $('olPvClose').addEventListener('click', closePreview);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('olPv').hidden) closePreview(); });
+    $('olPvDown').addEventListener('click', () => KP.download(pdfFile, msg));
+    $('olPvShare').addEventListener('click', () => KP.share(pdfFile, T().title, msg));
+
+    // «Previo» arma el PDF (si cambió algo) y lo muestra; desde ahí se descarga o se envía
+    $('olMake').addEventListener('click', () => { if (pdfFile && !busy) showPreview(); else make(); });
     $('olShare').addEventListener('click', () => KP.share(pdfFile, T().title, msg));
     $('olDown').addEventListener('click', () => KP.download(pdfFile, msg));
 
     lookup().then(() => {
         drawList();
         const none = lines.filter((l) => !l.photo).length;
-        $('olMake').disabled = false; $('olMake').textContent = '📄 Generar PDF';
+        $('olMake').disabled = false; $('olMake').textContent = PREVIEW;
         msg(none ? `${none} de ${lines.length} referencia${lines.length === 1 ? '' : 's'} sin foto: salen igual con «Foto no disponible».` : 'Todas las referencias tienen foto.');
         lines.slice(0, 12).forEach((l) => { if (l.photo) KP.prepare(l.photo.id, 300).catch(() => {}); });
     }).catch((e) => {
         msg('⚠️ No se pudieron buscar las fotos (' + (e && e.message ? e.message : e) + '). Recarga la página para intentar otra vez.');
-        $('olMake').textContent = '📄 Generar PDF';
+        $('olMake').textContent = PREVIEW;
     });
 })();

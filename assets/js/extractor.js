@@ -92,7 +92,7 @@ function render() {
     } else rv.hidden = true;
 
     $('exTotal').textContent = result.items.length;
-    $('exToOrder').textContent = order.format === 'tabla' ? '🚚 Remisión' : '🧾 Lista pedido';
+    $('exToOrder').textContent = order.format === 'tabla' ? '🚚 Remisión' : '🧾 Lista Bodega';
 
     // Datos del pedido
     const mark = (ok) => ok == null ? '' : ok ? ' <span class="ex-ok">✓</span>' : ' <span class="ex-bad">✗</span>';
@@ -175,7 +175,7 @@ $('exToOrder').addEventListener('click', () => {
         order: { number: o.number || '', client: o.client || '', date: o.date || '', totalText: o.totalText || '',
             itemsPdf: o.itemsPdf ?? null, unitsPdf: o.unitsPdf ?? null, noQty: !!o.noQty,
             nit: o.nit || '', address: o.address || '', city: o.city || '', phone: o.phone || '', seller: o.seller || '' },
-        // Tipo de documento: la cotización en tabla es una factura → Remisión; el recibo es un pedido → Lista pedido
+        // Tipo de documento: la cotización en tabla es una factura → Remisión; el recibo es un pedido → Lista Bodega
         docType: o.format === 'tabla' ? 'remision' : 'pedido',
         items: rows.map((it) => ({ code: it.code, qty: it.qty ?? null, desc: it.desc || '', priceText: it.priceText || '', lineTotalText: it.lineTotalText || '' })),
         warnings: result.warnings.slice(),
