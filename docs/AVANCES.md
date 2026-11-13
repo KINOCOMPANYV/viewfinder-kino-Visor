@@ -268,3 +268,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   migas y enlaces de esa página; la ruta `/enviar-catalogo` no cambia).
 - Rama `claude/project-thread-fyz6a4` (2026-11-13): se quita el botón «📷 Escanear» (QR) del buscador del inicio. Solo se abría
   desde ahí, así que también se borra `assets/js/qr-scanner.js` y sus estilos. La 📷 de búsqueda por foto sigue.
+- Misma rama (2026-11-13): las carpetas se muestran sin su número de orden («2.CURREN» → «CURREN») en el inicio, la búsqueda,
+  la vista de carpeta y las migas, con `folderDisplayName()`. El orden sigue igual; el admin muestra el nombre completo.

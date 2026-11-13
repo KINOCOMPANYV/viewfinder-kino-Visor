@@ -422,7 +422,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
                     <a href="/carpeta/<?= urlencode($folder['id']) ?>" class="parent-card" style="text-decoration:none; color:inherit; display:block;">
                         <div class="card-image">
                             <?php if ($fIcon): ?>
-                                <img src="<?= e($fIcon) ?>" alt="<?= e($folder['name']) ?>"
+                                <img src="<?= e($fIcon) ?>" alt="<?= e(folderDisplayName($folder['name'])) ?>"
                                      loading="lazy"
                                      class="img-fade-in loaded"
                                      onerror="this.outerHTML='<div class=\'cover-placeholder\' style=\'font-size:3rem;\'>📂</div>'"
@@ -433,7 +433,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
                         </div>
                         <div class="card-body">
                             <div class="card-sku" style="font-size:0.7rem;">Carpeta</div>
-                            <div class="card-name"><?= e($folder['name']) ?></div>
+                            <div class="card-name"><?= e(folderDisplayName($folder['name'])) ?></div>
                         </div>
                     </a>
                 <?php endforeach; ?>
