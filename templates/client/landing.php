@@ -108,10 +108,6 @@
                         </span>
                         <div class="search-actions">
                             <button type="submit" class="search-btn">Buscar</button>
-                            <!-- Botón escáner QR (type=button: no envía el formulario) -->
-                            <button type="button" id="btnQrScan" title="Escanear código QR">
-                                📷<span class="qr-label"> Escanear</span>
-                            </button>
                         </div>
                     </form>
                     <div class="autocomplete-dropdown" id="autocomplete"></div>
@@ -139,10 +135,10 @@
                         $href = '/carpeta/' . urlencode($sa['drive_id']);
                         $hiddenClass = $idx >= 10 ? ' album-hidden' : '';
                     ?>
-                    <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?>" title="<?= e($sa['name']) ?>" style="background:var(--color-surface); padding:0.75rem; border-radius:var(--radius); border:1px solid var(--color-border); flex-direction:column; text-align:center; transition: transform 0.2s; <?php if($idx>=10) echo 'display:none;'; ?>">
+                    <a href="<?= $href ?>" class="sidebar-album-item<?= $hiddenClass ?>" title="<?= e(folderDisplayName($sa['name'])) ?>" style="background:var(--color-surface); padding:0.75rem; border-radius:var(--radius); border:1px solid var(--color-border); flex-direction:column; text-align:center; transition: transform 0.2s; <?php if($idx>=10) echo 'display:none;'; ?>">
                         <div class="sidebar-album-thumb" style="width:60px; height:60px; margin:0 auto 0.75rem auto; border-radius:50%; background:var(--color-surface-2);">
                             <?php if ($sa['icon_url']): ?>
-                                <img src="<?= e($sa['icon_url']) ?>" alt="<?= e($sa['name']) ?>"
+                                <img src="<?= e($sa['icon_url']) ?>" alt="<?= e(folderDisplayName($sa['name'])) ?>"
                                      loading="lazy"
                                      style="width:100%; height:100%; object-fit:cover; border-radius:50%;"
                                      onerror="this.outerHTML='<span style=\'font-size:1.8rem; line-height:60px;\'>📁</span>'">
@@ -150,7 +146,7 @@
                                 <span style="font-size:1.8rem; line-height:60px;">📁</span>
                             <?php endif; ?>
                         </div>
-                        <span class="sidebar-album-name" style="font-weight:600; font-size:0.95rem; text-wrap: balance;"><?= e($sa['name']) ?></span>
+                        <span class="sidebar-album-name" style="font-weight:600; font-size:0.95rem; text-wrap: balance;"><?= e(folderDisplayName($sa['name'])) ?></span>
                     </a>
                     <?php endforeach; ?>
                 </div>
@@ -387,8 +383,6 @@
 
     <!-- Autocomplete JS -->
     <script src="/assets/js/search.js?v=<?= APP_VERSION ?>"></script>
-    <!-- QR Scanner: qr-scanner.js descarga html5-qrcode solo al abrir el escáner -->
-    <script src="/assets/js/qr-scanner.js?v=<?= APP_VERSION ?>" defer></script>
     <?php include __DIR__ . '/../partials/loading_overlay.php'; ?>
     <?php $imgSearchPart = 'modal'; include __DIR__ . '/../partials/image_search.php'; ?>
     <?php $mnavActive = 'inicio'; include __DIR__ . '/../partials/mobile_nav.php'; ?>

@@ -2486,7 +2486,6 @@ img, video, iframe { max-width: 100%; }
         text-overflow: ellipsis;
     }
     .search-box .search-btn { width: 100%; min-height: 48px; font-size: 1rem; }
-    #btnQrScan { min-width: 44px; min-height: 44px; margin: 0.25rem auto 0; display: block; }
 
     .product-detail .description-box p { font-size: 0.9rem; }
 
@@ -2839,11 +2838,6 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .search-box textarea { min-height: 48px; padding: 0.7rem 2.6rem 0.7rem 2.3rem !important; line-height: 1.4; }
     .search-box .search-icon { top: calc(0.5rem + 14px); left: 0.75rem; font-size: 1rem; }
     .search-box .search-btn { width: auto; min-height: 48px; padding: 0 0.85rem; font-size: 0.9rem; flex: 0 0 auto; align-self: flex-start; }
-    .search-box #btnQrScan {
-        margin: 0; display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
-        min-width: 46px; min-height: 48px; font-size: 1.2rem !important;
-        background: var(--color-surface) !important; border: 1px solid var(--color-border) !important; border-radius: var(--radius-sm);
-    }
     .search-clear { width: 34px; height: 34px; right: 0.3rem; }
 
     /* Carpetas del inicio: de 3 en 3, compactas */
@@ -2889,22 +2883,13 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 }
 @media (max-width: 360px) {
     .search-box .search-btn { padding: 0 0.6rem; font-size: 0.82rem; }
-    .search-box #btnQrScan { min-width: 42px; }
 }
 
 /* ===== Etapa 4: estética ===== */
-/* Inicio: Buscar y el escáner en una fila centrada, con el mismo estilo de botón */
+/* Inicio: botón Buscar centrado */
 .search-actions { display: flex; justify-content: center; align-items: stretch; gap: 0.5rem; }
-#btnQrScan {
-    background: var(--color-surface); color: var(--color-text-muted);
-    border: 1px solid var(--color-border); border-radius: var(--radius-sm);
-    padding: 0.55rem 0.9rem; font: inherit; font-size: 0.95rem; cursor: pointer;
-    display: inline-flex; align-items: center; gap: 0.3rem; transition: all var(--transition);
-}
-#btnQrScan:hover { color: var(--color-primary); border-color: var(--color-primary); }
 @media (max-width: 640px) {
     .search-actions { gap: 0.4rem; align-items: flex-start; }
-    .qr-label { display: none; }
 }
 
 /* ============================================================

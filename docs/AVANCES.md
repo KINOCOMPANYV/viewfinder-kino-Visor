@@ -268,3 +268,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   migas y enlaces de esa página; la ruta `/enviar-catalogo` no cambia).
 - Rama `claude/project-thread-joh3t8` (4.ª parte, 2026-11-13): en Lista Bodega y Remisión, cada foto del PDF es un enlace a la
   foto en Drive (`drive.google.com/file/d/{id}/view`), igual que «Abrir foto» del Catálogo en PDF.
+- Rama `claude/project-thread-fyz6a4` (2026-11-13): se quita el botón «📷 Escanear» (QR) del buscador del inicio. Solo se abría
+  desde ahí, así que también se borra `assets/js/qr-scanner.js` y sus estilos. La 📷 de búsqueda por foto sigue.
+- Misma rama (2026-11-13): las carpetas se muestran sin su número de orden («2.CURREN» → «CURREN») en el inicio, la búsqueda,
+  la vista de carpeta y las migas, con `folderDisplayName()`. El orden sigue igual; el admin muestra el nombre completo.

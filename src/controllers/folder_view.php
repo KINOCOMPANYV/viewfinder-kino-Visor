@@ -83,7 +83,7 @@ foreach ($files as &$item) {
 unset($item);
 
 // Vista previa al compartir el enlace (WhatsApp): portada de la carpeta o su primera foto
-$shareTitle = $folderName . ' — Catálogo Kino';
+$shareTitle = folderDisplayName($folderName) . ' — Catálogo Kino';
 $shareUrl = publicBaseUrl() . '/carpeta/' . rawurlencode($folderId);
 $shareImageId = null;
 try {
@@ -110,7 +110,7 @@ $shareDesc = implode(' · ', array_filter([
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title><?= e($folderName) ?> — Viewfinder</title>
+    <title><?= e(folderDisplayName($folderName)) ?> — Viewfinder</title>
     <?= shareMetaTags(['title' => $shareTitle, 'description' => $shareDesc, 'url' => $shareUrl, 'image_id' => $shareImageId]) ?>
     <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -137,11 +137,11 @@ $shareDesc = implode(' · ', array_filter([
             <div class="folder-breadcrumb" style="font-size:0.85rem; color:var(--color-text-muted); margin-bottom:0.5rem;">
                 <a href="/" style="color:var(--color-primary);">Inicio</a>
                 <?php foreach (array_slice($folderPath, 0, -1) as $crumb): ?>
-                    › <a href="/carpeta/<?= urlencode($crumb['id']) ?>" style="color:var(--color-primary);"><?= e($crumb['name']) ?></a>
+                    › <a href="/carpeta/<?= urlencode($crumb['id']) ?>" style="color:var(--color-primary);"><?= e(folderDisplayName($crumb['name'])) ?></a>
                 <?php endforeach; ?>
-                › <span><?= e($folderName) ?></span>
+                › <span><?= e(folderDisplayName($folderName)) ?></span>
             </div>
-            <h1 style="font-size:1.5rem; margin:0;">📂 <?= e($folderName) ?></h1>
+            <h1 style="font-size:1.5rem; margin:0;">📂 <?= e(folderDisplayName($folderName)) ?></h1>
             <p style="color:var(--color-text-muted); font-size:0.9rem; margin-top:0.25rem;">
                 <?= count($subfolders) ?> subcarpeta<?= count($subfolders) !== 1 ? 's' : '' ?> · 
                 <?= $fromSubfolders ? 0 : count($files) ?> archivo<?= (!$fromSubfolders && count($files) === 1) ? '' : 's' ?>
@@ -164,7 +164,7 @@ $shareDesc = implode(' · ', array_filter([
                 <div class="drive-folders-scroll">
                     <div class="drive-folders-grid">
                         <?php foreach ($subfolders as $sub): ?>
-                            <a href="/carpeta/<?= urlencode($sub['id']) ?>" class="drive-folder-chip<?= !empty($sub['cover']) ? ' has-cover' : '' ?>" title="<?= e($sub['name']) ?>">
+                            <a href="/carpeta/<?= urlencode($sub['id']) ?>" class="drive-folder-chip<?= !empty($sub['cover']) ? ' has-cover' : '' ?>" title="<?= e(folderDisplayName($sub['name'])) ?>">
                                 <?php if (!empty($sub['cover'])): ?>
                                     <div class="folder-cover">
                                         <img src="<?= e($sub['cover']) ?>" alt="" loading="lazy"
@@ -174,7 +174,7 @@ $shareDesc = implode(' · ', array_filter([
                                 <?php else: ?>
                                     <div class="folder-icon">📁</div>
                                 <?php endif; ?>
-                                <div class="folder-name"><?= e($sub['name']) ?></div>
+                                <div class="folder-name"><?= e(folderDisplayName($sub['name'])) ?></div>
                             </a>
                         <?php endforeach; ?>
                     </div>

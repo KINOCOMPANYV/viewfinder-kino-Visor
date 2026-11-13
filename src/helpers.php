@@ -711,6 +711,16 @@ function isAlbumFolderName(string $name): bool
 }
 
 /**
+ * Nombre de carpeta para mostrar al público: sin el número de orden del inicio ("2.CURREN" → "CURREN").
+ * Solo para mostrar: el orden sigue usando el nombre completo. Decisión del dueño, 2026-11-13.
+ */
+function folderDisplayName(string $name): string
+{
+    $clean = trim(preg_replace('/^\d+\s*\.\s*/', '', $name));
+    return $clean !== '' ? $clean : $name;
+}
+
+/**
  * ¿La carpeta es "archivada" o "desactivada"? (decisión del dueño, 2026-11-09: se oculta por defecto con todo su contenido).
  * Sin distinguir mayúsculas ni tildes: "ARCHIVADO", "archivados", "Archivado 2024", "DESACTIVADOS", "Desactivadas"…
  */
