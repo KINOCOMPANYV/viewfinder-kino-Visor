@@ -87,7 +87,7 @@ unset($_SESSION['cache_flash']);
 
         <h1 style="font-size:1.5rem; margin-bottom:1.5rem;">Dashboard</h1>
 
-        <!-- Stat Cards Row 1: Principales -->
+        <!-- Stat Cards Row 1: Principales (cada tarjeta abre Productos filtrado) -->
         <div class="stats-grid">
             <a href="/admin/products" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value">
@@ -107,7 +107,7 @@ unset($_SESSION['cache_flash']);
                 </div>
                 <div class="stat-label">Desactivados</div>
             </a>
-            <a href="/admin/products?estado=conportada" class="stat-card stat-card--link" title="Ver estos productos">
+            <div class="stat-card">
                 <div class="stat-value" style="font-size:1rem; color:var(--color-text-muted);">
                     <?= $recentImport ? date('d/m/Y H:i', strtotime($recentImport)) : 'N/A' ?>
                 </div>
@@ -117,25 +117,25 @@ unset($_SESSION['cache_flash']);
 
         <!-- Stat Cards Row 2: Detalles -->
         <div class="stats-grid" style="margin-top:1rem;">
-            <a href="/admin/products?estado=sinportada" class="stat-card stat-card--link" title="Ver estos productos">
+            <a href="/admin/products?estado=conportada" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="color:#4ade80;">
                     <?= number_format($withCover) ?>
                 </div>
                 <div class="stat-label">🖼️ Con Portada</div>
             </a>
-            <a href="/admin/products?estado=hoy" class="stat-card stat-card--link" title="Ver estos productos">
+            <a href="/admin/products?estado=sinportada" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="color:#fbbf24;">
                     <?= number_format($withoutCover) ?>
                 </div>
                 <div class="stat-label">📷 Sin Portada</div>
             </a>
-            <a href="/admin/products?estado=fuera" class="stat-card stat-card--link" title="Ver estos productos">
+            <a href="/admin/products?estado=hoy" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="color:var(--color-accent, #4a9eff);">
                     <?= number_format($updatedToday) ?>
                 </div>
                 <div class="stat-label">📅 Actualizados Hoy</div>
             </a>
-            <div class="stat-card">
+            <a href="/admin/products?estado=fuera" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="color:#f87171;">
                     <?= number_format($discontinuedProducts) ?>
                 </div>
