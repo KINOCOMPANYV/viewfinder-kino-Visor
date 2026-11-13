@@ -8,6 +8,7 @@ $filters = [
     'estado' => $_GET['estado'] ?? '',
     'marca' => $_GET['marca'] ?? '',
     'categoria' => $_GET['categoria'] ?? '',
+    'genero' => $_GET['genero'] ?? '',
 ];
 $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 50;

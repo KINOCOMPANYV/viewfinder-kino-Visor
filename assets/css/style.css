@@ -1376,6 +1376,24 @@ textarea.form-input {
     letter-spacing: 0.5px;
 }
 
+/* Tarjetas del Dashboard que abren el listado de Productos filtrado */
+a.stat-card--link,
+a.dash-row-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+a.stat-card--link:hover,
+a.stat-card--link:focus-visible {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+}
+a.dash-row-link:hover .stat-label,
+a.dash-row-link:hover span:first-child {
+    color: var(--color-primary) !important;
+}
+
 /* === WhatsApp Share Button === */
 .btn-whatsapp {
     display: inline-flex;
