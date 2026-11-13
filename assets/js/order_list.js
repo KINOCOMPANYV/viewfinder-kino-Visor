@@ -281,6 +281,8 @@
                         if (img) {
                             const s = Math.min(pw / img.w, ph / img.h), iw = img.w * s, ih = img.h * s;
                             doc.addImage(img.data, 'JPEG', x + 1.5 + (pw - iw) / 2, y + 1.5 + (ph - ih) / 2, iw, ih, undefined, 'FAST');
+                            // Tocar la foto abre esa misma foto en Google Drive (enlace oculto, como en el Catálogo en PDF)
+                            doc.link(x, y, w, ROW, { url: 'https://drive.google.com/file/d/' + encodeURIComponent(l.photo.id) + '/view' });
                         } else {
                             doc.setFillColor(246, 246, 246); doc.rect(x + 1.5, y + 1.5, pw, ph, 'F');
                             doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...GREY);

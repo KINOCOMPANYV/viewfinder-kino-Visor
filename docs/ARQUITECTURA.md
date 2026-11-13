@@ -264,5 +264,5 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
   selector «Tipo» para corregirlo. `tableOrderData()` también lee NIT, dirección, ciudad, teléfono y vendedor (`headValue()`).
 - `/lista-pedido` muestra «Lista Bodega» (recibo) o «Remisión». Botón «👁 Previo» (`#olMake`): arma el PDF con jsPDF y lo pinta
   con pdf.js (`assets/vendor/pdfjs`) en un panel (`#olPv`) con Descargar / Enviar / Cerrar. La Remisión agrega al final el
-  recuadro «TOTAL REMISIÓN» con `order.totalText`.
+  recuadro «TOTAL REMISIÓN» con `order.totalText`. Cada celda de foto lleva `doc.link` a `drive.google.com/file/d/{id}/view`.
 - Si no hay esa tabla, sigue el recibo de siempre («N artículos» … «Total:», `5x código … $`).
