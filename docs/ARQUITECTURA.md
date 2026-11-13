@@ -179,6 +179,8 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
    (`driveCodeFromName`) que no está en la hoja crea el producto (nombre = código, marca = carpeta de primer nivel).
    "X-1-A.jpg" va a "X-1" si también hay "X-1.jpg"; "-V1"/"-F2" se quitan. No cuentan `IMG_…`, WhatsApp, `.psd`
    ni fotos en carpetas "DESACTIVADOS". Sin foto → `from_drive = 0` (oculto, no se borra). `DRIVE_PRODUCTS=0` lo apaga.
+   Un punto de más al final ("M8324-4..jpg") se quita. Una fila vieja fuera de la hoja y no apagada en el admin no reclama
+   fotos estando oculta: su foto la revive como "solo Drive" (reclaman ocultos solo `in_sheet = 1` o `is_active = 0`).
 3. Se llama tras: sync de portadas, ocultar/mostrar carpeta, subir/borrar en Media, sync de la hoja, webhook y activar/desactivar.
 - Lo leen: galería (`filesForSku`), `/api/covers/batch`, miniaturas de la ficha, Admin → Media y "¿Por qué no sale la foto?".
 - Tarjeta (inicio y búsqueda): si el padre no tiene foto, usa la portada de una variante.

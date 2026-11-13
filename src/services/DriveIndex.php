@@ -216,7 +216,7 @@ class DriveIndex
         $stats = ['ok' => false, 'files' => 0, 'linked' => 0, 'family' => 0, 'unlinked' => [], 'drive_products' => 0,
                   'covers_set' => 0, 'covers_cleared' => 0, 'without_photo' => 0, 'album_of' => []];
         if (!self::isReady($db)) return $stats;
-        $productsSql = "SELECT id, sku, parent_sku, cover_image_url, in_sheet, from_drive, archived FROM products ORDER BY archived ASC, id ASC";
+        $productsSql = "SELECT id, sku, parent_sku, cover_image_url, in_sheet, from_drive, is_active, archived FROM products ORDER BY archived ASC, id ASC";
         try {
             // Todos los productos (también los ocultos): así la foto de uno desactivado no se
             // le pega a otro código más corto. Los visibles ganan si dos códigos chocan.
@@ -323,9 +323,12 @@ class DriveIndex
     {
         // Los visibles primero: un código oculto escrito igual al archivo ("M8291-1", sobra de un
         // producto "solo Drive" viejo) no le quita las fotos al visible ("M:8291-1").
+        // Un oculto solo reclama fotos si es de la hoja o lo apagó el admin. Una fila vieja fuera de la
+        // hoja (sin foto en su momento, "M8324-4." con punto…) no: sus fotos vuelven como "solo Drive".
         $visible = $hidden = [];
         foreach ($products as $p) {
-            if ((int) ($p['archived'] ?? 0)) $hidden[] = $p['sku']; else $visible[] = $p['sku'];
+            if (!(int) ($p['archived'] ?? 0)) $visible[] = $p['sku'];
+            elseif (self::claimsWhenHidden($p)) $hidden[] = $p['sku'];
         }
         $productIndex = skuMatchIndex($visible) + skuMatchIndex($hidden);
         $parentOf = array_column($products, 'parent_sku', 'sku');
@@ -373,8 +376,9 @@ class DriveIndex
     {
         $out = ['changed' => false, 'visible' => 0];
         $enabled = env('DRIVE_PRODUCTS', '1') !== '0'; // DRIVE_PRODUCTS=0 en Railway lo apaga
-        // Productos reales = los de la hoja (también los que salieron de ella: siguen ocultos)
-        $real = array_values(array_filter($products, fn($p) => !(int) $p['from_drive'] || (int) $p['in_sheet']));
+        // Productos reales = los de la hoja y los que apagó el admin. Un código fuera de la hoja que
+        // sigue activo y tiene foto vuelve a salir como "solo Drive" (antes quedaba oculto para siempre).
+        $real = array_values(array_filter($products, fn($p) => (int) $p['in_sheet'] || self::isOffByAdmin($p)));
         $unlinked = self::matchFiles($real, $files)['unlinked'];
 
         $folders = [];
@@ -414,14 +418,17 @@ class DriveIndex
         $existing = [];
         foreach ($products as $p) {
             if ((int) $p['from_drive']) $current[$p['sku']] = true;
-            $existing[strtolower($p['sku'])] = true;
+            $existing[strtolower($p['sku'])] = $p['sku'];
         }
+        // Fila ya existente fuera de la hoja con el mismo código escrito distinto ("M:8324-1" = "M8324-1")
+        $outOfSheet = skuMatchIndex(array_column(array_filter($products, fn($p) => !(int) $p['in_sheet']), 'sku'));
         $insert = $db->prepare(
             "INSERT INTO products (sku, name, brand, category, from_drive, in_sheet, archived) VALUES (?, ?, ?, ?, 1, 0, 0)"
         );
         $mark = $db->prepare("UPDATE products SET from_drive = 1 WHERE sku = ?");
         foreach ($codes as $code => $album) {
             $code = (string) $code;
+            $code = $existing[strtolower($code)] ?? $outOfSheet[strtolower($code)] ?? $code;
             if (!isset($current[$code])) {
                 if (isset($existing[strtolower($code)])) {
                     $mark->execute([$code]);
@@ -445,6 +452,18 @@ class DriveIndex
         }
         $out['visible'] = count($codes);
         return $out;
+    }
+
+    /** Apagado a mano en el admin (no por salir de la hoja ni por no tener foto). */
+    private static function isOffByAdmin(array $p): bool
+    {
+        return isset($p['is_active']) && !(int) $p['is_active'];
+    }
+
+    /** ¿Un producto oculto se queda con las fotos de su código? Sí si es de la hoja o lo apagó el admin. */
+    private static function claimsWhenHidden(array $p): bool
+    {
+        return (int) ($p['in_sheet'] ?? 1) || self::isOffByAdmin($p);
     }
 
     /**
