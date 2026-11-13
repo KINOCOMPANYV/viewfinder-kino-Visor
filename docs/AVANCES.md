@@ -266,3 +266,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   final y botón «👁 Previo» (pdf.js pinta el PDF en la página). Probado con la 00106511 y el recibo #c-5872.
 - Rama `claude/project-thread-0x6ypn` (2026-11-13): el botón «📤 Enviar catálogo» pasa a «📤 Enviar fotos con lista» (también título,
   migas y enlaces de esa página; la ruta `/enviar-catalogo` no cambia).
+- Rama `claude/project-thread-fyz6a4` (2026-11-13): se quita el botón «📷 Escanear» (QR) del buscador del inicio. Solo se abría
+  desde ahí, así que también se borra `assets/js/qr-scanner.js` y sus estilos. La 📷 de búsqueda por foto sigue.

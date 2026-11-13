@@ -17,7 +17,7 @@ Objetivo: que navegar por el catálogo (inicio, búsqueda, ficha) solo lea MySQL
    MySQL 8 no soporta `ADD COLUMN IF NOT EXISTS`; no lo uses.
 6. **Timeouts de cURL** en toda llamada a Google (connect 5 s, total 10-20 s). Para GETs usa los métodos de
    `GoogleDriveService` (`httpGet` ya los trae; `getFileMetadata()` para metadatos), no `curl_init` suelto.
-7. **JS pesado bajo demanda**: html5-qrcode se descarga solo al abrir el escáner (`qr-scanner.js`).
+7. **JS pesado bajo demanda**: (el escáner QR con html5-qrcode se quitó el 2026-11-13).
 8. **Un solo cargador de portadas por página**: el JS que llama a `/api/covers/batch` existe una vez por plantilla.
 
 ## Servidor
