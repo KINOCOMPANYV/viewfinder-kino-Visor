@@ -316,6 +316,12 @@ if ($uri === '/admin/sync') {
     exit;
 }
 
+if ($uri === '/admin/inventario') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_inventory.php';
+    exit;
+}
+
 if ($uri === '/admin/photo-check') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_photo_check.php';

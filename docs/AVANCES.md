@@ -74,6 +74,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   PDF, archivo `Lista_Bodega_….pdf`; la ruta sigue siendo `/lista-pedido`). La Remisión repite el **TOTAL REMISIÓN** al final,
   debajo de la tabla. El botón principal es **«👁 Previo»** (llamativo): arma el PDF y lo muestra página por página antes de
   Descargar o Enviar. Tocar una foto en el PDF (Lista Bodega o Remisión) abre esa foto en Google Drive (2026-11-13).
+- **Inventario → hoja maestra** (2026-11-13): el stock del sistema contable («INVENTARIO GENERAL.xlsx») se carga en la columna
+  STOCK de la hoja **pegándola a mano**; el visor no escribe en la hoja. Admin → 📦 Inventario arma la columna en el orden de
+  filas de la hoja y el reporte de diferencias. Cruce: código exacto primero (NO:610-1 y NO610-1 son filas distintas en ambos
+  archivos), luego "M:", "M", "M-" iguales. Negativos → 0. Códigos del inventario que no están en la hoja no se agregan.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -130,6 +134,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Problemas (todo lo que impide que salga una foto, con motivo y ruta).
   Sincronizar muestra hoja y Drive por separado (último éxito con qué cambió, último error y "🔁 Reintentar"); solo corre
   una sincronización a la vez.
+  Admin → 📦 Inventario: subir el Excel de existencias, ver diferencias con la hoja y bajar la columna STOCK para pegar.
 
 ## Pendiente / ideas
 - **Catálogo en PDF** (`docs/PLAN_PDF.md`, aprobado 2026-11-11): P1 (#52) y P2 (#53) hechas. Probar en Railway con fotos
@@ -272,3 +277,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   desde ahí, así que también se borra `assets/js/qr-scanner.js` y sus estilos. La 📷 de búsqueda por foto sigue.
 - Misma rama (2026-11-13): las carpetas se muestran sin su número de orden («2.CURREN» → «CURREN») en el inicio, la búsqueda,
   la vista de carpeta y las migas, con `folderDisplayName()`. El orden sigue igual; el admin muestra el nombre completo.
+- Rama `claude/project-thread-453d9a` (2026-11-13): Admin → 📦 Inventario (`/admin/inventario`): sube el Excel/CSV de existencias,
+  lo cruza con la hoja y da la columna STOCK para pegar + reporte (duplicados, negativos, faltantes, precio distinto).
