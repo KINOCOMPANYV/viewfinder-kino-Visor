@@ -70,6 +70,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Extractor. Factura en tabla (Colombia, «COTIZACION No») → **Remisión**, azul oscuro, archivo `Remision_N.pdf`, con NIT,
   dirección y ciudad, y columnas Precio y Total de entrada. Recibo (receipt-c-…) → **Lista pedido**, negro y dorado como
   antes. Se detecta solo; en la pantalla hay un selector «Tipo» por si falla. Cada tipo recuerda sus casillas.
+- **Lista Bodega y Previo** (2026-11-13, decisión del dueño): «Lista pedido» se llama ahora **«Lista Bodega»** (botón, título,
+  PDF, archivo `Lista_Bodega_….pdf`; la ruta sigue siendo `/lista-pedido`). La Remisión repite el **TOTAL REMISIÓN** al final,
+  debajo de la tabla. El botón principal es **«👁 Previo»** (llamativo): arma el PDF y lo muestra página por página antes de
+  Descargar o Enviar.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -258,3 +262,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   como «Solo Drive» en la búsqueda; el punto final del nombre ya no crea duplicados («M8324-4.», «M8324-4-A.»).
 - Rama `claude/project-thread-shhu3r`: interruptor «Como carpeta» en Admin → Carpetas (saca la carpeta de inicio y de su carpeta
   superior sin ocultar su contenido ni quitarla de la búsqueda). Migración 029.
+- Rama `claude/project-thread-joh3t8` (3.ª parte, 2026-11-13): «Lista pedido» → «Lista Bodega», total de la Remisión también al
+  final y botón «👁 Previo» (pdf.js pinta el PDF en la página). Probado con la 00106511 y el recibo #c-5872.
