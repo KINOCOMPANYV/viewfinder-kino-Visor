@@ -33,6 +33,8 @@
 
         <p style="color:var(--color-text-muted); font-size:0.85rem; margin-bottom:1rem;">
             Apaga una carpeta para ocultarla en el visor con todo lo que tiene dentro (subcarpetas, fotos y videos).
+            El interruptor <strong>«Como carpeta»</strong> solo quita la carpeta de la lista de carpetas (inicio y su carpeta
+            superior): sus fotos y productos se siguen viendo, y la carpeta sigue saliendo al buscar.
             La foto de portada de cada carpeta se elige al azar de su contenido en cada sincronización.
         </p>
 
@@ -91,7 +93,15 @@
                             </div>
                         </div>
                         <div class="folder-admin-state"><?= $inherited ? 'Oculta por carpeta superior' : ($own ? 'Oculta' : 'Visible') ?></div>
-                        <label class="toggle-switch" title="Mostrar / ocultar">
+                        <label class="folder-admin-lists" title="Mostrar la carpeta en la lista de carpetas (inicio y su carpeta superior). Apagado: no sale como carpeta, pero su contenido y la búsqueda siguen igual.">
+                            <span>Como carpeta</span>
+                            <span class="toggle-switch">
+                                <input type="checkbox" <?= $f['hide_in_lists'] ? '' : 'checked' ?> <?= $f['is_hidden'] ? 'disabled' : '' ?>
+                                    onchange="toggleFolder(this, 'lists')">
+                                <span class="toggle-slider"></span>
+                            </span>
+                        </label>
+                        <label class="toggle-switch" title="Mostrar / ocultar la carpeta con todo su contenido">
                             <input type="checkbox" <?= $f['is_hidden'] ? '' : 'checked' ?> <?= $inherited ? 'disabled' : '' ?>
                                 onchange="toggleFolder(this)">
                             <span class="toggle-slider"></span>
@@ -115,7 +125,7 @@
             setTimeout(() => t.remove(), 4000);
         }
 
-        async function toggleFolder(checkbox) {
+        async function toggleFolder(checkbox, field = '') {
             const row = checkbox.closest('.folder-admin-row');
             const visible = checkbox.checked;
             checkbox.disabled = true;
@@ -123,6 +133,7 @@
             const form = new FormData();
             form.append('folder_id', row.dataset.id);
             form.append('visible', visible ? '1' : '0');
+            if (field) form.append('field', field);
             try {
                 const resp = await fetch('/admin/folders/toggle', {
                     method: 'POST',
@@ -131,8 +142,12 @@
                 });
                 const data = await resp.json();
                 if (!data.ok) throw new Error(data.error || 'Error al guardar');
-                row.classList.toggle('is-hidden', !visible);
-                row.querySelector('.folder-admin-state').textContent = visible ? 'Visible' : 'Oculta';
+                if (!field) {
+                    row.classList.toggle('is-hidden', !visible);
+                    row.querySelector('.folder-admin-state').textContent = visible ? 'Visible' : 'Oculta';
+                    const lists = row.querySelector('.folder-admin-lists input');
+                    if (lists) lists.disabled = !visible;
+                }
                 showToast(data.message);
             } catch (e) {
                 checkbox.checked = !visible;

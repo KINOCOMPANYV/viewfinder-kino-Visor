@@ -59,10 +59,16 @@
         $totalAlbums = 0;
         try {
             $db = getDB();
-            $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1")->fetchColumn();
+            // Carpetas que el admin sacó de las listas (siguen en búsqueda y su contenido se ve)
+            $notInLists = '';
+            try {
+                $db->query("SELECT hide_in_lists FROM folder_settings LIMIT 1");
+                $notInLists = " AND drive_id NOT IN (SELECT folder_id FROM folder_settings WHERE hide_in_lists = 1)";
+            } catch (\PDOException $e) { /* migración 029 pendiente */ }
+            $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1$notInLists")->fetchColumn();
             // Carpetas de primer nivel de PRODUCTOS (las mantiene el sync de Drive), en el orden
             // de Drive: "1.POEDAGAR", "2.CURREN", ..., "17.NEPIC". Se abren como carpeta.
-            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1 ORDER BY CAST(name AS UNSIGNED) = 0, CAST(name AS UNSIGNED), name ASC")->fetchAll();
+            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1$notInLists ORDER BY CAST(name AS UNSIGNED) = 0, CAST(name AS UNSIGNED), name ASC")->fetchAll();
             // Sin ícono propio: foto al azar de la carpeta (copia local de Drive)
             if ($albums) {
                 try {

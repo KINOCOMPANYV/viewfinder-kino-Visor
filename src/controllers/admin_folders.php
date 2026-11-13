@@ -17,6 +17,7 @@ $indexReady = DriveIndex::isReady($db);
 // own_hidden = la ocultó el admin; is_hidden = oculta (por ella o por una carpeta superior)
 $select = "SELECT d.file_id, d.name, d.parent_id, d.cover_file_id, d.is_hidden,
                   (COALESCE(fs.hidden, 0) = 1 OR (a.is_active = 0 AND a.auto_disabled = 0)) AS own_hidden,
+                  COALESCE(fs.hide_in_lists, 0) AS hide_in_lists,
                   (SELECT COUNT(*) FROM drive_index c WHERE c.parent_id = d.file_id AND c.is_folder = 1) AS n_folders,
                   (SELECT COUNT(*) FROM drive_index c WHERE c.parent_id = d.file_id AND c.is_folder = 0) AS n_files
            FROM drive_index d

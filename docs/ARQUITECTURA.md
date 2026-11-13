@@ -58,7 +58,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
   (sha256 del token de gestión), `is_active`, `views`. No se borran: se desactivan.
 - `image_embeddings` (migración 028): `file_id` (portada) → `embedding` (512 float32 empaquetados, jina-clip-v2; NULL = no
   bajó, se reintenta en 1 día). Búsqueda por foto.
-- `folder_settings`: `folder_id` → `hidden` (decisión del admin; sobrevive a los syncs).
+- `folder_settings`: `folder_id` → `hidden` (decisión del admin; sobrevive a los syncs) y `hide_in_lists` (migración 029).
 - `media_search_cache`: `sku` → `files_json` (búsqueda en Drive). Solo se usa mientras `drive_index` está vacío.
 - `drive_cache`: hoy solo guarda la visibilidad por archivo (`visible_publico`) y subcarpetas para la búsqueda.
 - `google_tokens`: OAuth (último registro = activo; `getValidToken()` renueva solo). Se escribe en `/admin/google/callback`
@@ -122,6 +122,8 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
   También vacía las portadas de productos que eran una foto oculta (el visor elige otra visible).
 - Carpetas "archivado" y "desactivados" (`isArchivedFolderName()`): `DriveIndex::hideArchivedFolders()` (al inicio de `refreshFolderState`) crea
   `folder_settings.hidden = 1` solo si la carpeta no tiene fila; si el admin la muestra (`hidden = 0`) se respeta.
+- «Como carpeta» apagado → `folder_settings.hide_in_lists = 1` (`DriveIndex::setFolderInLists`, `field=lists` en el toggle): la carpeta
+  no sale en la lista de inicio (`albums`) ni como subcarpeta en `folderContents()`. No toca `is_hidden`: contenido, búsqueda y enlace siguen.
 - Todo lo público filtra `is_hidden = 0`: `/carpeta/{id}`, carpetas de la búsqueda, galería (`filesForSku`) y el sync de portadas.
 
 ## Familias (padre ↔ variantes)
