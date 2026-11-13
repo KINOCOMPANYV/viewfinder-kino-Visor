@@ -89,25 +89,25 @@ unset($_SESSION['cache_flash']);
 
         <!-- Stat Cards Row 1: Principales -->
         <div class="stats-grid">
-            <div class="stat-card">
+            <a href="/admin/products" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value">
                     <?= number_format($totalProducts) ?>
                 </div>
                 <div class="stat-label">Productos Total</div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/admin/products?estado=activos" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="color:var(--color-success);">
                     <?= number_format($activeProducts) ?>
                 </div>
                 <div class="stat-label">Visibles</div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/admin/products?estado=inactivos" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="color:var(--color-danger);">
                     <?= number_format($archivedProducts) ?>
                 </div>
-                <div class="stat-label"><a href="/admin/products?estado=inactivos" style="color:inherit;">Desactivados</a></div>
-            </div>
-            <div class="stat-card">
+                <div class="stat-label">Desactivados</div>
+            </a>
+            <a href="/admin/products?estado=conportada" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="font-size:1rem; color:var(--color-text-muted);">
                     <?= $recentImport ? date('d/m/Y H:i', strtotime($recentImport)) : 'N/A' ?>
                 </div>
@@ -117,30 +117,30 @@ unset($_SESSION['cache_flash']);
 
         <!-- Stat Cards Row 2: Detalles -->
         <div class="stats-grid" style="margin-top:1rem;">
-            <div class="stat-card">
+            <a href="/admin/products?estado=sinportada" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="color:#4ade80;">
                     <?= number_format($withCover) ?>
                 </div>
                 <div class="stat-label">🖼️ Con Portada</div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/admin/products?estado=hoy" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="color:#fbbf24;">
                     <?= number_format($withoutCover) ?>
                 </div>
                 <div class="stat-label">📷 Sin Portada</div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="/admin/products?estado=fuera" class="stat-card stat-card--link" title="Ver estos productos">
                 <div class="stat-value" style="color:var(--color-accent, #4a9eff);">
                     <?= number_format($updatedToday) ?>
                 </div>
                 <div class="stat-label">📅 Actualizados Hoy</div>
-            </div>
+            </a>
             <div class="stat-card">
                 <div class="stat-value" style="color:#f87171;">
                     <?= number_format($discontinuedProducts) ?>
                 </div>
-                <div class="stat-label"><a href="/admin/products?estado=fuera" style="color:inherit;">⛔ Fuera de la hoja</a></div>
-            </div>
+                <div class="stat-label">⛔ Fuera de la Hoja master</div>
+            </a>
         </div>
 
         <!-- Desglose por Categoría y Género -->
@@ -151,14 +151,14 @@ unset($_SESSION['cache_flash']);
                     <h3 style="font-size:0.9rem; color:var(--color-text-muted); margin-bottom:0.75rem;">📊 Top Categorías
                         (activos)</h3>
                     <?php foreach ($topCategories as $cat): ?>
-                        <div
+                        <a href="/admin/products?<?= e(http_build_query(['estado' => 'activos', 'categoria' => $cat['category']])) ?>" class="dash-row-link"
                             style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--color-border);">
                             <span style="font-size:0.85rem; color:var(--color-text);"><?= e($cat['category']) ?></span>
                             <span
                                 style="font-size:0.8rem; font-weight:700; color:var(--color-primary); background:rgba(201,168,76,0.1); padding:0.15rem 0.5rem; border-radius:4px;">
                                 <?= number_format($cat['cnt']) ?>
                             </span>
-                        </div>
+                        </a>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
@@ -176,7 +176,7 @@ unset($_SESSION['cache_flash']);
                         $color = $genderColors[$gs['gender']] ?? 'var(--color-text)';
                         $pct = $activeProducts > 0 ? round(($gs['cnt'] / $activeProducts) * 100, 1) : 0;
                         ?>
-                        <div style="margin-bottom:0.6rem;">
+                        <a href="/admin/products?<?= e(http_build_query(['estado' => 'activos', 'genero' => (string) $gs['gender']])) ?>" class="dash-row-link" style="display:block; margin-bottom:0.6rem;">
                             <div
                                 style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
                                 <span style="font-size:0.85rem; color:var(--color-text);"><?= $label ?></span>
@@ -189,7 +189,7 @@ unset($_SESSION['cache_flash']);
                                     style="height:100%; width:<?= $pct ?>%; background:<?= $color ?>; border-radius:3px; transition:width 0.5s ease;">
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>

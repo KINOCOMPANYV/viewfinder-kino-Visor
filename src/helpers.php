@@ -660,7 +660,8 @@ function refreshProductVisibility(PDO $db): int
 /**
  * Filtros del listado de productos del admin → [WHERE sql, params].
  * Los usan el listado (admin_products.php) y la activación masiva "todos los del filtro".
- * $f: q (código o nombre), estado (activos|inactivos|fuera|sinfoto), marca, categoria.
+ * $f: q (código o nombre), estado (activos|inactivos|fuera|sinfoto|conportada|sinportada|hoy), marca, categoria, genero.
+ * conportada/sinportada/hoy = mismas cuentas que las tarjetas del Dashboard (enlazan aquí).
  */
 function adminProductFilter(array $f): array
 {
@@ -677,6 +678,13 @@ function adminProductFilter(array $f): array
         case 'inactivos': $where[] = 'is_active = 0'; break;
         case 'fuera':     $where[] = 'in_sheet = 0'; break;
         case 'sinfoto':   $where[] = "(cover_image_url IS NULL OR cover_image_url = '')"; break;
+        case 'conportada': $where[] = "archived = 0 AND cover_image_url IS NOT NULL AND cover_image_url <> ''"; break;
+        case 'sinportada': $where[] = "archived = 0 AND (cover_image_url IS NULL OR cover_image_url = '')"; break;
+        case 'hoy':       $where[] = 'DATE(updated_at) = CURDATE()'; break;
+    }
+    if (($f['genero'] ?? '') !== '') {
+        $where[] = 'gender = ?';
+        $params[] = $f['genero'];
     }
     if (($f['marca'] ?? '') !== '') {
         $where[] = 'brand = ?';

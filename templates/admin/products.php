@@ -77,8 +77,11 @@
             '' => ['Todos', $summary['total']],
             'activos' => ['Visibles', $summary['visibles']],
             'inactivos' => ['Desactivados', $summary['inactivos']],
-            'fuera' => ['Fuera de la hoja', $summary['fuera']],
+            'fuera' => ['Fuera de la Hoja master', $summary['fuera']],
             'sinfoto' => ['Sin foto', null],
+            'conportada' => ['Con portada', null],
+            'sinportada' => ['Sin portada', null],
+            'hoy' => ['Actualizados hoy', null],
         ];
         ?>
         <div class="prod-tabs">
@@ -91,6 +94,10 @@
 
         <form action="/admin/products" method="GET" class="prod-filters">
             <input type="hidden" name="estado" value="<?= e($filters['estado']) ?>">
+            <?php if ($filters['genero'] !== ''): ?>
+                <input type="hidden" name="genero" value="<?= e($filters['genero']) ?>">
+                <span class="cell-muted">Género: <strong><?= e(ucfirst($filters['genero'])) ?></strong></span>
+            <?php endif; ?>
             <input type="text" name="q" value="<?= e($filters['q']) ?>" placeholder="Código o nombre..." class="form-input" style="min-width:200px;">
             <select name="marca" class="form-input" onchange="this.form.submit()">
                 <option value="">Todas las marcas</option>

@@ -83,6 +83,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
+- Admin → Dashboard: cada tarjeta (total, visibles, desactivados, con/sin portada, actualizados hoy, fuera de la Hoja master),
+  cada categoría del top y cada género abre Admin → Productos con exactamente esos productos (mismo conteo).
 - Catálogo público en grilla densa (60 por página, **una tarjeta por referencia**; contador "N referencias").
 - Ficha de producto con variantes, galería, visor grande; WhatsApp + Descargar en cada foto.
 - Botón WhatsApp de cada foto: manda solo la imagen liviana (800 px) con el código como pie, sin enlace. En el computador
@@ -284,3 +286,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Misma rama (2026-11-13): las descargas de Inventario salen en Excel real (.xlsx, `XlsxWriter.php`, sin librerías) porque el CSV
   se abría todo en la columna A; el reporte trae la pestaña «Léeme» (qué significa y qué hacer) y una pestaña por tipo, con títulos claros.
   Textos con los nombres del dueño: «Hoja master» y «SYS» (pantalla, Excel y nombres de archivo).
+- Rama `claude/project-thread-705w0p` (2026-11-13): tarjetas del Dashboard clicables → listado filtrado; filtros nuevos
+  `estado=conportada|sinportada|hoy` y `genero` en `adminProductFilter()`.
