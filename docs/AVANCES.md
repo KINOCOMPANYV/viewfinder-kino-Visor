@@ -73,7 +73,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Lista Bodega y Previo** (2026-11-13, decisión del dueño): «Lista pedido» se llama ahora **«Lista Bodega»** (botón, título,
   PDF, archivo `Lista_Bodega_….pdf`; la ruta sigue siendo `/lista-pedido`). La Remisión repite el **TOTAL REMISIÓN** al final,
   debajo de la tabla. El botón principal es **«👁 Previo»** (llamativo): arma el PDF y lo muestra página por página antes de
-  Descargar o Enviar.
+  Descargar o Enviar. Tocar una foto en el PDF (Lista Bodega o Remisión) abre esa foto en Google Drive (2026-11-13).
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -266,3 +266,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   final y botón «👁 Previo» (pdf.js pinta el PDF en la página). Probado con la 00106511 y el recibo #c-5872.
 - Rama `claude/project-thread-0x6ypn` (2026-11-13): el botón «📤 Enviar catálogo» pasa a «📤 Enviar fotos con lista» (también título,
   migas y enlaces de esa página; la ruta `/enviar-catalogo` no cambia).
+- Rama `claude/project-thread-joh3t8` (4.ª parte, 2026-11-13): en Lista Bodega y Remisión, cada foto del PDF es un enlace a la
+  foto en Drive (`drive.google.com/file/d/{id}/view`), igual que «Abrir foto» del Catálogo en PDF.
