@@ -8,6 +8,7 @@ $adminNavItems = [
     'media' => ['/admin/media', '🖼️ Media'],
     'sync' => ['/admin/sync', '🔄 Sincronizar'],
     'problemas' => ['/admin/problemas', '🩺 Problemas'],
+    'inventario' => ['/admin/inventario', '📦 Inventario'],
 ];
 ?>
 <nav class="admin-nav">
