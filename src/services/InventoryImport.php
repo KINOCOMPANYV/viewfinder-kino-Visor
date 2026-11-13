@@ -1,6 +1,7 @@
 <?php
 /**
- * Importar inventario (Admin → Inventario). Lee el Excel/CSV del sistema contable
+ * Importar inventario (Admin → Inventario). Nombres del dueño: «Hoja master» = hoja maestra; «SYS» = sistema contable
+ * de donde sale este archivo (otro sistema, «KYTE», traerá sus datos aparte). Lee el Excel/CSV de SYS
  * ("INVENTARIO GENERAL.xlsx": Artículo, Descripción, …, Exist. unidades, Precio),
  * lo cruza con la hoja maestra y arma:
  *   - el reporte de diferencias (duplicados, stock distinto, negativos, faltantes, precio distinto)
@@ -16,21 +17,21 @@ class InventoryImport
     /** Encabezados que se reconocen (en minúsculas, sin tildes) → campo */
     /** Tipos del reporte: nombre para la persona, qué significa y qué hacer (pantalla y Excel) */
     public const TYPES = [
-        'stock_diferente' => ['Stock cambia', 'El stock del sistema es distinto al que tiene la hoja.', 'Normal. Se corrige solo al pegar la columna STOCK en la hoja.'],
-        'stock_negativo' => ['Stock negativo', 'El sistema contable tiene menos de 0 unidades.', 'En la hoja queda 0. Revisar ese código en el sistema contable.'],
-        'duplicado_inventario' => ['Repetido en el sistema', 'El mismo código está 2 veces en el archivo del sistema, escrito distinto (espacio, guion o «:»).', 'Dejar uno solo en el sistema contable. Para la hoja se usa el que se escribe igual que en la hoja.'],
-        'duplicado_hoja' => ['Repetido en la hoja', 'El mismo código está 2 veces en la hoja maestra, escrito distinto (por ejemplo NO610-1 y NO:610-1).', 'Decidir qué fila queda. Cada fila recibe el stock del código escrito igual en el sistema.'],
-        'varias_filas_inventario' => ['Varias filas → un código', 'Varias filas del sistema caen en el mismo código de la hoja.', 'Se suman. Revisar si alguna sobra en el sistema.'],
-        'solo_hoja' => ['Falta en el sistema', 'Está en la hoja maestra pero no en el archivo del sistema.', 'Se deja el stock que tenía. Revisar si el código está bien escrito en alguno de los dos.'],
-        'solo_inventario' => ['Falta en la hoja', 'Tiene existencias en el sistema pero no existe en la hoja maestra.', 'Si se vende, agregarlo a la hoja. Si no, ignorarlo.'],
-        'precio_diferente' => ['Precio distinto', 'El precio del sistema no coincide con la columna PRICE de la hoja.', 'Solo informativo: no se cambia nada. Corregir donde esté mal.'],
+        'stock_diferente' => ['Stock cambia', 'El stock SYS es distinto al que tiene la Hoja master.', 'Normal. Se corrige solo al pegar la columna STOCK en la Hoja master.'],
+        'stock_negativo' => ['Stock negativo', 'SYS tiene menos de 0 unidades.', 'En la Hoja master queda 0. Revisar ese código en SYS.'],
+        'duplicado_inventario' => ['Repetido en SYS', 'El mismo código está 2 veces en el archivo SYS, escrito distinto (espacio, guion o «:»).', 'Dejar uno solo en SYS. Para la Hoja master se usa el que se escribe igual que en ella.'],
+        'duplicado_hoja' => ['Repetido en Hoja master', 'El mismo código está 2 veces en la Hoja master, escrito distinto (por ejemplo NO610-1 y NO:610-1).', 'Decidir qué fila queda. Cada fila recibe el stock del código escrito igual en SYS.'],
+        'varias_filas_inventario' => ['Varias filas SYS → un código', 'Varias filas SYS caen en el mismo código de la Hoja master.', 'Se suman. Revisar si alguna sobra en SYS.'],
+        'solo_hoja' => ['Falta en SYS', 'Está en la Hoja master pero no en el archivo SYS.', 'Se deja el stock que tenía. Revisar si el código está bien escrito en alguno de los dos.'],
+        'solo_inventario' => ['Falta en Hoja master', 'Tiene existencias en SYS pero no existe en la Hoja master.', 'Si se vende, agregarlo a la Hoja master. Si no, ignorarlo.'],
+        'precio_diferente' => ['Precio distinto', 'El Precio SYS no coincide con la columna PRICE de la Hoja master.', 'Solo informativo: no se cambia nada. Corregir donde esté mal.'],
     ];
 
     /** Columnas del reporte con títulos claros */
     public const REPORT_COLUMNS = [
-        'codigo_inventario' => 'Código en el sistema', 'codigo_hoja' => 'Código en la hoja', 'descripcion' => 'Descripción',
-        'stock_inventario' => 'Stock sistema', 'stock_hoja' => 'Stock hoja (antes)', 'diferencia' => 'Diferencia',
-        'precio_inventario' => 'Precio sistema', 'PRICE_hoja' => 'PRICE hoja', 'nota' => 'Nota',
+        'codigo_inventario' => 'Código SYS', 'codigo_hoja' => 'Código Hoja master', 'descripcion' => 'Descripción',
+        'stock_inventario' => 'Stock SYS', 'stock_hoja' => 'Stock Hoja master (antes)', 'diferencia' => 'Diferencia',
+        'precio_inventario' => 'Precio SYS', 'PRICE_hoja' => 'PRICE Hoja master', 'nota' => 'Nota',
     ];
 
     /** Reporte → .xlsx: pestaña «Léeme» con el resumen y una pestaña por tipo */
@@ -44,10 +45,10 @@ class InventoryImport
             if (!empty($byType[$k])) $readme[] = [$label, count($byType[$k]), $what, $todo];
         }
         $readme[] = [];
-        $readme[] = ['Archivo', '', $meta['archivo'] ?? ''];
+        $readme[] = ['Archivo SYS', '', $meta['archivo'] ?? ''];
         $readme[] = ['Fecha', '', $meta['fecha'] ?? ''];
         $readme[] = ['Cómo se cruzan', '', 'Primero el código exacto; si no está, el mismo código con o sin «M:», «M», «M-».'];
-        $readme[] = ['Para actualizar', '', 'Descarga «Columna STOCK para pegar» y pega STOCK nuevo en la columna STOCK de la hoja, desde la fila 2.'];
+        $readme[] = ['Para actualizar', '', 'Descarga «Columna STOCK para pegar» y pega STOCK nuevo en la columna STOCK de la Hoja master, desde la fila 2.'];
         $sheets = ['Léeme' => ['rows' => $readme, 'widths' => [24, 10, 60, 60]]];
         $cols = self::REPORT_COLUMNS;
         foreach (self::TYPES as $k => [$label]) {
@@ -67,7 +68,7 @@ class InventoryImport
     /** Columna STOCK → .xlsx (mismo orden de filas que la hoja) */
     public static function stockXlsx(array $result): string
     {
-        $rows = [['Fila de la hoja', 'SKU', 'STOCK antes', 'STOCK nuevo (copiar esta columna)']];
+        $rows = [['Fila Hoja master', 'SKU', 'STOCK antes', 'STOCK nuevo (copiar esta columna)']];
         foreach ($result['paste'] as $p) $rows[] = [$p['fila_hoja'], $p['SKU'], $p['STOCK_actual'], $p['STOCK_nuevo']];
         return XlsxWriter::build(['STOCK' => ['rows' => $rows, 'widths' => [14, 22, 14, 34]]]);
     }
@@ -255,14 +256,14 @@ class InventoryImport
     public static function sheetRows(PDO $db): array
     {
         try {
-            return ['rows' => self::parseSheetCsv(MasterSheet::fetchCsv()), 'source' => 'hoja en vivo'];
+            return ['rows' => self::parseSheetCsv(MasterSheet::fetchCsv()), 'source' => 'Hoja master en vivo'];
         } catch (\Throwable $e) {
             $rows = [];
             foreach ($db->query("SELECT sheet_row, sku, name, stock, price_wholesale FROM products WHERE in_sheet = 1 ORDER BY sheet_row") as $p) {
                 $rows[] = ['row' => (int) $p['sheet_row'], 'sku' => $p['sku'], 'name' => (string) $p['name'],
                     'stock' => $p['stock'] === null ? null : (int) $p['stock'], 'price' => $p['price_wholesale'] === null ? null : (float) $p['price_wholesale']];
             }
-            return ['rows' => $rows, 'source' => 'copia de la BD (no se pudo leer la hoja: ' . $e->getMessage() . ')'];
+            return ['rows' => $rows, 'source' => 'copia de la BD (no se pudo leer la Hoja master: ' . $e->getMessage() . ')'];
         }
     }
 
@@ -274,7 +275,7 @@ class InventoryImport
         rewind($h);
         $header = array_map(fn($x) => strtoupper(trim((string) $x)), fgetcsv($h) ?: []);
         $col = array_flip($header);
-        if (!isset($col['SKU'])) throw new RuntimeException('la hoja no tiene columna SKU');
+        if (!isset($col['SKU'])) throw new RuntimeException('la Hoja master no tiene columna SKU');
         $rows = [];
         for ($line = 2; ($r = fgetcsv($h)) !== false; $line++) {
             $rows[] = [
@@ -317,7 +318,7 @@ class InventoryImport
             $dupInv++;
             foreach ($group as $it) {
                 $others = implode(', ', array_map(fn($o) => '«' . $o['code'] . '» (fila ' . $o['line'] . ')', array_filter($group, fn($o) => $o !== $it)));
-                $add('duplicado_inventario', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, "Fila {$it['line']} del archivo; es el mismo código que {$others}");
+                $add('duplicado_inventario', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, "Fila {$it['line']} del archivo SYS; es el mismo código que {$others}");
             }
         }
         // Duplicados en la hoja
@@ -325,7 +326,7 @@ class InventoryImport
         foreach ($loose as $idxs) {
             if (count($idxs) < 2) continue;
             $dupSheet++;
-            foreach ($idxs as $i) $add('duplicado_hoja', '', $sheet[$i]['sku'], $sheet[$i]['name'], null, $sheet[$i]['stock'], null, $sheet[$i]['price'], "Fila {$sheet[$i]['row']} de la hoja; el mismo código está escrito de otra forma");
+            foreach ($idxs as $i) $add('duplicado_hoja', '', $sheet[$i]['sku'], $sheet[$i]['name'], null, $sheet[$i]['stock'], null, $sheet[$i]['price'], "Fila {$sheet[$i]['row']} de la Hoja master; el mismo código está escrito de otra forma");
         }
 
         // Cada artículo → fila de la hoja (exacto, luego normalizado)
@@ -337,7 +338,7 @@ class InventoryImport
             $onlyInv++;
             if ($it['stock'] != 0) {
                 $onlyInvStock++;
-                $add('solo_inventario', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, 'No está en la hoja maestra' . ($it['stock'] < 0 ? ' (stock negativo)' : ''));
+                $add('solo_inventario', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, 'No está en la Hoja master' . ($it['stock'] < 0 ? ' (stock negativo)' : ''));
             }
         }
 
@@ -346,25 +347,25 @@ class InventoryImport
         foreach ($sheet as $i => $s) {
             $its = $assign[$i] ?? [];
             if (!$its) {
-                if ($s['sku'] !== '') { $c['solo_hoja']++; $add('solo_hoja', '', $s['sku'], $s['name'], null, $s['stock'], null, $s['price'], 'No aparece en el inventario: se deja el stock actual'); }
+                if ($s['sku'] !== '') { $c['solo_hoja']++; $add('solo_hoja', '', $s['sku'], $s['name'], null, $s['stock'], null, $s['price'], 'No aparece en SYS: se deja el stock actual'); }
                 $paste[] = ['fila_hoja' => $s['row'], 'SKU' => $s['sku'], 'STOCK_actual' => $s['stock'], 'STOCK_nuevo' => $s['stock']];
                 continue;
             }
             $sum = array_sum(array_column($its, 'stock'));
             $codes = implode(' + ', array_column($its, 'code'));
             $price = $its[0]['price'];
-            if (count($its) > 1) { $c['varias']++; $add('varias_filas_inventario', $codes, $s['sku'], $s['name'], $sum, $s['stock'], $price, $s['price'], 'Varias filas del inventario caen en este código: se suman'); }
+            if (count($its) > 1) { $c['varias']++; $add('varias_filas_inventario', $codes, $s['sku'], $s['name'], $sum, $s['stock'], $price, $s['price'], 'Varias filas SYS caen en este código: se suman'); }
             $new = $sum;
             if ($sum < 0) {
                 $c['negativos']++;
                 if ($negativeToZero) $new = 0;
-                $add('stock_negativo', $codes, $s['sku'], $s['name'], $sum, $s['stock'], $price, $s['price'], $negativeToZero ? 'Inventario negativo: se pone 0' : 'Inventario negativo');
+                $add('stock_negativo', $codes, $s['sku'], $s['name'], $sum, $s['stock'], $price, $s['price'], $negativeToZero ? 'Stock SYS negativo: se pone 0' : 'Stock SYS negativo');
             }
             if ($new === $s['stock']) $c['iguales']++;
             else { $c['diferentes']++; $add('stock_diferente', $codes, $s['sku'], $s['name'], $new, $s['stock'], $price, $s['price'], ''); }
             if ($price !== null && $s['price'] !== null && abs($price - $s['price']) > 0.5) {
                 $c['precio']++;
-                $add('precio_diferente', $codes, $s['sku'], $s['name'], $sum, $s['stock'], $price, $s['price'], 'Precio del inventario ≠ PRICE de la hoja (solo informativo)');
+                $add('precio_diferente', $codes, $s['sku'], $s['name'], $sum, $s['stock'], $price, $s['price'], 'Precio SYS ≠ PRICE de la Hoja master (solo informativo)');
             }
             $paste[] = ['fila_hoja' => $s['row'], 'SKU' => $s['sku'], 'STOCK_actual' => $s['stock'], 'STOCK_nuevo' => $new];
         }

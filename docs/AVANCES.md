@@ -74,7 +74,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   PDF, archivo `Lista_Bodega_….pdf`; la ruta sigue siendo `/lista-pedido`). La Remisión repite el **TOTAL REMISIÓN** al final,
   debajo de la tabla. El botón principal es **«👁 Previo»** (llamativo): arma el PDF y lo muestra página por página antes de
   Descargar o Enviar. Tocar una foto en el PDF (Lista Bodega o Remisión) abre esa foto en Google Drive (2026-11-13).
-- **Inventario → hoja maestra** (2026-11-13): el stock del sistema contable («INVENTARIO GENERAL.xlsx») se carga en la columna
+- **Nombres** (2026-11-13): la hoja maestra se llama siempre **«Hoja master»**; el sistema contable es **«SYS»** (sus datos: «Stock SYS»,
+  «Precio SYS»). Otro sistema, **«KYTE»**, traerá sus datos aparte más adelante.
+- **Inventario SYS → Hoja master** (2026-11-13): el stock de SYS («INVENTARIO GENERAL.xlsx») se carga en la columna
   STOCK de la hoja **pegándola a mano**; el visor no escribe en la hoja. Admin → 📦 Inventario arma la columna en el orden de
   filas de la hoja y el reporte de diferencias. Cruce: código exacto primero (NO:610-1 y NO610-1 son filas distintas en ambos
   archivos), luego "M:", "M", "M-" iguales. Negativos → 0. Códigos del inventario que no están en la hoja no se agregan.
@@ -281,3 +283,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   lo cruza con la hoja y da la columna STOCK para pegar + reporte (duplicados, negativos, faltantes, precio distinto).
 - Misma rama (2026-11-13): las descargas de Inventario salen en Excel real (.xlsx, `XlsxWriter.php`, sin librerías) porque el CSV
   se abría todo en la columna A; el reporte trae la pestaña «Léeme» (qué significa y qué hacer) y una pestaña por tipo, con títulos claros.
+  Textos con los nombres del dueño: «Hoja master» y «SYS» (pantalla, Excel y nombres de archivo).
