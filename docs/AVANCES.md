@@ -96,7 +96,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Descargar y "Seleccionar" para mandar varias (misma barra). Una carpeta que solo tiene subcarpetas (p. ej. una línea con
   14 modelos) muestra debajo las fotos de todas sus subcarpetas (hasta 300) para marcarlas sin entrar a cada una; no en la raíz.
 - Compartir por WhatsApp con vista previa (foto, título, enlace) vía Open Graph (`/og/{id}.jpg`).
-- "📤 Enviar catálogo" (público, `/enviar-catalogo`): pegar texto (o «📷 Leer lista de una foto»: el texto de la foto se lee
+- "📤 Enviar fotos con lista" (antes «Enviar catálogo»; público, `/enviar-catalogo`): pegar texto (o «📷 Leer lista de una foto»: el texto de la foto se lee
   en el celular con Tesseract y se pone en la caja para revisarlo; decisión del dueño 2026-11-11: lector gratis en el
   celular, no IA de pago; si falla mucho con letra a mano, la opción es IA de imágenes) → códigos. Si un código no existe
   tal cual, se prueba con las confusiones del lector (B↔8, O/D↔0, I/L↔1, S↔5, Z↔2, G↔6) y, si da un solo código, se usa
@@ -264,3 +264,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   superior sin ocultar su contenido ni quitarla de la búsqueda). Migración 029.
 - Rama `claude/project-thread-joh3t8` (3.ª parte, 2026-11-13): «Lista pedido» → «Lista Bodega», total de la Remisión también al
   final y botón «👁 Previo» (pdf.js pinta el PDF en la página). Probado con la 00106511 y el recibo #c-5872.
+- Rama `claude/project-thread-0x6ypn` (2026-11-13): el botón «📤 Enviar catálogo» pasa a «📤 Enviar fotos con lista» (también título,
+  migas y enlaces de esa página; la ruta `/enviar-catalogo` no cambia).

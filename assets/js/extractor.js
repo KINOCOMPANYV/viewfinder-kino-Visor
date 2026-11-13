@@ -47,7 +47,7 @@ $('exRun').addEventListener('click', async () => {
         const lib = await loadPdfjs();
         const data = new Uint8Array(await file.arrayBuffer());
         const { lines } = await core.readPdfLines(lib, data);
-        if (!lines.length) throw new Error('El PDF no tiene texto (¿es una foto escaneada?). Prueba con «📷 Leer lista de una foto» en Enviar catálogo.');
+        if (!lines.length) throw new Error('El PDF no tiene texto (¿es una foto escaneada?). Prueba con «📷 Leer lista de una foto» en Enviar fotos con lista.');
         result = core.parseOrder(lines);
         if (!result.items.length) throw new Error('No se hallaron códigos ni cantidades en el PDF.');
         rows = result.items.slice();

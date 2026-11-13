@@ -36,7 +36,7 @@
 
         <div class="ms-empty" id="cpEmpty" hidden>
             <p>No hay fotos marcadas.</p>
-            <p>Marca fotos en <a href="/buscar">Buscar</a>, en una carpeta o en <a href="/enviar-catalogo">Enviar catálogo</a>
+            <p>Marca fotos en <a href="/buscar">Buscar</a>, en una carpeta o en <a href="/enviar-catalogo">Enviar fotos con lista</a>
                 y vuelve con «📄 PDF».</p>
         </div>
 

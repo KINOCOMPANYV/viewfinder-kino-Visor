@@ -68,12 +68,12 @@
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
-            <a href="/enviar-catalogo" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Enviar catálogo</a>
+            <a href="/enviar-catalogo" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Enviar fotos con lista</a>
         </div>
     </header>
 
     <main class="container" style="padding-top:2rem; padding-bottom:3rem; max-width:900px;">
-        <?= breadcrumbs([['Enviar catálogo', '/enviar-catalogo'], ['Extractor', null]]) ?>
+        <?= breadcrumbs([['Enviar fotos con lista', '/enviar-catalogo'], ['Extractor', null]]) ?>
         <h1 style="font-size:1.5rem; margin-bottom:1.25rem;">🧾 Extractor de pedidos PDF</h1>
 
         <section class="ex-card">
@@ -108,7 +108,7 @@
 
             <section class="ex-card">
                 <h2>📷 Fotos de estos códigos</h2>
-                <p class="ex-help">Abre <strong>Enviar catálogo</strong> con estos códigos: ahí ves cuáles tienen foto y cuáles no,
+                <p class="ex-help">Abre <strong>Enviar fotos con lista</strong> con estos códigos: ahí ves cuáles tienen foto y cuáles no,
                     y puedes marcar, crear el PDF, guardarlas o mandarlas por WhatsApp.</p>
                 <div class="ex-send">
                     <button type="button" id="exToVisor" class="btn btn-primary">📷 Ver fotos en el visor</button>
