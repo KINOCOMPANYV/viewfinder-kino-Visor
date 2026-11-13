@@ -279,3 +279,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   la vista de carpeta y las migas, con `folderDisplayName()`. El orden sigue igual; el admin muestra el nombre completo.
 - Rama `claude/project-thread-453d9a` (2026-11-13): Admin → 📦 Inventario (`/admin/inventario`): sube el Excel/CSV de existencias,
   lo cruza con la hoja y da la columna STOCK para pegar + reporte (duplicados, negativos, faltantes, precio distinto).
+- Misma rama (2026-11-13): las descargas de Inventario salen en Excel real (.xlsx, `XlsxWriter.php`, sin librerías) porque el CSV
+  se abría todo en la columna A; el reporte trae la pestaña «Léeme» (qué significa y qué hacer) y una pestaña por tipo, con títulos claros.

@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/../services/MasterSheet.php';
 require_once __DIR__ . '/../services/InventoryImport.php';
+require_once __DIR__ . '/../services/XlsxWriter.php';
 
 $dir = BASE_DIR . '/storage/inventario';
 $file = $dir . '/ultimo.json';
@@ -36,29 +37,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
 $result = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
 
-if (isset($_GET['csv']) && $result) {
-    $kind = $_GET['csv'] === 'stock' ? 'stock' : 'reporte';
-    $rows = $kind === 'stock' ? $result['paste'] : $result['report'];
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . ($kind === 'stock' ? 'STOCK_para_pegar_en_hoja_' : 'inventario_vs_hoja_') . date('Y-m-d') . '.csv"');
-    $out = fopen('php://output', 'w');
-    fwrite($out, "\xEF\xBB\xBF");
-    if ($rows) fputcsv($out, array_keys($rows[0]));
-    foreach ($rows as $r) fputcsv($out, array_values($r));
-    fclose($out);
+// Descargas en Excel (.xlsx): un CSV con comas lo abre todo en la columna A en Excel en español
+$dl = $_GET['descargar'] ?? $_GET['csv'] ?? null;
+if ($dl && $result) {
+    $isStock = $dl === 'stock';
+    $bin = $isStock ? InventoryImport::stockXlsx($result) : InventoryImport::reportXlsx($result);
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . ($isStock ? 'STOCK_para_pegar_en_hoja_' : 'Reporte_inventario_vs_hoja_') . date('Y-m-d') . '.xlsx"');
+    header('Content-Length: ' . strlen($bin));
+    echo $bin;
     exit;
 }
 
-$labels = [
-    'duplicado_inventario' => 'Duplicado en el inventario',
-    'duplicado_hoja' => 'Duplicado en la hoja',
-    'varias_filas_inventario' => 'Varias filas del inventario → un código',
-    'stock_negativo' => 'Stock negativo',
-    'solo_hoja' => 'En la hoja, no en el inventario',
-    'precio_diferente' => 'Precio distinto',
-    'stock_diferente' => 'Stock distinto',
-    'solo_inventario' => 'En el inventario, no en la hoja (con stock)',
-];
+$labels = array_map(fn($t) => $t[0], InventoryImport::TYPES);
 $tab = $_GET['tipo'] ?? '';
 $counts = [];
 foreach ($result['report'] ?? [] as $r) $counts[$r['tipo']] = ($counts[$r['tipo']] ?? 0) + 1;
@@ -115,18 +106,19 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
                 duplicados: <?= $n($s['duplicados_inventario']) ?> en el archivo, <?= $n($s['duplicados_hoja']) ?> en la hoja.
             </p>
             <div class="pb-bar">
-                <a class="btn btn-sm btn-primary" href="/admin/inventario?csv=stock">📥 Columna STOCK para pegar</a>
-                <a class="btn btn-sm btn-secondary" href="/admin/inventario?csv=reporte">📥 Reporte de diferencias</a>
+                <a class="btn btn-sm btn-primary" href="/admin/inventario?descargar=stock">📥 Columna STOCK para pegar (Excel)</a>
+                <a class="btn btn-sm btn-secondary" href="/admin/inventario?descargar=reporte">📥 Reporte de diferencias (Excel)</a>
             </div>
-            <p class="pb-help">Para pegar: abre el CSV de la columna, copia <b>STOCK_nuevo</b> desde la fila 2 y pégalo en la columna STOCK de la hoja desde la fila 2 (mismo orden de filas).</p>
+            <p class="pb-help">Para pegar: abre el Excel de la columna, copia <b>STOCK nuevo</b> desde la fila 2 y pégalo en la columna STOCK de la hoja desde la fila 2 (mismo orden de filas).</p>
 
             <nav class="pb-tabs">
                 <?php foreach ($labels as $k => $label): if (empty($counts[$k])) continue; ?>
                     <a href="/admin/inventario?tipo=<?= $k ?>" class="<?= $k === $tab ? 'active' : '' ?>"><?= e($label) ?> <b><?= number_format($counts[$k]) ?></b></a>
                 <?php endforeach; ?>
             </nav>
+            <?php if ($tab): ?><p class="pb-help"><b><?= e(InventoryImport::TYPES[$tab][1]) ?></b> <?= e(InventoryImport::TYPES[$tab][2]) ?></p><?php endif; ?>
             <?php if ($shown): ?>
-                <?php if (($counts[$tab] ?? 0) > 300): ?><p class="pb-help">Se muestran los primeros 300; el reporte CSV trae todos.</p><?php endif; ?>
+                <?php if (($counts[$tab] ?? 0) > 300): ?><p class="pb-help">Se muestran los primeros 300; el reporte en Excel trae todos.</p><?php endif; ?>
                 <div class="pb-table-wrap">
                     <table class="pb-table">
                         <thead><tr><th>Código archivo</th><th>Código hoja</th><th>Descripción</th><th>Stock archivo</th><th>Stock hoja</th><th>Precio archivo</th><th>PRICE hoja</th><th>Nota</th></tr></thead>

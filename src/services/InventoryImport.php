@@ -14,6 +14,64 @@
 class InventoryImport
 {
     /** Encabezados que se reconocen (en minúsculas, sin tildes) → campo */
+    /** Tipos del reporte: nombre para la persona, qué significa y qué hacer (pantalla y Excel) */
+    public const TYPES = [
+        'stock_diferente' => ['Stock cambia', 'El stock del sistema es distinto al que tiene la hoja.', 'Normal. Se corrige solo al pegar la columna STOCK en la hoja.'],
+        'stock_negativo' => ['Stock negativo', 'El sistema contable tiene menos de 0 unidades.', 'En la hoja queda 0. Revisar ese código en el sistema contable.'],
+        'duplicado_inventario' => ['Repetido en el sistema', 'El mismo código está 2 veces en el archivo del sistema, escrito distinto (espacio, guion o «:»).', 'Dejar uno solo en el sistema contable. Para la hoja se usa el que se escribe igual que en la hoja.'],
+        'duplicado_hoja' => ['Repetido en la hoja', 'El mismo código está 2 veces en la hoja maestra, escrito distinto (por ejemplo NO610-1 y NO:610-1).', 'Decidir qué fila queda. Cada fila recibe el stock del código escrito igual en el sistema.'],
+        'varias_filas_inventario' => ['Varias filas → un código', 'Varias filas del sistema caen en el mismo código de la hoja.', 'Se suman. Revisar si alguna sobra en el sistema.'],
+        'solo_hoja' => ['Falta en el sistema', 'Está en la hoja maestra pero no en el archivo del sistema.', 'Se deja el stock que tenía. Revisar si el código está bien escrito en alguno de los dos.'],
+        'solo_inventario' => ['Falta en la hoja', 'Tiene existencias en el sistema pero no existe en la hoja maestra.', 'Si se vende, agregarlo a la hoja. Si no, ignorarlo.'],
+        'precio_diferente' => ['Precio distinto', 'El precio del sistema no coincide con la columna PRICE de la hoja.', 'Solo informativo: no se cambia nada. Corregir donde esté mal.'],
+    ];
+
+    /** Columnas del reporte con títulos claros */
+    public const REPORT_COLUMNS = [
+        'codigo_inventario' => 'Código en el sistema', 'codigo_hoja' => 'Código en la hoja', 'descripcion' => 'Descripción',
+        'stock_inventario' => 'Stock sistema', 'stock_hoja' => 'Stock hoja (antes)', 'diferencia' => 'Diferencia',
+        'precio_inventario' => 'Precio sistema', 'PRICE_hoja' => 'PRICE hoja', 'nota' => 'Nota',
+    ];
+
+    /** Reporte → .xlsx: pestaña «Léeme» con el resumen y una pestaña por tipo */
+    public static function reportXlsx(array $result): string
+    {
+        $byType = [];
+        foreach ($result['report'] as $r) $byType[$r['tipo']][] = $r;
+        $meta = $result['meta'] ?? [];
+        $readme = [['Tipo (pestaña)', 'Cantidad', 'Qué significa', 'Qué hacer']];
+        foreach (self::TYPES as $k => [$label, $what, $todo]) {
+            if (!empty($byType[$k])) $readme[] = [$label, count($byType[$k]), $what, $todo];
+        }
+        $readme[] = [];
+        $readme[] = ['Archivo', '', $meta['archivo'] ?? ''];
+        $readme[] = ['Fecha', '', $meta['fecha'] ?? ''];
+        $readme[] = ['Cómo se cruzan', '', 'Primero el código exacto; si no está, el mismo código con o sin «M:», «M», «M-».'];
+        $readme[] = ['Para actualizar', '', 'Descarga «Columna STOCK para pegar» y pega STOCK nuevo en la columna STOCK de la hoja, desde la fila 2.'];
+        $sheets = ['Léeme' => ['rows' => $readme, 'widths' => [24, 10, 60, 60]]];
+        $cols = self::REPORT_COLUMNS;
+        foreach (self::TYPES as $k => [$label]) {
+            if (empty($byType[$k])) continue;
+            $keep = array_keys($cols);
+            if (in_array($k, ['solo_inventario', 'duplicado_inventario'], true)) $keep = array_diff($keep, ['codigo_hoja', 'stock_hoja', 'diferencia', 'PRICE_hoja']);
+            if (in_array($k, ['solo_hoja', 'duplicado_hoja'], true)) $keep = array_diff($keep, ['codigo_inventario', 'stock_inventario', 'diferencia', 'precio_inventario']);
+            if ($k !== 'precio_diferente') $keep = array_diff($keep, $k === 'stock_diferente' ? ['precio_inventario', 'PRICE_hoja', 'nota'] : []);
+            $rows = [array_values(array_map(fn($c) => $cols[$c], $keep))];
+            foreach ($byType[$k] as $r) $rows[] = array_map(fn($c) => $r[$c], array_values($keep));
+            $widths = array_map(fn($c) => $c === 'descripcion' ? 40 : ($c === 'nota' ? 60 : 16), array_values($keep));
+            $sheets[$label] = ['rows' => $rows, 'widths' => $widths];
+        }
+        return XlsxWriter::build($sheets);
+    }
+
+    /** Columna STOCK → .xlsx (mismo orden de filas que la hoja) */
+    public static function stockXlsx(array $result): string
+    {
+        $rows = [['Fila de la hoja', 'SKU', 'STOCK antes', 'STOCK nuevo (copiar esta columna)']];
+        foreach ($result['paste'] as $p) $rows[] = [$p['fila_hoja'], $p['SKU'], $p['STOCK_actual'], $p['STOCK_nuevo']];
+        return XlsxWriter::build(['STOCK' => ['rows' => $rows, 'widths' => [14, 22, 14, 34]]]);
+    }
+
     private const HEADERS = [
         'code' => '/^(articulo|codigo|cod\.?|sku|referencia|ref\.?|item)$/',
         'stock' => '/(exist|stock|saldo|disponible|cantidad)/',
@@ -258,8 +316,8 @@ class InventoryImport
             if (count($group) < 2) continue;
             $dupInv++;
             foreach ($group as $it) {
-                $others = implode(', ', array_map(fn($o) => '"' . $o['code'] . '" (fila ' . $o['line'] . ')', array_filter($group, fn($o) => $o !== $it)));
-                $add('duplicado_inventario', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, "Fila {$it['line']}; se parece a {$others}");
+                $others = implode(', ', array_map(fn($o) => '«' . $o['code'] . '» (fila ' . $o['line'] . ')', array_filter($group, fn($o) => $o !== $it)));
+                $add('duplicado_inventario', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, "Fila {$it['line']} del archivo; es el mismo código que {$others}");
             }
         }
         // Duplicados en la hoja
