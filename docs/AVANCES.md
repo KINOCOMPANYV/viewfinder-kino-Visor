@@ -57,8 +57,11 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Decisión del dueño (2026-11-14): el precio de KYTE va en una **columna nueva «PRECIO KYTE»** de la Hoja master y se deja
   lo demás igual. Admin → Precios la da lista para pegar.
 - **El visor muestra solo PRECIO KYTE** (decisión del dueño 2026-11-14, reemplaza PRICE_SUGGESTED): si la Hoja master tiene
-  la columna «PRECIO KYTE», el sync toma de ahí el precio del visor (celda vacía = «Sin precio en tabla», sin usar
-  PRICE_SUGGESTED). Si la columna no existe, sigue PRICE_SUGGESTED. El precio editado en el admin sigue ganando.
+  la columna «PRECIO KYTE», el sync toma de ahí el precio del visor. Si la columna no existe, sigue PRICE_SUGGESTED.
+  El precio editado en el admin sigue ganando.
+- **Precio en todas las referencias** (2026-11-14): fila sin PRECIO KYTE → PRECIO KYTE de su familia (si es uno solo) →
+  PRICE_SUGGESTED → «Sin precio en tabla». Con «Productos 19»: 2.623 KYTE, 45 familia, 939 PRICE_SUGGESTED, 22 sin precio.
+  Sincronizar muestra esos números. «Aplicar en el visor» de Admin → Precios también pone precio a productos «Solo Drive».
 - **Catálogo en PDF** (2026-11-11): foto + código + texto opcional que escribe cada usuario (precio u otra cosa; vacío = no
   sale). Sin logo de Kino: el usuario puede subir el suyo. Entran todas las fotos marcadas. Se arma en el dispositivo
   (precios, textos y logo no van al servidor). Botón al tener la selección lista para enviar y al abrir un enlace `/c/…`.
@@ -310,3 +313,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Misma rama (2026-11-14): descarga «Columna nueva PRECIO KYTE» (precio tal cual de KYTE por fila de la Hoja master).
 - Misma rama (2026-11-14): el visor muestra PRECIO KYTE (`MasterSheet::parse`, `price_column`); Admin → Precios compara contra esa columna.
 - Misma rama (2026-11-14): rastreo de precios: todo lo público lee `price_suggested` (PRECIO KYTE o editado en admin); catálogo PDF (lo escribe el usuario) y Extractor / Lista Bodega / Remisión (precio del PDF del pedido) no usan el precio del visor, a propósito. Solo se corrigieron comentarios.
+- Misma rama (2026-11-14): respaldo de precio por familia y PRICE_SUGGESTED (`MasterSheet::fillMissingPrices`); precios de KYTE para «Solo Drive».

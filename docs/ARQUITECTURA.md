@@ -51,7 +51,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
   `is_active` (interruptor del admin), `in_sheet` (está en la hoja) y `archived` (= oculto en el portal, calculado).
   Precio (único campo que lee todo lo público: inicio, búsqueda y su filtro, carpetas, Novedades, ficha, pie de foto de
   Enviar fotos con lista): `price_suggested` = el que se muestra (tarjetas, ficha: `priceTag()`/`priceText()`, vacío = «Sin precio en tabla»);
-  `price_sheet` = precio de la Hoja master (columna PRECIO KYTE si existe —vacía = sin precio—; si no, PRICE_SUGGESTED); `price_manual = 1` = editado en el admin, el sync no lo pisa (migración 030); el sync lo vuelve 0 cuando la Hoja master ya trae ese mismo precio.
+  `price_sheet` = precio de la Hoja master (PRECIO KYTE si existe la columna; fila vacía → KYTE de su familia → PRICE_SUGGESTED, `MasterSheet::fillMissingPrices`; sin columna → PRICE_SUGGESTED); `price_manual = 1` = editado en el admin, el sync no lo pisa (migración 030); el sync lo vuelve 0 cuando la Hoja master ya trae ese mismo precio.
   `status` es heredada y ya no se usa.
 - `albums`: carpetas de primer nivel bajo la raíz (`drive_id`, `name`, `icon_url`, `is_active`, `order_priority`).
 - `drive_index`: **copia local del árbol de la carpeta raíz** (archivos y carpetas): `file_id`, `name`, `name_stem`

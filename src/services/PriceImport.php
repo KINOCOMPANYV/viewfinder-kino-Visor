@@ -112,10 +112,15 @@ class PriceImport
         };
 
         $assign = [];
-        $missing = [];
+        $missing = $missPrices = [];
         foreach ($items as $it) {
             $hits = isset($exact[InventoryImport::exactKey($it['code'])]) ? [$exact[InventoryImport::exactKey($it['code'])]] : ($loose[InventoryImport::looseKey($it['code'])] ?? []);
-            if (!$hits) { $missing[InventoryImport::looseKey($it['code'])] ??= $it; continue; }
+            if (!$hits) {
+                $lk = InventoryImport::looseKey($it['code']);
+                $missing[$lk] ??= $it;
+                $missPrices[$lk][(string) $it['price']] = true;
+                continue;
+            }
             foreach ($hits as $i) $assign[$i][] = $it;
         }
         foreach ($missing as $it) {
@@ -170,16 +175,28 @@ class PriceImport
                 'iguales' => $c['iguales'], 'cambian' => $c['cambian'], 'nuevos' => $c['nuevos'], 'conflictos' => $c['conflictos'],
                 'grandes' => $c['grandes'], 'falta_archivo' => $c['falta_archivo'], 'falta_hoja' => count($missing)],
             'report' => $report, 'paste' => $paste, 'changes' => $changes,
+            // Códigos que no están en la Hoja master (clave normalizada → precio único > 0): para productos «Solo Drive»
+            'outside' => array_map('floatval', array_map('array_key_first', array_filter($missPrices, fn($ps) => count($ps) === 1 && (float) array_key_first($ps) > 0))),
         ];
     }
 
-    /** Guarda los precios nuevos en el visor como precio editado. @return int productos actualizados */
-    public static function applyToVisor(PDO $db, array $changes): int
+    /**
+     * Guarda los precios nuevos en el visor como precio editado, y pone precio a los productos «Solo Drive»
+     * (fuera de la Hoja master) que están en el archivo. @return int productos actualizados
+     */
+    public static function applyToVisor(PDO $db, array $changes, array $outside = []): int
     {
         $st = $db->prepare("UPDATE products SET price_suggested = ?, price_manual = 1, updated_at = NOW() WHERE sku = ? AND in_sheet = 1");
+        $so = $db->prepare("UPDATE products SET price_suggested = ?, updated_at = NOW() WHERE id = ? AND in_sheet = 0 AND NOT (price_suggested <=> ?)");
         $n = 0;
         $db->beginTransaction();
-        foreach ($changes as $sku => $p) { $st->execute([$p, $sku]); $n += $st->rowCount(); }
+        foreach ($changes as $sku => $p) { $st->execute([$p, (string) $sku]); $n += $st->rowCount(); }
+        if ($outside) {
+            foreach ($db->query("SELECT id, sku FROM products WHERE in_sheet = 0") as $r) {
+                $p = $outside[InventoryImport::looseKey($r['sku'])] ?? null;
+                if ($p) { $so->execute([$p, $r['id'], $p]); $n += $so->rowCount(); }
+            }
+        }
         $db->commit();
         return $n;
     }
