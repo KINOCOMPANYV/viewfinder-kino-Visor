@@ -322,6 +322,12 @@ if ($uri === '/admin/inventario') {
     exit;
 }
 
+if ($uri === '/admin/precios') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_prices.php';
+    exit;
+}
+
 if ($uri === '/admin/photo-check') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_photo_check.php';

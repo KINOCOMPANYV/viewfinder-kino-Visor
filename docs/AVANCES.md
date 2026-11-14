@@ -49,6 +49,11 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   PRICE_SUGGESTED de la Hoja master; sin precio sale «Sin precio en tabla». En Admin → Productos el precio se edita en la fila;
   el cambio vale solo en el visor (la Hoja master no se toca) y el sync ya no lo pisa («✏️ Editado», «↩ Hoja» lo devuelve).
   Dashboard: tarjetas «Sin precio en tabla» y «Precio editado en admin».
+- **Precios desde Excel** (2026-11-14): Admin → 💲 Precios sube el Excel de productos de KYTE (o SYS) y lo cruza con
+  PRICE_SUGGESTED de la Hoja master: previa, reporte y columna para **pegar a mano** (el visor no escribe en la hoja).
+  Código vacío en KYTE → primera palabra del Nombre. No se cambia: precios repetidos distintos, cambios de más del doble o
+  menos de la mitad, precio 0. «Aplicar en el visor» opcional = precio editado; el sync suelta la marca sola cuando la Hoja
+  master ya trae ese precio. Códigos de KYTE que no están en la Hoja master no se agregan.
 - **Catálogo en PDF** (2026-11-11): foto + código + texto opcional que escribe cada usuario (precio u otra cosa; vacío = no
   sale). Sin logo de Kino: el usuario puede subir el suyo. Entran todas las fotos marcadas. Se arma en el dispositivo
   (precios, textos y logo no van al servidor). Botón al tener la selección lista para enviar y al abrir un enlace `/c/…`.
@@ -142,6 +147,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Sincronizar muestra hoja y Drive por separado (último éxito con qué cambió, último error y "🔁 Reintentar"); solo corre
   una sincronización a la vez.
   Admin → 📦 Inventario: subir el Excel de existencias, ver diferencias con la hoja y bajar la columna STOCK para pegar.
+  Admin → 💲 Precios: igual para precios (KYTE/SYS → PRICE_SUGGESTED), con «Aplicar en el visor» opcional.
 
 ## Pendiente / ideas
 - **Catálogo en PDF** (`docs/PLAN_PDF.md`, aprobado 2026-11-11): P1 (#52) y P2 (#53) hechas. Probar en Railway con fotos
@@ -294,3 +300,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Misma rama (2026-11-13): arreglo del Dashboard descuadrado tras #74 (una tarjeta quedó sin cerrar y los enlaces corridos).
 - Rama `claude/project-thread-629dae` (2026-11-14): precio en tarjetas y ficha («Sin precio en tabla»), precio editable en
   Admin → Productos (migración 030: `price_sheet`, `price_manual`), tarjetas del Dashboard.
+- Rama `claude/project-thread-sf5b5e` (2026-11-14): Admin → 💲 Precios (`/admin/precios`, `PriceImport.php`); el sync quita
+  `price_manual` cuando la Hoja master ya trae el mismo precio. Primer archivo: «Productos 19.xlsx» de KYTE.
