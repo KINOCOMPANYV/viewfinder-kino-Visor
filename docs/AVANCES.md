@@ -309,3 +309,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   `price_manual` cuando la Hoja master ya trae el mismo precio. Primer archivo: «Productos 19.xlsx» de KYTE.
 - Misma rama (2026-11-14): descarga «Columna nueva PRECIO KYTE» (precio tal cual de KYTE por fila de la Hoja master).
 - Misma rama (2026-11-14): el visor muestra PRECIO KYTE (`MasterSheet::parse`, `price_column`); Admin → Precios compara contra esa columna.
+- Misma rama (2026-11-14): rastreo de precios: todo lo público lee `price_suggested` (PRECIO KYTE o editado en admin); catálogo PDF (lo escribe el usuario) y Extractor / Lista Bodega / Remisión (precio del PDF del pedido) no usan el precio del visor, a propósito. Solo se corrigieron comentarios.

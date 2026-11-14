@@ -2,7 +2,7 @@
 /**
  * Admin — Cambiar el precio de un producto (POST /admin/products/price, header X-CSRF-TOKEN).
  *   id=N & price=12345  → precio editado en el admin (price_manual = 1; el sync de la Hoja master ya no lo pisa)
- *   id=N & reset=1      → vuelve al PRICE_SUGGESTED de la Hoja master (price_sheet)
+ *   id=N & reset=1      → vuelve al precio de la Hoja master (price_sheet = PRECIO KYTE, o PRICE_SUGGESTED si no existe esa columna)
  * Solo cambia el visor: la Hoja master no se toca.
  */
 $csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
