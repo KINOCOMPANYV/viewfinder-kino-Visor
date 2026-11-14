@@ -5,7 +5,11 @@
  * ítems, unidades y valor total se muestran TAL CUAL vienen del PDF (no se recalculan), y las cantidades no se editan.
  * Las fotos se buscan una vez por código (POST /enviar-catalogo/extraer con {codes}); sin foto → «Foto no disponible».
  * El PDF se arma en el dispositivo con jsPDF (assets/js/order_list.js + pdf_shared.js).
+ * Remisión: encabezado, logos y pie salen de la plantilla editable (Admin → 🚚 Remisión, RemisionTemplate).
  */
+require_once BASE_DIR . '/src/services/RemisionTemplate.php';
+$remTpl = RemisionTemplate::forPublic(RemisionTemplate::load(getDB()));
+$olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -31,14 +35,16 @@
         .ol-type label { cursor:pointer; }
         .ol-type input { accent-color:#c9a84c; vertical-align:middle; }
         .ol-type small { flex-basis:100%; color:#a0a0b0; }
-        body.ol-remision .ol-type { border-color:#6ea8dc66; background:#6ea8dc14; }
-        body.ol-remision .ol-type input, body.ol-remision .ol-field input, body.ol-remision .ol-opts input { accent-color:#6ea8dc; }
-        body.ol-remision #olTitle { color:#8cc0ee; }
+        body.ol-remision .ol-type { border-color:#e0505a66; background:#e0505a14; }
+        body.ol-remision .ol-type input, body.ol-remision .ol-field input, body.ol-remision .ol-opts input { accent-color:#e0505a; }
+        body.ol-remision #olTitle { color:#ff8a92; }
+        .ol-tpl-link { display:none; }
+        body.ol-remision .ol-tpl-link { display:block; margin-top:-0.6rem; }
         /* Botón «Previo»: llamativo, es el paso antes de descargar o enviar */
         .ol-preview-btn { background:linear-gradient(135deg,#ff8a00,#ffc93c); color:#1a1a1a; font-weight:800; font-size:1.05rem; border:none;
             box-shadow:0 0 0 0 rgba(255,170,40,.7); animation:olPulse 1.8s infinite; }
         .ol-preview-btn:disabled { animation:none; box-shadow:none; }
-        body.ol-remision .ol-preview-btn { background:linear-gradient(135deg,#1f6fd1,#6ec3ff); color:#fff; box-shadow:0 0 0 0 rgba(110,195,255,.7); }
+        body.ol-remision .ol-preview-btn { background:linear-gradient(135deg,#b3141e,#ff5a64); color:#fff; box-shadow:0 0 0 0 rgba(255,90,100,.7); }
         @keyframes olPulse { 0% { box-shadow:0 0 0 0 rgba(255,170,40,.6); } 70% { box-shadow:0 0 0 12px rgba(255,170,40,0); } 100% { box-shadow:0 0 0 0 rgba(255,170,40,0); } }
         @media (prefers-reduced-motion: reduce) { .ol-preview-btn { animation:none; } }
         .ol-pv { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.85); display:flex; flex-direction:column; }
@@ -86,6 +92,9 @@
     <main class="container ol-main" style="padding-top:2rem; padding-bottom:9rem; max-width:900px;">
         <?= breadcrumbs([['Extractor', '/extractor'], ['Lista Bodega', null]]) ?>
         <h1 id="olTitle" style="font-size:1.5rem; margin-bottom:1rem;">🧾 Lista Bodega</h1>
+        <?php if (isAdminLoggedIn()): ?>
+            <p class="ol-help ol-tpl-link"><a href="/admin/remision">✏️ Editar plantilla de la Remisión (logos, pie, colores)</a></p>
+        <?php endif; ?>
 
         <div class="ol-card" id="olEmpty" hidden>
             <p>No hay un pedido para mostrar.</p>
@@ -126,10 +135,13 @@
         <div class="ol-pv-pages" id="olPvPages"></div>
     </div>
 
-    <script>window.CS_CSRF = '<?= csrfToken() ?>';</script>
+    <script>
+        window.CS_CSRF = '<?= csrfToken() ?>';
+        window.KINO_REMISION = <?= json_encode($remTpl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+    </script>
     <script src="/assets/vendor/jspdf-4.2.1.umd.min.js" defer></script>
     <script src="/assets/js/pdf_shared.js?v=<?= APP_VERSION ?>" defer></script>
-    <script src="/assets/js/order_list.js?v=<?= APP_VERSION ?>" defer></script>
+    <script src="/assets/js/order_list.js?v=<?= $olJs ?>" defer></script>
     <?php $mnavActive = 'enviar'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 

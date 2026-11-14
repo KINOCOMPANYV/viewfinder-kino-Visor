@@ -1,6 +1,7 @@
 /**
  * Lista Bodega / Remisión (/lista-pedido): PDF del documento leído en el Extractor (sessionStorage kinoPedido).
- * Recibo (pedido) → «Lista Bodega» negro y dorado; factura en tabla → «Remisión» azul (data.docType, se puede cambiar).
+ * Recibo (pedido) → «Lista Bodega» negro y dorado; factura en tabla → «Remisión» (data.docType, se puede cambiar).
+ * La Remisión usa la plantilla editable window.KINO_REMISION (Admin → 🚚 Remisión): título, colores, logos y pie.
  * Encabezado con cliente, fecha, total de ítems, unidades y valor total TAL CUAL vienen del PDF (no se recalculan con
  * las fotos ni se pone la fecha de hoy); si un dato no se pudo leer, se dice. Luego cada línea del pedido, en el mismo
  * orden: foto, código y cantidad del PDF (solo lectura). Cada línea guarda su código y su foto juntos desde el
@@ -24,6 +25,27 @@
     const lines = data.items.map((it, i) => ({ n: i + 1, code: String(it.code || ''), qty: it.qty == null ? null : Number(it.qty),
         desc: String(it.desc || ''), price: String(it.priceText || ''), total: String(it.lineTotalText || ''), photo: undefined }));
     const has = (v) => v !== null && v !== undefined && String(v).trim() !== '';
+    // Plantilla de la Remisión (Admin → 🚚 Remisión); color «#rrggbb» → [r, g, b]
+    const REM = window.KINO_REMISION || {};
+    function rgb(hex, def) { const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || ''); return m ? [1, 2, 3].map((i) => parseInt(m[i], 16)) : def; }
+    // Logos de la plantilla → PNG para jsPDF (una vez); el que no cargue se omite
+    let remLogos = null;
+    function loadLogos() {
+        if (remLogos) return remLogos;
+        remLogos = Promise.all((REM.logos || []).map((l) => new Promise((ok) => {
+            const im = new Image();
+            im.onload = () => {
+                try {
+                    const cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+                    cv.getContext('2d').drawImage(im, 0, 0);
+                    ok({ side: l.side === 'left' ? 'left' : 'right', data: cv.toDataURL('image/png'), w: im.naturalWidth, h: im.naturalHeight });
+                } catch (e) { ok(null); }
+            };
+            im.onerror = () => ok(null);
+            im.src = l.src;
+        }))).then((a) => a.filter(Boolean));
+        return remLogos;
+    }
 
     // Datos del encabezado: solo lo que vino del PDF. Si el PDF no trae el total de ítems o de unidades (p. ej. la
     // cotización en tabla), se puede usar lo contado en sus líneas, marcado «(contado)»: es un dato del PDF, no inventado.
@@ -35,8 +57,8 @@
             numLabel: 'N.º de pedido', c1: [28, 28, 30], c2: [201, 168, 76],
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: false, address: false, city: false, phone: false, seller: false,
                 review: true, useCount: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: false, cTotal: false } },
-        remision: { name: 'Remisión', title: 'Remisión', file: 'Remision_', icon: '🚚', pref: 'kinoOlFieldsRemision',
-            numLabel: 'N.º de cotización', c1: [31, 58, 95], c2: [110, 168, 220],
+        remision: { name: 'Remisión', title: (REM.title || 'Remisión'), file: 'Remision_', icon: '🚚', pref: 'kinoOlFieldsRemision',
+            numLabel: 'N.º de cotización', c1: rgb(REM.headerColor, [14, 14, 14]), c2: rgb(REM.accentColor, [211, 35, 45]),
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: true, address: true, city: true, phone: false, seller: false,
                 review: true, useCount: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: true, cTotal: true } },
     };
@@ -195,8 +217,13 @@
             // 2) Medidas (mm)
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-            const C1 = T().c1, C2 = T().c2;
-            const W = 210, H = 297, M = 12, BAND = 16, FOOT = 13, TH = 8.5;
+            const C1 = T().c1, C2 = T().c2, rem = type === 'remision';
+            const logos = rem ? await loadLogos() : [];
+            const footLines = rem ? (REM.footer || []).filter(has) : [];
+            const brands = rem && has(REM.brands) ? REM.brands : '';
+            const nFoot = footLines.length + (brands ? 1 : 0);
+            const W = 210, H = 297, M = 12, BAND = rem ? 20 : 16, FOOT = rem && nFoot ? 8 + nFoot * 3.7 : 13, TH = 8.5;
+            const LINE = rem ? [185, 185, 185] : [40, 40, 40]; // bordes de la tabla
             // Columnas elegidas. Si caben en media hoja: dos tablas lado a lado (~26 por página); si no, una a todo el ancho.
             const cols = pickedCols();
             const ROW = show.cPhoto ? 19 : 9;
@@ -210,7 +237,45 @@
             const val = (v) => has(v) ? clean(v) : null;
 
             let y = 0, page = 0;
+            // Remisión: franja con logos a la izquierda, título y número, y logos a la derecha (separados por una raya fina)
+            const remBand = () => {
+                doc.setFillColor(...C1); doc.rect(0, 0, W, BAND, 'F');
+                doc.setFillColor(...C2); doc.rect(0, BAND, W, 1.2, 'F');
+                const LH = 11.5, MAXW = 42, GAPL = 4;
+                const size = (lg, h) => { let w = lg.w * h / lg.h; if (w > MAXW) { h = h * MAXW / w; w = MAXW; } return { w, h }; };
+                const sep = (x) => { doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.25); doc.line(x, 4, x, BAND - 4); };
+                let x = M;
+                logos.filter((l) => l.side === 'left').forEach((l) => {
+                    const s = size(l, LH);
+                    doc.addImage(l.data, 'PNG', x, (BAND - s.h) / 2, s.w, s.h, undefined, 'FAST');
+                    x += s.w + GAPL; sep(x); x += GAPL;
+                });
+                const num = show.number && has(order.number) ? clean(order.number).replace(/^#\s*/, '') : '';
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(255, 255, 255);
+                doc.text(T().title, x, num ? 9.6 : 12);
+                let tw = doc.getTextWidth(T().title);
+                if (num) {
+                    const nt = (has(REM.numPrefix) ? REM.numPrefix + ' ' : '') + num;
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.text(nt, x, 15.6);
+                    tw = Math.max(tw, doc.getTextWidth(nt));
+                }
+                // Derecha: de derecha a izquierda; si no caben, se achican todos por igual
+                const right = logos.filter((l) => l.side !== 'left');
+                if (!right.length) return;
+                let sizes = right.map((l) => size(l, LH));
+                const room = W - M - (x + tw + 6);
+                const need = sizes.reduce((s, z) => s + z.w, 0) + (right.length - 1) * 2 * GAPL;
+                if (need > room && room > 0) { const k = Math.max(0.3, (room - (right.length - 1) * 2 * GAPL) / (need - (right.length - 1) * 2 * GAPL)); sizes = sizes.map((z) => ({ w: z.w * k, h: z.h * k })); }
+                let rx = W - M;
+                for (let i = right.length - 1; i >= 0; i--) {
+                    const z = sizes[i];
+                    rx -= z.w;
+                    doc.addImage(right[i].data, 'PNG', rx, (BAND - z.h) / 2, z.w, z.h, undefined, 'FAST');
+                    if (i > 0) { rx -= GAPL; sep(rx); rx -= GAPL; }
+                }
+            };
             const band = () => {
+                if (rem) return remBand();
                 doc.setFillColor(...C1); doc.rect(0, 0, W, BAND, 'F');
                 doc.setFillColor(...C2); doc.rect(0, BAND, W, 1, 'F');
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(255, 255, 255);
@@ -219,15 +284,16 @@
             };
             const tableHead = (c) => {
                 const x0 = M + c * (TW + GAP);
-                doc.setFillColor(...C1); doc.setDrawColor(40, 40, 40); doc.setLineWidth(0.35);
+                doc.setFillColor(...C1); doc.setDrawColor(...(rem ? C1 : LINE)); doc.setLineWidth(0.35);
                 let x = x0;
                 COLS.forEach((w) => { doc.rect(x, y, w, TH, 'FD'); x += w; });
+                if (rem) { doc.setFillColor(...C2); doc.rect(x0, y + TH - 0.6, x - x0, 0.6, 'F'); }
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255);
                 x = x0;
                 cols.map((c) => c.label).forEach((t, i) => { doc.text(t, x + COLS[i] / 2, y + 5.6, { align: 'center' }); x += COLS[i]; });
                 y += TH;
             };
-            const newPage = () => { if (page) doc.addPage(); page++; band(); y = BAND + 7; };
+            const newPage = () => { if (page) doc.addPage(); page++; band(); y = BAND + (rem ? 8 : 7); };
 
             // Encabezado del pedido (primera página)
             newPage();
@@ -243,6 +309,10 @@
                 if (tl.length > 1 && per === 3) { doc.setFontSize(9); tl = doc.splitTextToSize(s, colW - 4).slice(0, 2); doc.text(tl, x, yy + 7.6); }
                 else doc.text(tl[0], x, yy + 9);
             });
+            if (cells.length && rem && per > 1) { // rayas finas entre las columnas de datos, como en el modelo
+                doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.25);
+                for (let c = 1; c < per; c++) doc.line(M + c * colW - 4, y, M + c * colW - 4, y + Math.ceil(cells.length / per) * RH - 2);
+            }
             if (cells.length) y += Math.ceil(cells.length / per) * RH + 2;
             if (problems.length) {
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
@@ -267,7 +337,7 @@
                     tableHead(col);
                 }
                 const img = l.photo ? imgs.get(l.photo.id) : null;
-                doc.setDrawColor(40, 40, 40); doc.setLineWidth(0.35);
+                doc.setDrawColor(...LINE); doc.setLineWidth(0.35);
                 const mid = y + ROW / 2;
                 let x = M + col * (TW + GAP);
                 cols.forEach((c, i) => {
@@ -326,6 +396,19 @@
             const footL = clean([show.number && order.number, show.client && order.client, show.date && order.date].filter(has).join(' · '));
             for (let p = 1; p <= pages; p++) {
                 doc.setPage(p);
+                if (rem && nFoot) { // pie de la plantilla: dirección (negrita), contacto, correo y marcas
+                    const fy = H - FOOT + 3;
+                    doc.setDrawColor(...C2); doc.setLineWidth(0.5); doc.line(M, fy, W - M, fy);
+                    let ly = fy + 4.6;
+                    footLines.forEach((t, i) => {
+                        doc.setFont('helvetica', i === 0 ? 'bold' : 'normal'); doc.setFontSize(8.5); doc.setTextColor(...INK);
+                        doc.text(doc.splitTextToSize(clean(t), W - 2 * M - 16)[0], M, ly); ly += 3.7;
+                    });
+                    if (brands) { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GREY); doc.text(doc.splitTextToSize(clean(brands), W - 2 * M - 16)[0], M, ly); }
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...INK);
+                    doc.text(`${p}/${pages}`, W - M, H - 5.5, { align: 'right' });
+                    continue;
+                }
                 doc.setDrawColor(...C2); doc.setLineWidth(0.4); doc.line(M, H - 10, W - M, H - 10);
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GREY);
                 if (footL) doc.text(doc.splitTextToSize(footL, W - 2 * M - 20)[0], M, H - 5.5);

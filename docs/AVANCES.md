@@ -90,6 +90,12 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   PDF, archivo `Lista_Bodega_….pdf`; la ruta sigue siendo `/lista-pedido`). La Remisión repite el **TOTAL REMISIÓN** al final,
   debajo de la tabla. El botón principal es **«👁 Previo»** (llamativo): arma el PDF y lo muestra página por página antes de
   Descargar o Enviar. Tocar una foto en el PDF (Lista Bodega o Remisión) abre esa foto en Google Drive (2026-11-13).
+- **Plantilla de la Remisión editable** (2026-11-14, modelo del dueño): la Remisión ya no es azul; franja negra con logos
+  (KINO a la izquierda; CURREN, Poedagar y JOEFOX a la derecha), líneas rojas y pie con dirección, contacto, correo y marcas
+  (Joefox · Sanse · T5 · Mini Focus · Skmei · Kardoo · Extri; se quitaron Curren, Forsining, Winner y lo que seguía al teléfono).
+  Todo eso se edita en **Admin → 🚚 Remisión** (título, colores, pie, marcas; logos: agregar, cambiar, pasar a blanco, mover,
+  quitar) y se guarda en la base. Cliente, NIT, productos y valores siguen saliendo del PDF. Lista Bodega no cambió.
+  Los logos de KINO, Poedagar y JOEFOX se recortaron del modelo (baja calidad): conviene subir los originales.
 - **Nombres** (2026-11-13): la hoja maestra se llama siempre **«Hoja master»**; el sistema contable es **«SYS»** (sus datos: «Stock SYS»,
   «Precio SYS»). Otro sistema, **«KYTE»**, traerá sus datos aparte más adelante.
 - **Inventario SYS → Hoja master** (2026-11-13): el stock de SYS («INVENTARIO GENERAL.xlsx») se carga en la columna
@@ -314,3 +320,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Misma rama (2026-11-14): el visor muestra PRECIO KYTE (`MasterSheet::parse`, `price_column`); Admin → Precios compara contra esa columna.
 - Misma rama (2026-11-14): rastreo de precios: todo lo público lee `price_suggested` (PRECIO KYTE o editado en admin); catálogo PDF (lo escribe el usuario) y Extractor / Lista Bodega / Remisión (precio del PDF del pedido) no usan el precio del visor, a propósito. Solo se corrigieron comentarios.
 - Misma rama (2026-11-14): respaldo de precio por familia y PRICE_SUGGESTED (`MasterSheet::fillMissingPrices`); precios de KYTE para «Solo Drive».
+- Rama `claude/project-thread-rd9wya` (2026-11-14): Remisión con plantilla editable (`/admin/remision`, `RemisionTemplate.php`,
+  tabla `doc_templates`, migración 031) y diseño negro/rojo con logos según el modelo del dueño.

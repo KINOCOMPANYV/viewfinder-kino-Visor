@@ -10,6 +10,7 @@ $adminNavItems = [
     'problemas' => ['/admin/problemas', '🩺 Problemas'],
     'inventario' => ['/admin/inventario', '📦 Inventario'],
     'precios' => ['/admin/precios', '💲 Precios'],
+    'remision' => ['/admin/remision', '🚚 Remisión'],
 ];
 ?>
 <nav class="admin-nav">
