@@ -25,6 +25,12 @@
         .cell-muted { color:var(--color-text-muted); font-size:0.8rem; }
         .prod-table th, .prod-table td { padding:0.5rem 0.6rem; vertical-align:middle; }
         .only-mobile { display:none; }
+        .price-input { width:110px; padding:0.35rem 0.5rem; font-size:0.85rem; text-align:right; }
+        .price-input.saving { opacity:0.5; }
+        .price-input.saved { border-color:#22c55e; }
+        .price-note { font-size:0.7rem; margin-top:0.15rem; display:flex; gap:0.4rem; align-items:center; }
+        .tag-manual { color:#60a5fa; }
+        .link-reset { background:none; border:none; color:var(--color-primary); cursor:pointer; text-decoration:underline; font-size:0.7rem; padding:0; }
         /* Móvil: cada fila es una tarjeta (casilla · foto · código/nombre · interruptor) */
         @media (max-width: 900px) {
             .prod-filters .form-input { flex:1 1 100%; width:100%; min-width:0 !important; font-size:16px; }
@@ -46,6 +52,8 @@
             .prod-table .c-sku { grid-column:3; grid-row:1; }
             .prod-table .c-name { grid-column:3; grid-row:2; font-size:0.85rem; line-height:1.3; }
             .prod-table .c-active { grid-column:4; grid-row:1 / span 2; }
+            .prod-table .c-price { grid-column:3; grid-row:3; margin-top:0.35rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
+            .price-input { font-size:16px !important; }
             .prod-table .c-meta { display:none; }
             .prod-table .only-mobile { display:block; margin-top:0.15rem; font-size:0.75rem; }
             .prod-table input[type=checkbox] { width:22px; height:22px; }
@@ -67,7 +75,7 @@
 
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
             <h1 style="font-size:1.5rem;">Productos</h1>
-            <span class="cell-muted">Los datos vienen de la hoja maestra (<a href="/admin/sync" style="color:var(--color-primary);">sincronizar</a>). Aquí solo se activa o desactiva.</span>
+            <span class="cell-muted">Los datos vienen de la hoja maestra (<a href="/admin/sync" style="color:var(--color-primary);">sincronizar</a>). Aquí se activa o desactiva y se cambia el precio (solo en el visor; la Hoja master no se toca).</span>
         </div>
 
         <?php
@@ -82,6 +90,8 @@
             'conportada' => ['Con portada', null],
             'sinportada' => ['Sin portada', null],
             'hoy' => ['Actualizados hoy', null],
+            'sinprecio' => ['Sin precio', null],
+            'preciomanual' => ['Precio editado', null],
         ];
         ?>
         <div class="prod-tabs">
@@ -169,12 +179,26 @@
                                 </td>
                                 <td class="c-name">
                                     <?= e($p['name']) ?>
-                                    <div class="cell-muted only-mobile"><?= e(implode(' · ', array_filter([$p['brand'], $p['color'], $p['price_suggested'] > 0 ? '$' . number_format((float) $p['price_suggested'], 0, ',', '.') : '', 'Stock ' . (int) $p['stock']]))) ?></div>
+                                    <div class="cell-muted only-mobile"><?= e(implode(' · ', array_filter([$p['brand'], $p['color'], 'Stock ' . (int) $p['stock']]))) ?></div>
                                 </td>
                                 <td class="cell-muted c-meta"><?= e($p['brand']) ?: '—' ?></td>
                                 <td class="cell-muted c-meta"><?= e($p['color']) ?: '—' ?></td>
                                 <td class="cell-muted c-meta"><?= e($p['category']) ?: '—' ?></td>
-                                <td class="cell-muted c-meta"><?= $p['price_suggested'] > 0 ? '$' . number_format((float) $p['price_suggested'], 0, ',', '.') : '—' ?></td>
+                                <td class="c-price">
+                                    <div class="price-edit">
+                                        <input type="text" inputmode="numeric" class="form-input price-input" value="<?= $p['price_suggested'] > 0 ? number_format((float) $p['price_suggested'], 0, ',', '.') : '' ?>"
+                                               placeholder="Sin precio" data-id="<?= (int) $p['id'] ?>" data-old="<?= $p['price_suggested'] > 0 ? number_format((float) $p['price_suggested'], 0, ',', '.') : '' ?>"
+                                               onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" onblur="savePrice(this)" aria-label="Precio de <?= e($p['sku']) ?>">
+                                    </div>
+                                    <div class="price-note">
+                                        <?php if ($p['price_manual']): ?>
+                                            <span class="tag-manual" title="Hoja master: <?= e(priceText($p['price_sheet'])) ?>">✏️ Editado</span>
+                                            <button type="button" class="link-reset" onclick="resetPrice(<?= (int) $p['id'] ?>, this)" title="Volver al precio de la Hoja master">↩ Hoja</button>
+                                        <?php elseif (!($p['price_suggested'] > 0)): ?>
+                                            <span class="tag-out">Sin precio en tabla</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
                                 <td class="cell-muted c-meta"><?= (int) $p['stock'] ?></td>
                                 <td class="c-active" style="text-align:center;">
                                     <label class="toggle-switch" title="<?= $p['is_active'] ? 'Activo' : 'Desactivado' ?>">
@@ -288,6 +312,53 @@
                 const data = await setActive(active, body);
                 showToast(data.message);
                 setTimeout(() => location.reload(), 600);
+            } catch (e) {
+                showToast(e.message || 'Error de conexión', 'error');
+            }
+        }
+
+        async function postPrice(body) {
+            const resp = await fetch('/admin/products/price', { method: 'POST', headers: { 'X-CSRF-TOKEN': CSRF }, body });
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || 'Error al guardar');
+            return data;
+        }
+
+        async function savePrice(input) {
+            const val = input.value.trim();
+            if (val === input.dataset.old) return;
+            if (val === '') { input.value = input.dataset.old; showToast('Para quitar el cambio usa «↩ Hoja».', 'info'); return; }
+            const body = new FormData();
+            body.append('id', input.dataset.id);
+            body.append('price', val);
+            input.classList.add('saving');
+            try {
+                const data = await postPrice(body);
+                input.value = input.dataset.old = data.price > 0 ? Math.round(data.price).toLocaleString('es-CO') : '';
+                input.classList.add('saved');
+                const note = input.closest('td').querySelector('.price-note');
+                note.innerHTML = '<span class="tag-manual">✏️ Editado</span> <button type="button" class="link-reset" title="Volver al precio de la Hoja master">↩ Hoja</button>';
+                note.querySelector('button').onclick = function () { resetPrice(input.dataset.id, this); };
+                showToast(data.message);
+            } catch (e) {
+                input.value = input.dataset.old;
+                showToast(e.message || 'Error de conexión', 'error');
+            } finally {
+                input.classList.remove('saving');
+            }
+        }
+
+        async function resetPrice(id, btn) {
+            const body = new FormData();
+            body.append('id', id);
+            body.append('reset', '1');
+            try {
+                const data = await postPrice(body);
+                const td = btn.closest('td');
+                const input = td.querySelector('.price-input');
+                input.value = input.dataset.old = data.price > 0 ? Math.round(data.price).toLocaleString('es-CO') : '';
+                td.querySelector('.price-note').innerHTML = data.price > 0 ? '' : '<span class="tag-out">Sin precio en tabla</span>';
+                showToast(data.message);
             } catch (e) {
                 showToast(e.message || 'Error de conexión', 'error');
             }

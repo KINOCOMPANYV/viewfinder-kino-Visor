@@ -35,7 +35,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/api/cron/sync-covers?token=` | `admin_sync_covers.php` | **Actualiza el índice de Drive** y asigna portada + álbum |
 | `/api/cron/precache-drive?token=` | `admin_sync_covers.php` | Nombre viejo del cron = `sync-covers` (compatibilidad) |
 | `/api/webhook/sheets` POST | `webhook_sheets.php` | Sync incremental desde Apps Script (misma regla que el sync completo) |
-| `/admin/products` (`?q=&estado=&marca=&categoria=&genero=`; estado: activos, inactivos, fuera, sinfoto, conportada, sinportada, hoy; las tarjetas de `/admin` enlazan aquí) | `admin_products.php` | Listado y activar/desactivar. Cambio: `POST /admin/products/active` (`ids` o `all=1` + filtros) |
+| `/admin/products` (`?q=&estado=&marca=&categoria=&genero=`; estado: activos, inactivos, fuera, sinfoto, conportada, sinportada, hoy, sinprecio, preciomanual; las tarjetas de `/admin` enlazan aquí) | `admin_products.php` | Listado, activar/desactivar y precio editable. Cambio: `POST /admin/products/active` (`ids` o `all=1` + filtros); precio: `POST /admin/products/price` (`admin_products_price.php`: `id`+`price` → `price_manual=1`; `id`+`reset=1` → vuelve a `price_sheet`) |
 | `/admin/sync` | `templates/admin/sync.php` | Botones: hoja maestra (`POST /admin/sync-sheets`, `?dry_run=1`) y Drive (`/admin/media/sync-covers`) |
 | `/admin/photo-check?sku=` | `admin_photo_check.php` | "¿Por qué no sale la foto?" (en Sincronizar): fotos del código en `drive_index`, ruta y qué las oculta (JSON) |
 | `/admin/problemas` (`?tab=sinfoto\|ocultas\|archivos\|hoja`, `&csv=1`) | `admin_problems.php` | **Problemas de fotos** (etapa G, solo BD): productos sin foto, foto en carpeta oculta, archivos sin código y filas de la hoja sin precio/nombre, con motivo y ruta en Drive; CSV completo; "¿Por qué?" abre Sincronizar con el código (`/admin/sync?sku=`) |
@@ -48,6 +48,8 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
   `movement`, `price_suggested`, `price_wholesale`, `stock`, `description`, `brand`, `case_material`, `strap_material`,
   `sheet_status`), `cover_image_url`, `album_id` (→ `albums.drive_id`), `sheet_row` (orden de la hoja), `sheet_hash`,
   `is_active` (interruptor del admin), `in_sheet` (está en la hoja) y `archived` (= oculto en el portal, calculado).
+  Precio: `price_suggested` = el que se muestra (tarjetas, ficha: `priceTag()`/`priceText()`, vacío = «Sin precio en tabla»);
+  `price_sheet` = PRICE_SUGGESTED de la Hoja master; `price_manual = 1` = editado en el admin, el sync no lo pisa (migración 030).
   `status` es heredada y ya no se usa.
 - `albums`: carpetas de primer nivel bajo la raíz (`drive_id`, `name`, `icon_url`, `is_active`, `order_priority`).
 - `drive_index`: **copia local del árbol de la carpeta raíz** (archivos y carpetas): `file_id`, `name`, `name_stem`

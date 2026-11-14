@@ -153,7 +153,11 @@ class MasterSheet
         if ($dryRun || !$changed) return $stats;
 
         $cols = array_merge(['sku'], self::FIELDS, ['sheet_row', 'sheet_hash']);
-        $updates = implode(', ', array_map(fn($c) => "{$c} = VALUES({$c})", array_merge(self::FIELDS, ['sheet_row', 'sheet_hash'])));
+        // Un precio editado en el admin (price_manual = 1) no se pisa; price_sheet siempre guarda el de la Hoja master
+        $updates = 'price_sheet = VALUES(price_suggested), ' . implode(', ', array_map(
+            fn($c) => $c === 'price_suggested' ? "price_suggested = IF(price_manual = 1, price_suggested, VALUES(price_suggested))" : "{$c} = VALUES({$c})",
+            array_merge(self::FIELDS, ['sheet_row', 'sheet_hash'])
+        ));
         $rowPh = '(' . implode(',', array_fill(0, count($cols), '?')) . ', 1)';
         $db->beginTransaction();
         try {

@@ -1,7 +1,7 @@
 <?php
 /**
  * Admin — Productos: listado con filtros y activar/desactivar (uno, varios o todos los del filtro).
- * Los datos vienen de la hoja maestra (solo lectura aquí); el admin solo decide qué se ve.
+ * Los datos vienen de la Hoja master; aquí el admin decide qué se ve y puede cambiar el precio (solo en el visor).
  */
 $filters = [
     'q' => trim($_GET['q'] ?? ''),
@@ -22,7 +22,7 @@ $totalPages = max(1, (int) ceil($total / $perPage));
 $page = min($page, $totalPages);
 
 $stmt = $db->prepare(
-    "SELECT id, sku, name, brand, color, category, price_suggested, stock, cover_image_url,
+    "SELECT id, sku, name, brand, color, category, price_suggested, price_sheet, price_manual, stock, cover_image_url,
             is_active, in_sheet, from_drive, sheet_status
      FROM products WHERE {$where}
      ORDER BY in_sheet DESC, sheet_row ASC, sku ASC LIMIT {$perPage} OFFSET " . (($page - 1) * $perPage)

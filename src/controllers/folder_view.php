@@ -69,14 +69,15 @@ if (empty($files) && !empty($subfolders) && $folderId !== env('GOOGLE_DRIVE_FOLD
 $visibleSkus = [];
 $matched = array_values(array_unique(array_filter(array_column($files, 'matchedSku'))));
 if ($matched) {
-    $stmt = $db->prepare("SELECT sku FROM products WHERE archived = 0 AND cover_image_url > '' AND sku IN (" . implode(',', array_fill(0, count($matched), '?')) . ")");
+    $stmt = $db->prepare("SELECT sku, price_suggested FROM products WHERE archived = 0 AND cover_image_url > '' AND sku IN (" . implode(',', array_fill(0, count($matched), '?')) . ")");
     $stmt->execute($matched);
-    $visibleSkus = array_flip($stmt->fetchAll(PDO::FETCH_COLUMN));
+    $visibleSkus = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); // sku => precio
 }
 
 foreach ($files as &$item) {
     $sku = $item['matchedSku'] ?? null;
-    $item['productUrl'] = ($sku !== null && isset($visibleSkus[$sku])) ? '/producto/' . rawurlencode($sku) : null;
+    $item['productUrl'] = ($sku !== null && array_key_exists($sku, $visibleSkus)) ? '/producto/' . rawurlencode($sku) : null;
+    $item['price'] = $item['productUrl'] ? $visibleSkus[$sku] : null;
     $item['thumb'] = lh3Url($item['id']);
     $item['isVideo'] = str_starts_with($item['mimeType'] ?? '', 'video/');
 }
@@ -215,6 +216,7 @@ $shareDesc = implode(' · ', array_filter([
                             </div>
                             <div class="card-body">
                                 <div class="card-sku"><?= e($code) ?></div>
+                                <?php if (!empty($file['productUrl'])): ?><?= priceTag($file['price']) ?><?php endif; ?>
                                 <?php if (!empty($file['folder'])): ?>
                                     <div class="card-name" style="font-size:0.7rem; color:var(--color-text-muted);">📁 <?= e($file['folder']) ?></div>
                                 <?php endif; ?>

@@ -45,7 +45,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Sin foto no se muestra** (2026-11-10): en lo público (inicio, búsqueda, sugerencias, ficha, variantes, Enviar catálogo,
   catálogo por enlace) solo salen productos con portada (foto o video de PRODUCTOS). No se desactivan: siguen en el admin y
   en 🩺 Problemas → sin foto, y aparecen solos cuando llega su foto. SQL: `archived = 0 AND cover_image_url > ''`.
-- **Fotos con código, sin precio** (2026-11-10): el material que se arma lleva el código; el precio no se pone por ahora.
+- **Precio visible** (2026-11-14, reemplaza «fotos sin precio» del 2026-11-10): toda tarjeta de producto y la ficha muestran el
+  PRICE_SUGGESTED de la Hoja master; sin precio sale «Sin precio en tabla». En Admin → Productos el precio se edita en la fila;
+  el cambio vale solo en el visor (la Hoja master no se toca) y el sync ya no lo pisa («✏️ Editado», «↩ Hoja» lo devuelve).
+  Dashboard: tarjetas «Sin precio en tabla» y «Precio editado en admin».
 - **Catálogo en PDF** (2026-11-11): foto + código + texto opcional que escribe cada usuario (precio u otra cosa; vacío = no
   sale). Sin logo de Kino: el usuario puede subir el suyo. Entran todas las fotos marcadas. Se arma en el dispositivo
   (precios, textos y logo no van al servidor). Botón al tener la selección lista para enviar y al abrir un enlace `/c/…`.
@@ -289,3 +292,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-705w0p` (2026-11-13): tarjetas del Dashboard clicables → listado filtrado; filtros nuevos
   `estado=conportada|sinportada|hoy` y `genero` en `adminProductFilter()`.
 - Misma rama (2026-11-13): arreglo del Dashboard descuadrado tras #74 (una tarjeta quedó sin cerrar y los enlaces corridos).
+- Rama `claude/project-thread-629dae` (2026-11-14): precio en tarjetas y ficha («Sin precio en tabla»), precio editable en
+  Admin → Productos (migración 030: `price_sheet`, `price_manual`), tarjetas del Dashboard.

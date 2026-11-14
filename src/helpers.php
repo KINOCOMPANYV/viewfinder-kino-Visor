@@ -189,6 +189,20 @@ function verifyCsrf(): bool
 /**
  * Formatea un precio.
  */
+/** Precio público: "$12.345" o "Sin precio en tabla" (sin PRICE_SUGGESTED en la Hoja master ni precio del admin). */
+function priceText($price): string
+{
+    $p = (float) ($price ?? 0);
+    return $p > 0 ? '$' . number_format($p, 0, ',', '.') : 'Sin precio en tabla';
+}
+
+/** Línea de precio para tarjetas y ficha. */
+function priceTag($price, string $class = 'card-price'): string
+{
+    $none = !((float) ($price ?? 0) > 0);
+    return '<div class="' . $class . ($none ? ' no-price' : '') . '">' . e(priceText($price)) . '</div>';
+}
+
 function formatPrice(float $price): string
 {
     return '$' . number_format($price, 2, '.', ',');
@@ -681,6 +695,8 @@ function adminProductFilter(array $f): array
         case 'conportada': $where[] = "archived = 0 AND cover_image_url IS NOT NULL AND cover_image_url <> ''"; break;
         case 'sinportada': $where[] = "archived = 0 AND (cover_image_url IS NULL OR cover_image_url = '')"; break;
         case 'hoy':       $where[] = 'DATE(updated_at) = CURDATE()'; break;
+        case 'sinprecio': $where[] = '(price_suggested IS NULL OR price_suggested <= 0)'; break;
+        case 'preciomanual': $where[] = 'price_manual = 1'; break;
     }
     if (($f['genero'] ?? '') !== '') {
         $where[] = 'gender = ?';

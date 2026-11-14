@@ -16,6 +16,9 @@ $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn(
 
 // Productos actualizados hoy
 $updatedToday = (int) $db->query("SELECT COUNT(*) FROM products WHERE DATE(updated_at) = CURDATE()")->fetchColumn();
+$noPrice = (int) $db->query("SELECT COUNT(*) FROM products WHERE price_suggested IS NULL OR price_suggested <= 0")->fetchColumn();
+try { $manualPrice = (int) $db->query("SELECT COUNT(*) FROM products WHERE price_manual = 1")->fetchColumn(); }
+catch (\PDOException $e) { $manualPrice = 0; } // migración 030 pendiente
 
 // Top categorías (de productos activos)
 $topCategories = $db->query(
@@ -140,6 +143,18 @@ unset($_SESSION['cache_flash']);
                     <?= number_format($discontinuedProducts) ?>
                 </div>
                 <div class="stat-label">⛔ Fuera de la Hoja master</div>
+            </a>
+            <a href="/admin/products?estado=sinprecio" class="stat-card stat-card--link" title="Ver y poner precio">
+                <div class="stat-value" style="color:#fbbf24;">
+                    <?= number_format($noPrice) ?>
+                </div>
+                <div class="stat-label">💲 Sin precio en tabla</div>
+            </a>
+            <a href="/admin/products?estado=preciomanual" class="stat-card stat-card--link" title="Ver precios cambiados en el admin">
+                <div class="stat-value" style="color:#60a5fa;">
+                    <?= number_format($manualPrice) ?>
+                </div>
+                <div class="stat-label">✏️ Precio editado en admin</div>
             </a>
         </div>
 
