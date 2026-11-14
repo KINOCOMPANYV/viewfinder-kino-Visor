@@ -124,6 +124,7 @@ class PriceImport
         foreach ($sheet as $i => $s) {
             $its = $assign[$i] ?? [];
             $new = $s['price'];
+            $filePrice = null; // precio tal cual viene en el archivo (columna «PRECIO KYTE»); vacío si falta o hay conflicto
             if (!$its) {
                 if ($s['sku'] !== '') { $c['falta_archivo']++; $add('falta_archivo', '', $s['sku'], $s['name'], $s['price'], null, ''); }
             } else {
@@ -137,6 +138,7 @@ class PriceImport
                     $add('conflicto', $codes, $s['sku'], $s['name'], $s['price'], null, 'Precios en el archivo: ' . implode(' / ', array_map(fn($p) => priceText((float) $p), $prices)) . ' — no se cambia');
                 } else {
                     $p = (float) $prices[0];
+                    if ($p > 0) $filePrice = $p;
                     if ($p <= 0) {
                         // precio 0 en el archivo: no se toca
                     } elseif ($s['price'] !== null && abs($p - $s['price']) < 0.5) {
@@ -156,7 +158,7 @@ class PriceImport
                     }
                 }
             }
-            $paste[] = ['fila_hoja' => $s['row'], 'SKU' => $s['sku'], 'antes' => $s['price'], 'nuevo' => $new];
+            $paste[] = ['fila_hoja' => $s['row'], 'SKU' => $s['sku'], 'antes' => $s['price'], 'nuevo' => $new, 'archivo' => $filePrice];
         }
         $order = array_flip(array_keys(self::TYPES));
         usort($report, fn($a, $b) => [$order[$a['tipo']], $a['codigo_hoja'] ?: $a['codigo_archivo']] <=> [$order[$b['tipo']], $b['codigo_hoja'] ?: $b['codigo_archivo']]);
@@ -207,5 +209,14 @@ class PriceImport
         $rows = [['Fila Hoja master', 'SKU', 'PRICE_SUGGESTED antes', 'PRICE_SUGGESTED nuevo (copiar esta columna)']];
         foreach ($result['paste'] as $p) $rows[] = [$p['fila_hoja'], $p['SKU'], $p['antes'], $p['nuevo']];
         return XlsxWriter::build(['PRICE_SUGGESTED' => ['rows' => $rows, 'widths' => [14, 22, 20, 40]]]);
+    }
+
+    /** Columna aparte con el precio del archivo («PRECIO KYTE»), en el orden de filas de la Hoja master; no toca PRICE_SUGGESTED */
+    public static function sourceColumnXlsx(array $result): string
+    {
+        $title = 'PRECIO ' . strtoupper($result['meta']['origen'] ?? 'ARCHIVO');
+        $rows = [['Fila Hoja master', 'SKU', 'PRICE_SUGGESTED (no cambia)', $title . ' (copiar esta columna)']];
+        foreach ($result['paste'] as $p) $rows[] = [$p['fila_hoja'], $p['SKU'], $p['antes'], $p['archivo'] ?? null];
+        return XlsxWriter::build([$title => ['rows' => $rows, 'widths' => [14, 22, 26, 36]]]);
     }
 }
