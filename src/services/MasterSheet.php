@@ -96,6 +96,7 @@ class MasterSheet
         }
 
         $hasKyte = in_array('price_kyte', $colMap, true);
+        $suggested = [];
         $rows = [];
         $duplicates = [];
         $skipped = 0;
@@ -115,14 +116,43 @@ class MasterSheet
             if (isset($rows[$sku])) {
                 $duplicates[$sku] = ($duplicates[$sku] ?? 1) + 1;
             }
+            $sugg = $raw['price_suggested'] ?? '';
             if ($hasKyte) $raw['price_suggested'] = $raw['price_kyte'] ?? '';
             unset($raw['price_kyte']);
             $rows[$sku] = self::normalizeRow($raw, $line);
+            if ($hasKyte) $suggested[$sku] = self::parseNumber($sugg);
         }
         fclose($handle);
+        $priceFrom = $hasKyte ? self::fillMissingPrices($rows, $suggested) : [];
 
-        return ['rows' => $rows, 'duplicates' => $duplicates, 'columns' => array_values(array_unique($colMap)), 'skipped' => $skipped,
+        return ['rows' => $rows, 'duplicates' => $duplicates, 'price_from' => $priceFrom, 'columns' => array_values(array_unique($colMap)), 'skipped' => $skipped,
             'price_column' => $hasKyte ? 'PRECIO KYTE' : 'PRICE_SUGGESTED'];
+    }
+
+    /**
+     * Precio del visor cuando una fila no tiene PRECIO KYTE (decisión del dueño 2026-11-14: precio en todas las referencias):
+     * 1) el PRECIO KYTE de su familia (computeParentSkuMap), si toda la familia que lo tiene usa el mismo;
+     * 2) si no, su PRICE_SUGGESTED; 3) si tampoco, queda sin precio («Sin precio en tabla»).
+     * @return array{kyte:int, familia:int, price_suggested:int, sin_precio:int}
+     */
+    private static function fillMissingPrices(array &$rows, array $suggested): array
+    {
+        $stats = ['kyte' => 0, 'familia' => 0, 'price_suggested' => 0, 'sin_precio' => 0];
+        $parent = function_exists('computeParentSkuMap')
+            ? computeParentSkuMap(array_map(fn($r) => ['sku' => $r['sku'], 'name' => $r['name']], $rows)) : [];
+        $famPrices = [];
+        foreach ($rows as $sku => $r) {
+            if ($r['price_suggested'] > 0 && !empty($parent[(string) $sku])) $famPrices[$parent[(string) $sku]][(string) $r['price_suggested']] = true;
+        }
+        foreach ($rows as $sku => &$r) {
+            if ($r['price_suggested'] > 0) { $stats['kyte']++; continue; }
+            $fam = $famPrices[$parent[(string) $sku] ?? ''] ?? [];
+            if (count($fam) === 1) { $r['price_suggested'] = (float) array_key_first($fam); $stats['familia']++; }
+            elseif (($suggested[$sku] ?? 0) > 0) { $r['price_suggested'] = $suggested[$sku]; $stats['price_suggested']++; }
+            else $stats['sin_precio']++;
+        }
+        unset($r);
+        return $stats;
     }
 
     /**

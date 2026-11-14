@@ -18,9 +18,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     try {
         if (!verifyCsrf()) throw new RuntimeException('La sesión expiró: recarga la página.');
         if (($_POST['accion'] ?? '') === 'aplicar') {
-            if (!$result || empty($result['changes'])) throw new RuntimeException('No hay cambios para aplicar.');
+            if (!$result || (empty($result['changes']) && empty($result['outside']))) throw new RuntimeException('No hay cambios para aplicar.');
             if (!empty($result['meta']['aplicado'])) throw new RuntimeException('Estos precios ya se aplicaron.');
-            $n = PriceImport::applyToVisor(getDB(), $result['changes']);
+            $n = PriceImport::applyToVisor(getDB(), $result['changes'] ?? [], $result['outside'] ?? []);
             $result['meta']['aplicado'] = date('Y-m-d H:i') . " ({$n} productos)";
             @file_put_contents($file, json_encode($result, JSON_UNESCAPED_UNICODE));
             redirect('/admin/precios?ok=' . $n);
@@ -121,11 +121,11 @@ $src = $result['meta']['origen'] ?? 'archivo';
                     <a class="btn btn-sm btn-primary" href="/admin/precios?descargar=origen">📥 Columna nueva «PRECIO <?= e(strtoupper($src)) ?>» (Excel)</a>
                 <?php endif; ?>
                 <a class="btn btn-sm btn-secondary" href="/admin/precios?descargar=reporte">📥 Reporte de cambios (Excel)</a>
-                <?php if (!empty($result['changes']) && empty($result['meta']['aplicado'])): ?>
-                    <form method="post" onsubmit="return confirm('¿Aplicar <?= count($result['changes']) ?> precios en el visor ahora?')">
+                <?php if ((!empty($result['changes']) || !empty($result['outside'])) && empty($result['meta']['aplicado'])): ?>
+                    <form method="post" onsubmit="return confirm('¿Aplicar los precios en el visor ahora?')">
                         <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
                         <input type="hidden" name="accion" value="aplicar">
-                        <button type="submit" class="btn btn-sm btn-secondary">✅ Aplicar <?= count($result['changes']) ?> precios en el visor</button>
+                        <button type="submit" class="btn btn-sm btn-secondary">✅ Aplicar en el visor (<?= count($result['changes'] ?? []) ?> de la Hoja master + productos «Solo Drive» del archivo)</button>
                     </form>
                 <?php elseif (!empty($result['meta']['aplicado'])): ?>
                     <span class="pb-help">Aplicado en el visor: <?= e($result['meta']['aplicado']) ?></span>
