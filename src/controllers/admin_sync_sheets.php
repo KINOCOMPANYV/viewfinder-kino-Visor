@@ -77,6 +77,7 @@ if ($stats['inserted']) $parts[] = "🆕 {$stats['inserted']} nuevos";
 if ($stats['updated']) $parts[] = "🔄 {$stats['updated']} actualizados";
 if ($stats['unchanged']) $parts[] = "✅ {$stats['unchanged']} sin cambios";
 if ($removed) $parts[] = '📦 ' . count($removed) . ' ya no están en la hoja (se ocultan)';
+$parts[] = '💲 precio del visor: columna ' . $sheet['price_column'];
 if ($sheet['duplicates']) $parts[] = '⚠️ ' . count($sheet['duplicates']) . ' códigos repetidos en la hoja (se usó la última fila)';
 if ($sheet['skipped']) $parts[] = '⚠️ ' . $sheet['skipped'] . ' filas sin código (no se cargan)';
 if ($inactive) $parts[] = "⏸️ {$inactive} desactivados por el admin";

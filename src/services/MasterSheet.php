@@ -19,6 +19,9 @@ class MasterSheet
         'gender' => 'gender', 'genero' => 'gender',
         'movement' => 'movement', 'movimiento' => 'movement',
         'price_suggested' => 'price_suggested', 'precio_sugerido' => 'price_suggested',
+        // Precio que muestra el visor (decisión del dueño 2026-11-14): si la columna PRECIO KYTE existe, manda ella
+        // (vacía = «Sin precio en tabla»); si no existe, se usa PRICE_SUGGESTED como antes.
+        'precio_kyte' => 'price_kyte',
         'price' => 'price_wholesale', 'precio' => 'price_wholesale',
         'stock' => 'stock',
         'description' => 'description', 'descripcion' => 'description',
@@ -92,6 +95,7 @@ class MasterSheet
             throw new RuntimeException('No se encontró la columna "SKU" en la hoja. Columnas: ' . implode(', ', $header));
         }
 
+        $hasKyte = in_array('price_kyte', $colMap, true);
         $rows = [];
         $duplicates = [];
         $skipped = 0;
@@ -111,11 +115,14 @@ class MasterSheet
             if (isset($rows[$sku])) {
                 $duplicates[$sku] = ($duplicates[$sku] ?? 1) + 1;
             }
+            if ($hasKyte) $raw['price_suggested'] = $raw['price_kyte'] ?? '';
+            unset($raw['price_kyte']);
             $rows[$sku] = self::normalizeRow($raw, $line);
         }
         fclose($handle);
 
-        return ['rows' => $rows, 'duplicates' => $duplicates, 'columns' => array_values(array_unique($colMap)), 'skipped' => $skipped];
+        return ['rows' => $rows, 'duplicates' => $duplicates, 'columns' => array_values(array_unique($colMap)), 'skipped' => $skipped,
+            'price_column' => $hasKyte ? 'PRECIO KYTE' : 'PRICE_SUGGESTED'];
     }
 
     /**
