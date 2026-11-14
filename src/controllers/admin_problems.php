@@ -72,7 +72,7 @@ foreach ($rows as $r) {
             break;
         case 'hoja':
             $miss = [];
-            if (!($r['price_suggested'] > 0)) $miss[] = 'sin PRICE_SUGGESTED';
+            if (!($r['price_suggested'] > 0)) $miss[] = 'sin precio en la Hoja master';
             if ($r['name'] === $r['sku'] || $r['name'] === '') $miss[] = 'sin NAME';
             $table[] = ['Código' => $r['sku'], 'Nombre' => $r['name'], 'Marca' => $r['brand'], 'Motivo' => implode(' y ', $miss)];
             break;

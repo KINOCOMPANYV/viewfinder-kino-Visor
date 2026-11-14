@@ -55,7 +55,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   menos de la mitad, precio 0. «Aplicar en el visor» opcional = precio editado; el sync suelta la marca sola cuando la Hoja
   master ya trae ese precio. Códigos de KYTE que no están en la Hoja master no se agregan.
   Decisión del dueño (2026-11-14): el precio de KYTE va en una **columna nueva «PRECIO KYTE»** de la Hoja master y se deja
-  lo demás igual; el sync la ignora (el visor sigue mostrando PRICE_SUGGESTED). Admin → Precios la da lista para pegar.
+  lo demás igual. Admin → Precios la da lista para pegar.
+- **El visor muestra solo PRECIO KYTE** (decisión del dueño 2026-11-14, reemplaza PRICE_SUGGESTED): si la Hoja master tiene
+  la columna «PRECIO KYTE», el sync toma de ahí el precio del visor (celda vacía = «Sin precio en tabla», sin usar
+  PRICE_SUGGESTED). Si la columna no existe, sigue PRICE_SUGGESTED. El precio editado en el admin sigue ganando.
 - **Catálogo en PDF** (2026-11-11): foto + código + texto opcional que escribe cada usuario (precio u otra cosa; vacío = no
   sale). Sin logo de Kino: el usuario puede subir el suyo. Entran todas las fotos marcadas. Se arma en el dispositivo
   (precios, textos y logo no van al servidor). Botón al tener la selección lista para enviar y al abrir un enlace `/c/…`.
@@ -305,3 +308,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-sf5b5e` (2026-11-14): Admin → 💲 Precios (`/admin/precios`, `PriceImport.php`); el sync quita
   `price_manual` cuando la Hoja master ya trae el mismo precio. Primer archivo: «Productos 19.xlsx» de KYTE.
 - Misma rama (2026-11-14): descarga «Columna nueva PRECIO KYTE» (precio tal cual de KYTE por fila de la Hoja master).
+- Misma rama (2026-11-14): el visor muestra PRECIO KYTE (`MasterSheet::parse`, `price_column`); Admin → Precios compara contra esa columna.

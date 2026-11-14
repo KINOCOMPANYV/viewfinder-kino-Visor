@@ -1,8 +1,9 @@
 <?php
 /**
  * Importar precios (Admin → 💲 Precios). Lee un Excel/CSV de precios (KYTE: ID, Nombre*, Código, Precio*, …;
- * o SYS: Artículo, Precio) y lo cruza con la columna PRICE_SUGGESTED de la «Hoja master».
- * Arma: lista de cambios, avisos (repetidos, faltantes) y la columna PRICE_SUGGESTED para pegar en la Hoja master.
+ * o SYS: Artículo, Precio) y lo cruza con el precio que muestra el visor: columna PRECIO KYTE de la «Hoja master»
+ * (o PRICE_SUGGESTED si esa columna no existe). Arma: lista de cambios, avisos (repetidos, faltantes) y la columna
+ * «PRECIO KYTE» para pegar en la Hoja master.
  * «Aplicar en el visor» guarda los precios nuevos como precio editado (price_manual = 1); cuando la Hoja master
  * ya tiene ese mismo precio, el sync quita la marca sola (MasterSheet::sync) y la Hoja master vuelve a mandar.
  *
@@ -14,8 +15,8 @@ require_once __DIR__ . '/InventoryImport.php';
 class PriceImport
 {
     public const TYPES = [
-        'cambia' => ['Precio cambia', 'El precio del archivo es distinto al PRICE_SUGGESTED de la Hoja master.', 'Se aplica al pegar la columna en la Hoja master (o con «Aplicar en el visor»).'],
-        'nuevo' => ['Sin precio en Hoja master', 'La Hoja master no tenía PRICE_SUGGESTED y el archivo sí trae precio.', 'Igual que «Precio cambia».'],
+        'cambia' => ['Precio cambia', 'El precio del archivo es distinto al de la Hoja master.', 'Se aplica al pegar la columna en la Hoja master (o con «Aplicar en el visor»).'],
+        'nuevo' => ['Sin precio en Hoja master', 'La Hoja master no tenía precio y el archivo sí trae.', 'Igual que «Precio cambia».'],
         'conflicto' => ['Precios repetidos distintos', 'Varias filas del archivo caen en el mismo código con precios distintos.', 'No se cambia: corregir el archivo y volver a subirlo.'],
         'sospechoso' => ['Cambio grande', 'El precio nuevo es menos de la mitad o más del doble del actual.', 'No se cambia (puede ser un error de digitación): si es correcto, ponerlo a mano en la Hoja master.'],
         'falta_hoja' => ['Falta en Hoja master', 'El código del archivo no existe en la Hoja master.', 'Si se vende, agregarlo a la Hoja master.'],
@@ -65,7 +66,7 @@ class PriceImport
         return ['items' => $items, 'source' => $source];
     }
 
-    /** Filas de la Hoja master en orden: [{row, sku, name, price}] con PRICE_SUGGESTED. Hoja en vivo; si no, la BD. */
+    /** Filas de la Hoja master en orden: [{row, sku, name, price}] con el precio del visor (PRECIO KYTE o PRICE_SUGGESTED). Hoja en vivo; si no, la BD. */
     public static function sheetRows(PDO $db): array
     {
         try {
@@ -74,22 +75,24 @@ class PriceImport
             fwrite($h, $csv);
             rewind($h);
             $col = array_flip(array_map(fn($x) => strtoupper(trim((string) $x)), fgetcsv($h) ?: []));
-            if (!isset($col['SKU'], $col['PRICE_SUGGESTED'])) throw new RuntimeException('la Hoja master no tiene SKU / PRICE_SUGGESTED');
+            // Se compara con la columna que muestra el visor: PRECIO KYTE si existe, si no PRICE_SUGGESTED
+            $pc = isset($col['PRECIO KYTE']) ? 'PRECIO KYTE' : 'PRICE_SUGGESTED';
+            if (!isset($col['SKU'], $col[$pc])) throw new RuntimeException('la Hoja master no tiene SKU / ' . $pc);
             $rows = [];
             for ($line = 2; ($r = fgetcsv($h)) !== false; $line++) {
-                $p = trim((string) ($r[$col['PRICE_SUGGESTED']] ?? ''));
+                $p = trim((string) ($r[$col[$pc]] ?? ''));
                 $rows[] = ['row' => $line, 'sku' => trim((string) ($r[$col['SKU']] ?? '')), 'name' => trim((string) ($r[$col['NAME'] ?? -1] ?? '')),
                     'price' => $p === '' ? null : MasterSheet::parseNumber($p)];
             }
             fclose($h);
-            return ['rows' => $rows, 'source' => 'Hoja master en vivo'];
+            return ['rows' => $rows, 'source' => 'Hoja master en vivo', 'column' => $pc];
         } catch (\Throwable $e) {
             $rows = [];
             foreach ($db->query("SELECT sheet_row, sku, name, price_sheet FROM products WHERE in_sheet = 1 ORDER BY sheet_row") as $p) {
                 $rows[] = ['row' => (int) $p['sheet_row'], 'sku' => $p['sku'], 'name' => (string) $p['name'],
                     'price' => $p['price_sheet'] === null ? null : (float) $p['price_sheet']];
             }
-            return ['rows' => $rows, 'source' => 'copia de la BD (no se pudo leer la Hoja master: ' . $e->getMessage() . ')'];
+            return ['rows' => $rows, 'source' => 'copia de la BD (no se pudo leer la Hoja master: ' . $e->getMessage() . ')', 'column' => 'precio de la Hoja master'];
         }
     }
 
@@ -191,13 +194,13 @@ class PriceImport
         $readme[] = [];
         $readme[] = ['Archivo', '', ($m['archivo'] ?? '') . ' (' . ($m['origen'] ?? '') . ')'];
         $readme[] = ['Fecha', '', $m['fecha'] ?? ''];
-        $readme[] = ['Columna de la Hoja master', '', 'PRICE_SUGGESTED (precio que muestra el visor)'];
+        $readme[] = ['Columna de la Hoja master', '', ($m['columna'] ?? 'PRECIO KYTE') . ' (precio que muestra el visor)'];
         $readme[] = ['Cómo se cruzan', '', 'Código exacto; si no está, el mismo código con o sin «M:», «M», «M-». Si la columna Código está vacía, se usa la primera palabra del Nombre.'];
-        $readme[] = ['Para actualizar', '', 'Descarga «Columna PRICE_SUGGESTED para pegar» y pega «PRICE_SUGGESTED nuevo» en la columna PRICE_SUGGESTED de la Hoja master desde la fila 2.'];
+        $readme[] = ['Para actualizar', '', 'Descarga la columna «PRECIO ' . strtoupper($m['origen'] ?? 'KYTE') . '» y pégala en esa columna de la Hoja master desde la fila 2 (si no existe, créala a la derecha con ese título).'];
         $sheets = ['Léeme' => ['rows' => $readme, 'widths' => [28, 10, 60, 60]]];
         foreach (self::TYPES as $k => [$label]) {
             if (empty($byType[$k])) continue;
-            $rows = [['Código archivo', 'Código Hoja master', 'Nombre', 'PRICE_SUGGESTED antes', 'Precio archivo', 'Nota']];
+            $rows = [['Código archivo', 'Código Hoja master', 'Nombre', 'Precio Hoja master antes', 'Precio archivo', 'Nota']];
             foreach ($byType[$k] as $r) $rows[] = [$r['codigo_archivo'], $r['codigo_hoja'], $r['nombre'], $r['precio_hoja'], $r['precio_archivo'], $r['nota']];
             $sheets[$label] = ['rows' => $rows, 'widths' => [18, 18, 44, 16, 16, 50]];
         }
@@ -211,11 +214,11 @@ class PriceImport
         return XlsxWriter::build(['PRICE_SUGGESTED' => ['rows' => $rows, 'widths' => [14, 22, 20, 40]]]);
     }
 
-    /** Columna aparte con el precio del archivo («PRECIO KYTE»), en el orden de filas de la Hoja master; no toca PRICE_SUGGESTED */
+    /** Columna aparte con el precio del archivo («PRECIO KYTE»), en el orden de filas de la Hoja master (vacía si falta o hay conflicto) */
     public static function sourceColumnXlsx(array $result): string
     {
         $title = 'PRECIO ' . strtoupper($result['meta']['origen'] ?? 'ARCHIVO');
-        $rows = [['Fila Hoja master', 'SKU', 'PRICE_SUGGESTED (no cambia)', $title . ' (copiar esta columna)']];
+        $rows = [['Fila Hoja master', 'SKU', ($result['meta']['columna'] ?? 'Precio') . ' antes', $title . ' (copiar esta columna)']];
         foreach ($result['paste'] as $p) $rows[] = [$p['fila_hoja'], $p['SKU'], $p['antes'], $p['archivo'] ?? null];
         return XlsxWriter::build([$title => ['rows' => $rows, 'widths' => [14, 22, 26, 36]]]);
     }
