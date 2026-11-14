@@ -257,6 +257,12 @@ if ($uri === '/lista-pedido') {
     exit;
 }
 
+// Logo subido de la plantilla de Remisión (Admin → 🚚 Remisión)
+if (preg_match('#^/lista-pedido/logo/([a-z0-9_-]+)$#', $uri, $matches)) {
+    require_once __DIR__ . '/src/services/RemisionTemplate.php';
+    RemisionTemplate::serveLogo(getDB(), $matches[1]);
+}
+
 if ($uri === '/enviar-catalogo/extraer' && $method === 'POST') {
     checkRateLimit(30);
     $catalogAction = 'extract';
@@ -319,6 +325,12 @@ if ($uri === '/admin/sync') {
 if ($uri === '/admin/inventario') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_inventory.php';
+    exit;
+}
+
+if ($uri === '/admin/remision') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_remision.php';
     exit;
 }
 

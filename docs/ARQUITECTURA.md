@@ -63,6 +63,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
   (sha256 del token de gestión), `is_active`, `views`. No se borran: se desactivan.
 - `image_embeddings` (migración 028): `file_id` (portada) → `embedding` (512 float32 empaquetados, jina-clip-v2; NULL = no
   bajó, se reintenta en 1 día). Búsqueda por foto.
+- `doc_templates` (migración 031): `name` (`remision`) → `data` (JSON de la plantilla del PDF, con los logos subidos).
 - `folder_settings`: `folder_id` → `hidden` (decisión del admin; sobrevive a los syncs) y `hide_in_lists` (migración 029).
 - `media_search_cache`: `sku` → `files_json` (búsqueda en Drive). Solo se usa mientras `drive_index` está vacío.
 - `drive_cache`: hoy solo guarda la visibilidad por archivo (`visible_publico`) y subcarpetas para la búsqueda.
@@ -270,4 +271,9 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
 - `/lista-pedido` muestra «Lista Bodega» (recibo) o «Remisión». Botón «👁 Previo» (`#olMake`): arma el PDF con jsPDF y lo pinta
   con pdf.js (`assets/vendor/pdfjs`) en un panel (`#olPv`) con Descargar / Enviar / Cerrar. La Remisión agrega al final el
   recuadro «TOTAL REMISIÓN» con `order.totalText`. Cada celda de foto lleva `doc.link` a `drive.google.com/file/d/{id}/view`.
+- Plantilla de la Remisión: `src/services/RemisionTemplate.php` (tabla `doc_templates`, fila `remision`, JSON: `title`,
+  `numPrefix`, `headerColor`, `accentColor`, `footer[]`, `brands`, `logos[{id, name, side, src}]`). Editor: `/admin/remision`
+  (`admin_remision.php`, `templates/admin/remision.php`, `assets/js/remision_editor.js`; POST JSON + `X-CSRF-TOKEN`).
+  `/lista-pedido` la recibe en `window.KINO_REMISION`; logos de fábrica en `assets/img/remision/`, los subidos (data URL en el
+  JSON) se sirven por `/lista-pedido/logo/{id}?v=…`. `order_list.js` → `remBand()` (franja con logos) y pie por página.
 - Si no hay esa tabla, sigue el recibo de siempre («N artículos» … «Total:», `5x código … $`).
