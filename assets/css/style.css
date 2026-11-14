@@ -3216,3 +3216,10 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .cs-ocr-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .cs-ocr-btn.is-busy { opacity: 0.6; pointer-events: none; }
 .cs-ocr-msg { font-size: 0.82rem; color: var(--color-text-muted); }
+
+/* Precio en tarjetas y ficha (Hoja master; sin precio = "Sin precio en tabla") — 2026-11-14 */
+.parent-card .card-price { font-size: 0.9rem; font-weight: 700; color: #22c55e; margin: 0.1rem 0 0.3rem; }
+.parent-card .card-price.no-price,
+.product-price.no-price { font-size: 0.72rem; font-weight: 500; color: var(--color-text-muted); font-style: italic; }
+.product-price { font-size: 1.6rem; font-weight: 700; color: #22c55e; margin: 0.25rem 0 0.75rem; }
+.product-price.no-price { font-size: 0.9rem; }

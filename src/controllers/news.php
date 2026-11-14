@@ -22,6 +22,14 @@ try {
          WHERE $where ORDER BY d.first_seen_at DESC, d.name ASC LIMIT $limit"
     )->fetchAll(PDO::FETCH_ASSOC);
 } catch (\PDOException $e) { /* migración 026 pendiente */ }
+// Precio de cada código enlazado (tarjeta: precio de la Hoja master o "Sin precio en tabla")
+$prices = [];
+$skus = array_values(array_unique(array_filter(array_column($files ?? [], 'matched_sku'))));
+if ($skus) {
+    $st = $db->prepare("SELECT sku, price_suggested FROM products WHERE sku IN (" . implode(',', array_fill(0, count($skus), '?')) . ")");
+    $st->execute($skus);
+    $prices = $st->fetchAll(PDO::FETCH_KEY_PAIR);
+}
 $fmtDay = function (string $d): string {
     $t = strtotime($d);
     if (date('Y-m-d', $t) === date('Y-m-d')) return 'Hoy';
@@ -81,6 +89,7 @@ $fmtDay = function (string $d): string {
                             </div>
                             <div class="card-body">
                                 <div class="card-sku"><?= e(cleanSkuDisplay($code)) ?></div>
+                                <?php if ($f['matched_sku']): ?><?= priceTag($prices[$f['matched_sku']] ?? null) ?><?php endif; ?>
                                 <?php if ($f['folder']): ?><div class="card-name nw-folder">📁 <?= e($f['folder']) ?></div><?php endif; ?>
                             </div>
                         </a>

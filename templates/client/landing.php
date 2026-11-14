@@ -305,6 +305,7 @@
                                 <a href="/producto/<?= rawurlencode($parent['sku']) ?>" class="dynamic-card-link" style="text-decoration:none; color:inherit; display:block;">
                                     <div class="card-sku dynamic-card-sku"><?= e(cleanSkuDisplay($parent['sku'])) ?></div>
                                     <div class="card-name"><?= e($parent['name']) ?></div>
+                                    <?= priceTag($parent['price_suggested'] ?? null) ?>
                                 </a>
                                 <?php if ($parent['category']): ?>
                                     <div class="card-meta"><span><?= e($parent['category']) ?></span></div>

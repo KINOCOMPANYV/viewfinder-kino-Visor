@@ -477,6 +477,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
                                     <?php if ($exactHit && $cardIndex === 0): ?><div class="exact-hit-label">✓ Código exacto</div><?php endif; ?>
                                     <div class="card-sku dynamic-card-sku"><?= e(cleanSkuDisplay($p['sku'])) ?></div>
                                     <div class="card-name"><?= e($p['name']) ?></div>
+                                    <?= priceTag($p['price_suggested'] ?? null) ?>
                                 </a>
                                 <?php if ($p['category']): ?>
                                     <div class="card-meta"><span><?= e($p['category']) ?></span></div>

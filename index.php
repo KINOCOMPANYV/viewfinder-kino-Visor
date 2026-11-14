@@ -333,6 +333,12 @@ if ($uri === '/admin/import') {
     redirect('/admin/sync');
 }
 
+if ($uri === '/admin/products/price' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_products_price.php';
+    exit;
+}
+
 if ($uri === '/admin/products/active' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_products_active.php';
