@@ -46,8 +46,16 @@ if (isset($_GET['ok'])) $flash = '✅ Precios aplicados en el visor: ' . (int) $
 $dl = $_GET['descargar'] ?? null;
 if ($dl && $result) {
     $isCol = $dl === 'columna';
-    $bin = $isCol ? PriceImport::pasteXlsx($result) : PriceImport::reportXlsx($result);
     $src = $result['meta']['origen'] ?? 'archivo';
+    if ($dl === 'origen') {
+        $bin = PriceImport::sourceColumnXlsx($result);
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="PRECIO_' . strtoupper($src) . '_para_pegar_en_Hoja_master_' . date('Y-m-d') . '.xlsx"');
+        header('Content-Length: ' . strlen($bin));
+        echo $bin;
+        exit;
+    }
+    $bin = $isCol ? PriceImport::pasteXlsx($result) : PriceImport::reportXlsx($result);
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment; filename="' . ($isCol ? 'PRICE_SUGGESTED_para_pegar_en_Hoja_master_' : "Reporte_precios_{$src}_vs_Hoja_master_") . date('Y-m-d') . '.xlsx"');
     header('Content-Length: ' . strlen($bin));
@@ -110,6 +118,9 @@ $src = $result['meta']['origen'] ?? 'archivo';
             </p>
             <div class="pb-bar" style="flex-wrap:wrap;gap:10px">
                 <a class="btn btn-sm btn-primary" href="/admin/precios?descargar=columna">📥 Columna PRICE_SUGGESTED para pegar (Excel)</a>
+                <?php if (isset($result['paste'][0]) && array_key_exists('archivo', $result['paste'][0])): ?>
+                    <a class="btn btn-sm btn-primary" href="/admin/precios?descargar=origen">📥 Columna nueva «PRECIO <?= e(strtoupper($src)) ?>» (Excel)</a>
+                <?php endif; ?>
                 <a class="btn btn-sm btn-secondary" href="/admin/precios?descargar=reporte">📥 Reporte de cambios (Excel)</a>
                 <?php if (!empty($result['changes']) && empty($result['meta']['aplicado'])): ?>
                     <form method="post" onsubmit="return confirm('¿Aplicar <?= count($result['changes']) ?> precios en el visor ahora?')">
@@ -121,6 +132,8 @@ $src = $result['meta']['origen'] ?? 'archivo';
                     <span class="pb-help">Aplicado en el visor: <?= e($result['meta']['aplicado']) ?></span>
                 <?php endif; ?>
             </div>
+            <p class="pb-help"><b>Sin tocar PRICE_SUGGESTED:</b> crea en la Hoja master una columna nueva con el título «PRECIO <?= e(strtoupper($src)) ?>»
+                (al final, a la derecha) y pega ahí la columna «PRECIO <?= e(strtoupper($src)) ?>» desde la fila 2. El visor no la usa: sigue mostrando PRICE_SUGGESTED.</p>
             <p class="pb-help"><b>Cómo queda igual en todos lados:</b> abre la columna, copia <b>PRICE_SUGGESTED nuevo</b> desde la fila 2 y pégala en la columna
                 PRICE_SUGGESTED de la Hoja master desde la fila 2 (mismo orden de filas). <b>Aplicar en el visor</b> muestra los precios ya, sin esperar;
                 quedan como «editado en el admin» y, cuando la Hoja master trae ese mismo precio, el visor vuelve a seguir la Hoja master solo.</p>
