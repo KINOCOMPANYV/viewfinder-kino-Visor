@@ -96,6 +96,7 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
             </div>
             <div class="sync-actions">
                 <button class="btn btn-secondary" onclick="syncSheet(true, this)">👁️ Vista previa</button>
+                <a class="btn btn-secondary" href="/admin/hoja">📋 Ver tabla de la hoja</a>
                 <button class="btn btn-primary" onclick="syncSheet(false, this)">🔄 Sincronizar hoja</button>
             </div>
             <div class="sync-result" id="sheetResult"></div>

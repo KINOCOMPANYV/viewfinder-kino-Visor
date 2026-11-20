@@ -7,6 +7,7 @@ $adminNavItems = [
     'folders' => ['/admin/folders', '📂 Carpetas'],
     'media' => ['/admin/media', '🖼️ Media'],
     'sync' => ['/admin/sync', '🔄 Sincronizar'],
+    'hoja' => ['/admin/hoja', '📋 Hoja master'],
     'problemas' => ['/admin/problemas', '🩺 Problemas'],
     'inventario' => ['/admin/inventario', '📦 Inventario'],
     'precios' => ['/admin/precios', '💲 Precios'],
