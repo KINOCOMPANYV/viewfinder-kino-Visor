@@ -73,6 +73,45 @@ class InventoryImport
         return XlsxWriter::build(['STOCK' => ['rows' => $rows, 'widths' => [14, 22, 14, 34]]]);
     }
 
+    /** Columna PRICE (Precio SYS) → .xlsx (mismo orden de filas que la hoja) */
+    public static function priceXlsx(array $result): string
+    {
+        $rows = [['Fila Hoja master', 'SKU', 'PRICE antes', 'PRICE nuevo = Precio SYS (copiar esta columna)']];
+        foreach ($result['paste'] as $p) $rows[] = [$p['fila_hoja'], $p['SKU'], $p['PRICE_actual'] ?? null, $p['PRICE_nuevo'] ?? ($p['PRICE_actual'] ?? null)];
+        return XlsxWriter::build(['PRICE' => ['rows' => $rows, 'widths' => [14, 22, 14, 44]]]);
+    }
+
+    /**
+     * Guarda en el visor el Precio SYS y las existencias SYS de cada producto (sys_price, sys_stock), al subir el archivo.
+     * Cruce por clave normalizada con todos los productos (también «Solo Drive»); varias filas del mismo código se suman.
+     * @return int productos actualizados
+     */
+    public static function applyToVisor(PDO $db, array $items, bool $negativeToZero = true): int
+    {
+        $by = [];
+        foreach ($items as $it) {
+            $k = self::looseKey($it['code']);
+            $by[$k]['stock'] = ($by[$k]['stock'] ?? 0) + $it['stock'];
+            if (!isset($by[$k]['price']) && $it['price'] !== null && $it['price'] > 0) $by[$k]['price'] = $it['price'];
+        }
+        $st = $db->prepare("UPDATE products SET sys_stock = ?, sys_price = ?, sys_at = NOW() WHERE id = ?");
+        $n = 0;
+        $db->beginTransaction();
+        try {
+            foreach ($db->query("SELECT id, sku FROM products")->fetchAll() as $p) {
+                $d = $by[self::looseKey((string) $p['sku'])] ?? null;
+                if (!$d) continue;
+                $st->execute([$negativeToZero ? max(0, $d['stock']) : $d['stock'], $d['price'] ?? null, $p['id']]);
+                $n++;
+            }
+            $db->commit();
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            throw $e;
+        }
+        return $n;
+    }
+
     private const HEADERS = [
         'code' => '/^(articulo|codigo|cod\.?|sku|referencia|ref\.?|item)$/',
         'stock' => '/(exist|stock|saldo|disponible|cantidad)/',
@@ -348,7 +387,8 @@ class InventoryImport
             $its = $assign[$i] ?? [];
             if (!$its) {
                 if ($s['sku'] !== '') { $c['solo_hoja']++; $add('solo_hoja', '', $s['sku'], $s['name'], null, $s['stock'], null, $s['price'], 'No aparece en SYS: se deja el stock actual'); }
-                $paste[] = ['fila_hoja' => $s['row'], 'SKU' => $s['sku'], 'STOCK_actual' => $s['stock'], 'STOCK_nuevo' => $s['stock']];
+                $paste[] = ['fila_hoja' => $s['row'], 'SKU' => $s['sku'], 'STOCK_actual' => $s['stock'], 'STOCK_nuevo' => $s['stock'],
+                    'PRICE_actual' => $s['price'], 'PRICE_nuevo' => $s['price']];
                 continue;
             }
             $sum = array_sum(array_column($its, 'stock'));
@@ -367,7 +407,9 @@ class InventoryImport
                 $c['precio']++;
                 $add('precio_diferente', $codes, $s['sku'], $s['name'], $sum, $s['stock'], $price, $s['price'], 'Precio SYS ≠ PRICE de la Hoja master (solo informativo)');
             }
-            $paste[] = ['fila_hoja' => $s['row'], 'SKU' => $s['sku'], 'STOCK_actual' => $s['stock'], 'STOCK_nuevo' => $new];
+            // PRICE de la Hoja master = Precio SYS (decisión del dueño 2026-11-20); sin precio SYS se deja el actual
+            $paste[] = ['fila_hoja' => $s['row'], 'SKU' => $s['sku'], 'STOCK_actual' => $s['stock'], 'STOCK_nuevo' => $new,
+                'PRICE_actual' => $s['price'], 'PRICE_nuevo' => $price !== null && $price > 0 ? $price : $s['price']];
         }
 
         $order = array_flip(['duplicado_inventario', 'duplicado_hoja', 'varias_filas_inventario', 'stock_negativo', 'solo_hoja', 'precio_diferente', 'stock_diferente', 'solo_inventario']);

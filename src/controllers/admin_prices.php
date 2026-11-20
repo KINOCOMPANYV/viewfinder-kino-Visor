@@ -1,9 +1,9 @@
 <?php
 /**
- * Admin → 💲 Precios (/admin/precios). Subir el Excel de precios (KYTE o SYS), cruzarlo con el precio del visor (PRECIO KYTE, o PRICE_SUGGESTED si no existe) de la
- * Hoja master y: ver la previa de cambios, descargar la columna para pegar (?descargar=columna), el reporte
- * (?descargar=reporte) y, opcional, «Aplicar en el visor» (precio editado; el sync suelta la marca cuando la
- * Hoja master ya trae ese precio). No escribe en la Hoja master. Último resultado: storage/precios/ultimo.json.
+ * Admin → 💲 Precios (/admin/precios). Subir el Excel de productos de KYTE, cruzarlo con PRICE_SUGGESTED de la Hoja master
+ * (precio del visor) y aplicarlo en el visor al momento (precio editado; el sync suelta la marca cuando la Hoja master ya
+ * trae ese precio). Descargas: columna PRICE_SUGGESTED para pegar (?descargar=columna) y reporte (?descargar=reporte).
+ * El archivo SYS va en Admin → 📦 Inventario. No escribe en la Hoja master. Último resultado: storage/precios/ultimo.json.
  */
 require_once __DIR__ . '/../services/MasterSheet.php';
 require_once __DIR__ . '/../services/XlsxWriter.php';
@@ -17,44 +17,32 @@ $result = is_file($file) ? json_decode((string) file_get_contents($file), true) 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     try {
         if (!verifyCsrf()) throw new RuntimeException('La sesión expiró: recarga la página.');
-        if (($_POST['accion'] ?? '') === 'aplicar') {
-            if (!$result || (empty($result['changes']) && empty($result['outside']))) throw new RuntimeException('No hay cambios para aplicar.');
-            if (!empty($result['meta']['aplicado'])) throw new RuntimeException('Estos precios ya se aplicaron.');
-            $n = PriceImport::applyToVisor(getDB(), $result['changes'] ?? [], $result['outside'] ?? []);
-            $result['meta']['aplicado'] = date('Y-m-d H:i') . " ({$n} productos)";
-            @file_put_contents($file, json_encode($result, JSON_UNESCAPED_UNICODE));
-            redirect('/admin/precios?ok=' . $n);
-        }
         $up = $_FILES['archivo'] ?? null;
         if (!$up || $up['error'] !== UPLOAD_ERR_OK) throw new RuntimeException('Elige el archivo de precios (.xlsx o .csv).');
         @set_time_limit(120);
         $parsed = PriceImport::parseItems(InventoryImport::readFile($up['tmp_name'], $up['name']));
         if (!$parsed['items']) throw new RuntimeException('El archivo no tiene filas con código y precio.');
+        if ($parsed['source'] === 'SYS') throw new RuntimeException('Este es el archivo de SYS: súbelo en 📦 Inventario (su precio va a la columna PRICE y no se muestra en el visor).');
         $sheet = PriceImport::sheetRows(getDB());
         if (!$sheet['rows']) throw new RuntimeException('No hay filas de la Hoja master para comparar.');
         $result = PriceImport::compare($parsed['items'], $sheet['rows']);
-        $result['meta'] = ['archivo' => $up['name'], 'origen' => $parsed['source'], 'fecha' => date('Y-m-d H:i'), 'fuente_hoja' => $sheet['source'], 'columna' => $sheet['column'] ?? 'PRICE_SUGGESTED'];
+        $result['meta'] = ['archivo' => $up['name'], 'origen' => $parsed['source'], 'fecha' => date('Y-m-d H:i'), 'fuente_hoja' => $sheet['source'], 'columna' => 'PRICE_SUGGESTED'];
+        // Al subir el archivo se aplica solo en el visor (decisión del dueño 2026-11-20: subir = sincronizar)
+        $applied = PriceImport::applyToVisor(getDB(), $result['changes'] ?? [], $result['outside'] ?? []);
+        $result['meta']['aplicado'] = date('Y-m-d H:i') . " ({$applied} productos)";
         if (!is_dir($dir)) @mkdir($dir, 0775, true);
         if (@file_put_contents($file, json_encode($result, JSON_UNESCAPED_UNICODE)) === false) throw new RuntimeException('No se pudo guardar el resultado en storage/precios.');
-        redirect('/admin/precios');
+        redirect('/admin/precios?ok=' . $applied);
     } catch (\Throwable $e) {
         $error = $e->getMessage();
     }
 }
-if (isset($_GET['ok'])) $flash = '✅ Precios aplicados en el visor: ' . (int) $_GET['ok'] . ' productos. Pega también la columna en la Hoja master para que quede igual allá.';
+if (isset($_GET['ok'])) $flash = '✅ Precios KYTE aplicados en el visor: ' . (int) $_GET['ok'] . ' productos. Pega también la columna PRICE_SUGGESTED en la Hoja master para que quede igual allá.';
 
 $dl = $_GET['descargar'] ?? null;
 if ($dl && $result) {
     $isCol = $dl === 'columna';
     $src = $result['meta']['origen'] ?? 'archivo';
-    if ($dl === 'origen') {
-        $bin = PriceImport::sourceColumnXlsx($result);
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="PRECIO_' . strtoupper($src) . '_para_pegar_en_Hoja_master_' . date('Y-m-d') . '.xlsx"');
-        header('Content-Length: ' . strlen($bin));
-        echo $bin;
-        exit;
-    }
     $bin = $isCol ? PriceImport::pasteXlsx($result) : PriceImport::reportXlsx($result);
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment; filename="' . ($isCol ? 'PRICE_SUGGESTED_para_pegar_en_Hoja_master_' : "Reporte_precios_{$src}_vs_Hoja_master_") . date('Y-m-d') . '.xlsx"');
@@ -94,15 +82,17 @@ $src = $result['meta']['origen'] ?? 'archivo';
 
     <main class="container pb-main">
         <?php $adminNav = 'precios'; include __DIR__ . '/../../templates/admin/partials/nav.php'; ?>
-        <h1 class="pb-title">💲 Actualizar precios desde Excel</h1>
-        <p class="pb-help">Sube el Excel de productos de <b>KYTE</b> (Nombre*, Código, Precio*) o de <b>SYS</b> (Artículo, Precio).
-            Se cruza con el precio que muestra el visor: columna <b>PRECIO KYTE</b> de la <b>Hoja master</b> (o PRICE_SUGGESTED mientras esa columna no exista) por código (exacto primero; «M:», «M» y «M-» cuentan igual;
-            si el Código está vacío se usa la primera palabra del Nombre). Primero ves la previa; nada cambia hasta que tú lo decidas.</p>
+        <h1 class="pb-title">💲 Precios KYTE (precio del visor)</h1>
+        <p class="pb-help">Sube el Excel de productos de <b>KYTE</b> (Nombre*, Código, Precio*). Su precio es el que ve el público:
+            <b>al subirlo se aplica en el visor al momento</b> y te da la columna <b>PRICE_SUGGESTED</b> lista para pegar en la Hoja master.
+            Cruce por código (exacto primero; «M:», «M» y «M-» cuentan igual; si el Código está vacío se usa la primera palabra del Nombre).
+            No se cambian precios repetidos distintos, cambios de más del doble o menos de la mitad, ni precio 0.
+            El archivo de <b>SYS</b> va en <a href="/admin/inventario">📦 Inventario</a> (su precio va a PRICE y no se muestra).</p>
 
         <form method="post" enctype="multipart/form-data" class="pb-bar" style="flex-wrap:wrap;gap:10px">
             <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
             <input type="file" name="archivo" accept=".xlsx,.csv,.txt" required>
-            <button type="submit" class="btn btn-sm btn-primary">Ver previa contra la Hoja master</button>
+            <button type="submit" class="btn btn-sm btn-primary">Subir y aplicar en el visor</button>
         </form>
         <?php if ($error): ?><p class="pb-empty" style="color:#ff8080">⚠️ <?= e($error) ?></p><?php endif; ?>
         <?php if ($flash): ?><p class="pb-help" style="color:#7ee2a8"><?= e($flash) ?></p><?php endif; ?>
@@ -117,24 +107,13 @@ $src = $result['meta']['origen'] ?? 'archivo';
                 <?= $n($s['falta_archivo']) ?> de la Hoja master no están en el archivo · <?= $n($s['falta_hoja']) ?> códigos del archivo no están en la Hoja master.
             </p>
             <div class="pb-bar" style="flex-wrap:wrap;gap:10px">
-                <?php if (isset($result['paste'][0]) && array_key_exists('archivo', $result['paste'][0])): ?>
-                    <a class="btn btn-sm btn-primary" href="/admin/precios?descargar=origen">📥 Columna nueva «PRECIO <?= e(strtoupper($src)) ?>» (Excel)</a>
-                <?php endif; ?>
+                <a class="btn btn-sm btn-primary" href="/admin/precios?descargar=columna">📥 Columna PRICE_SUGGESTED para pegar (Excel)</a>
                 <a class="btn btn-sm btn-secondary" href="/admin/precios?descargar=reporte">📥 Reporte de cambios (Excel)</a>
-                <?php if ((!empty($result['changes']) || !empty($result['outside'])) && empty($result['meta']['aplicado'])): ?>
-                    <form method="post" onsubmit="return confirm('¿Aplicar los precios en el visor ahora?')">
-                        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
-                        <input type="hidden" name="accion" value="aplicar">
-                        <button type="submit" class="btn btn-sm btn-secondary">✅ Aplicar en el visor (<?= count($result['changes'] ?? []) ?> de la Hoja master + productos «Solo Drive» del archivo)</button>
-                    </form>
-                <?php elseif (!empty($result['meta']['aplicado'])): ?>
-                    <span class="pb-help">Aplicado en el visor: <?= e($result['meta']['aplicado']) ?></span>
-                <?php endif; ?>
+                <?php if (!empty($result['meta']['aplicado'])): ?><span class="pb-help">Aplicado en el visor: <?= e($result['meta']['aplicado']) ?></span><?php endif; ?>
             </div>
-            <p class="pb-help"><b>Para actualizar la Hoja master:</b> descarga la columna «PRECIO <?= e(strtoupper($src)) ?>» y pégala en esa columna
-                de la Hoja master desde la fila 2 (si no existe, créala a la derecha con ese título en la fila 1). El visor muestra esa columna
-                (comparado con: <?= e($result['meta']['columna'] ?? 'PRICE_SUGGESTED') ?>). <b>Aplicar en el visor</b> muestra los precios ya, sin esperar;
-                quedan como «editado en el admin» y, cuando la Hoja master trae ese mismo precio, el visor vuelve a seguir la Hoja master solo.</p>
+            <p class="pb-help"><b>Para que la Hoja master quede igual:</b> descarga la columna PRICE_SUGGESTED, copia «nuevo» desde la fila 2
+                y pégalo en la columna PRICE_SUGGESTED de la Hoja master desde la fila 2. Los precios ya aplicados quedan como «editado en el admin»
+                y, cuando la Hoja master trae ese mismo precio, el visor vuelve a seguir la Hoja master solo.</p>
 
             <nav class="pb-tabs">
                 <?php foreach ($labels as $k => $label): if (empty($counts[$k])) continue; ?>

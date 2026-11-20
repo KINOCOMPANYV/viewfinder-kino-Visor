@@ -49,53 +49,16 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   PRICE_SUGGESTED de la Hoja master; sin precio sale «Sin precio en tabla». En Admin → Productos el precio se edita en la fila;
   el cambio vale solo en el visor (la Hoja master no se toca) y el sync ya no lo pisa («✏️ Editado», «↩ Hoja» lo devuelve).
   Dashboard: tarjetas «Sin precio en tabla» y «Precio editado en admin».
-- **Precios desde Excel** (2026-11-14): Admin → 💲 Precios sube el Excel de productos de KYTE (o SYS) y lo cruza con
-  PRICE_SUGGESTED de la Hoja master: previa, reporte y columna para **pegar a mano** (el visor no escribe en la hoja).
-  Código vacío en KYTE → primera palabra del Nombre. No se cambia: precios repetidos distintos, cambios de más del doble o
-  menos de la mitad, precio 0. «Aplicar en el visor» opcional = precio editado; el sync suelta la marca sola cuando la Hoja
-  master ya trae ese precio. Códigos de KYTE que no están en la Hoja master no se agregan.
-  Decisión del dueño (2026-11-14): el precio de KYTE va en una **columna nueva «PRECIO KYTE»** de la Hoja master y se deja
-  lo demás igual. Admin → Precios la da lista para pegar.
-- **El visor muestra solo PRECIO KYTE** (decisión del dueño 2026-11-14, reemplaza PRICE_SUGGESTED): si la Hoja master tiene
-  la columna «PRECIO KYTE», el sync toma de ahí el precio del visor. Si la columna no existe, sigue PRICE_SUGGESTED.
-  El precio editado en el admin sigue ganando.
-- **Precio en todas las referencias** (2026-11-14): fila sin PRECIO KYTE → PRECIO KYTE de su familia (si es uno solo) →
-  PRICE_SUGGESTED → «Sin precio en tabla». Con «Productos 19»: 2.623 KYTE, 45 familia, 939 PRICE_SUGGESTED, 22 sin precio.
-  Sincronizar muestra esos números. «Aplicar en el visor» de Admin → Precios también pone precio a productos «Solo Drive».
-- **Catálogo en PDF** (2026-11-11): foto + código + texto opcional que escribe cada usuario (precio u otra cosa; vacío = no
-  sale). Sin logo de Kino: el usuario puede subir el suyo. Entran todas las fotos marcadas. Se arma en el dispositivo
-  (precios, textos y logo no van al servidor). Botón al tener la selección lista para enviar y al abrir un enlace `/c/…`.
-  Diseño sobrio y elegante con colores primario y secundario elegibles, subtítulo, secciones y pie de contacto (pedido 2026-11-11).
-  Por defecto, botón «Abrir foto» bajo cada foto: enlace a la foto en Drive sin mostrar la dirección larga (se puede quitar).
-- **Extractor de pedidos PDF dentro del visor** (2026-11-12): la app Flask EXTRACTOR (carpeta local, fuera del repo) se pasó
-  a JavaScript en `/extractor`, lo más simple y escalable: sin servicio Python aparte, el PDF se lee en el dispositivo. La lista
-  pasa al visor con un botón (no automático) y solo para buscar fotos; precio al PDF del catálogo: después, si se pide.
-  La carpeta EXTRACTOR local queda igual.
-- **Auditoría 2026-11-12**: respaldo en la rama `respaldo-2026-11-12` y en `C:\Users\USAURIO\Respaldos` (zip + gitbundle).
-  El dueño aprobó: seguridad de descargas y login + fotos en JPEG (un cambio) y limpieza de lo que no se usa (otro cambio).
-  Búsqueda por foto parada: Jina sin saldo (14 de 5950 listas); recargar la cuenta lo hace el dueño.
-- **Lista pedido** (2026-11-12): botón adicional en el Extractor, junto a «Ver fotos en el visor» (lugar elegido por el
-  dueño). Los datos del pedido salen del PDF de origen, nunca recalculados con las fotos ni con la fecha de hoy; lo que no
-  se pudo leer se avisa («No se pudo leer del PDF»), no se inventa. Foto por coincidencia exacta del código (con o sin «M»),
-  sin la corrección del lector de fotos, para que no se crucen referencias.
-- **Extractor: dos formatos de PDF** (2026-11-12): además del recibo («5x 674B-1 … $»), lee la cotización en tabla de
-  KINO MEDELLIN (CODIGO · PRODUCTO · CANT · UNIDAD · DESC · PRECIO · TOTAL, encabezado repetido por página, «TOTAL : $» solo
-  en la última). Se detecta solo. Ese formato no dice cuántas referencias ni unidades trae: quedan «sin dato del PDF», no se
-  rellenan solos. Se revisa cada línea (cantidad × precio = TOTAL de la línea) y la suma contra el TOTAL.
-- **Remisión y Lista pedido** (2026-11-12, decisión del dueño): son dos documentos distintos según el PDF que entra al
-  Extractor. Factura en tabla (Colombia, «COTIZACION No») → **Remisión**, azul oscuro, archivo `Remision_N.pdf`, con NIT,
-  dirección y ciudad, y columnas Precio y Total de entrada. Recibo (receipt-c-…) → **Lista pedido**, negro y dorado como
-  antes. Se detecta solo; en la pantalla hay un selector «Tipo» por si falla. Cada tipo recuerda sus casillas.
-- **Lista Bodega y Previo** (2026-11-13, decisión del dueño): «Lista pedido» se llama ahora **«Lista Bodega»** (botón, título,
-  PDF, archivo `Lista_Bodega_….pdf`; la ruta sigue siendo `/lista-pedido`). La Remisión repite el **TOTAL REMISIÓN** al final,
-  debajo de la tabla. El botón principal es **«👁 Previo»** (llamativo): arma el PDF y lo muestra página por página antes de
-  Descargar o Enviar. Tocar una foto en el PDF (Lista Bodega o Remisión) abre esa foto en Google Drive (2026-11-13).
-- **Plantilla de la Remisión editable** (2026-11-14, modelo del dueño): la Remisión ya no es azul; franja negra con logos
-  (KINO a la izquierda; CURREN, Poedagar y JOEFOX a la derecha), líneas rojas y pie con dirección, contacto, correo y marcas
-  (Joefox · Sanse · T5 · Mini Focus · Skmei · Kardoo · Extri; se quitaron Curren, Forsining, Winner y lo que seguía al teléfono).
-  Todo eso se edita en **Admin → 🚚 Remisión** (título, colores, pie, marcas; logos: agregar, cambiar, pasar a blanco, mover,
-  quitar) y se guarda en la base. Cliente, NIT, productos y valores siguen saliendo del PDF. Lista Bodega no cambió.
-  Los logos de KINO, Poedagar y JOEFOX se recortaron del modelo (baja calidad): conviene subir los originales.
+- **Precios: SYS y KYTE** (decisión del dueño 2026-11-20, reemplaza «PRECIO KYTE» del 2026-11-14):
+  - **KYTE** → columna **PRICE_SUGGESTED** de la Hoja master = precio que ve el público. Admin → 💲 Precios: al subir el
+    Excel **se aplica solo en el visor** (precio editado; el sync suelta la marca cuando la Hoja master trae ese precio) y da
+    la columna PRICE_SUGGESTED para pegar. No se cambian precios repetidos distintos, cambios de más del doble/menos de la
+    mitad, ni 0. También pone precio a «Solo Drive». Código vacío en KYTE → primera palabra del Nombre.
+  - **SYS** (INVENTARIO GENERAL) → columna **PRICE** (no se muestra por ahora; se usará más adelante) y STOCK.
+    Admin → 📦 Inventario: al subir **se guardan al momento** Precio SYS y existencias en el visor (`sys_price`, `sys_stock`)
+    y da las columnas STOCK y PRICE para pegar. Si se sube el archivo SYS en Precios, avisa que va en Inventario.
+  - La columna «PRECIO KYTE» ya no se usa (si sigue en la hoja, se ignora). Fila sin PRICE_SUGGESTED → el de su familia
+    (si es uno solo) → «Sin precio en tabla». El precio editado en el admin sigue ganando. El visor no escribe en la Hoja master.
 - **Nombres** (2026-11-13): la hoja maestra se llama siempre **«Hoja master»**; el sistema contable es **«SYS»** (sus datos: «Stock SYS»,
   «Precio SYS»). Otro sistema, **«KYTE»**, traerá sus datos aparte más adelante.
 - **Inventario SYS → Hoja master** (2026-11-13): el stock de SYS («INVENTARIO GENERAL.xlsx») se carga en la columna
@@ -160,8 +123,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Problemas (todo lo que impide que salga una foto, con motivo y ruta).
   Sincronizar muestra hoja y Drive por separado (último éxito con qué cambió, último error y "🔁 Reintentar"); solo corre
   una sincronización a la vez.
-  Admin → 📦 Inventario: subir el Excel de existencias, ver diferencias con la hoja y bajar la columna STOCK para pegar.
-  Admin → 💲 Precios: igual para precios (KYTE/SYS → PRICE_SUGGESTED), con «Aplicar en el visor» opcional.
+  Admin → 📦 Inventario: subir el Excel SYS (guarda Precio SYS y existencias en el visor), ver diferencias y bajar STOCK y PRICE para pegar.
+  Admin → 💲 Precios: Excel de KYTE → PRICE_SUGGESTED, se aplica en el visor al subirlo. SYS (precio → PRICE) va en Inventario.
 
 ## Pendiente / ideas
 - **Catálogo en PDF** (`docs/PLAN_PDF.md`, aprobado 2026-11-11): P1 (#52) y P2 (#53) hechas. Probar en Railway con fotos
@@ -330,3 +293,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-tvhp25` (2026-11-20, tras #85): «Ordenar» separado en dos que se combinan: Precio (mayor/menor) y Código (A→Z / Z→A); con ambos, primero precio y a igual precio por código.
 - Rama `claude/project-thread-24a45y` (2026-11-20, tras #86): optimización sin cambios visibles: inicio con 7 consultas en vez de 31 (portadas de carpetas en una sola, página cortada en MySQL), opciones de filtros guardadas 2 min, búsqueda por foto sin saldo reintenta cada hora (no cada 5 min), `.dockerignore` (sin `.git` ni docs en el contenedor), 4 funciones sin uso quitadas.
 - Rama `claude/project-thread-xsk99w` (2026-11-20): Admin → 📋 Hoja master (`/admin/hoja`): previo de la tabla de la hoja (todas las columnas, qué campo del visor llena cada una, buscador) junto al nombre actual en el visor. El nombre sale de NAME (vacía o Solo Drive → el código).
+- Rama `claude/project-thread-2f2p99` (2026-11-20): precios simplificados: KYTE → PRICE_SUGGESTED (público, se aplica al subir), SYS → PRICE (guardado, no público) + STOCK; fuera «PRECIO KYTE». Migración 033 (`sys_price`, `sys_stock`, `sys_at`).
