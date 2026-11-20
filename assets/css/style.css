@@ -3333,3 +3333,16 @@ nav.crumbs .crumbs-sep { color: var(--color-primary); font-weight: 700; }
     .product-detail .breadcrumb-path { font-size: 0.85rem; }
     nav.crumbs { margin-bottom: 0.9rem; }
 }
+@media (max-width: 640px) {
+    /* Botón ← del encabezado con texto «Atrás», dorado como las migas de pan */
+    .hdr-back {
+        width: auto; padding: 0 0.85rem 0 0.65rem; gap: 0.3rem; border-radius: 999px;
+        border: 1.5px solid var(--color-primary); background: var(--color-primary-glow); color: var(--color-primary-light);
+        font-size: 0.92rem;
+    }
+    .hdr-back-arrow { font-size: 1.15rem; line-height: 1; }
+    .hdr-back:active { background: var(--color-primary); color: var(--color-bg); }
+}
+@media (max-width: 360px) {
+    body:has(.hdr-back) .header-inner .logo { font-size: 1.05rem !important; }
+}

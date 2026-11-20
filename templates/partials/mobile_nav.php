@@ -36,7 +36,7 @@ $mnavItems = [
         back.href = up ? up.getAttribute('href') : '/';
         back.setAttribute('aria-label', 'Atrás');
         back.title = 'Atrás';
-        back.textContent = '←';
+        back.innerHTML = '<span class="hdr-back-arrow" aria-hidden="true">←</span><span>Atrás</span>';
         back.addEventListener('click', function (ev) {
             var fromHere = false;
             try { fromHere = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (err) {}
