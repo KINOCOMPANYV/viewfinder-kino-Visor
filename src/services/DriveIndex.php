@@ -51,6 +51,26 @@ class DriveIndex
         }
     }
 
+    /**
+     * Hijos de varias carpetas. Si la consulta grande falla aun con reintentos (Google
+     * corta las consultas lentas), se intenta una vez más en 4 partes más pequeñas.
+     */
+    private static function listChildren(GoogleDriveService $drive, array $parents, array &$stats): ?array
+    {
+        $items = $drive->listChildrenOfMany($parents);
+        if ($items !== null || count($parents) === 1) return $items;
+        // Error de permiso/consulta (no de tiempo o límite): partir no ayuda
+        if (preg_match('/^HTTP (400|401|404)/', $drive->lastRequestError)) return null;
+        $out = [];
+        foreach (array_chunk($parents, (int) ceil(count($parents) / 4)) as $piece) {
+            $stats['api_calls']++;
+            $part = $drive->listChildrenOfMany($piece);
+            if ($part === null) return null;
+            array_push($out, ...$part);
+        }
+        return $out;
+    }
+
     private static function doSync(PDO $db, GoogleDriveService $drive, string $rootFolderId): array
     {
         // Con microsegundos: dos syncs en el mismo segundo no deben confundirse al borrar
@@ -65,10 +85,12 @@ class DriveIndex
             $next = [];
             foreach (array_chunk($level, self::PARENTS_PER_QUERY) as $parents) {
                 $stats['api_calls']++;
-                $items = $drive->listChildrenOfMany($parents);
+                $items = self::listChildren($drive, $parents, $stats);
                 if ($items === null) {
                     // Sin el árbol completo no se puede saber qué se borró: no tocar el índice
-                    return ['ok' => false, 'error' => 'Drive no respondió al listar carpetas.'] + $stats;
+                    $why = $drive->lastRequestError !== '' ? " ({$drive->lastRequestError})" : '';
+                    $hint = str_contains($why, 'HTTP 401') ? ' Reconecta Google Drive en Admin → Media.' : ' Vuelve a intentar en unos minutos.';
+                    return ['ok' => false, 'error' => 'Drive no respondió al listar carpetas' . $why . '.' . $hint] + $stats;
                 }
                 $parentSet = array_flip($parents);
                 foreach ($items as $item) {

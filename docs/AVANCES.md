@@ -37,6 +37,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   mayúsculas ni tildes) queda oculta por defecto con todo su contenido, ya indexada o nueva. Si el admin la muestra, el
   sync no la vuelve a ocultar. Mientras está oculta tampoco crea productos "Solo Drive".
 - **Sync automático** en cada deploy y cada hora (`scripts/sync_loop.sh`); `AUTO_SYNC=0` lo apaga.
+  Si Drive falla al listar, se reintenta y el error dice el código HTTP (401 = reconectar en Admin → Media).
 - **WhatsApp = imágenes** (2026-11-09): los envíos mandan solo fotos, nunca la lista en texto. Una foto sola lleva su código
   como pie; en tandas no va texto (WhatsApp no deja un pie distinto por foto).
 - **Una tarjeta por referencia** (2026-11-10): inicio, búsqueda y autocompletar muestran cada código por separado, sin la
@@ -322,3 +323,5 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Misma rama (2026-11-14): respaldo de precio por familia y PRICE_SUGGESTED (`MasterSheet::fillMissingPrices`); precios de KYTE para «Solo Drive».
 - Rama `claude/project-thread-rd9wya` (2026-11-14): Remisión con plantilla editable (`/admin/remision`, `RemisionTemplate.php`,
   tabla `doc_templates`, migración 031) y diseño negro/rojo con logos según el modelo del dueño.
+- Rama `claude/project-thread-n7lzzo` (2026-11-20): «Drive no respondió al listar carpetas»: el listado del sync reintenta
+  (2/4/8 s, 60 s de espera, renueva el token si vence a mitad), parte la consulta en 4 si sigue fallando y el error muestra el motivo (HTTP/Google).
