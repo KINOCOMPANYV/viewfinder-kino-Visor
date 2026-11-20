@@ -18,7 +18,8 @@
             padding:0.6rem 0.9rem; margin-bottom:0.75rem; background:var(--color-surface-2); border:1px solid var(--color-border); border-radius:var(--radius); font-size:0.85rem; }
         .bulk-bar .muted { color:var(--color-text-muted); }
         .bulk-bar .link { background:none; border:none; color:var(--color-primary); cursor:pointer; text-decoration:underline; font-size:0.85rem; padding:0; }
-        .prod-thumb { width:44px; height:44px; border-radius:6px; object-fit:cover; background:var(--color-surface-2); display:flex; align-items:center; justify-content:center; }
+        .prod-thumb { width:96px; height:96px; border-radius:8px; object-fit:contain; background:var(--color-surface-2); display:flex; align-items:center; justify-content:center; }
+        .prod-price-f { width:130px; }
         tr.is-off td { opacity:0.55; }
         tr.is-off td:first-child, tr.is-off td:last-child { opacity:1; }
         .tag-out { font-size:0.7rem; color:#fbbf24; }
@@ -33,7 +34,8 @@
         .link-reset { background:none; border:none; color:var(--color-primary); cursor:pointer; text-decoration:underline; font-size:0.7rem; padding:0; }
         /* Móvil: cada fila es una tarjeta (casilla · foto · código/nombre · interruptor) */
         @media (max-width: 900px) {
-            .prod-filters .form-input { flex:1 1 100%; width:100%; min-width:0 !important; font-size:16px; }
+            .prod-filters .form-input { flex:1 1 100%; width:100%; min-width:0 !important; max-width:none !important; font-size:16px; }
+            .prod-filters .prod-price-f { flex:1 1 40%; }
             .prod-filters .btn { flex:1; min-height:44px; justify-content:center; }
             .bulk-bar { top:var(--header-h, 56px); }
             .bulk-bar .bulk-spacer { display:none; }
@@ -44,7 +46,7 @@
             .prod-table thead th { display:none; }
             .prod-table thead th:first-child { display:block; background:none; }
             .prod-table thead th:first-child::after { content:' Marcar esta página'; font-size:0.8rem; text-transform:none; letter-spacing:0; font-weight:500; }
-            .prod-table tbody tr { display:grid; grid-template-columns:28px 48px minmax(0,1fr) auto; column-gap:0.6rem; align-items:center;
+            .prod-table tbody tr { display:grid; grid-template-columns:28px 84px minmax(0,1fr) auto; column-gap:0.6rem; align-items:center;
                 padding:0.6rem 0.5rem; border-top:1px solid var(--color-border); }
             .prod-table tbody td { padding:0; border:none; }
             .prod-table .c-check { grid-row:1 / span 2; }
@@ -57,7 +59,7 @@
             .prod-table .c-meta { display:none; }
             .prod-table .only-mobile { display:block; margin-top:0.15rem; font-size:0.75rem; }
             .prod-table input[type=checkbox] { width:22px; height:22px; }
-            .prod-thumb { width:48px; height:48px; }
+            .prod-thumb { width:84px; height:84px; }
         }
     </style>
 </head>
@@ -108,7 +110,7 @@
                 <input type="hidden" name="genero" value="<?= e($filters['genero']) ?>">
                 <span class="cell-muted">Género: <strong><?= e(ucfirst($filters['genero'])) ?></strong></span>
             <?php endif; ?>
-            <input type="text" name="q" value="<?= e($filters['q']) ?>" placeholder="Código o nombre..." class="form-input" style="min-width:200px;">
+            <input type="text" name="q" value="<?= e($filters['q']) ?>" placeholder="Código, nombre, marca, color o carpeta…" title="Varias palabras en cualquier orden, ej.: poedagar dama dorado" class="form-input" style="min-width:260px;">
             <select name="marca" class="form-input" onchange="this.form.submit()">
                 <option value="">Todas las marcas</option>
                 <?php foreach ($brands as $b): ?>
@@ -121,6 +123,16 @@
                     <option value="<?= e($c['category']) ?>" <?= $filters['categoria'] === $c['category'] ? 'selected' : '' ?>><?= e($c['category']) ?> (<?= $c['n'] ?>)</option>
                 <?php endforeach; ?>
             </select>
+            <?php if ($folders): ?>
+            <select name="carpeta" class="form-input" onchange="this.form.submit()" style="max-width:260px;">
+                <option value="">Todas las carpetas</option>
+                <?php foreach ($folders as $fo): ?>
+                    <option value="<?= e($fo['id']) ?>" <?= $filters['carpeta'] === $fo['id'] ? 'selected' : '' ?>><?= e($fo['label']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <?php endif; ?>
+            <input type="text" name="pmin" value="<?= e($filters['pmin']) ?>" inputmode="numeric" placeholder="Precio desde $" class="form-input prod-price-f">
+            <input type="text" name="pmax" value="<?= e($filters['pmax']) ?>" inputmode="numeric" placeholder="hasta $" class="form-input prod-price-f">
             <button type="submit" class="btn btn-sm btn-primary">Buscar</button>
             <?php if ($baseFilters): ?><a href="/admin/products" class="btn btn-sm btn-secondary">Limpiar</a><?php endif; ?>
         </form>
@@ -148,7 +160,7 @@
                     <thead>
                         <tr>
                             <th style="width:32px;"><input type="checkbox" id="checkPage" onchange="checkPage(this.checked)" title="Seleccionar esta página"></th>
-                            <th style="width:56px;"></th>
+                            <th style="width:108px;"></th>
                             <th>Código</th>
                             <th>Nombre</th>
                             <th>Marca</th>
@@ -161,7 +173,7 @@
                     </thead>
                     <tbody>
                         <?php foreach ($products as $p):
-                            $cover = parseStoredCover($p['cover_image_url'], 120);
+                            $cover = parseStoredCover($p['cover_image_url'], 240);
                             $visible = $p['is_active'] && ($p['in_sheet'] || $p['from_drive']);
                         ?>
                             <tr data-id="<?= (int) $p['id'] ?>" class="<?= $visible ? '' : 'is-off' ?>">

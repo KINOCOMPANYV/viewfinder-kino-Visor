@@ -112,6 +112,9 @@
                     </form>
                     <div class="autocomplete-dropdown" id="autocomplete"></div>
                 </div>
+                <?php if ($db): ?>
+                    <div class="filter-wrap"><?php include __DIR__ . '/../partials/filter_bar.php'; ?></div>
+                <?php endif; ?>
             </div>
 
             <?php

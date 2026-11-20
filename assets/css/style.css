@@ -2260,6 +2260,34 @@ a.dash-row-link:hover span:first-child {
 .filter-price { display: inline-flex; gap: 0.35rem; }
 .filter-price .filter-field { width: 8.5rem; }
 .filter-check { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+/* Filtros con varias opciones (marcas, categorías, carpetas): lista desplegable con casillas */
+.filter-bar { position: relative; align-items: center; }
+.filter-multi { position: relative; }
+.filter-multi > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; white-space: nowrap; user-select: none; }
+.filter-multi > summary::-webkit-details-marker { display: none; }
+.filter-pop {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 950; width: 300px; max-width: calc(100vw - 2rem);
+    background: var(--color-surface); border: 1px solid var(--color-border-hover); border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); padding: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem;
+}
+.filter-find { width: 100%; padding: 0.5rem 0.7rem; border-radius: 10px; border: 1px solid var(--color-border);
+    background: var(--color-surface-2); color: var(--color-text); font: inherit; font-size: 16px; }
+.filter-opts { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; }
+.filter-opts label { display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.4rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; min-height: 36px; }
+.filter-opts label:hover { background: var(--color-surface-2); }
+.filter-opts label[hidden] { display: none; }
+.filter-opts input { accent-color: var(--color-primary); width: 18px; height: 18px; flex-shrink: 0; }
+.filter-pop-act { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.filter-none { background: none; border: none; color: var(--color-text-muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: 0.8rem; }
+.filter-go { cursor: pointer; }
+.filter-pdf { padding: 0.3rem 0.75rem; border-radius: 20px; border: 1.5px solid var(--color-primary); color: var(--color-primary);
+    font-size: 0.78rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.filter-pdf:hover { background: var(--color-primary); color: var(--color-bg); }
+.filter-wrap { margin-top: 1.25rem; }
+.filter-wrap .filter-bar { margin-top: 0; justify-content: center; }
+.filter-wrap .filter-active { justify-content: center; }
+.filter-wrap-left .filter-bar, .filter-wrap-left .filter-active { justify-content: flex-start; margin-left: 0; max-width: none; }
+.filter-wrap-left { margin-top: 0.9rem; }
 .filter-check input { accent-color: var(--color-primary); }
 .filter-active {
     display: flex;
@@ -2310,16 +2338,14 @@ a.dash-row-link:hover span:first-child {
 .suggest-chip img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 
 @media (max-width: 640px) {
-    .filter-bar {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        scrollbar-width: none;
-        margin-top: 0;
-        padding-bottom: 0.25rem;
-    }
-    .filter-bar::-webkit-scrollbar { display: none; }
-    .filter-bar > * { flex-shrink: 0; }
-    .filter-price .filter-field { width: 7rem; }
+    /* Celular: los filtros se acomodan en filas (sin deslizar) y cada lista abre a todo el ancho */
+    .filter-bar { margin-top: 0; gap: 0.4rem; }
+    .filter-multi { position: static; }
+    .filter-pop { left: 0; right: 0; width: auto; max-width: none; }
+    .filter-opts { max-height: 50vh; }
+    .filter-price { display: flex; flex: 1 1 100%; min-width: 0; }
+    .filter-price .filter-field { flex: 1 1 0; width: 0; min-width: 0; font-size: 16px; }
+    .filter-go { flex: 1 1 100%; }
 }
 
 /* ===== Admin: interruptor (productos, carpetas) ===== */
@@ -2528,7 +2554,7 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 
 .parent-grid,
 .parent-grid[style] {
-    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) !important; /* fotos más grandes (antes 135px) */
     gap: 0.6rem !important;
     padding: 0.75rem 0 1.5rem;
 }
@@ -3170,6 +3196,15 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .cp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; }
 .cp-info strong { font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cp-item textarea { resize: vertical; min-height: 2.6rem; padding: 0.4rem 0.6rem; line-height: 1.3; }
+.cp-item > img { width: 120px; height: 120px; border-radius: 10px; } /* fotos más grandes en la lista */
+@media (max-width: 640px) { .cp-item > img { width: 96px; height: 96px; } }
+/* Armar con filtros (catálogo filtrado) */
+.cp-filter .filter-bar, .cp-filter .filter-active { margin: 0 0 0.5rem; max-width: none; }
+.cp-filter.on { border-color: var(--color-primary); }
+.cp-filter-help { font-size: 0.8rem; color: var(--color-text-muted); margin: 0 0 0.6rem; }
+.cp-filter-st { font-size: 0.85rem; font-weight: 600; color: var(--color-primary); margin: 0.25rem 0 0; }
+.filter-q { flex: 1 1 220px; min-width: 0; font-size: 16px; }
+.cp-filter .filter-go { background: var(--color-primary); color: var(--color-bg); border-color: var(--color-primary); }
 .cp-item.is-bad::after { content: 'No bajó'; color: var(--color-danger); font-size: 0.72rem; font-weight: 700; align-self: center; }
 .cp-bar {
     position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(1rem + env(safe-area-inset-bottom, 0px));

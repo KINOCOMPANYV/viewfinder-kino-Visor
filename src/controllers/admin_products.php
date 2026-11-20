@@ -9,6 +9,9 @@ $filters = [
     'marca' => $_GET['marca'] ?? '',
     'categoria' => $_GET['categoria'] ?? '',
     'genero' => $_GET['genero'] ?? '',
+    'carpeta' => $_GET['carpeta'] ?? '',
+    'pmin' => trim($_GET['pmin'] ?? ''),
+    'pmax' => trim($_GET['pmax'] ?? ''),
 ];
 $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 50;
@@ -39,5 +42,8 @@ $summary = $db->query(
 )->fetch();
 $brands = $db->query("SELECT brand, COUNT(*) AS n FROM products WHERE brand <> '' GROUP BY brand ORDER BY brand")->fetchAll();
 $categories = $db->query("SELECT category, COUNT(*) AS n FROM products WHERE category <> '' GROUP BY category ORDER BY category")->fetchAll();
+
+// Carpetas de Drive para el filtro (ruta «Marca › Subcarpeta»), las mismas que en el catálogo público
+$folders = catalogFolderOptions($db);
 
 include __DIR__ . '/../../templates/admin/products.php';
