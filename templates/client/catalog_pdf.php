@@ -3,8 +3,14 @@
  * Catálogo en PDF (/catalogo-pdf, plan docs/PLAN_PDF.md etapa P1): las fotos marcadas (Mi selección, localStorage
  * kinoWaSel) con su código y un texto opcional por código (precio u otra información) que escribe cada usuario.
  * El PDF se arma en el dispositivo (assets/js/catalog_pdf.js + jsPDF en assets/vendor): textos, logo y precios
- * nunca se envían al servidor. La página no lee la BD; las fotos salen de /enviar-catalogo/foto/{id}.
+ * nunca se envían al servidor. Las fotos salen de /enviar-catalogo/foto/{id}.
+ * «Armar con filtros» (?desde=filtro + los mismos filtros que /buscar): la lista sale de /catalogo-pdf/lista.
  */
+$db = null;
+try { $db = getDB(); } catch (Throwable $e) { $db = null; }
+$fromFilter = ($_GET['desde'] ?? '') === 'filtro';
+$q = $fromFilter && is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
+$filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRequest([]);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -34,10 +40,20 @@
             si lo dejas vacío, no sale nada. Todo se arma <strong>en este dispositivo</strong> y lo que escribes se
             recuerda aquí para la próxima vez.</p>
 
+        <?php if ($db): ?>
+            <section class="ms-look cp-filter<?= $fromFilter ? ' on' : '' ?>">
+                <h2>🔎 Armar con filtros</h2>
+                <p class="cp-filter-help">Elige marcas, carpetas, categorías, precio o un texto (puedes marcar varias) y toca
+                    «📄 Armar catálogo»: entran las fotos de todos los productos que cumplan (hasta 300).</p>
+                <?php $filterTarget = '/catalogo-pdf'; include __DIR__ . '/../partials/filter_bar.php'; ?>
+                <p class="cp-filter-st" id="cpFilterSt" hidden></p>
+            </section>
+        <?php endif; ?>
+
         <div class="ms-empty" id="cpEmpty" hidden>
-            <p>No hay fotos marcadas.</p>
-            <p>Marca fotos en <a href="/buscar">Buscar</a>, en una carpeta o en <a href="/enviar-catalogo">Enviar fotos con lista</a>
-                y vuelve con «📄 PDF».</p>
+            <p id="cpEmptyMsg">No hay fotos marcadas.</p>
+            <p>Arma el catálogo con los filtros de arriba, o marca fotos en <a href="/buscar">Buscar</a>, en una carpeta o en
+                <a href="/enviar-catalogo">Enviar fotos con lista</a> y vuelve con «📄 PDF».</p>
         </div>
 
         <div id="cpBody" hidden>
@@ -74,6 +90,8 @@
                 </div>
                 <div class="ms-look-opts cp-per" role="radiogroup" aria-label="Fotos por página">
                     <span>Fotos por página:</span>
+                    <label><input type="radio" name="cpPer" value="1"> 1 <small>(grande)</small></label>
+                    <label><input type="radio" name="cpPer" value="2"> 2</label>
                     <label><input type="radio" name="cpPer" value="4"> 4</label>
                     <label><input type="radio" name="cpPer" value="6"> 6</label>
                     <label><input type="radio" name="cpPer" value="9"> 9</label>
@@ -99,6 +117,9 @@
     </main>
 
     <div class="cp-bar" id="cpBar" hidden>
+        <label class="cp-name" id="cpNameRow" hidden>📝 Nombre del archivo
+            <span class="cp-name-in"><input type="text" id="cpName" maxlength="120" autocomplete="off" spellcheck="false" aria-label="Nombre del archivo PDF"><span>.pdf</span></span>
+        </label>
         <div class="cp-bar-row">
             <button type="button" class="btn btn-primary" id="cpMake">📄 Generar PDF</button>
             <button type="button" class="btn cp-share" id="cpShare" hidden>📲 Compartir</button>

@@ -61,6 +61,7 @@ $fmtDay = function (string $d): string {
     <section class="container nw-main">
         <?= breadcrumbs([['Novedades', null]]) ?>
         <h1 class="nw-title">🆕 Novedades</h1>
+        <div class="filter-wrap filter-wrap-left"><?php include __DIR__ . '/../../templates/partials/filter_bar.php'; ?></div>
         <p class="nw-help">Fotos y videos que llegaron a Drive en este periodo (los que solo se volvieron a sincronizar no cuentan).
             Márcalas para sumarlas a tu selección.</p>
         <nav class="pb-tabs">
@@ -80,7 +81,7 @@ $fmtDay = function (string $d): string {
                     $href = $f['matched_sku'] ? '/producto/' . rawurlencode($f['matched_sku']) : '#';
                     $thumb = lh3Url($f['file_id'], 400);
                 ?>
-                    <div class="parent-card search-selectable-card">
+                    <div class="parent-card search-selectable-card<?= loadMoreClass($idx) ?>">
                         <a href="<?= e($href) ?>" style="display:block;color:inherit;text-decoration:none;">
                             <div class="card-image" style="position:relative;">
                                 <span class="nw-badge"><?= $isVideo ? '🎬 ' : '' ?><?= e($fmtDay($f['first_seen_at'])) ?></span>
@@ -104,6 +105,7 @@ $fmtDay = function (string $d): string {
                     </div>
                 <?php endforeach; ?>
             </div>
+            <?= loadMoreButton(count($files)) ?>
         <?php endif; ?>
     </section>
 

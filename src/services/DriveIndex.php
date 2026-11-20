@@ -334,6 +334,7 @@ class DriveIndex
         }
         $stats['album_of'] = array_map(fn($a) => $a[1], $stats['album_of']);
         $stats['ok'] = true;
+        SearchIndex::rebuild($db); // fotos, portadas o códigos cambiaron: índice de búsqueda al día
         return $stats;
     }
 
@@ -793,6 +794,7 @@ class DriveIndex
                 }
             }
         }
+        SearchIndex::rebuild($db); // carpetas ocultas cambiaron: el filtro y la búsqueda no deben verlas
         return $stats;
     }
 

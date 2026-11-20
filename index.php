@@ -237,6 +237,27 @@ if ($uri === '/mi-seleccion') {
     exit;
 }
 
+// Lista de fotos para un catálogo PDF filtrado (mismo texto y filtros que /buscar), en JSON
+if ($uri === '/catalogo-pdf/lista') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    try {
+        $db = getDB();
+        $pdfQ = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
+        $pdfF = catalogFiltersFromRequest($_GET);
+        $out = catalogPdfItems($db, $pdfQ, $pdfF);
+        // Nombre sugerido del catálogo: marcas, carpetas, categorías y texto elegidos
+        $out['name'] = implode(' · ', array_slice(array_merge($pdfF['marca'],
+            array_map(fn($id) => folderFilterLabel($db, $id), $pdfF['carpeta']),
+            array_map(fn($c) => ucfirst(mb_strtolower($c, 'UTF-8')), $pdfF['cat']), $pdfQ !== '' ? [$pdfQ] : []), 0, 4));
+        echo json_encode($out, JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'No se pudo armar la lista.']);
+    }
+    exit;
+}
+
 if ($uri === '/catalogo-pdf') {
     include __DIR__ . '/templates/client/catalog_pdf.php';
     exit;
@@ -319,6 +340,12 @@ if ($uri === '/admin/problemas') {
 if ($uri === '/admin/sync') {
     requireAdmin();
     include __DIR__ . '/templates/admin/sync.php';
+    exit;
+}
+
+if ($uri === '/admin/hoja') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_sheet_preview.php';
     exit;
 }
 

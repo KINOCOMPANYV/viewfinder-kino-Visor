@@ -2260,6 +2260,36 @@ a.dash-row-link:hover span:first-child {
 .filter-price { display: inline-flex; gap: 0.35rem; }
 .filter-price .filter-field { width: 8.5rem; }
 .filter-check { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+/* Filtros con varias opciones (marcas, categorías, carpetas): lista desplegable con casillas */
+.filter-bar { position: relative; align-items: center; }
+.filter-multi { position: relative; }
+.filter-multi > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; white-space: nowrap; user-select: none; }
+.filter-multi > summary::-webkit-details-marker { display: none; }
+.filter-pop {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 950; width: 300px; max-width: calc(100vw - 2rem);
+    background: var(--color-surface); border: 1px solid var(--color-border-hover); border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); padding: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem;
+}
+.filter-find { width: 100%; padding: 0.5rem 0.7rem; border-radius: 10px; border: 1px solid var(--color-border);
+    background: var(--color-surface-2); color: var(--color-text); font: inherit; font-size: 16px; }
+.filter-opts { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; }
+.filter-opts label { display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.4rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; min-height: 36px; }
+.filter-opts label:hover { background: var(--color-surface-2); }
+.filter-opts label[hidden] { display: none; }
+.filter-opts input { accent-color: var(--color-primary); width: 18px; height: 18px; flex-shrink: 0; }
+.filter-pop-act { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.filter-none { background: none; border: none; color: var(--color-text-muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: 0.8rem; }
+.filter-go { cursor: pointer; }
+.filter-contains { width: 11rem; }
+.filter-sort { cursor: pointer; }
+.filter-pdf { padding: 0.3rem 0.75rem; border-radius: 20px; border: 1.5px solid var(--color-primary); color: var(--color-primary);
+    font-size: 0.78rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.filter-pdf:hover { background: var(--color-primary); color: var(--color-bg); }
+.filter-wrap { margin-top: 1.25rem; }
+.filter-wrap .filter-bar { margin-top: 0; justify-content: center; }
+.filter-wrap .filter-active { justify-content: center; }
+.filter-wrap-left .filter-bar, .filter-wrap-left .filter-active { justify-content: flex-start; margin-left: 0; max-width: none; }
+.filter-wrap-left { margin-top: 0.9rem; }
 .filter-check input { accent-color: var(--color-primary); }
 .filter-active {
     display: flex;
@@ -2310,16 +2340,16 @@ a.dash-row-link:hover span:first-child {
 .suggest-chip img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 
 @media (max-width: 640px) {
-    .filter-bar {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        scrollbar-width: none;
-        margin-top: 0;
-        padding-bottom: 0.25rem;
-    }
-    .filter-bar::-webkit-scrollbar { display: none; }
-    .filter-bar > * { flex-shrink: 0; }
-    .filter-price .filter-field { width: 7rem; }
+    /* Celular: los filtros se acomodan en filas (sin deslizar) y cada lista abre a todo el ancho */
+    .filter-bar { margin-top: 0; gap: 0.4rem; }
+    .filter-multi { position: static; }
+    .filter-pop { left: 0; right: 0; width: auto; max-width: none; }
+    .filter-opts { max-height: 50vh; }
+    .filter-price { display: flex; flex: 1 1 100%; min-width: 0; }
+    .filter-price .filter-field { flex: 1 1 0; width: 0; min-width: 0; font-size: 16px; }
+    .filter-go { flex: 1 1 100%; }
+    .filter-contains { flex: 1 1 100%; width: auto; min-width: 0; font-size: 16px; }
+    .filter-sort { flex: 1 1 40%; width: auto; min-width: 0; font-size: 16px; padding-right: 0.3rem; text-overflow: ellipsis; }
 }
 
 /* ===== Admin: interruptor (productos, carpetas) ===== */
@@ -2528,7 +2558,7 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 
 .parent-grid,
 .parent-grid[style] {
-    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) !important; /* fotos más grandes (antes 135px) */
     gap: 0.6rem !important;
     padding: 0.75rem 0 1.5rem;
 }
@@ -3170,6 +3200,15 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .cp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; }
 .cp-info strong { font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cp-item textarea { resize: vertical; min-height: 2.6rem; padding: 0.4rem 0.6rem; line-height: 1.3; }
+.cp-item > img { width: 120px; height: 120px; border-radius: 10px; } /* fotos más grandes en la lista */
+@media (max-width: 640px) { .cp-item > img { width: 96px; height: 96px; } }
+/* Armar con filtros (catálogo filtrado) */
+.cp-filter .filter-bar, .cp-filter .filter-active { margin: 0 0 0.5rem; max-width: none; }
+.cp-filter.on { border-color: var(--color-primary); }
+.cp-filter-help { font-size: 0.8rem; color: var(--color-text-muted); margin: 0 0 0.6rem; }
+.cp-filter-st { font-size: 0.85rem; font-weight: 600; color: var(--color-primary); margin: 0.25rem 0 0; }
+.filter-q { flex: 1 1 220px; min-width: 0; font-size: 16px; }
+.cp-filter .filter-go { background: var(--color-primary); color: var(--color-bg); border-color: var(--color-primary); }
 .cp-item.is-bad::after { content: 'No bajó'; color: var(--color-danger); font-size: 0.72rem; font-weight: 700; align-self: center; }
 .cp-bar {
     position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
@@ -3182,6 +3221,12 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .cp-bar-row .btn:disabled { opacity: 0.7; cursor: wait; }
 .cp-share { background: var(--color-wa); color: #fff; border: none; }
 .cp-share:hover { background: var(--color-wa-hover); }
+.cp-name { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: var(--color-text-muted); }
+.cp-name-in { display: flex; align-items: center; gap: 0.3rem; }
+.cp-name-in input { flex: 1; min-width: 0; min-height: 40px; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid var(--color-border, #333); background: var(--color-bg, #111); color: var(--color-text, #fff); font-size: 16px; }
+.cp-name-in span { color: var(--color-text-muted); }
+.ol-pv-name { flex-direction: row; align-items: center; flex: 1 1 14rem; }
+.ol-pv-name .cp-name-in { flex: 1; }
 .cp-msg { font-size: 0.8rem; color: var(--color-text-muted); text-align: center; }
 .cp-msg:empty { display: none; }
 @media (max-width: 640px) {
@@ -3223,3 +3268,81 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .product-price.no-price { font-size: 0.72rem; font-weight: 500; color: var(--color-text-muted); font-style: italic; }
 .product-price { font-size: 1.6rem; font-weight: 700; color: #22c55e; margin: 0.25rem 0 0.75rem; }
 .product-price.no-price { font-size: 0.9rem; }
+
+/* ===== Celular: navegación y rapidez (2026-11-20) ===== */
+/* Filtros plegados tras un botón (solo celular); en el computador la barra se ve siempre */
+.filter-toggle { display: none; }
+@media (max-width: 640px) {
+    .filter-toggle {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%;
+        min-height: 44px; padding: 0.5rem 0.9rem; margin: 0 0 0.6rem;
+        border-radius: 12px; border: 1.5px solid var(--color-border); background: var(--color-surface-2);
+        color: var(--color-text); font: 600 0.9rem var(--font); cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .filter-toggle.on { border-color: var(--color-primary); color: var(--color-primary); }
+    .filter-toggle[aria-expanded="true"] .filter-toggle-arrow { transform: rotate(180deg); }
+    .filter-bar.fb-fold:not(.fb-open) { display: none; }
+    .filter-bar.fb-fold.fb-open { margin-bottom: 0.9rem; }
+    .filter-wrap { margin-top: 0.6rem; }
+}
+@media (max-width: 640px) {
+    /* Barra de abajo con 5 botones: Inicio, Buscar, Carpetas, Selección (con contador), Enviar */
+    .mnav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .mnav-icon { position: relative; }
+    .mnav-badge {
+        position: absolute; top: -6px; left: calc(100% - 6px);
+        min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+        background: var(--color-primary); color: var(--color-bg);
+        font: 700 0.66rem/18px var(--font); text-align: center;
+    }
+    .mnav-item:not(.active) .mnav-icon:has(.mnav-badge:not([hidden])) { filter: none; opacity: 1; }
+    /* Ficha de producto: sin «Volver al catálogo» (ya está la ← del encabezado); la ruta queda en una línea chica */
+    #btnBackCatalog { display: none; }
+    .product-detail .breadcrumb-bar { margin-bottom: 0.6rem; }
+    .product-detail .breadcrumb-path { font-size: 0.8rem; }
+}
+/* «Cargar más» en carpetas grandes y Novedades (helpers.php loadMoreButton) */
+.parent-grid > .lm-hide { display: none !important; }
+.lm-wrap { display: flex; justify-content: center; margin: 1.25rem 0 0.5rem; }
+.lm-btn { min-height: 46px; min-width: 220px; justify-content: center; font-weight: 700; }
+/* Migas de pan más visibles (todas las pantallas): cada paso es un botón dorado que se puede tocar,
+   «Inicio» con 🏠, y la página actual en blanco y negrita. Vale para breadcrumbs() (.crumbs), la ficha
+   (.breadcrumb-path) y las carpetas (.folder-breadcrumb). */
+nav.crumbs, .breadcrumb-bar .breadcrumb-path, .folder-breadcrumb {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.35rem;
+    color: var(--color-primary) !important; font-weight: 700;
+}
+nav.crumbs a, .breadcrumb-bar .breadcrumb-path a, .folder-breadcrumb a {
+    display: inline-flex; align-items: center; gap: 0.3rem; min-height: 34px; padding: 0.3rem 0.8rem !important;
+    border-radius: 999px; border: 1.5px solid var(--color-primary); background: var(--color-primary-glow);
+    color: var(--color-primary-light) !important; font-size: 0.85rem; font-weight: 700; text-decoration: none;
+    -webkit-tap-highlight-color: transparent; transition: background 0.15s, color 0.15s;
+}
+nav.crumbs a:hover, .breadcrumb-bar .breadcrumb-path a:hover, .folder-breadcrumb a:hover,
+nav.crumbs a:active, .breadcrumb-bar .breadcrumb-path a:active, .folder-breadcrumb a:active {
+    background: var(--color-primary); color: var(--color-bg) !important; text-decoration: none;
+}
+nav.crumbs > a:first-child::before, .breadcrumb-bar .breadcrumb-path > a:first-child::before, .folder-breadcrumb > a:first-child::before {
+    content: '🏠';
+}
+nav.crumbs [aria-current], .breadcrumb-bar .breadcrumb-path > span, .folder-breadcrumb > span {
+    color: var(--color-text) !important; font-size: 0.9rem; font-weight: 700; padding: 0.3rem 0.2rem;
+}
+nav.crumbs .crumbs-sep { color: var(--color-primary); font-weight: 700; }
+@media (max-width: 640px) {
+    .product-detail .breadcrumb-path { font-size: 0.85rem; }
+    nav.crumbs { margin-bottom: 0.9rem; }
+}
+@media (max-width: 640px) {
+    /* Botón ← del encabezado con texto «Atrás», dorado como las migas de pan */
+    .hdr-back {
+        width: auto; padding: 0 0.85rem 0 0.65rem; gap: 0.3rem; border-radius: 999px;
+        border: 1.5px solid var(--color-primary); background: var(--color-primary-glow); color: var(--color-primary-light);
+        font-size: 0.92rem;
+    }
+    .hdr-back-arrow { font-size: 1.15rem; line-height: 1; }
+    .hdr-back:active { background: var(--color-primary); color: var(--color-bg); }
+}
+@media (max-width: 360px) {
+    body:has(.hdr-back) .header-inner .logo { font-size: 1.05rem !important; }
+}

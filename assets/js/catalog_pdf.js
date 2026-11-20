@@ -6,6 +6,8 @@
  * Diseño: colores primario/secundario, título, subtítulo, pie de catálogo (kinoPdfOpts), logo propio (kinoPdfLogo) y
  * subtítulos de sección antes de una foto (kinoPdfHeads, por id de foto). El PDF (A4) se arma aquí con jsPDF.
  * Nada de esto se envía al servidor: solo se piden las fotos livianas (/enviar-catalogo/foto/{id}).
+ * ?desde=filtro (+ q, marca[], carpeta[], cat[], pmin, pmax): la lista sale de /catalogo-pdf/lista con esos filtros;
+ * se guarda en sessionStorage kinoPdfFiltro ({qs, name, items, total}) y la página se recarga para usarla.
  */
 (function () {
     const MAX_ITEMS = 300;
@@ -31,8 +33,13 @@
         let raw = [];
         let name = '';
         let from = null;
-        const fromList = new URLSearchParams(location.search).get('desde') === 'lista';
-        if (fromList) {
+        const desde = new URLSearchParams(location.search).get('desde');
+        const fromList = desde === 'lista';
+        if (desde === 'filtro') {
+            const d = readJson(sessionStorage, 'kinoPdfFiltro', null);
+            if (d && d.qs === location.search && Array.isArray(d.items)) { raw = d.items; name = String(d.name || ''); from = ['Con filtros', '/catalogo-pdf']; }
+            else return { pending: true, items: [] };
+        } else if (fromList) {
             const d = readJson(sessionStorage, 'kinoPdfSrc', null);
             if (d && Array.isArray(d.items)) { raw = d.items; name = String(d.name || ''); from = Array.isArray(d.from) ? d.from : null; }
         } else {
@@ -51,6 +58,33 @@
     }
 
     const src = loadItems();
+    // Catálogo con filtros: se pide la lista al servidor una vez y se recarga la página con ella
+    if (src.pending) {
+        const st = $('cpFilterSt');
+        const say = (t) => { if (st) { st.textContent = t; st.hidden = false; } };
+        say('⏳ Buscando las fotos que cumplen los filtros…');
+        fetch('/catalogo-pdf/lista' + location.search, { headers: { Accept: 'application/json' } })
+            .then((r) => r.json())
+            .then((d) => {
+                if (!d || !Array.isArray(d.items)) throw new Error((d && d.error) || 'Respuesta inválida');
+                if (!d.items.length) { say('No hay productos con foto que cumplan esos filtros. Prueba con menos filtros.'); $('cpEmpty').hidden = false; return; }
+                try { sessionStorage.setItem('kinoPdfFiltro', JSON.stringify({ qs: location.search, name: d.name || '', items: d.items, total: d.total })); }
+                catch (e) { say('No se pudo preparar la lista en este dispositivo (memoria llena).'); return; }
+                location.reload();
+            })
+            .catch(() => say('No se pudo armar la lista. Revisa la conexión e intenta de nuevo.'));
+        return;
+    }
+    if (new URLSearchParams(location.search).get('desde') === 'filtro') {
+        const d = readJson(sessionStorage, 'kinoPdfFiltro', null);
+        const st = $('cpFilterSt');
+        if (st && d) {
+            st.textContent = d.total > src.items.length
+                ? `✓ ${d.total} productos cumplen los filtros; entran los primeros ${src.items.length} (máximo ${MAX_ITEMS}).`
+                : `✓ ${src.items.length} foto${src.items.length === 1 ? '' : 's'} con estos filtros.`;
+            st.hidden = false;
+        }
+    }
     const items = src.items.slice(0, MAX_ITEMS);
     const texts = asMap(readJson(ls, 'kinoPdfTexts', {}));
     const heads = asMap(readJson(ls, 'kinoPdfHeads', {}));
@@ -59,7 +93,7 @@
     if (saved.footer == null && saved.contact) saved.footer = saved.contact;
     const opts = Object.assign({ title: '', subtitle: '', footer: '', per: 6, c1: '#1c1c1e', c2: '#c9a84c', open: true }, saved);
     delete opts.contact;
-    if (![4, 6, 9].includes(+opts.per)) opts.per = 6;
+    if (![1, 2, 4, 6, 9].includes(+opts.per)) opts.per = 6;
     const HEX = /^#[0-9a-f]{6}$/i;
     if (!HEX.test(opts.c1)) opts.c1 = '#1c1c1e';
     if (!HEX.test(opts.c2)) opts.c2 = '#c9a84c';
@@ -110,7 +144,7 @@
     list.innerHTML = items.map((it, i) => `<li class="ms-item cp-item" data-id="${esc(it.id)}">
             <div class="cp-headrow"${heads[it.id] ? '' : ' hidden'}><input type="text" maxlength="50" data-head="${esc(it.id)}" value="${esc(heads[it.id] || '')}" placeholder="Subtítulo de sección (ej.: Relojes de dama)"><button type="button" data-a="nohead" title="Quitar subtítulo">✕</button></div>
             <span class="ms-n">${i + 1}</span>
-            <img src="https://lh3.googleusercontent.com/d/${encodeURIComponent(it.id)}=s200" alt="" loading="lazy">
+            <img src="https://lh3.googleusercontent.com/d/${encodeURIComponent(it.id)}=s400" alt="" loading="lazy">
             <span class="cp-info"><span class="cp-info-top"><strong>${esc(it.code)}</strong><button type="button" class="cp-addhead" data-a="head"${heads[it.id] ? ' hidden' : ''}>＋ Subtítulo</button></span>
                 <textarea rows="2" maxlength="120" data-code="${esc(it.code)}" placeholder="Precio u otra información (opcional)">${esc(texts[it.code] || '')}</textarea>
             </span></li>`).join('');
@@ -260,11 +294,12 @@
         pdfFile = null;
         $('cpShare').hidden = true;
         $('cpDown').hidden = true;
+        $('cpNameRow').hidden = true;
         $('cpMake').textContent = '📄 Generar PDF';
     }
 
-    const LAYOUT = { 4: [2, 2], 6: [2, 3], 9: [3, 3] };
-    const MAXPX = { 4: 900, 6: 750, 9: 560 };
+    const LAYOUT = { 1: [1, 1], 2: [1, 2], 4: [2, 2], 6: [2, 3], 9: [3, 3] };
+    const MAXPX = { 1: 1400, 2: 1100, 4: 900, 6: 750, 9: 560 };
     const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     const fileName = () => (clean(opts.title).replace(/[^\wÁÉÍÓÚÜÑáéíóúüñ -]+/g, '').trim().replace(/\s+/g, '_') || 'Catalogo') + '_' + today() + '.pdf';
     const mb = KP.mb;
@@ -297,7 +332,7 @@
         busy = true;
         const btn = $('cpMake');
         btn.disabled = true;
-        $('cpShare').hidden = true; $('cpDown').hidden = true;
+        $('cpShare').hidden = true; $('cpDown').hidden = true; $('cpNameRow').hidden = true;
         pdfFile = null;
         const per = +opts.per;
         const maxPx = MAXPX[per];
@@ -346,11 +381,11 @@
             // Con subtítulos de sección se guarda espacio para uno por página, así cada página sigue llevando sus N fotos
             const HEAD_H = 12;
             const ch = (bottom - top - (Object.keys(headsUse).length ? HEAD_H : 0) - (rowsPerPage - 1) * GAP) / rowsPerPage;
-            const codePt = cols === 2 ? 12 : 10, textPt = cols === 2 ? 10 : 8.5;
+            const codePt = cols === 1 ? 16 : cols === 2 ? 12 : 10, textPt = cols === 1 ? 12 : cols === 2 ? 10 : 8.5;
             const lh = (pt) => pt * 0.3528 * 1.25;
             const anyText = rows.some((r) => clean(texts[r.it.code]));
             // Botón «Abrir foto» (activado por defecto): enlace a la foto en Drive, sin mostrar la dirección
-            const openBtn = opts.open !== false, BTN_H = cols === 2 ? 6.5 : 5.5, btnPt = cols === 2 ? 9 : 7.5;
+            const openBtn = opts.open !== false, BTN_H = cols <= 2 ? 6.5 : 5.5, btnPt = cols <= 2 ? 9 : 7.5;
             const textH = lh(codePt) + 3 + (anyText ? 3 * lh(textPt) : 0) + 3 + (openBtn ? BTN_H + 2 : 0);
             const c1 = rgb(opts.c1), c2 = rgb(opts.c2), on1 = rgb(onColor(opts.c1)), sub1 = rgb(subOnBand()), ink1 = rgb(onWhite(opts.c1));
             const { boxes, pages } = layout(rows, { M, top, bottom, cw, ch, cols, gap: GAP, headH: HEAD_H }, headsUse);
@@ -470,6 +505,7 @@
                 + (canShareFiles ? '' : ' Descárgalo y adjúntalo en WhatsApp Web (📎 → Documento).'));
             $('cpShare').hidden = !canShareFiles;
             $('cpDown').hidden = false;
+            KP.setName([$('cpName')], pdfFile.name); $('cpNameRow').hidden = false;
             btn.textContent = '🔄 Rehacer';
         } catch (e) {
             msg('No se pudo generar el PDF: ' + (e && e.message ? e.message : e));
@@ -481,8 +517,10 @@
     }
     $('cpMake').addEventListener('click', make);
 
-    $('cpShare').addEventListener('click', () => KP.share(pdfFile, clean(opts.title) || 'Catálogo', msg));
-    $('cpDown').addEventListener('click', () => KP.download(pdfFile, msg));
+    // Nombre del archivo: se puede cambiar antes de Descargar / Compartir
+    const outFile = () => KP.named(pdfFile, $('cpName'));
+    $('cpShare').addEventListener('click', () => KP.share(outFile(), clean(opts.title) || 'Catálogo', msg));
+    $('cpDown').addEventListener('click', () => KP.download(outFile(), msg));
 
     // Las fotos empiezan a bajar desde que se abre la página (las primeras), así Generar tarda menos
     items.slice(0, 12).forEach((it) => prepare(it.id, MAXPX[+opts.per]).catch(() => {}));

@@ -91,11 +91,12 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
                 <div><b><?= number_format((int) $loaded['solo_drive']) ?></b> "Solo Drive" <small>(foto sin fila en la hoja · <?= number_format((int) $loaded['solo_drive_visibles']) ?> visibles · sin precio)</small></div>
                 <div><b><?= number_format((int) $loaded['visibles']) ?></b> visibles en el portal</div>
                 <?php if ($loaded['hoja_sin_precio'] || $loaded['hoja_sin_nombre']): ?>
-                    <div class="warn">En la hoja: <?= (int) $loaded['hoja_sin_precio'] ?> sin precio (PRECIO KYTE, o PRICE_SUGGESTED si no existe esa columna) y <?= (int) $loaded['hoja_sin_nombre'] ?> sin NAME (salen sin precio o con el código como nombre).</div>
+                    <div class="warn">En la hoja: <?= (int) $loaded['hoja_sin_precio'] ?> sin precio (PRICE_SUGGESTED) y <?= (int) $loaded['hoja_sin_nombre'] ?> sin NAME (salen sin precio o con el código como nombre).</div>
                 <?php endif; ?>
             </div>
             <div class="sync-actions">
                 <button class="btn btn-secondary" onclick="syncSheet(true, this)">👁️ Vista previa</button>
+                <a class="btn btn-secondary" href="/admin/hoja">📋 Ver tabla de la hoja</a>
                 <button class="btn btn-primary" onclick="syncSheet(false, this)">🔄 Sincronizar hoja</button>
             </div>
             <div class="sync-result" id="sheetResult"></div>

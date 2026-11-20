@@ -3,12 +3,15 @@
  * Admin → Inventario (/admin/inventario). Subir el Excel/CSV de existencias del sistema contable,
  * cruzarlo con la hoja maestra y descargar:
  *   ?csv=stock    columna STOCK nueva en el orden de filas de la hoja (para pegarla en la hoja)
+ *   ?descargar=precio  columna PRICE nueva (Precio SYS) en el mismo orden (decisión del dueño 2026-11-20)
  *   ?csv=reporte  diferencias (duplicados, stock distinto, negativos, faltantes, precio distinto)
- * No escribe en la hoja ni en la BD. El último resultado queda en storage/inventario/ultimo.json.
+ * Al subir el archivo, el visor guarda al momento Precio SYS y existencias SYS (products.sys_price / sys_stock;
+ * el precio SYS no se muestra al público) y, con la casilla, escribe STOCK y PRICE en la Hoja master (SheetWriter). El último resultado queda en storage/inventario/ultimo.json.
  */
 require_once __DIR__ . '/../services/MasterSheet.php';
 require_once __DIR__ . '/../services/InventoryImport.php';
 require_once __DIR__ . '/../services/XlsxWriter.php';
+require_once __DIR__ . '/../services/SheetWriter.php';
 
 $dir = BASE_DIR . '/storage/inventario';
 $file = $dir . '/ultimo.json';
@@ -26,7 +29,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if (!$sheet['rows']) throw new RuntimeException('No hay filas de la Hoja master para comparar.');
         $result = InventoryImport::compare($parsed['items'], $sheet['rows'], !empty($_POST['neg_cero']));
         $result['meta'] = ['archivo' => $up['name'], 'fecha' => date('Y-m-d H:i'), 'columnas' => $parsed['columns'],
-            'fuente_hoja' => $sheet['source'], 'neg_cero' => !empty($_POST['neg_cero'])];
+            'fuente_hoja' => $sheet['source'], 'neg_cero' => !empty($_POST['neg_cero']),
+            'aplicado' => InventoryImport::applyToVisor(getDB(), $parsed['items'], !empty($_POST['neg_cero']))];
+        // Y en la Hoja master (decisión del dueño 2026-11-20): PRICE = Precio SYS y STOCK, solo lo que cambia
+        if (!empty($_POST['hoja'])) {
+            $price = $stock = [];
+            foreach ($result['paste'] as $p) {
+                if ($p['SKU'] === '') continue;
+                if (($p['PRICE_nuevo'] ?? null) !== null && $p['PRICE_nuevo'] !== $p['PRICE_actual']) $price[$p['SKU']] = $p['PRICE_nuevo'];
+                if ($p['STOCK_nuevo'] !== null && $p['STOCK_nuevo'] !== $p['STOCK_actual']) $stock[$p['SKU']] = $p['STOCK_nuevo'];
+            }
+            $result['meta']['hoja'] = sheetWriteNote(fn() => SheetWriter::writeColumns(getDB(), ['PRICE' => $price, 'STOCK' => $stock]));
+        }
         if (!is_dir($dir)) @mkdir($dir, 0775, true);
         if (@file_put_contents($file, json_encode($result, JSON_UNESCAPED_UNICODE)) === false) throw new RuntimeException('No se pudo guardar el resultado en storage/inventario.');
         redirect('/admin/inventario');
@@ -40,10 +54,13 @@ $result = is_file($file) ? json_decode((string) file_get_contents($file), true) 
 // Descargas en Excel (.xlsx): un CSV con comas lo abre todo en la columna A en Excel en español
 $dl = $_GET['descargar'] ?? $_GET['csv'] ?? null;
 if ($dl && $result) {
-    $isStock = $dl === 'stock';
-    $bin = $isStock ? InventoryImport::stockXlsx($result) : InventoryImport::reportXlsx($result);
+    [$bin, $name] = match ($dl) {
+        'stock' => [InventoryImport::stockXlsx($result), 'STOCK_para_pegar_en_Hoja_master_'],
+        'precio' => [InventoryImport::priceXlsx($result), 'PRICE_SYS_para_pegar_en_Hoja_master_'],
+        default => [InventoryImport::reportXlsx($result), 'Reporte_SYS_vs_Hoja_master_'],
+    };
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment; filename="' . ($isStock ? 'STOCK_para_pegar_en_Hoja_master_' : 'Reporte_SYS_vs_Hoja_master_') . date('Y-m-d') . '.xlsx"');
+    header('Content-Disposition: attachment; filename="' . $name . date('Y-m-d') . '.xlsx"');
     header('Content-Length: ' . strlen($bin));
     echo $bin;
     exit;
@@ -81,14 +98,16 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
         <?php $adminNav = 'inventario'; include __DIR__ . '/../../templates/admin/partials/nav.php'; ?>
         <h1 class="pb-title">📦 Importar inventario SYS</h1>
         <p class="pb-help">Sube el Excel de existencias de <b>SYS</b> (por ejemplo «INVENTARIO GENERAL.xlsx»: Artículo, Exist. unidades, Precio).
-            Se cruza con la <b>Hoja master</b> por código (exacto primero; «M:», «M» y «M-» cuentan igual) y te da la columna
-            <b>STOCK</b> lista para pegar en la Hoja master, en el mismo orden de filas. No se escribe nada en la Hoja master: tú la pegas
-            y el visor la toma en la siguiente sincronización.</p>
+            <b>Al subirlo, el visor guarda al momento el Precio SYS y las existencias</b> de cada código (el Precio SYS no se muestra al público).
+            y <b>escribe en la Hoja master</b> las columnas <b>STOCK</b> y <b>PRICE</b> (= Precio SYS), solo las celdas que cambian
+            (la cuenta de Google conectada debe poder editar la hoja). También te da esas columnas para pegarlas a mano, en el mismo orden de filas
+            (cruce por código: exacto primero; «M:», «M» y «M-» cuentan igual). El precio que ve el público es el de KYTE (💲 Precios).</p>
 
         <form method="post" enctype="multipart/form-data" class="pb-bar" style="flex-wrap:wrap;gap:10px">
             <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
             <input type="file" name="archivo" accept=".xlsx,.csv,.txt" required>
             <label><input type="checkbox" name="neg_cero" value="1" checked> Negativos → 0</label>
+            <label><input type="checkbox" name="hoja" value="1" checked> También escribir en la Hoja master</label>
             <button type="submit" class="btn btn-sm btn-primary">Comparar con la Hoja master</button>
         </form>
         <?php if ($error): ?><p class="pb-empty" style="color:#ff8080">⚠️ <?= e($error) ?></p><?php endif; ?>
@@ -105,11 +124,16 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
                 <?= $n($s['solo_inventario']) ?> códigos de SYS no están en la Hoja master (<?= $n($s['solo_inventario_con_stock']) ?> con existencias distintas de 0) ·
                 duplicados: <?= $n($s['duplicados_inventario']) ?> en SYS, <?= $n($s['duplicados_hoja']) ?> en la Hoja master.
             </p>
+            <?php if (isset($result['meta']['aplicado'])): ?><p class="pb-help" style="color:#7ee2a8">✅ Guardado en el visor: Precio SYS y existencias de <?= $n($result['meta']['aplicado']) ?> productos.</p><?php endif; ?>
+            <?php if (!empty($result['meta']['hoja'])): ?><p class="pb-help" style="color:<?= str_starts_with($result['meta']['hoja'], '✅') ? '#7ee2a8' : '#ffb366' ?>"><?= e($result['meta']['hoja']) ?></p><?php endif; ?>
             <div class="pb-bar">
                 <a class="btn btn-sm btn-primary" href="/admin/inventario?descargar=stock">📥 Columna STOCK para pegar (Excel)</a>
+                <?php if (isset($result['paste'][0]) && array_key_exists('PRICE_nuevo', $result['paste'][0])): ?>
+                    <a class="btn btn-sm btn-primary" href="/admin/inventario?descargar=precio">📥 Columna PRICE (Precio SYS) para pegar (Excel)</a>
+                <?php endif; ?>
                 <a class="btn btn-sm btn-secondary" href="/admin/inventario?descargar=reporte">📥 Reporte de diferencias (Excel)</a>
             </div>
-            <p class="pb-help">Para pegar: abre el Excel de la columna, copia <b>STOCK nuevo</b> desde la fila 2 y pégalo en la columna STOCK de la Hoja master desde la fila 2 (mismo orden de filas).</p>
+            <p class="pb-help">Para pegar: abre el Excel de la columna, copia <b>STOCK nuevo</b> (o <b>PRICE nuevo</b>) desde la fila 2 y pégalo en la columna STOCK (o PRICE) de la Hoja master desde la fila 2 (mismo orden de filas).</p>
 
             <nav class="pb-tabs">
                 <?php foreach ($labels as $k => $label): if (empty($counts[$k])) continue; ?>

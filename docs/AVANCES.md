@@ -33,6 +33,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Carpeta fuera de la lista** (2026-11-13): en Admin → Carpetas cada carpeta tiene, aparte de mostrar/ocultar, el interruptor
   «Como carpeta». Apagado (p. ej. ECONOMICOS): la carpeta no sale en la lista de inicio ni en la de su carpeta superior, pero
   sus fotos y productos se siguen viendo y la carpeta sigue saliendo al buscar y por enlace.
+- **Filtro «Carpetas» con 1 nivel** (2026-11-20, primero se probaron 2): la lista del filtro muestra solo las carpetas de
+  1.er nivel (ACCESORIOS, AUTOMATICOS, CURREN…), ya no sus subcarpetas (› 427, › 427-1). Cada una trae también sus subcarpetas.
 - **Carpetas "archivado" y "desactivados"** (2026-11-09): toda carpeta cuyo nombre diga archivado(s)/desactivado(s) (sin importar
   mayúsculas ni tildes) queda oculta por defecto con todo su contenido, ya indexada o nueva. Si el admin la muestra, el
   sync no la vuelve a ocultar. Mientras está oculta tampoco crea productos "Solo Drive".
@@ -50,53 +52,20 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   PRICE_SUGGESTED de la Hoja master; sin precio sale «Sin precio en tabla». En Admin → Productos el precio se edita en la fila;
   el cambio vale solo en el visor (la Hoja master no se toca) y el sync ya no lo pisa («✏️ Editado», «↩ Hoja» lo devuelve).
   Dashboard: tarjetas «Sin precio en tabla» y «Precio editado en admin».
-- **Precios desde Excel** (2026-11-14): Admin → 💲 Precios sube el Excel de productos de KYTE (o SYS) y lo cruza con
-  PRICE_SUGGESTED de la Hoja master: previa, reporte y columna para **pegar a mano** (el visor no escribe en la hoja).
-  Código vacío en KYTE → primera palabra del Nombre. No se cambia: precios repetidos distintos, cambios de más del doble o
-  menos de la mitad, precio 0. «Aplicar en el visor» opcional = precio editado; el sync suelta la marca sola cuando la Hoja
-  master ya trae ese precio. Códigos de KYTE que no están en la Hoja master no se agregan.
-  Decisión del dueño (2026-11-14): el precio de KYTE va en una **columna nueva «PRECIO KYTE»** de la Hoja master y se deja
-  lo demás igual. Admin → Precios la da lista para pegar.
-- **El visor muestra solo PRECIO KYTE** (decisión del dueño 2026-11-14, reemplaza PRICE_SUGGESTED): si la Hoja master tiene
-  la columna «PRECIO KYTE», el sync toma de ahí el precio del visor. Si la columna no existe, sigue PRICE_SUGGESTED.
-  El precio editado en el admin sigue ganando.
-- **Precio en todas las referencias** (2026-11-14): fila sin PRECIO KYTE → PRECIO KYTE de su familia (si es uno solo) →
-  PRICE_SUGGESTED → «Sin precio en tabla». Con «Productos 19»: 2.623 KYTE, 45 familia, 939 PRICE_SUGGESTED, 22 sin precio.
-  Sincronizar muestra esos números. «Aplicar en el visor» de Admin → Precios también pone precio a productos «Solo Drive».
-- **Catálogo en PDF** (2026-11-11): foto + código + texto opcional que escribe cada usuario (precio u otra cosa; vacío = no
-  sale). Sin logo de Kino: el usuario puede subir el suyo. Entran todas las fotos marcadas. Se arma en el dispositivo
-  (precios, textos y logo no van al servidor). Botón al tener la selección lista para enviar y al abrir un enlace `/c/…`.
-  Diseño sobrio y elegante con colores primario y secundario elegibles, subtítulo, secciones y pie de contacto (pedido 2026-11-11).
-  Por defecto, botón «Abrir foto» bajo cada foto: enlace a la foto en Drive sin mostrar la dirección larga (se puede quitar).
-- **Extractor de pedidos PDF dentro del visor** (2026-11-12): la app Flask EXTRACTOR (carpeta local, fuera del repo) se pasó
-  a JavaScript en `/extractor`, lo más simple y escalable: sin servicio Python aparte, el PDF se lee en el dispositivo. La lista
-  pasa al visor con un botón (no automático) y solo para buscar fotos; precio al PDF del catálogo: después, si se pide.
-  La carpeta EXTRACTOR local queda igual.
-- **Auditoría 2026-11-12**: respaldo en la rama `respaldo-2026-11-12` y en `C:\Users\USAURIO\Respaldos` (zip + gitbundle).
-  El dueño aprobó: seguridad de descargas y login + fotos en JPEG (un cambio) y limpieza de lo que no se usa (otro cambio).
-  Búsqueda por foto parada: Jina sin saldo (14 de 5950 listas); recargar la cuenta lo hace el dueño.
-- **Lista pedido** (2026-11-12): botón adicional en el Extractor, junto a «Ver fotos en el visor» (lugar elegido por el
-  dueño). Los datos del pedido salen del PDF de origen, nunca recalculados con las fotos ni con la fecha de hoy; lo que no
-  se pudo leer se avisa («No se pudo leer del PDF»), no se inventa. Foto por coincidencia exacta del código (con o sin «M»),
-  sin la corrección del lector de fotos, para que no se crucen referencias.
-- **Extractor: dos formatos de PDF** (2026-11-12): además del recibo («5x 674B-1 … $»), lee la cotización en tabla de
-  KINO MEDELLIN (CODIGO · PRODUCTO · CANT · UNIDAD · DESC · PRECIO · TOTAL, encabezado repetido por página, «TOTAL : $» solo
-  en la última). Se detecta solo. Ese formato no dice cuántas referencias ni unidades trae: quedan «sin dato del PDF», no se
-  rellenan solos. Se revisa cada línea (cantidad × precio = TOTAL de la línea) y la suma contra el TOTAL.
-- **Remisión y Lista pedido** (2026-11-12, decisión del dueño): son dos documentos distintos según el PDF que entra al
-  Extractor. Factura en tabla (Colombia, «COTIZACION No») → **Remisión**, azul oscuro, archivo `Remision_N.pdf`, con NIT,
-  dirección y ciudad, y columnas Precio y Total de entrada. Recibo (receipt-c-…) → **Lista pedido**, negro y dorado como
-  antes. Se detecta solo; en la pantalla hay un selector «Tipo» por si falla. Cada tipo recuerda sus casillas.
-- **Lista Bodega y Previo** (2026-11-13, decisión del dueño): «Lista pedido» se llama ahora **«Lista Bodega»** (botón, título,
-  PDF, archivo `Lista_Bodega_….pdf`; la ruta sigue siendo `/lista-pedido`). La Remisión repite el **TOTAL REMISIÓN** al final,
-  debajo de la tabla. El botón principal es **«👁 Previo»** (llamativo): arma el PDF y lo muestra página por página antes de
-  Descargar o Enviar. Tocar una foto en el PDF (Lista Bodega o Remisión) abre esa foto en Google Drive (2026-11-13).
-- **Plantilla de la Remisión editable** (2026-11-14, modelo del dueño): la Remisión ya no es azul; franja negra con logos
-  (KINO a la izquierda; CURREN, Poedagar y JOEFOX a la derecha), líneas rojas y pie con dirección, contacto, correo y marcas
-  (Joefox · Sanse · T5 · Mini Focus · Skmei · Kardoo · Extri; se quitaron Curren, Forsining, Winner y lo que seguía al teléfono).
-  Todo eso se edita en **Admin → 🚚 Remisión** (título, colores, pie, marcas; logos: agregar, cambiar, pasar a blanco, mover,
-  quitar) y se guarda en la base. Cliente, NIT, productos y valores siguen saliendo del PDF. Lista Bodega no cambió.
-  Los logos de KINO, Poedagar y JOEFOX se recortaron del modelo (baja calidad): conviene subir los originales.
+- **Precios: SYS y KYTE** (decisión del dueño 2026-11-20, reemplaza «PRECIO KYTE» del 2026-11-14):
+  - **KYTE** → columna **PRICE_SUGGESTED** de la Hoja master = precio que ve el público. Admin → 💲 Precios: al subir el
+    Excel **se aplica solo en el visor** (precio editado; el sync suelta la marca cuando la Hoja master trae ese precio) y da
+    la columna PRICE_SUGGESTED para pegar. No se cambian precios repetidos distintos, cambios de más del doble/menos de la
+    mitad, ni 0. También pone precio a «Solo Drive». Código vacío en KYTE → primera palabra del Nombre.
+  - **SYS** (INVENTARIO GENERAL) → columna **PRICE** (no se muestra por ahora; se usará más adelante) y STOCK.
+    Admin → 📦 Inventario: al subir **se guardan al momento** Precio SYS y existencias en el visor (`sys_price`, `sys_stock`)
+    y da las columnas STOCK y PRICE para pegar. Si se sube el archivo SYS en Precios, avisa que va en Inventario.
+  - La columna «PRECIO KYTE» ya no se usa (si sigue en la hoja, se ignora). Fila sin PRICE_SUGGESTED → el de su familia
+    (si es uno solo) → «Sin precio en tabla». El precio editado en el admin sigue ganando.
+  - **Subir = escribir en la Hoja master** (decisión del dueño 2026-11-20, reemplaza «pegar a mano» del 2026-11-13): con la
+    casilla «También escribir en la Hoja master» (marcada por defecto), KYTE escribe PRICE_SUGGESTED y SYS escribe PRICE y
+    STOCK, solo celdas que cambian, buscando cada código en la columna SKU (`SheetWriter`). Usa la conexión de Google del
+    admin; la cuenta conectada debe ser Editor de la hoja. Si falla, el visor igual queda actualizado y avisa el motivo.
 - **Nombres** (2026-11-13): la hoja maestra se llama siempre **«Hoja master»**; el sistema contable es **«SYS»** (sus datos: «Stock SYS»,
   «Precio SYS»). Otro sistema, **«KYTE»**, traerá sus datos aparte más adelante.
 - **Inventario SYS → Hoja master** (2026-11-13): el stock de SYS («INVENTARIO GENERAL.xlsx») se carga en la columna
@@ -109,6 +78,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Admin → Dashboard: cada tarjeta (total, visibles, desactivados, con/sin portada, actualizados hoy, fuera de la Hoja master),
   cada categoría del top y cada género abre Admin → Productos con exactamente esos productos (mismo conteo).
 - Catálogo público en grilla densa (60 por página, **una tarjeta por referencia**; contador "N referencias").
+- Celular (2026-11-20): filtros plegados tras «⚙️ Filtros y orden» (los activos siguen como chips), barra de abajo con
+  «⭐ Selección» y el número de fotos marcadas, ficha sin el botón repetido «Volver al catálogo», y carpetas grandes y
+  Novedades muestran 60 fotos con «Cargar más». Las migas de pan (Inicio › Carpeta › …) son botones dorados que se ven y se tocan, y la flecha del encabezado dice «← Atrás».
 - Ficha de producto con variantes, galería, visor grande; WhatsApp + Descargar en cada foto.
 - Botón WhatsApp de cada foto: manda solo la imagen liviana (800 px) con el código como pie, sin enlace. En el computador
   copia la foto para pegarla en WhatsApp Web (Ctrl+V).
@@ -147,7 +119,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
 - Búsqueda: el código exacto primero ("8363-3" = "M:8363-3"), luego los que empiezan por él y el resto; carpetas cuyo
-  nombre coincide (también como código), arriba o, si el código existe, justo debajo de su tarjeta. Filtros por marca, categoría, precio y "solo con foto" (combinables, en la URL); si no encuentra nada,
+  nombre coincide (también como código), arriba o, si el código existe, justo debajo de su tarjeta. Filtros (2026-11-20) en inicio, búsqueda, carpetas y Novedades: varias marcas, categorías y carpetas a la vez + precio, todo combinable y en la URL; el texto busca también por marca, color y nombre de carpeta; si no encuentra nada,
   "¿Quisiste decir…?" con los códigos y marcas más parecidos.
 - Navegación (2026-11-11): en el celular, botón **←** junto al logo en todas las páginas menos el inicio (vuelve a la
   pantalla anterior; si se llegó por un enlace de fuera, va a la página de arriba). **Migas de pan** «Inicio › Sección ›
@@ -161,8 +133,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Problemas (todo lo que impide que salga una foto, con motivo y ruta).
   Sincronizar muestra hoja y Drive por separado (último éxito con qué cambió, último error y "🔁 Reintentar"); solo corre
   una sincronización a la vez.
-  Admin → 📦 Inventario: subir el Excel de existencias, ver diferencias con la hoja y bajar la columna STOCK para pegar.
-  Admin → 💲 Precios: igual para precios (KYTE/SYS → PRICE_SUGGESTED), con «Aplicar en el visor» opcional.
+  Admin → 📦 Inventario: subir el Excel SYS (guarda Precio SYS y existencias en el visor), ver diferencias y bajar STOCK y PRICE para pegar.
+  Admin → 💲 Precios: Excel de KYTE → PRICE_SUGGESTED, se aplica en el visor al subirlo. SYS (precio → PRICE) va en Inventario.
 
 ## Pendiente / ideas
 - **Catálogo en PDF** (`docs/PLAN_PDF.md`, aprobado 2026-11-11): P1 (#52) y P2 (#53) hechas. Probar en Railway con fotos
@@ -323,5 +295,19 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Misma rama (2026-11-14): respaldo de precio por familia y PRICE_SUGGESTED (`MasterSheet::fillMissingPrices`); precios de KYTE para «Solo Drive».
 - Rama `claude/project-thread-rd9wya` (2026-11-14): Remisión con plantilla editable (`/admin/remision`, `RemisionTemplate.php`,
   tabla `doc_templates`, migración 031) y diseño negro/rojo con logos según el modelo del dueño.
+- Rama `claude/project-thread-tvhp25` (2026-11-20): fotos más grandes (tarjetas 190 px mínimo en PC; Admin → Productos 96 px) y filtros inteligentes en todas las pantallas públicas (`filter_bar.php`: varias marcas/categorías/carpetas, precio, texto por marca/color/carpeta) y en Admin → Productos (carpeta, precio, texto por palabras).
+- Misma rama (2026-11-20): Catálogo PDF con fotos más grandes (opción 1 o 2 fotos por página, lista en pantalla 120 px) y catálogos filtrados: «🔎 Armar con filtros» en el generador y «📄 Catálogo PDF con esto» en la barra de filtros (`/catalogo-pdf/lista`).
+- Rama `claude/project-thread-tvhp25` (2026-11-20, tras #82): filtros con «Ordenar» (código A→Z, precio mayor→menor y menor→mayor) y «Contiene la palabra» (nombre del producto o del archivo en Drive) en todas las pantallas, catálogo PDF y Admin → Productos.
+- Rama `claude/project-thread-tvhp25` (2026-11-20, tras #83): búsqueda y filtros lentos (30+ s, la app se colgaba) → índice de búsqueda guardado por producto (migración 032, `SearchIndex`), rehecho en cada sincronización; ahora ~0,04 s.
+- Misma rama (2026-11-20, tras #84): el deploy de #84 no pasó el healthcheck (la primera visita armaba el índice y el ALTER podía esperar sin fin a las consultas lentas del contenedor viejo). Ahora el índice lo arma solo el sync en segundo plano, las páginas nunca; migraciones con tope de espera de 20 s y reintento en el sync.
+- Rama `claude/project-thread-tvhp25` (2026-11-20, tras #85): «Ordenar» separado en dos que se combinan: Precio (mayor/menor) y Código (A→Z / Z→A); con ambos, primero precio y a igual precio por código.
+- Rama `claude/project-thread-24a45y` (2026-11-20, tras #86): optimización sin cambios visibles: inicio con 7 consultas en vez de 31 (portadas de carpetas en una sola, página cortada en MySQL), opciones de filtros guardadas 2 min, búsqueda por foto sin saldo reintenta cada hora (no cada 5 min), `.dockerignore` (sin `.git` ni docs en el contenedor), 4 funciones sin uso quitadas.
+- Rama `claude/project-thread-xsk99w` (2026-11-20): Admin → 📋 Hoja master (`/admin/hoja`): previo de la tabla de la hoja (todas las columnas, qué campo del visor llena cada una, buscador) junto al nombre actual en el visor. El nombre sale de NAME (vacía o Solo Drive → el código).
+- Rama `claude/project-thread-2f2p99` (2026-11-20): precios simplificados: KYTE → PRICE_SUGGESTED (público, se aplica al subir), SYS → PRICE (guardado, no público) + STOCK; fuera «PRECIO KYTE». Migración 033 (`sys_price`, `sys_stock`, `sys_at`).
+- Misma rama (2026-11-20, tras #89): subir KYTE/SYS también escribe sus columnas en la Hoja master (`src/services/SheetWriter.php`, API de Sheets con la conexión de Google del admin).
+- Rama `claude/project-thread-s1i6yo` (2026-11-20): los PDF (Catálogo, Lista Bodega, Remisión) se pueden renombrar antes de Descargar/Compartir: casilla «📝 Nombre del archivo» con el nombre sugerido; si se escribe uno propio se mantiene al rehacer el PDF (`KinoPdf.setName/named`).
+- Rama `claude/project-thread-slbho8` (2026-11-20): celular más rápido de usar: filtros plegados, «⭐ Selección» con contador en la barra de abajo, ficha sin botón repetido, «Cargar más» (60 en 60) en carpetas y Novedades; migas de pan como botones dorados y botón «← Atrás» con texto.
+- Rama `claude/proyecto-ce9a49` (2026-11-20): filtro «Carpetas» solo con 2 niveles (fuera las subcarpetas por referencia como 427 › 427-1); `SearchIndex::rebuild()`.
+- Misma rama (2026-11-20, tras #93): el filtro «Carpetas» queda con 1 solo nivel (decisión del dueño).
 - Rama `claude/project-thread-n7lzzo` (2026-11-20): «Drive no respondió al listar carpetas»: el listado del sync reintenta
   (2/4/8 s, 60 s de espera, renueva el token si vence a mitad), parte la consulta en 4 si sigue fallando y el error muestra el motivo (HTTP/Google).

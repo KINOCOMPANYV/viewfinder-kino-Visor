@@ -18,10 +18,9 @@ class MasterSheet
         'category' => 'category', 'categoria' => 'category',
         'gender' => 'gender', 'genero' => 'gender',
         'movement' => 'movement', 'movimiento' => 'movement',
+        // Precio que muestra el visor = PRICE_SUGGESTED (ahí se pega el precio KYTE). PRICE = precio SYS, no público.
+        // (decisión del dueño 2026-11-20: la columna «PRECIO KYTE» ya no se usa; si sigue en la hoja, se ignora)
         'price_suggested' => 'price_suggested', 'precio_sugerido' => 'price_suggested',
-        // Precio que muestra el visor (decisión del dueño 2026-11-14): si la columna PRECIO KYTE existe, manda ella
-        // (vacía = «Sin precio en tabla»); si no existe, se usa PRICE_SUGGESTED como antes.
-        'precio_kyte' => 'price_kyte',
         'price' => 'price_wholesale', 'precio' => 'price_wholesale',
         'stock' => 'stock',
         'description' => 'description', 'descripcion' => 'description',
@@ -36,6 +35,51 @@ class MasterSheet
         'name', 'color', 'category', 'gender', 'movement', 'price_suggested', 'price_wholesale',
         'stock', 'description', 'brand', 'case_material', 'strap_material', 'sheet_status',
     ];
+
+    /** Campo de products → qué es en el visor (para Admin → Hoja master) */
+    public const FIELD_LABELS = [
+        'sku' => 'Código (búsqueda y foto)', 'name' => 'Nombre del producto', 'color' => 'Color',
+        'category' => 'Categoría (filtro)', 'gender' => 'Género (filtro)', 'movement' => 'Movimiento',
+        'price_suggested' => 'Precio del visor (KYTE)',
+        'price_wholesale' => 'Precio SYS (no público)', 'stock' => 'Stock', 'description' => 'Descripción',
+        'brand' => 'Marca (filtro)', 'case_material' => 'Material de caja', 'strap_material' => 'Material pulsera',
+        'sheet_status' => 'Estado (solo informativo)',
+    ];
+
+    /**
+     * Previo de la hoja tal cual viene: encabezados con el campo del visor que alimentan y las filas crudas.
+     * $filter: texto que debe contener alguna celda (vacío = primeras filas).
+     * @return array{headers: array<int, array{name:string, field:?string, label:?string}>, rows: array<int, array{line:int, cells:string[]}>, total:int, matched:int}
+     */
+    public static function preview(string $csv, int $limit = 50, string $filter = ''): array
+    {
+        $handle = fopen('php://temp', 'r+');
+        fwrite($handle, $csv);
+        rewind($handle);
+        $header = fgetcsv($handle) ?: [];
+        $headers = [];
+        foreach ($header as $h) {
+            $field = self::COLUMNS[self::headerKey((string) $h)] ?? null;
+            $headers[] = ['name' => trim(str_replace("\xEF\xBB\xBF", '', (string) $h)), 'field' => $field, 'label' => $field ? (self::FIELD_LABELS[$field] ?? $field) : null];
+        }
+        $needle = mb_strtolower(trim($filter));
+        $rows = [];
+        $total = 0;
+        $matched = 0;
+        for ($line = 2; ($r = fgetcsv($handle)) !== false; $line++) {
+            if (!array_filter($r, fn($v) => trim((string) $v) !== '')) continue;
+            $total++;
+            if ($needle !== '' && !str_contains(mb_strtolower(implode("\t", $r)), $needle)) continue;
+            $matched++;
+            if (count($rows) < $limit) {
+                $cells = [];
+                foreach ($headers as $i => $_) $cells[] = trim((string) ($r[$i] ?? ''));
+                $rows[] = ['line' => $line, 'cells' => $cells];
+            }
+        }
+        fclose($handle);
+        return ['headers' => $headers, 'rows' => $rows, 'total' => $total, 'matched' => $matched];
+    }
 
     /** Descarga la hoja como CSV. @throws RuntimeException */
     public static function fetchCsv(int $timeout = 30): string
@@ -95,8 +139,6 @@ class MasterSheet
             throw new RuntimeException('No se encontró la columna "SKU" en la hoja. Columnas: ' . implode(', ', $header));
         }
 
-        $hasKyte = in_array('price_kyte', $colMap, true);
-        $suggested = [];
         $rows = [];
         $duplicates = [];
         $skipped = 0;
@@ -116,28 +158,24 @@ class MasterSheet
             if (isset($rows[$sku])) {
                 $duplicates[$sku] = ($duplicates[$sku] ?? 1) + 1;
             }
-            $sugg = $raw['price_suggested'] ?? '';
-            if ($hasKyte) $raw['price_suggested'] = $raw['price_kyte'] ?? '';
-            unset($raw['price_kyte']);
             $rows[$sku] = self::normalizeRow($raw, $line);
-            if ($hasKyte) $suggested[$sku] = self::parseNumber($sugg);
         }
         fclose($handle);
-        $priceFrom = $hasKyte ? self::fillMissingPrices($rows, $suggested) : [];
+        $priceFrom = self::fillMissingPrices($rows);
 
         return ['rows' => $rows, 'duplicates' => $duplicates, 'price_from' => $priceFrom, 'columns' => array_values(array_unique($colMap)), 'skipped' => $skipped,
-            'price_column' => $hasKyte ? 'PRECIO KYTE' : 'PRICE_SUGGESTED'];
+            'price_column' => 'PRICE_SUGGESTED'];
     }
 
     /**
-     * Precio del visor cuando una fila no tiene PRECIO KYTE (decisión del dueño 2026-11-14: precio en todas las referencias):
-     * 1) el PRECIO KYTE de su familia (computeParentSkuMap), si toda la familia que lo tiene usa el mismo;
-     * 2) si no, su PRICE_SUGGESTED; 3) si tampoco, queda sin precio («Sin precio en tabla»).
-     * @return array{kyte:int, familia:int, price_suggested:int, sin_precio:int}
+     * Precio del visor cuando una fila no tiene PRICE_SUGGESTED (decisión del dueño 2026-11-14: precio en todas las referencias):
+     * el PRICE_SUGGESTED de su familia (computeParentSkuMap), si toda la familia que lo tiene usa el mismo;
+     * si no, queda sin precio («Sin precio en tabla»).
+     * @return array{propio:int, familia:int, sin_precio:int}
      */
-    private static function fillMissingPrices(array &$rows, array $suggested): array
+    private static function fillMissingPrices(array &$rows): array
     {
-        $stats = ['kyte' => 0, 'familia' => 0, 'price_suggested' => 0, 'sin_precio' => 0];
+        $stats = ['propio' => 0, 'familia' => 0, 'sin_precio' => 0];
         $parent = function_exists('computeParentSkuMap')
             ? computeParentSkuMap(array_map(fn($r) => ['sku' => $r['sku'], 'name' => $r['name']], $rows)) : [];
         $famPrices = [];
@@ -145,10 +183,9 @@ class MasterSheet
             if ($r['price_suggested'] > 0 && !empty($parent[(string) $sku])) $famPrices[$parent[(string) $sku]][(string) $r['price_suggested']] = true;
         }
         foreach ($rows as $sku => &$r) {
-            if ($r['price_suggested'] > 0) { $stats['kyte']++; continue; }
+            if ($r['price_suggested'] > 0) { $stats['propio']++; continue; }
             $fam = $famPrices[$parent[(string) $sku] ?? ''] ?? [];
             if (count($fam) === 1) { $r['price_suggested'] = (float) array_key_first($fam); $stats['familia']++; }
-            elseif (($suggested[$sku] ?? 0) > 0) { $r['price_suggested'] = $suggested[$sku]; $stats['price_suggested']++; }
             else $stats['sin_precio']++;
         }
         unset($r);

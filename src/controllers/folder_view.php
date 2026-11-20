@@ -150,6 +150,9 @@ $shareDesc = implode(' · ', array_filter([
             <div style="margin-top:0.75rem;">
                 <?php include __DIR__ . '/../../templates/partials/share_whatsapp.php'; ?>
             </div>
+            <div class="filter-wrap filter-wrap-left">
+                <?php $filterPreset = $folderId !== env('GOOGLE_DRIVE_FOLDER_ID', '') ? ['carpeta' => [$folderId]] : []; include __DIR__ . '/../../templates/partials/filter_bar.php'; ?>
+            </div>
         </div>
     </div>
 
@@ -201,7 +204,7 @@ $shareDesc = implode(' · ', array_filter([
                     $code = pathinfo($file['name'] ?? '', PATHINFO_FILENAME);
                     $href = $file['productUrl'] ?? lh3Url($file['id'], 1600);
                 ?>
-                    <div class="parent-card search-selectable-card">
+                    <div class="parent-card search-selectable-card<?= loadMoreClass($idx) ?>">
                         <a href="<?= e($href) ?>"<?= empty($file['productUrl']) ? ' target="_blank" rel="noopener"' : '' ?> style="display:block;color:inherit;text-decoration:none;">
                             <div class="card-image" style="position:relative;">
                                 <?php if ($file['isVideo']): ?>
@@ -236,6 +239,7 @@ $shareDesc = implode(' · ', array_filter([
                     </div>
                 <?php endforeach; ?>
             </div>
+            <?= loadMoreButton(count($files)) ?>
         <?php endif; ?>
 
         <?php if (empty($files) && empty($subfolders)): ?>

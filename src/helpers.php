@@ -189,7 +189,7 @@ function verifyCsrf(): bool
 /**
  * Formatea un precio.
  */
-/** Precio público: "$12.345" o "Sin precio en tabla" (sin PRECIO KYTE en la Hoja master —o PRICE_SUGGESTED si no existe esa columna— ni precio del admin). */
+/** Precio público: "$12.345" o "Sin precio en tabla" (sin PRICE_SUGGESTED en la Hoja master, ni de su familia, ni precio del admin). */
 function priceText($price): string
 {
     $p = (float) ($price ?? 0);
@@ -201,70 +201,6 @@ function priceTag($price, string $class = 'card-price'): string
 {
     $none = !((float) ($price ?? 0) > 0);
     return '<div class="' . $class . ($none ? ' no-price' : '') . '">' . e(priceText($price)) . '</div>';
-}
-
-function formatPrice(float $price): string
-{
-    return '$' . number_format($price, 2, '.', ',');
-}
-
-/**
- * Trunca un texto a N caracteres.
- */
-function truncate(string $text, int $length = 100): string
-{
-    if (mb_strlen($text) <= $length)
-        return $text;
-    return mb_substr($text, 0, $length) . '...';
-}
-
-/**
- * Verifica si un nombre de archivo coincide con un SKU usando regla de prefijo.
- * 
- * Regla: El nombre del archivo debe comenzar con el SKU y el siguiente carácter
- * (si existe) NO puede ser un dígito (evita que "123-1" coincida con "123-10").
- * 
- * Soporta variantes de SKU separadas por: guion bajo, punto, espacio o letra directa.
- * 
- * Ejemplos para SKU "123-1":
- *   ✅ 123-1.jpg        (SKU + extensión)
- *   ✅ 123-1f1.jpg      (SKU + letra + ...)
- *   ✅ 123-1v2.jpg      (SKU + letra + ...)
- *   ✅ 123-1_foto.jpg   (SKU + guion bajo + ...)
- *   ✅ 123-1_V1.jpg     (Variante V1)
- *   ✅ 123-1_ROJO.jpg   (Variante ROJO)
- *   ✅ 123-1.A.jpg      (Variante .A)
- *   ✅ 123-1 foto.jpg   (SKU + espacio + ...)
- *   ❌ 123-10.jpg       (SKU + dígito = otro producto)
- *   ❌ 123-12.jpg       (SKU + dígito = otro producto)
- *   ❌ 456-1.jpg        (SKU diferente)
- */
-function skuMatchesFilename(string $sku, string $filename): bool
-{
-    // Quitar extensión del nombre para comparar
-    $nameOnly = pathinfo($filename, PATHINFO_FILENAME);
-
-    // Verificar que el nombre comience con el SKU (case-insensitive)
-    if (stripos($nameOnly, $sku) !== 0) {
-        return false;
-    }
-
-    // Si el nombre es exactamente el SKU, es match
-    if (strlen($nameOnly) === strlen($sku)) {
-        return true;
-    }
-
-    // El carácter siguiente al SKU determina si es match
-    $nextChar = $nameOnly[strlen($sku)];
-
-    // Si es dígito, NO es match (evita 123-1 → 123-10)
-    if (ctype_digit($nextChar)) {
-        return false;
-    }
-
-    // Cualquier otro carácter es válido: letra (f, v), guion bajo (_), 
-    // punto (.), espacio ( ), guion (-) → soporta variantes y sufijos
-    return true;
 }
 
 /**
@@ -316,21 +252,227 @@ function skuExactForms(string $q): array
 }
 
 /**
+ * Filtros del catálogo público desde la URL (/buscar y la barra de filtros de todas las pantallas).
+ * marca, cat y carpeta admiten varios valores (marca[]=A&marca[]=B) o uno solo (marca=A).
+ * @return array{marca: string[], cat: string[], carpeta: string[], pmin: ?float, pmax: ?float, foto: bool}
+ */
+function catalogFiltersFromRequest(array $get): array
+{
+    $list = function ($v): array {
+        $v = is_array($v) ? $v : ($v === null || $v === '' ? [] : [$v]);
+        $v = array_map(fn($x) => trim((string) $x), array_filter($v, 'is_scalar'));
+        return array_values(array_slice(array_unique(array_filter($v, fn($x) => $x !== '')), 0, 30));
+    };
+    $price = function ($v): ?float {
+        if (!is_scalar($v)) return null;
+        $d = preg_replace('/\D/', '', (string) $v); // «120.000», «$120000» → 120000
+        return $d === '' ? null : (float) $d;
+    };
+    return [
+        'marca' => $list($get['marca'] ?? null),
+        'cat' => $list($get['cat'] ?? null),
+        'carpeta' => $list($get['carpeta'] ?? null),
+        'pmin' => $price($get['pmin'] ?? null),
+        'pmax' => $price($get['pmax'] ?? null),
+        'foto' => ($get['foto'] ?? '') === '1',
+        // «Contiene la palabra»: en el nombre del producto o en el nombre de su archivo en Drive
+        'contiene' => is_string($get['contiene'] ?? null) ? mb_substr(trim($get['contiene']), 0, 60) : '',
+        // Orden: codigo (A→Z alfanumérico), precio_desc (mayor a menor), precio_asc (menor a mayor); '' = el de siempre
+        // Dos órdenes que se combinan: precio (desc|asc) primero y código alfanumérico (asc|desc) después
+        'oprecio' => in_array($get['oprecio'] ?? '', ['desc', 'asc'], true) ? $get['oprecio']
+            : (in_array($get['orden'] ?? '', ['precio_desc', 'precio_asc'], true) ? substr($get['orden'], 7) : ''), // ?orden= viejo
+        'ocodigo' => in_array($get['ocodigo'] ?? '', ['asc', 'desc'], true) ? $get['ocodigo'] : (($get['orden'] ?? '') === 'codigo' ? 'asc' : ''),
+    ];
+}
+
+/**
+ * Ordena filas de productos (claves sku, price_suggested). Se combinan: primero por precio ($precio desc|asc; los sin
+ * precio al final) y, a igual precio, por código ($codigo asc|desc, alfanumérico «natural»: M:8-1 antes que M:10-1).
+ * Solo código: ordena por código. Ninguno: deja el orden de la consulta.
+ */
+function catalogSortRows(array &$rows, string $precio, string $codigo = ''): void
+{
+    if ($precio === '' && $codigo === '') return;
+    $code = fn($r) => skuSearchNorm(preg_replace('/^M[:\-]?/i', '', (string) $r['sku']));
+    $cdir = $codigo === 'desc' ? -1 : 1;
+    $pdir = $precio === 'desc' ? -1 : 1;
+    usort($rows, function ($a, $b) use ($precio, $codigo, $code, $cdir, $pdir) {
+        if ($precio !== '') {
+            $pa = (float) ($a['price_suggested'] ?? 0); $pb = (float) ($b['price_suggested'] ?? 0);
+            if (($pa > 0) !== ($pb > 0)) return $pa > 0 ? -1 : 1;
+            if ($pa != $pb) return ($pa <=> $pb) * $pdir;
+        }
+        return strnatcasecmp($code($a), $code($b)) * $cdir;
+    });
+}
+
+/**
+ * SQL de búsqueda por palabras (alias p = products): cada palabra debe aparecer, en cualquier orden, en el código
+ * ("M8363-3" = "M:8363-3" = "8363-3", vía skuExactForms), nombre, categoría, marca, color o en el nombre de la
+ * carpeta de Drive donde está su foto. «poedagar dama dorado» = las tres palabras.
+ * @return array{0: string[], 1: array} partes (unir con AND) y parámetros
+ */
+function catalogWordsSql(array $words): array
+{
+    $parts = [];
+    $params = [];
+    foreach (array_slice(array_values(array_filter($words, fn($w) => $w !== '')), 0, 8) as $word) {
+        $wordLike = '%' . addcslashes($word, '%_') . '%';
+        $skuOr = [];
+        foreach (skuExactForms($word) as $form) {
+            $skuOr[] = skuSearchSql('p.sku') . ' LIKE ?';
+            $params[] = '%' . addcslashes($form, '%_') . '%';
+        }
+        if (SearchIndex::ready(getDB())) {
+            // Índice ya armado (SearchIndex): nombre, marca, categoría, color y carpetas en una sola columna
+            $parts[] = '(' . implode(' OR ', $skuOr ?: ['0']) . ' OR p.search_text LIKE ?)';
+            $params[] = $wordLike;
+        } else {
+            // Sin índice todavía (recién desplegado): solo columnas de products, nunca drive_index por fila
+            $parts[] = '(' . implode(' OR ', $skuOr ?: ['0']) . ' OR p.name LIKE ? OR p.category LIKE ? OR p.brand LIKE ? OR p.color LIKE ?)';
+            array_push($params, $wordLike, $wordLike, $wordLike, $wordLike);
+        }
+    }
+    return [$parts, $params];
+}
+
+/**
+ * Fotos para un catálogo PDF filtrado (/catalogo-pdf/lista): la portada de cada producto visible (variantes incluidas)
+ * que cumple el texto y los filtros, ordenadas por marca y código. Sin videos (no van en el PDF).
+ * @return array{items: array<int, array{id: string, sku: string}>, total: int}
+ */
+function catalogPdfItems(PDO $db, string $q, array $filters, int $limit = 300): array
+{
+    [$parts, $params] = catalogWordsSql(preg_split('/\s+/u', trim(preg_replace('/\.\w{2,4}$/i', '', $q))) ?: []);
+    [$fSql, $fParams] = catalogFilterSql($db, $filters);
+    $where = "p.archived = 0 AND p.cover_image_url > '' AND p.cover_image_url NOT LIKE '[VIDEO]%'"
+        . ($parts ? ' AND ' . implode(' AND ', $parts) : '') . $fSql;
+    $stmt = $db->prepare("SELECT p.sku, p.cover_image_url, p.price_suggested FROM products p WHERE $where ORDER BY p.brand, p.sku");
+    $stmt->execute(array_merge($params, $fParams));
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    catalogSortRows($rows, $filters['oprecio'] ?? '', $filters['ocodigo'] ?? '');
+    $items = [];
+    $total = 0;
+    foreach ($rows as $r) {
+        $id = driveIdFromUrl($r['cover_image_url']);
+        if (!$id) continue;
+        $total++;
+        if (count($items) < $limit) $items[] = ['id' => $id, 'sku' => $r['sku']];
+    }
+    return ['items' => $items, 'total' => $total];
+}
+
+/** ¿Hay algún filtro puesto? */
+function catalogFiltersActive(array $f): bool
+{
+    return $f['marca'] || $f['cat'] || $f['carpeta'] || $f['pmin'] !== null || $f['pmax'] !== null || ($f['contiene'] ?? '') !== '';
+}
+
+/**
+ * SQL (" AND …", alias p = products) de los filtros del catálogo. Todos se combinan entre sí;
+ * dentro de marca/categoría/carpeta, varios valores = cualquiera de ellos.
+ * Carpeta: productos con una foto visible en esa carpeta o en cualquiera de sus subcarpetas.
+ * @return array{0: string, 1: array}
+ */
+function catalogFilterSql(PDO $db, array $f): array
+{
+    $sql = '';
+    $params = [];
+    $in = fn(array $v) => implode(',', array_fill(0, count($v), '?'));
+    if ($f['marca']) { $sql .= ' AND p.brand IN (' . $in($f['marca']) . ')'; array_push($params, ...$f['marca']); }
+    if ($f['cat']) { $sql .= ' AND p.category IN (' . $in($f['cat']) . ')'; array_push($params, ...$f['cat']); }
+    if ($f['pmin'] !== null) { $sql .= ' AND p.price_suggested >= ?'; $params[] = $f['pmin']; }
+    if ($f['pmax'] !== null) { $sql .= ' AND p.price_suggested > 0 AND p.price_suggested <= ?'; $params[] = $f['pmax']; }
+    if ($f['foto']) { $sql .= " AND p.cover_image_url IS NOT NULL AND p.cover_image_url <> ''"; }
+    foreach (array_slice(preg_split('/\s+/u', $f['contiene'] ?? '', -1, PREG_SPLIT_NO_EMPTY), 0, 5) as $w) {
+        $like = '%' . addcslashes($w, '%_\\') . '%';
+        $sql .= SearchIndex::ready($db) ? ' AND p.contains_text LIKE ?' : ' AND p.name LIKE ?';
+        $params[] = $like;
+    }
+    if ($f['carpeta']) {
+        if (SearchIndex::ready($db)) {
+            // folder_ids ya trae cada carpeta y todas sus superiores: elegir una carpeta incluye sus subcarpetas
+            $sql .= ' AND (' . implode(' OR ', array_fill(0, count($f['carpeta']), 'p.folder_ids LIKE ?')) . ')';
+            foreach ($f['carpeta'] as $id) $params[] = '% ' . addcslashes($id, '%_\\') . ' %';
+        } else {
+            // Sin índice: solo fotos directamente en la carpeta (usa el índice de matched_sku)
+            $sql .= ' AND EXISTS (SELECT 1 FROM drive_index fc WHERE fc.matched_sku = p.sku AND fc.is_folder = 0 AND fc.is_hidden = 0'
+                . ' AND fc.parent_id IN (' . $in($f['carpeta']) . '))';
+            array_push($params, ...$f['carpeta']);
+        }
+    }
+    return [$sql, $params];
+}
+
+/**
+ * Carpetas visibles de Drive (id → [name, parent_id]), de la copia local. Una sola lectura por petición.
+ * @return array<string, array{0: string, 1: string}>
+ */
+function visibleDriveFolders(PDO $db): array
+{
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    $cache = [];
+    try {
+        foreach ($db->query("SELECT file_id, name, parent_id FROM drive_index WHERE is_folder = 1 AND is_hidden = 0")->fetchAll(PDO::FETCH_NUM) as [$id, $name, $parent]) {
+            $cache[$id] = [(string) $name, (string) $parent];
+        }
+    } catch (Throwable $e) {
+        $cache = [];
+    }
+    return $cache;
+}
+
+/** Nombre de carpeta con su ruta («CURREN › DAMA»), sin la raíz ni los números de orden. */
+function folderFilterLabel(PDO $db, string $folderId): string
+{
+    $folders = visibleDriveFolders($db);
+    $root = env('GOOGLE_DRIVE_FOLDER_ID', '');
+    $parts = [];
+    for ($id = $folderId, $i = 0; isset($folders[$id]) && $id !== $root && $i < 8; $i++) {
+        array_unshift($parts, folderDisplayName($folders[$id][0]));
+        $id = $folders[$id][1];
+    }
+    return implode(' › ', $parts);
+}
+
+/**
+ * Carpetas para el filtro: las que tienen fotos de productos visibles (directas) y las de primer nivel,
+ * ordenadas por su ruta. @return array<int, array{id: string, label: string}>
+ */
+function catalogFolderOptions(PDO $db): array
+{
+    return SearchIndex::folderOptions($db); // se arman con el índice (tras cada sincronización)
+}
+
+/**
  * Opciones de los filtros de la búsqueda: solo valores con datos suficientes (5+ productos visibles).
  * @return array{brands: string[], categories: string[], prices: bool}
  */
 function searchFilterOptions(PDO $db): array
 {
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    // Marcas, categorías y "hay precios" cambian solo con el sync o el admin: se guardan 2 min en disco para no
+    // recorrer todos los productos en cada página que muestra la barra de filtros. Las carpetas ya vienen del índice.
+    $file = BASE_DIR . '/storage/cache/filter_options.json';
+    $saved = @filemtime($file) > time() - 120 ? json_decode((string) @file_get_contents($file), true) : null;
+    if (is_array($saved) && isset($saved['brands'], $saved['categories'], $saved['prices'])) {
+        return $cache = $saved + ['folders' => catalogFolderOptions($db)];
+    }
     $pick = fn(string $col) => $db->query(
         "SELECT $col FROM products WHERE archived = 0 AND cover_image_url > '' AND $col IS NOT NULL AND TRIM($col) <> ''
          GROUP BY $col HAVING COUNT(*) >= 5 ORDER BY $col"
     )->fetchAll(PDO::FETCH_COLUMN);
     $categories = $pick('category');
-    return [
+    $opts = [
         'brands' => $pick('brand'),
         'categories' => count($categories) >= 2 ? $categories : [],
         'prices' => (int) $db->query("SELECT COUNT(*) FROM products WHERE archived = 0 AND cover_image_url > '' AND price_suggested > 0")->fetchColumn() >= 20,
     ];
+    @mkdir(dirname($file), 0775, true);
+    @file_put_contents($file . '.tmp', json_encode($opts, JSON_UNESCAPED_UNICODE)) && @rename($file . '.tmp', $file);
+    return $cache = $opts + ['folders' => catalogFolderOptions($db)];
 }
 
 /**
@@ -681,11 +823,40 @@ function adminProductFilter(array $f): array
 {
     $where = ['1 = 1'];
     $params = [];
+    // Búsqueda inteligente: cada palabra debe aparecer (en cualquier orden) en el código, nombre, marca,
+    // categoría, color o en el nombre de la carpeta de Drive donde está su foto. Ej.: «poedagar dama dorado».
     $q = trim((string) ($f['q'] ?? ''));
-    if ($q !== '') {
-        $where[] = '(' . skuSearchSql('sku') . ' LIKE ? OR name LIKE ?)';
-        $params[] = '%' . addcslashes(skuSearchNorm($q), '%_\\') . '%';
-        $params[] = '%' . addcslashes($q, '%_\\') . '%';
+    $words = $q === '' ? [] : array_slice(preg_split('/\s+/u', $q), 0, 6);
+    foreach ($words as $w) {
+        $like = '%' . addcslashes($w, '%_\\') . '%';
+        $idx = SearchIndex::ready(getDB());
+        $where[] = '(' . skuSearchSql('sku') . ' LIKE ? OR name LIKE ? OR ' . ($idx ? 'search_text' : 'brand') . ' LIKE ?)';
+        $params[] = '%' . addcslashes(skuSearchNorm($w), '%_\\') . '%';
+        array_push($params, $like, $like);
+    }
+    // Rango de precio (el que ve el público: price_suggested). Acepta «120.000», «$120000», «120000».
+    foreach (['pmin' => '>=', 'pmax' => '<='] as $k => $op) {
+        $v = preg_replace('/\D/', '', (string) ($f[$k] ?? ''));
+        if ($v !== '') {
+            $where[] = "price_suggested {$op} ?";
+            $params[] = (int) $v;
+        }
+    }
+    // «Contiene la palabra»: en el nombre del producto o en el nombre de su archivo en Drive
+    foreach (array_slice(preg_split('/\s+/u', is_string($f['contiene'] ?? null) ? $f['contiene'] : '', -1, PREG_SPLIT_NO_EMPTY), 0, 5) as $w) {
+        $like = '%' . addcslashes($w, '%_\\') . '%';
+        $where[] = SearchIndex::ready(getDB()) ? '(name LIKE ? OR contains_text LIKE ?)' : '(name LIKE ? OR name LIKE ?)';
+        array_push($params, $like, $like);
+    }
+    // Carpeta de Drive: productos con una foto en ella o en cualquiera de sus subcarpetas
+    if (is_string($f['carpeta'] ?? null) && $f['carpeta'] !== '') {
+        if (SearchIndex::ready(getDB())) {
+            $where[] = 'folder_ids LIKE ?'; // incluye subcarpetas (índice de búsqueda)
+            $params[] = '% ' . addcslashes($f['carpeta'], '%_\\') . ' %';
+        } else {
+            $where[] = 'EXISTS (SELECT 1 FROM drive_index fc WHERE fc.matched_sku = products.sku AND fc.is_folder = 0 AND fc.parent_id = ?)';
+            $params[] = $f['carpeta'];
+        }
     }
     switch ($f['estado'] ?? '') {
         case 'activos':   $where[] = 'is_active = 1 AND (in_sheet = 1 OR from_drive = 1)'; break;
@@ -765,38 +936,6 @@ function isGenericMediaForSku(string $sku, string $filename): bool
     // Sin " (1)", " (2)" de Drive. "M:8363" en la hoja = "M8363.jpg" / "M-8363.jpg" en Drive
     $nameOnly = genericMediaStem($filename);
     return $nameOnly === strtolower($sku) || in_array($nameOnly, skuNameVariants($sku), true);
-}
-
-/**
- * Extrae el SKU sin el prefijo de marca (letras antes del primer dígito).
- * 
- * Muchas veces los archivos en Drive se nombran sin el prefijo de marca
- * del catálogo. Esta función permite matchear ambos formatos.
- * 
- * Ejemplos:
- *   "KNM-8845-RG"  → "8845-RG"     (quita KNM-)
- *   "KNM-8845"     → "8845"         (quita KNM-)
- *   "ABC-1234-V1"  → "1234-V1"      (quita ABC-)
- *   "8845-RG"      → "8845-RG"      (ya no tiene prefijo, no cambia)
- *   "WATCH-99"     → "99"           (quita WATCH-)
- *   "123-456"      → "123-456"      (empieza con dígito, no cambia)
- */
-function extractSkuWithoutPrefix(string $sku): string
-{
-    $sku = trim($sku);
-    
-    // Si ya empieza con dígito, no tiene prefijo
-    if (preg_match('/^\d/', $sku)) {
-        return $sku;
-    }
-    
-    // Quitar prefijo de letras seguido opcionalmente de guion, punto, espacio o guion bajo:
-    // "KNM-8845-RG" → "8845-RG", "NO 2218" → "2218", "NO.2405" → "2405"
-    if (preg_match('/^[A-Za-z]+[-. _]?(\d.*)$/', $sku, $matches)) {
-        return $matches[1];
-    }
-    
-    return $sku;
 }
 
 /**
@@ -1171,4 +1310,30 @@ function mediaActionButtons(string $fileId, string $fileName, string $title, str
         . '<span>WhatsApp</span></button>'
         . '<button type="button" class="media-btn media-btn-dl" data-media-action="dl" ' . $data . ' title="Descargar">⬇️<span>Descargar</span></button>'
         . '</div>';
+}
+
+require_once __DIR__ . '/services/SearchIndex.php';
+
+/** Tarjetas que se muestran de entrada en listas largas (carpetas, Novedades); el resto con «Cargar más». */
+const LOAD_MORE_STEP = 60;
+
+/** Clase para la tarjeta número $idx (desde 0) de una lista con «Cargar más»: las que pasan del primer tramo van ocultas. */
+function loadMoreClass(int $idx): string
+{
+    return $idx >= LOAD_MORE_STEP ? ' lm-hide' : '';
+}
+
+/**
+ * Botón «Cargar más» para la grilla justo anterior (las tarjetas con loadMoreClass()). Muestra de a LOAD_MORE_STEP.
+ * Las fotos ocultas no se descargan (loading="lazy" + display:none), así la página abre más rápido en el celular.
+ */
+function loadMoreButton(int $total): string
+{
+    if ($total <= LOAD_MORE_STEP) return '';
+    $left = $total - LOAD_MORE_STEP;
+    return '<div class="lm-wrap"><button type="button" class="btn btn-secondary lm-btn" data-step="' . LOAD_MORE_STEP . '"'
+        . ' onclick="(function(b){var g=b.parentNode.previousElementSibling,h=g?g.querySelectorAll(\'.lm-hide\'):[],n=+b.dataset.step;'
+        . 'for(var i=0;i<h.length&&i<n;i++)h[i].classList.remove(\'lm-hide\');var r=h.length-Math.min(n,h.length);'
+        . 'if(r>0){b.textContent=\'Cargar más · quedan \'+r;}else{b.parentNode.remove();}})(this)">'
+        . 'Cargar más · quedan ' . $left . '</button></div>';
 }

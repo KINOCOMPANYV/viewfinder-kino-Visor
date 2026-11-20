@@ -59,31 +59,24 @@
         $totalAlbums = 0;
         try {
             $db = getDB();
-            // Carpetas que el admin sacó de las listas (siguen en búsqueda y su contenido se ve)
-            $notInLists = '';
-            try {
-                $db->query("SELECT hide_in_lists FROM folder_settings LIMIT 1");
-                $notInLists = " AND drive_id NOT IN (SELECT folder_id FROM folder_settings WHERE hide_in_lists = 1)";
-            } catch (\PDOException $e) { /* migración 029 pendiente */ }
-            $totalAlbums = (int)$db->query("SELECT COUNT(*) FROM albums WHERE is_active = 1$notInLists")->fetchColumn();
             // Carpetas de primer nivel de PRODUCTOS (las mantiene el sync de Drive), en el orden
             // de Drive: "1.POEDAGAR", "2.CURREN", ..., "17.NEPIC". Se abren como carpeta.
-            $albums = $db->query("SELECT * FROM albums WHERE is_active = 1$notInLists ORDER BY CAST(name AS UNSIGNED) = 0, CAST(name AS UNSIGNED), name ASC")->fetchAll();
-            // Sin ícono propio: foto al azar de la carpeta (copia local de Drive)
-            if ($albums) {
-                try {
-                    // Foto al azar del contenido (la elige DriveIndex::refreshFolderState en cada sync)
-                    $thumbStmt = $db->prepare("SELECT cover_file_id FROM drive_index WHERE file_id = ? AND is_folder = 1");
-                    foreach ($albums as &$al) {
-                        if (empty($al['icon_url'])) {
-                            $thumbStmt->execute([$al['drive_id']]);
-                            $tid = $thumbStmt->fetchColumn();
-                            if ($tid) $al['icon_url'] = lh3Url($tid, 200);
-                        }
-                    }
-                    unset($al);
-                } catch (\PDOException $e) { /* drive_index aún no existe */ }
+            // Sin las que el admin sacó de las listas (siguen en búsqueda y su contenido se ve).
+            // Foto al azar de cada carpeta (la elige DriveIndex::refreshFolderState en cada sync) en la misma consulta.
+            $albumSql = "SELECT a.*, d.cover_file_id FROM albums a
+                         LEFT JOIN drive_index d ON d.file_id = a.drive_id AND d.is_folder = 1
+                         WHERE a.is_active = 1%s
+                         ORDER BY CAST(a.name AS UNSIGNED) = 0, CAST(a.name AS UNSIGNED), a.name ASC";
+            try {
+                $albums = $db->query(sprintf($albumSql, " AND a.drive_id NOT IN (SELECT folder_id FROM folder_settings WHERE hide_in_lists = 1)"))->fetchAll();
+            } catch (\PDOException $e) {
+                $albums = $db->query(sprintf($albumSql, ''))->fetchAll(); // migración 029 pendiente
             }
+            $totalAlbums = count($albums);
+            foreach ($albums as &$al) {
+                if (empty($al['icon_url']) && !empty($al['cover_file_id'])) $al['icon_url'] = lh3Url($al['cover_file_id'], 200);
+            }
+            unset($al);
         } catch (\PDOException $e) {
             // tabla albums aún no existe o DB apagada
         }
@@ -112,6 +105,9 @@
                     </form>
                     <div class="autocomplete-dropdown" id="autocomplete"></div>
                 </div>
+                <?php if ($db): ?>
+                    <div class="filter-wrap"><?php include __DIR__ . '/../partials/filter_bar.php'; ?></div>
+                <?php endif; ?>
             </div>
 
             <?php
@@ -194,68 +190,28 @@
 
         try {
             $db = getDB();
-            
-            // Check if sheet_row column exists (migration may not have run yet)
-            $hasSheetRow = false;
-            try {
-                $db->query("SELECT sheet_row FROM products LIMIT 1");
-                $hasSheetRow = true;
-            } catch (\PDOException $e) {
-                // column doesn't exist yet
-            }
-
-            $orderCol = $hasSheetRow ? 'sheet_row' : 'id';
-            
-            // ── FASE 1: Cargar minimal data para paginación ──
-            // Priorizar productos del álbum Poedagar
-            $poedagarAlbumId = '';
-            try {
-                $poedagarRow = $db->query("SELECT drive_id FROM albums WHERE LOWER(name) LIKE '%poedagar%' AND is_active = 1 LIMIT 1")->fetch();
-                if ($poedagarRow) $poedagarAlbumId = $poedagarRow['drive_id'];
-            } catch (\PDOException $e) {}
-
-            $albumCol = '';
-            try {
-                $db->query("SELECT album_id FROM products LIMIT 1");
-                $albumCol = 'album_id';
-            } catch (\PDOException $e) {}
-
-            $orderClause = $albumCol && $poedagarAlbumId
-                ? "ORDER BY CASE WHEN album_id = " . $db->quote($poedagarAlbumId) . " THEN 0 ELSE 1 END, {$orderCol} DESC"
-                : "ORDER BY {$orderCol} DESC";
-
-            $skuRows = $db->query(
-                "SELECT sku, parent_sku, {$orderCol} AS sheet_row" . ($albumCol ? ', album_id' : '') . " 
-                 FROM products 
-                 WHERE archived = 0 AND cover_image_url > '' 
-                 {$orderClause}"
-            )->fetchAll();
-            $totalSkus = count($skuRows); // códigos visibles (cada variante cuenta)
-
-            // Una tarjeta por referencia (código), en el orden de la consulta. Las variantes
-            // ya no se agrupan en la tarjeta: se ven al abrir la ficha del producto.
-            $parentOrder = array_column($skuRows, 'sku');
-            unset($skuRows);
-            $totalParents = count($parentOrder);
-            $totalPages = max(1, ceil($totalParents / $perPage));
+            // Productos visibles, los de la carpeta Poedagar primero y luego por fila de la hoja (más nuevos arriba).
+            // Una tarjeta por referencia (código); las variantes se ven al abrir la ficha.
+            // La página se corta en MySQL (LIMIT): no se cargan todos los códigos para mostrar 60.
+            $visibleWhere = "archived = 0 AND cover_image_url > ''";
+            $totalSkus = (int) $db->query("SELECT COUNT(*) FROM products WHERE $visibleWhere")->fetchColumn();
+            $totalParents = $totalSkus;
+            $totalPages = max(1, (int) ceil($totalParents / $perPage));
             $currentPage = min($currentPage, $totalPages);
             $offset = ($currentPage - 1) * $perPage;
-            $pageRoots = array_slice($parentOrder, $offset, $perPage);
-            unset($parentOrder);
 
-            // ── FASE 2: Cargar datos completos SOLO para esta página ──
-            if (!empty($pageRoots)) {
-                $placeholders = implode(',', array_fill(0, count($pageRoots), '?'));
-                $stmt = $db->prepare(
-                    "SELECT id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url
-                     FROM products WHERE sku IN ({$placeholders})"
-                );
-                $stmt->execute($pageRoots);
-                foreach ($stmt->fetchAll() as $p) {
-                    $grouped[$p['sku']] = ['parent' => $p, 'children' => []];
-                }
-                $pageRoots = array_values(array_filter($pageRoots, fn($sku) => isset($grouped[$sku])));
+            $poedagarAlbumId = $db->query("SELECT drive_id FROM albums WHERE LOWER(name) LIKE '%poedagar%' AND is_active = 1 LIMIT 1")->fetchColumn();
+            $orderClause = $poedagarAlbumId
+                ? "ORDER BY CASE WHEN album_id = " . $db->quote($poedagarAlbumId) . " THEN 0 ELSE 1 END, sheet_row DESC, id DESC"
+                : "ORDER BY sheet_row DESC, id DESC";
+            $rows = $db->query(
+                "SELECT id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url
+                 FROM products WHERE $visibleWhere $orderClause LIMIT $perPage OFFSET $offset"
+            )->fetchAll();
+            foreach ($rows as $p) {
+                $grouped[$p['sku']] = ['parent' => $p, 'children' => []];
             }
+            $pageRoots = array_map('strval', array_column($rows, 'sku'));
         } catch (\PDOException $e) {
             // failed to connect to db or execute query
         }
