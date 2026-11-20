@@ -294,6 +294,7 @@
         pdfFile = null;
         $('cpShare').hidden = true;
         $('cpDown').hidden = true;
+        $('cpNameRow').hidden = true;
         $('cpMake').textContent = '📄 Generar PDF';
     }
 
@@ -331,7 +332,7 @@
         busy = true;
         const btn = $('cpMake');
         btn.disabled = true;
-        $('cpShare').hidden = true; $('cpDown').hidden = true;
+        $('cpShare').hidden = true; $('cpDown').hidden = true; $('cpNameRow').hidden = true;
         pdfFile = null;
         const per = +opts.per;
         const maxPx = MAXPX[per];
@@ -504,6 +505,7 @@
                 + (canShareFiles ? '' : ' Descárgalo y adjúntalo en WhatsApp Web (📎 → Documento).'));
             $('cpShare').hidden = !canShareFiles;
             $('cpDown').hidden = false;
+            KP.setName([$('cpName')], pdfFile.name); $('cpNameRow').hidden = false;
             btn.textContent = '🔄 Rehacer';
         } catch (e) {
             msg('No se pudo generar el PDF: ' + (e && e.message ? e.message : e));
@@ -515,8 +517,10 @@
     }
     $('cpMake').addEventListener('click', make);
 
-    $('cpShare').addEventListener('click', () => KP.share(pdfFile, clean(opts.title) || 'Catálogo', msg));
-    $('cpDown').addEventListener('click', () => KP.download(pdfFile, msg));
+    // Nombre del archivo: se puede cambiar antes de Descargar / Compartir
+    const outFile = () => KP.named(pdfFile, $('cpName'));
+    $('cpShare').addEventListener('click', () => KP.share(outFile(), clean(opts.title) || 'Catálogo', msg));
+    $('cpDown').addEventListener('click', () => KP.download(outFile(), msg));
 
     // Las fotos empiezan a bajar desde que se abre la página (las primeras), así Generar tarda menos
     items.slice(0, 12).forEach((it) => prepare(it.id, MAXPX[+opts.per]).catch(() => {}));

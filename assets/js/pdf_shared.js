@@ -1,7 +1,7 @@
 /**
  * Piezas comunes de los PDF que se arman en el dispositivo con jsPDF: Catálogo en PDF (catalog_pdf.js) y
  * Lista pedido (order_list.js). Bajar fotos livianas (/enviar-catalogo/foto/{id}), pasarlas a JPEG reducido,
- * limpiar texto para la letra del PDF, Compartir y Descargar. Expone window.KinoPdf.
+ * limpiar texto para la letra del PDF, nombre del archivo editable, Compartir y Descargar. Expone window.KinoPdf.
  */
 (function () {
     const canShareFiles = (() => {
@@ -92,7 +92,29 @@
         msg('⬇️ Descargado: ' + file.name + '. En WhatsApp: 📎 → Documento.');
     }
 
+    // ---- Nombre del archivo: casilla editable antes de Descargar / Compartir ----
+    // Pone el nombre sugerido (sin .pdf) salvo que la persona ya escribió uno propio.
+    function setName(inputs, def) {
+        def = String(def || '').replace(/\.pdf$/i, '');
+        inputs.forEach((el) => {
+            if (!el) return;
+            if (!el.value.trim() || el.value === el.dataset.def) el.value = def;
+            el.dataset.def = def;
+        });
+    }
+    // Copia del PDF con el nombre escrito (limpia caracteres que Windows/teléfonos no aceptan).
+    function named(file, input) {
+        if (!file || !input) return file;
+        const n = clean(input.value).replace(/\.pdf$/i, '').replace(/[\\/:*?"<>|#%]+/g, '').replace(/^[ .]+|[ .]+$/g, '').slice(0, 120);
+        if (!n) { input.value = file.name.replace(/\.pdf$/i, ''); return file; }
+        return n + '.pdf' === file.name ? file : new File([file], n + '.pdf', { type: 'application/pdf' });
+    }
+    // Varias casillas del mismo PDF (barra y previo) muestran siempre el mismo texto.
+    function linkNames(inputs) {
+        inputs.forEach((el) => el && el.addEventListener('input', () => inputs.forEach((o) => { if (o && o !== el) o.value = el.value; })));
+    }
+
     const mb = (n) => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' MB';
 
-    window.KinoPdf = { canShareFiles, bitmap, fetchPhoto, prepare, clean, lostChars, share, download, mb };
+    window.KinoPdf = { canShareFiles, bitmap, fetchPhoto, prepare, clean, lostChars, share, download, mb, setName, named, linkNames };
 })();

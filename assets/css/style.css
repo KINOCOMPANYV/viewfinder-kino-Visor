@@ -3221,6 +3221,12 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .cp-bar-row .btn:disabled { opacity: 0.7; cursor: wait; }
 .cp-share { background: var(--color-wa); color: #fff; border: none; }
 .cp-share:hover { background: var(--color-wa-hover); }
+.cp-name { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: var(--color-text-muted); }
+.cp-name-in { display: flex; align-items: center; gap: 0.3rem; }
+.cp-name-in input { flex: 1; min-width: 0; min-height: 40px; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid var(--color-border, #333); background: var(--color-bg, #111); color: var(--color-text, #fff); font-size: 16px; }
+.cp-name-in span { color: var(--color-text-muted); }
+.ol-pv-name { flex-direction: row; align-items: center; flex: 1 1 14rem; }
+.ol-pv-name .cp-name-in { flex: 1; }
 .cp-msg { font-size: 0.8rem; color: var(--color-text-muted); text-align: center; }
 .cp-msg:empty { display: none; }
 @media (max-width: 640px) {
