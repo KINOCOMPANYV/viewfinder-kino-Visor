@@ -382,9 +382,15 @@ function catalogWordsSql(array $words): array
             $skuOr[] = skuSearchSql('p.sku') . ' LIKE ?';
             $params[] = '%' . addcslashes($form, '%_') . '%';
         }
-        // Índice ya armado (SearchIndex): nombre, marca, categoría, color y carpetas en una sola columna
-        $parts[] = '(' . implode(' OR ', $skuOr ?: ['0']) . ' OR p.search_text LIKE ?)';
-        $params[] = $wordLike;
+        if (SearchIndex::ready(getDB())) {
+            // Índice ya armado (SearchIndex): nombre, marca, categoría, color y carpetas en una sola columna
+            $parts[] = '(' . implode(' OR ', $skuOr ?: ['0']) . ' OR p.search_text LIKE ?)';
+            $params[] = $wordLike;
+        } else {
+            // Sin índice todavía (recién desplegado): solo columnas de products, nunca drive_index por fila
+            $parts[] = '(' . implode(' OR ', $skuOr ?: ['0']) . ' OR p.name LIKE ? OR p.category LIKE ? OR p.brand LIKE ? OR p.color LIKE ?)';
+            array_push($params, $wordLike, $wordLike, $wordLike, $wordLike);
+        }
     }
     return [$parts, $params];
 }
@@ -396,7 +402,6 @@ function catalogWordsSql(array $words): array
  */
 function catalogPdfItems(PDO $db, string $q, array $filters, int $limit = 300): array
 {
-    SearchIndex::ensure($db);
     [$parts, $params] = catalogWordsSql(preg_split('/\s+/u', trim(preg_replace('/\.\w{2,4}$/i', '', $q))) ?: []);
     [$fSql, $fParams] = catalogFilterSql($db, $filters);
     $where = "p.archived = 0 AND p.cover_image_url > '' AND p.cover_image_url NOT LIKE '[VIDEO]%'"
@@ -440,13 +445,20 @@ function catalogFilterSql(PDO $db, array $f): array
     if ($f['foto']) { $sql .= " AND p.cover_image_url IS NOT NULL AND p.cover_image_url <> ''"; }
     foreach (array_slice(preg_split('/\s+/u', $f['contiene'] ?? '', -1, PREG_SPLIT_NO_EMPTY), 0, 5) as $w) {
         $like = '%' . addcslashes($w, '%_\\') . '%';
-        $sql .= ' AND p.contains_text LIKE ?';
+        $sql .= SearchIndex::ready($db) ? ' AND p.contains_text LIKE ?' : ' AND p.name LIKE ?';
         $params[] = $like;
     }
     if ($f['carpeta']) {
-        // folder_ids ya trae cada carpeta y todas sus superiores: elegir una carpeta incluye sus subcarpetas
-        $sql .= ' AND (' . implode(' OR ', array_fill(0, count($f['carpeta']), 'p.folder_ids LIKE ?')) . ')';
-        foreach ($f['carpeta'] as $id) $params[] = '% ' . addcslashes($id, '%_\\') . ' %';
+        if (SearchIndex::ready($db)) {
+            // folder_ids ya trae cada carpeta y todas sus superiores: elegir una carpeta incluye sus subcarpetas
+            $sql .= ' AND (' . implode(' OR ', array_fill(0, count($f['carpeta']), 'p.folder_ids LIKE ?')) . ')';
+            foreach ($f['carpeta'] as $id) $params[] = '% ' . addcslashes($id, '%_\\') . ' %';
+        } else {
+            // Sin índice: solo fotos directamente en la carpeta (usa el índice de matched_sku)
+            $sql .= ' AND EXISTS (SELECT 1 FROM drive_index fc WHERE fc.matched_sku = p.sku AND fc.is_folder = 0 AND fc.is_hidden = 0'
+                . ' AND fc.parent_id IN (' . $in($f['carpeta']) . '))';
+            array_push($params, ...$f['carpeta']);
+        }
     }
     return [$sql, $params];
 }
@@ -500,7 +512,6 @@ function searchFilterOptions(PDO $db): array
 {
     static $cache = null;
     if ($cache !== null) return $cache;
-    SearchIndex::ensure($db);
     $pick = fn(string $col) => $db->query(
         "SELECT $col FROM products WHERE archived = 0 AND cover_image_url > '' AND $col IS NOT NULL AND TRIM($col) <> ''
          GROUP BY $col HAVING COUNT(*) >= 5 ORDER BY $col"
@@ -868,7 +879,8 @@ function adminProductFilter(array $f): array
     $words = $q === '' ? [] : array_slice(preg_split('/\s+/u', $q), 0, 6);
     foreach ($words as $w) {
         $like = '%' . addcslashes($w, '%_\\') . '%';
-        $where[] = '(' . skuSearchSql('sku') . ' LIKE ? OR name LIKE ? OR search_text LIKE ?)';
+        $idx = SearchIndex::ready(getDB());
+        $where[] = '(' . skuSearchSql('sku') . ' LIKE ? OR name LIKE ? OR ' . ($idx ? 'search_text' : 'brand') . ' LIKE ?)';
         $params[] = '%' . addcslashes(skuSearchNorm($w), '%_\\') . '%';
         array_push($params, $like, $like);
     }
@@ -883,13 +895,18 @@ function adminProductFilter(array $f): array
     // «Contiene la palabra»: en el nombre del producto o en el nombre de su archivo en Drive
     foreach (array_slice(preg_split('/\s+/u', is_string($f['contiene'] ?? null) ? $f['contiene'] : '', -1, PREG_SPLIT_NO_EMPTY), 0, 5) as $w) {
         $like = '%' . addcslashes($w, '%_\\') . '%';
-        $where[] = '(name LIKE ? OR contains_text LIKE ?)';
+        $where[] = SearchIndex::ready(getDB()) ? '(name LIKE ? OR contains_text LIKE ?)' : '(name LIKE ? OR name LIKE ?)';
         array_push($params, $like, $like);
     }
     // Carpeta de Drive: productos con una foto en ella o en cualquiera de sus subcarpetas
     if (is_string($f['carpeta'] ?? null) && $f['carpeta'] !== '') {
-        $where[] = 'folder_ids LIKE ?'; // incluye subcarpetas (índice de búsqueda)
-        $params[] = '% ' . addcslashes($f['carpeta'], '%_\\') . ' %';
+        if (SearchIndex::ready(getDB())) {
+            $where[] = 'folder_ids LIKE ?'; // incluye subcarpetas (índice de búsqueda)
+            $params[] = '% ' . addcslashes($f['carpeta'], '%_\\') . ' %';
+        } else {
+            $where[] = 'EXISTS (SELECT 1 FROM drive_index fc WHERE fc.matched_sku = products.sku AND fc.is_folder = 0 AND fc.parent_id = ?)';
+            $params[] = $f['carpeta'];
+        }
     }
     switch ($f['estado'] ?? '') {
         case 'activos':   $where[] = 'is_active = 1 AND (in_sheet = 1 OR from_drive = 1)'; break;

@@ -12,6 +12,8 @@ sleep 20 # dejar que Apache arranque primero
     sleep 300
 done ) &
 while true; do
+    php migrate.php 2>&1 | grep -E "🆕|❌" | cut -c1-500  # reintenta la que no pudo correr al arrancar
+    php scripts/cli_sync.php indice 2>&1 | cut -c1-500   # índice de búsqueda (rápido; antes de lo lento)
     php scripts/cli_sync.php carpetas 2>&1 | cut -c1-2000
     php scripts/cli_sync.php hoja 2>&1 | cut -c1-2000
     php scripts/cli_sync.php portadas 2>&1 | cut -c1-2000

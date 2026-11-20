@@ -23,6 +23,9 @@ echo "🔄 Viewfinder Kino Visor — Ejecutando migraciones...\n\n";
 
 try {
     $db = getDB();
+    // Un ALTER TABLE espera a que terminen las consultas abiertas (p. ej. del contenedor anterior). Sin tope esa
+    // espera puede ser eterna y Apache nunca arranca: se rinde a los 20 s y lo reintenta el sync en segundo plano.
+    try { $db->exec('SET SESSION lock_wait_timeout = 20'); } catch (PDOException $e) {}
 
     // Crear tabla de migraciones primero
     $initSql = file_get_contents(__DIR__ . '/migrations/000_create_migrations.sql');
