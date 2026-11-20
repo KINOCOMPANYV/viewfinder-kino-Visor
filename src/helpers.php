@@ -1313,3 +1313,27 @@ function mediaActionButtons(string $fileId, string $fileName, string $title, str
 }
 
 require_once __DIR__ . '/services/SearchIndex.php';
+
+/** Tarjetas que se muestran de entrada en listas largas (carpetas, Novedades); el resto con «Cargar más». */
+const LOAD_MORE_STEP = 60;
+
+/** Clase para la tarjeta número $idx (desde 0) de una lista con «Cargar más»: las que pasan del primer tramo van ocultas. */
+function loadMoreClass(int $idx): string
+{
+    return $idx >= LOAD_MORE_STEP ? ' lm-hide' : '';
+}
+
+/**
+ * Botón «Cargar más» para la grilla justo anterior (las tarjetas con loadMoreClass()). Muestra de a LOAD_MORE_STEP.
+ * Las fotos ocultas no se descargan (loading="lazy" + display:none), así la página abre más rápido en el celular.
+ */
+function loadMoreButton(int $total): string
+{
+    if ($total <= LOAD_MORE_STEP) return '';
+    $left = $total - LOAD_MORE_STEP;
+    return '<div class="lm-wrap"><button type="button" class="btn btn-secondary lm-btn" data-step="' . LOAD_MORE_STEP . '"'
+        . ' onclick="(function(b){var g=b.parentNode.previousElementSibling,h=g?g.querySelectorAll(\'.lm-hide\'):[],n=+b.dataset.step;'
+        . 'for(var i=0;i<h.length&&i<n;i++)h[i].classList.remove(\'lm-hide\');var r=h.length-Math.min(n,h.length);'
+        . 'if(r>0){b.textContent=\'Cargar más · quedan \'+r;}else{b.parentNode.remove();}})(this)">'
+        . 'Cargar más · quedan ' . $left . '</button></div>';
+}

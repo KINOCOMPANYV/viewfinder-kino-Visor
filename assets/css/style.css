@@ -3268,3 +3268,81 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .product-price.no-price { font-size: 0.72rem; font-weight: 500; color: var(--color-text-muted); font-style: italic; }
 .product-price { font-size: 1.6rem; font-weight: 700; color: #22c55e; margin: 0.25rem 0 0.75rem; }
 .product-price.no-price { font-size: 0.9rem; }
+
+/* ===== Celular: navegación y rapidez (2026-11-20) ===== */
+/* Filtros plegados tras un botón (solo celular); en el computador la barra se ve siempre */
+.filter-toggle { display: none; }
+@media (max-width: 640px) {
+    .filter-toggle {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%;
+        min-height: 44px; padding: 0.5rem 0.9rem; margin: 0 0 0.6rem;
+        border-radius: 12px; border: 1.5px solid var(--color-border); background: var(--color-surface-2);
+        color: var(--color-text); font: 600 0.9rem var(--font); cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .filter-toggle.on { border-color: var(--color-primary); color: var(--color-primary); }
+    .filter-toggle[aria-expanded="true"] .filter-toggle-arrow { transform: rotate(180deg); }
+    .filter-bar.fb-fold:not(.fb-open) { display: none; }
+    .filter-bar.fb-fold.fb-open { margin-bottom: 0.9rem; }
+    .filter-wrap { margin-top: 0.6rem; }
+}
+@media (max-width: 640px) {
+    /* Barra de abajo con 5 botones: Inicio, Buscar, Carpetas, Selección (con contador), Enviar */
+    .mnav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .mnav-icon { position: relative; }
+    .mnav-badge {
+        position: absolute; top: -6px; left: calc(100% - 6px);
+        min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+        background: var(--color-primary); color: var(--color-bg);
+        font: 700 0.66rem/18px var(--font); text-align: center;
+    }
+    .mnav-item:not(.active) .mnav-icon:has(.mnav-badge:not([hidden])) { filter: none; opacity: 1; }
+    /* Ficha de producto: sin «Volver al catálogo» (ya está la ← del encabezado); la ruta queda en una línea chica */
+    #btnBackCatalog { display: none; }
+    .product-detail .breadcrumb-bar { margin-bottom: 0.6rem; }
+    .product-detail .breadcrumb-path { font-size: 0.8rem; }
+}
+/* «Cargar más» en carpetas grandes y Novedades (helpers.php loadMoreButton) */
+.parent-grid > .lm-hide { display: none !important; }
+.lm-wrap { display: flex; justify-content: center; margin: 1.25rem 0 0.5rem; }
+.lm-btn { min-height: 46px; min-width: 220px; justify-content: center; font-weight: 700; }
+/* Migas de pan más visibles (todas las pantallas): cada paso es un botón dorado que se puede tocar,
+   «Inicio» con 🏠, y la página actual en blanco y negrita. Vale para breadcrumbs() (.crumbs), la ficha
+   (.breadcrumb-path) y las carpetas (.folder-breadcrumb). */
+nav.crumbs, .breadcrumb-bar .breadcrumb-path, .folder-breadcrumb {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.35rem;
+    color: var(--color-primary) !important; font-weight: 700;
+}
+nav.crumbs a, .breadcrumb-bar .breadcrumb-path a, .folder-breadcrumb a {
+    display: inline-flex; align-items: center; gap: 0.3rem; min-height: 34px; padding: 0.3rem 0.8rem !important;
+    border-radius: 999px; border: 1.5px solid var(--color-primary); background: var(--color-primary-glow);
+    color: var(--color-primary-light) !important; font-size: 0.85rem; font-weight: 700; text-decoration: none;
+    -webkit-tap-highlight-color: transparent; transition: background 0.15s, color 0.15s;
+}
+nav.crumbs a:hover, .breadcrumb-bar .breadcrumb-path a:hover, .folder-breadcrumb a:hover,
+nav.crumbs a:active, .breadcrumb-bar .breadcrumb-path a:active, .folder-breadcrumb a:active {
+    background: var(--color-primary); color: var(--color-bg) !important; text-decoration: none;
+}
+nav.crumbs > a:first-child::before, .breadcrumb-bar .breadcrumb-path > a:first-child::before, .folder-breadcrumb > a:first-child::before {
+    content: '🏠';
+}
+nav.crumbs [aria-current], .breadcrumb-bar .breadcrumb-path > span, .folder-breadcrumb > span {
+    color: var(--color-text) !important; font-size: 0.9rem; font-weight: 700; padding: 0.3rem 0.2rem;
+}
+nav.crumbs .crumbs-sep { color: var(--color-primary); font-weight: 700; }
+@media (max-width: 640px) {
+    .product-detail .breadcrumb-path { font-size: 0.85rem; }
+    nav.crumbs { margin-bottom: 0.9rem; }
+}
+@media (max-width: 640px) {
+    /* Botón ← del encabezado con texto «Atrás», dorado como las migas de pan */
+    .hdr-back {
+        width: auto; padding: 0 0.85rem 0 0.65rem; gap: 0.3rem; border-radius: 999px;
+        border: 1.5px solid var(--color-primary); background: var(--color-primary-glow); color: var(--color-primary-light);
+        font-size: 0.92rem;
+    }
+    .hdr-back-arrow { font-size: 1.15rem; line-height: 1; }
+    .hdr-back:active { background: var(--color-primary); color: var(--color-bg); }
+}
+@media (max-width: 360px) {
+    body:has(.hdr-back) .header-inner .logo { font-size: 1.05rem !important; }
+}

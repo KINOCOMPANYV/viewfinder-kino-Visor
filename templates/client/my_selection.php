@@ -79,7 +79,7 @@
 
     <script src="/assets/js/wa_batch.js?v=<?= APP_VERSION ?>"></script>
     <script src="/assets/js/my_selection.js?v=<?= APP_VERSION ?>"></script>
-    <?php $mnavActive = 'enviar'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
+    <?php $mnavActive = 'seleccion'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 
 </html>
