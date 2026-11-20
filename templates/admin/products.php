@@ -132,9 +132,14 @@
             </select>
             <?php endif; ?>
             <input type="text" name="contiene" value="<?= e($filters['contiene']) ?>" placeholder="Contiene la palabra…" title="En el nombre del producto o del archivo en Drive" class="form-input" style="width:170px;">
-            <select name="orden" class="form-input" onchange="this.form.submit()">
-                <?php foreach (['' => 'Orden de la hoja', 'codigo' => 'Código A → Z', 'precio_desc' => 'Precio: mayor a menor', 'precio_asc' => 'Precio: menor a mayor'] as $ov => $ol): ?>
-                    <option value="<?= e($ov) ?>" <?= $filters['orden'] === $ov ? 'selected' : '' ?>><?= e($ol) ?></option>
+            <select name="oprecio" class="form-input" onchange="this.form.submit()" title="Se combina con el orden por código">
+                <?php foreach (['' => 'Precio: sin ordenar', 'desc' => 'Precio: mayor → menor', 'asc' => 'Precio: menor → mayor'] as $ov => $ol): ?>
+                    <option value="<?= e($ov) ?>" <?= $filters['oprecio'] === $ov ? 'selected' : '' ?>><?= e($ol) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <select name="ocodigo" class="form-input" onchange="this.form.submit()" title="Con precio elegido, ordena los de igual precio">
+                <?php foreach (['' => 'Código: sin ordenar', 'asc' => 'Código: A → Z', 'desc' => 'Código: Z → A'] as $ov => $ol): ?>
+                    <option value="<?= e($ov) ?>" <?= $filters['ocodigo'] === $ov ? 'selected' : '' ?>><?= e($ol) ?></option>
                 <?php endforeach; ?>
             </select>
             <input type="text" name="pmin" value="<?= e($filters['pmin']) ?>" inputmode="numeric" placeholder="Precio desde $" class="form-input prod-price-f">

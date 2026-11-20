@@ -2348,7 +2348,8 @@ a.dash-row-link:hover span:first-child {
     .filter-price { display: flex; flex: 1 1 100%; min-width: 0; }
     .filter-price .filter-field { flex: 1 1 0; width: 0; min-width: 0; font-size: 16px; }
     .filter-go { flex: 1 1 100%; }
-    .filter-contains, .filter-sort { flex: 1 1 45%; width: auto; min-width: 0; font-size: 16px; }
+    .filter-contains { flex: 1 1 100%; width: auto; min-width: 0; font-size: 16px; }
+    .filter-sort { flex: 1 1 40%; width: auto; min-width: 0; font-size: 16px; padding-right: 0.3rem; text-overflow: ellipsis; }
 }
 
 /* ===== Admin: interruptor (productos, carpetas) ===== */

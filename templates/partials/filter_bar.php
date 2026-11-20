@@ -23,7 +23,8 @@ foreach ($fbF['carpeta'] as $cid) {
 }
 $fbFolderName = array_column($fbFolders, 'label', 'id');
 $fbAll = ['marca', 'cat', 'carpeta', 'pmin', 'pmax', 'foto', 'contiene'];
-$fbOrders = ['' => '↕ Orden normal', 'codigo' => '↕ Código A → Z', 'precio_desc' => '↕ Precio mayor → menor', 'precio_asc' => '↕ Precio menor → mayor'];
+$fbPriceOrders = ['' => '↕ Precio', 'desc' => 'Mayor precio', 'asc' => 'Menor precio'];
+$fbCodeOrders = ['' => '↕ Código', 'asc' => 'Código: A → Z', 'desc' => 'Código: Z → A'];
 $fbUrl = function (array $drop, ?array $only = null) use ($fbQ, $fbReal, $fbTarget, $fbExtra): string {
     $fbF = $fbReal;
     $qs = $fbExtra + ['q' => $fbQ];
@@ -33,7 +34,7 @@ $fbUrl = function (array $drop, ?array $only = null) use ($fbQ, $fbReal, $fbTarg
         if ($vals && !in_array($k, $drop, true)) $qs[$k] = $vals;
     }
     foreach (['pmin', 'pmax'] as $k) if ($fbF[$k] !== null && !in_array($k, $drop, true)) $qs[$k] = (int) $fbF[$k];
-    foreach (['contiene', 'orden'] as $k) if ($fbF[$k] !== '' && !in_array($k, $drop, true)) $qs[$k] = $fbF[$k];
+    foreach (['contiene', 'oprecio', 'ocodigo'] as $k) if ($fbF[$k] !== '' && !in_array($k, $drop, true)) $qs[$k] = $fbF[$k];
     return $fbTarget . '?' . http_build_query(array_filter($qs, fn($v) => $v !== '' && $v !== []));
 };
 $fbPrice = fn($v) => '$' . number_format((float) $v, 0, ',', '.');
@@ -92,11 +93,13 @@ if (!$fbO['brands'] && !$fbO['categories'] && !$fbO['prices'] && !$fbFolders) re
     <input type="text" name="contiene" value="<?= e($fbF['contiene']) ?>" maxlength="60" placeholder="Contiene la palabra…"
            title="Muestra solo los productos cuyo nombre, o el nombre de su archivo en Drive, contiene esta palabra" aria-label="Contiene la palabra"
            class="filter-field filter-contains<?= $fbF['contiene'] !== '' ? ' on' : '' ?>">
-    <select name="orden" aria-label="Ordenar" class="filter-field filter-sort<?= $fbF['orden'] !== '' ? ' on' : '' ?>">
-        <?php foreach ($fbOrders as $ov => $ol): ?>
-            <option value="<?= e($ov) ?>" <?= $fbF['orden'] === $ov ? 'selected' : '' ?>><?= e($ol) ?></option>
-        <?php endforeach; ?>
-    </select>
+    <?php foreach ([['oprecio', $fbPriceOrders, 'Ordenar por precio (se combina con el código)'], ['ocodigo', $fbCodeOrders, 'Ordenar por código (con precio: entre los de igual precio)']] as [$on, $oo, $ot]): ?>
+        <select name="<?= $on ?>" aria-label="<?= e($ot) ?>" title="<?= e($ot) ?>" class="filter-field filter-sort<?= $fbF[$on] !== '' ? ' on' : '' ?>">
+            <?php foreach ($oo as $ov => $ol): ?>
+                <option value="<?= e($ov) ?>" <?= $fbF[$on] === $ov ? 'selected' : '' ?>><?= e($ol) ?></option>
+            <?php endforeach; ?>
+        </select>
+    <?php endforeach; ?>
     <button type="submit" class="filter-field filter-go"><?= $fbExtra ? '📄 Armar catálogo' : 'Filtrar' ?></button>
 </form>
 <?php
@@ -106,9 +109,9 @@ if (!$fbExtra) {
     $pdfQs = ['desde' => 'filtro', 'q' => $fbQ];
     foreach (['marca', 'cat', 'carpeta'] as $k) if ($fbF[$k]) $pdfQs[$k] = $fbF[$k];
     foreach (['pmin', 'pmax'] as $k) if ($fbF[$k] !== null) $pdfQs[$k] = (int) $fbF[$k];
-    foreach (['contiene', 'orden'] as $k) if ($fbF[$k] !== '') $pdfQs[$k] = $fbF[$k];
+    foreach (['contiene', 'oprecio', 'ocodigo'] as $k) if ($fbF[$k] !== '') $pdfQs[$k] = $fbF[$k];
     $pdfQs = array_filter($pdfQs, fn($v) => $v !== '' && $v !== []);
-    if (count(array_diff_key($pdfQs, ['orden' => 1])) > 1) $fbPdf = '/catalogo-pdf?' . http_build_query($pdfQs);
+    if (count(array_diff_key($pdfQs, ['oprecio' => 1, 'ocodigo' => 1])) > 1) $fbPdf = '/catalogo-pdf?' . http_build_query($pdfQs);
 }
 ?>
 <?php if ($fbChips || $fbPdf): ?>
