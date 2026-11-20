@@ -117,6 +117,9 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
     </main>
 
     <div class="cp-bar" id="cpBar" hidden>
+        <label class="cp-name" id="cpNameRow" hidden>📝 Nombre del archivo
+            <span class="cp-name-in"><input type="text" id="cpName" maxlength="120" autocomplete="off" spellcheck="false" aria-label="Nombre del archivo PDF"><span>.pdf</span></span>
+        </label>
         <div class="cp-bar-row">
             <button type="button" class="btn btn-primary" id="cpMake">📄 Generar PDF</button>
             <button type="button" class="btn cp-share" id="cpShare" hidden>📲 Compartir</button>

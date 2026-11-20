@@ -140,7 +140,7 @@
         warnBox.innerHTML = problems.length ? '<strong>Revisar</strong><ul>' + problems.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>' : '';
     }
     drawOrder();
-    const resetPdf = (why) => { if (pdfFile) { pdfFile = null; $('olShare').hidden = true; $('olDown').hidden = true; $('olMake').textContent = PREVIEW; msg(why); } };
+    const resetPdf = (why) => { if (pdfFile) { pdfFile = null; $('olShare').hidden = true; $('olDown').hidden = true; $('olNameRow').hidden = true; $('olMake').textContent = PREVIEW; msg(why); } };
     $('olType').addEventListener('change', (e) => {
         if (!e.target || e.target.name !== 'olType' || !TYPES[e.target.value]) return;
         type = e.target.value;
@@ -198,7 +198,7 @@
         if (!window.jspdf || !window.jspdf.jsPDF) { msg('El generador de PDF no cargó. Revisa la conexión y recarga la página.'); return; }
         busy = true;
         const btn = $('olMake');
-        btn.disabled = true; $('olShare').hidden = true; $('olDown').hidden = true; pdfFile = null;
+        btn.disabled = true; $('olShare').hidden = true; $('olDown').hidden = true; $('olNameRow').hidden = true; pdfFile = null;
         try {
             // 1) Fotos (una vez por foto, 4 a la vez); la que no baje queda como «Foto no disponible»
             const ids = !show.cPhoto ? [] : [...new Set(lines.filter((l) => l.photo).map((l) => l.photo.id))];
@@ -423,6 +423,7 @@
                 + (failed ? ` ${failed} foto${failed === 1 ? '' : 's'} no bajó.` : ''));
             $('olShare').hidden = !KP.canShareFiles;
             $('olDown').hidden = false;
+            KP.setName(NAMES, pdfFile.name); $('olNameRow').hidden = false;
             btn.textContent = PREVIEW;
             await showPreview();
         } catch (e) {
@@ -438,7 +439,7 @@
     async function showPreview() {
         if (!pdfFile) return;
         const box = $('olPv'), pages = $('olPvPages');
-        $('olPvTitle').textContent = '👁 Previo: ' + T().name + ' · ' + pdfFile.name;
+        $('olPvTitle').textContent = '👁 Previo: ' + T().name;
         $('olPvShare').hidden = !KP.canShareFiles;
         pages.innerHTML = '<p>Cargando el previo…</p>';
         box.hidden = false; document.body.style.overflow = 'hidden';
@@ -469,13 +470,17 @@
     const closePreview = () => { pvToken++; $('olPv').hidden = true; $('olPvPages').innerHTML = ''; document.body.style.overflow = ''; };
     $('olPvClose').addEventListener('click', closePreview);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('olPv').hidden) closePreview(); });
-    $('olPvDown').addEventListener('click', () => KP.download(pdfFile, msg));
-    $('olPvShare').addEventListener('click', () => KP.share(pdfFile, T().title, msg));
+    // Nombre del archivo: se puede cambiar antes de Descargar / Enviar (casilla en la barra y en el previo)
+    const NAMES = [$('olName'), $('olPvName')];
+    KP.linkNames(NAMES);
+    const outFile = () => KP.named(pdfFile, $('olName'));
+    $('olPvDown').addEventListener('click', () => KP.download(outFile(), msg));
+    $('olPvShare').addEventListener('click', () => KP.share(outFile(), T().title, msg));
 
     // «Previo» arma el PDF (si cambió algo) y lo muestra; desde ahí se descarga o se envía
     $('olMake').addEventListener('click', () => { if (pdfFile && !busy) showPreview(); else make(); });
-    $('olShare').addEventListener('click', () => KP.share(pdfFile, T().title, msg));
-    $('olDown').addEventListener('click', () => KP.download(pdfFile, msg));
+    $('olShare').addEventListener('click', () => KP.share(outFile(), T().title, msg));
+    $('olDown').addEventListener('click', () => KP.download(outFile(), msg));
 
     lookup().then(() => {
         drawList();

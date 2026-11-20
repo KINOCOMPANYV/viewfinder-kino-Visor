@@ -117,6 +117,9 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
     </main>
 
     <div class="cp-bar ol-bar" id="olBar" hidden>
+        <label class="cp-name" id="olNameRow" hidden>📝 Nombre del archivo
+            <span class="cp-name-in"><input type="text" id="olName" maxlength="120" autocomplete="off" spellcheck="false" aria-label="Nombre del archivo PDF"><span>.pdf</span></span>
+        </label>
         <div class="cp-bar-row">
             <button type="button" class="btn ol-preview-btn" id="olMake" disabled>⏳ Buscando fotos…</button>
             <button type="button" class="btn cp-share" id="olShare" hidden>📲 Compartir</button>
@@ -128,6 +131,7 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
     <div class="ol-pv" id="olPv" hidden role="dialog" aria-modal="true" aria-label="Previo del PDF">
         <div class="ol-pv-head">
             <strong id="olPvTitle">👁 Previo</strong>
+            <label class="cp-name ol-pv-name">📝 <span class="cp-name-in"><input type="text" id="olPvName" maxlength="120" autocomplete="off" spellcheck="false" aria-label="Nombre del archivo PDF"><span>.pdf</span></span></label>
             <button type="button" class="btn cp-share" id="olPvShare" hidden>📲 Enviar</button>
             <button type="button" class="btn btn-primary" id="olPvDown">⬇️ Descargar</button>
             <button type="button" class="btn btn-secondary" id="olPvClose">✕ Cerrar</button>
