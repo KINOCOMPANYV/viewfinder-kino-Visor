@@ -3346,3 +3346,10 @@ nav.crumbs .crumbs-sep { color: var(--color-primary); font-weight: 700; }
 @media (max-width: 360px) {
     body:has(.hdr-back) .header-inner .logo { font-size: 1.05rem !important; }
 }
+
+/* Stock junto al precio (tarjetas y ficha): verde con existencias, rojo en 0 */
+.card-price.has-stock, .product-price.has-stock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.5rem; }
+.stock-tag { font-size: 0.72rem; font-weight: 700; font-style: normal; white-space: nowrap; }
+.stock-tag.in { color: #22c55e; }
+.stock-tag.out { color: #ef4444; }
+.product-price .stock-tag { font-size: 0.95rem; }

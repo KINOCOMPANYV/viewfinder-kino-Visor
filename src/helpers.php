@@ -196,11 +196,30 @@ function priceText($price): string
     return $p > 0 ? '$' . number_format($p, 0, ',', '.') : 'Sin precio en tabla';
 }
 
-/** Línea de precio para tarjetas y ficha. */
-function priceTag($price, string $class = 'card-price'): string
+/**
+ * SQL de las existencias que ve el público: Stock SYS (última subida en 📦 Inventario) y, si no hay,
+ * la columna STOCK de la Hoja master. NULL = sin dato (producto Solo Drive sin SYS) → no se muestra nada.
+ */
+function stockSql(string $alias = ''): string
+{
+    $a = $alias !== '' ? $alias . '.' : '';
+    return "COALESCE({$a}sys_stock, CASE WHEN {$a}in_sheet = 1 THEN {$a}stock END)";
+}
+
+/** «20 en stock» en verde, «0 en stock» en rojo (negativo = 0); sin dato = nada. */
+function stockTag($stock): string
+{
+    if ($stock === null || $stock === '' || $stock === false) return '';
+    $n = max(0, (int) $stock);
+    return '<span class="stock-tag ' . ($n > 0 ? 'in' : 'out') . '">' . number_format($n, 0, ',', '.') . ' en stock</span>';
+}
+
+/** Línea de precio para tarjetas y ficha; con $stock (ver stockSql) pone al lado «N en stock». */
+function priceTag($price, string $class = 'card-price', $stock = null): string
 {
     $none = !((float) ($price ?? 0) > 0);
-    return '<div class="' . $class . ($none ? ' no-price' : '') . '">' . e(priceText($price)) . '</div>';
+    $st = stockTag($stock);
+    return '<div class="' . $class . ($none ? ' no-price' : '') . ($st ? ' has-stock' : '') . '"><span class="price-val">' . e(priceText($price)) . '</span>' . $st . '</div>';
 }
 
 /**

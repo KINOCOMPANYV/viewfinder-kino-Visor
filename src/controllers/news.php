@@ -26,9 +26,9 @@ try {
 $prices = [];
 $skus = array_values(array_unique(array_filter(array_column($files ?? [], 'matched_sku'))));
 if ($skus) {
-    $st = $db->prepare("SELECT sku, price_suggested FROM products WHERE sku IN (" . implode(',', array_fill(0, count($skus), '?')) . ")");
+    $st = $db->prepare("SELECT sku, price_suggested, " . stockSql() . " AS stock_now FROM products WHERE sku IN (" . implode(',', array_fill(0, count($skus), '?')) . ")");
     $st->execute($skus);
-    $prices = $st->fetchAll(PDO::FETCH_KEY_PAIR);
+    $prices = $st->fetchAll(PDO::FETCH_UNIQUE); // sku => [price_suggested, stock_now]
 }
 $fmtDay = function (string $d): string {
     $t = strtotime($d);
@@ -90,7 +90,7 @@ $fmtDay = function (string $d): string {
                             </div>
                             <div class="card-body">
                                 <div class="card-sku"><?= e(cleanSkuDisplay($code)) ?></div>
-                                <?php if ($f['matched_sku']): ?><?= priceTag($prices[$f['matched_sku']] ?? null) ?><?php endif; ?>
+                                <?php if ($f['matched_sku']): ?><?= priceTag($prices[$f['matched_sku']]['price_suggested'] ?? null, 'card-price', $prices[$f['matched_sku']]['stock_now'] ?? null) ?><?php endif; ?>
                                 <?php if ($f['folder']): ?><div class="card-name nw-folder">📁 <?= e($f['folder']) ?></div><?php endif; ?>
                             </div>
                         </a>

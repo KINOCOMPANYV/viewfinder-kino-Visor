@@ -58,7 +58,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku
+        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, " . stockSql('p') . " AS stock_now, p.cover_image_url, p.parent_sku
          FROM products p WHERE $where
          ORDER BY p.name ASC"
     );
@@ -86,7 +86,7 @@ if ($q === '' && !$isMultiCode) {
     $total = $countStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT sku, name, category, gender, price_suggested, cover_image_url, parent_sku 
+        "SELECT sku, name, category, gender, price_suggested, " . stockSql() . " AS stock_now, cover_image_url, parent_sku 
          FROM products p
          WHERE $whereMulti
          GROUP BY sku
@@ -127,7 +127,7 @@ if ($q === '' && !$isMultiCode) {
     $exactPh = implode(',', array_fill(0, count($forms), '?'));
     $startsSql = implode(' OR ', array_fill(0, count($forms), skuSearchSql('p.sku') . ' LIKE ?'));
     $stmt = $db->prepare(
-        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, p.cover_image_url, p.parent_sku 
+        "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, " . stockSql('p') . " AS stock_now, p.cover_image_url, p.parent_sku 
          FROM products p
          WHERE $whereSimple
          GROUP BY p.sku
@@ -393,7 +393,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
                                     <?php if ($exactHit && $cardIndex === 0): ?><div class="exact-hit-label">✓ Código exacto</div><?php endif; ?>
                                     <div class="card-sku dynamic-card-sku"><?= e(cleanSkuDisplay($p['sku'])) ?></div>
                                     <div class="card-name"><?= e($p['name']) ?></div>
-                                    <?= priceTag($p['price_suggested'] ?? null) ?>
+                                    <?= priceTag($p['price_suggested'] ?? null, 'card-price', $p['stock_now'] ?? null) ?>
                                 </a>
                                 <?php if ($p['category']): ?>
                                     <div class="card-meta"><span><?= e($p['category']) ?></span></div>

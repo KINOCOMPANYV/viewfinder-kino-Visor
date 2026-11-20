@@ -69,15 +69,16 @@ if (empty($files) && !empty($subfolders) && $folderId !== env('GOOGLE_DRIVE_FOLD
 $visibleSkus = [];
 $matched = array_values(array_unique(array_filter(array_column($files, 'matchedSku'))));
 if ($matched) {
-    $stmt = $db->prepare("SELECT sku, price_suggested FROM products WHERE archived = 0 AND cover_image_url > '' AND sku IN (" . implode(',', array_fill(0, count($matched), '?')) . ")");
+    $stmt = $db->prepare("SELECT sku, price_suggested, " . stockSql() . " AS stock_now FROM products WHERE archived = 0 AND cover_image_url > '' AND sku IN (" . implode(',', array_fill(0, count($matched), '?')) . ")");
     $stmt->execute($matched);
-    $visibleSkus = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); // sku => precio
+    $visibleSkus = $stmt->fetchAll(PDO::FETCH_UNIQUE); // sku => [price_suggested, stock_now]
 }
 
 foreach ($files as &$item) {
     $sku = $item['matchedSku'] ?? null;
     $item['productUrl'] = ($sku !== null && array_key_exists($sku, $visibleSkus)) ? '/producto/' . rawurlencode($sku) : null;
-    $item['price'] = $item['productUrl'] ? $visibleSkus[$sku] : null;
+    $item['price'] = $item['productUrl'] ? $visibleSkus[$sku]['price_suggested'] : null;
+    $item['stock'] = $item['productUrl'] ? $visibleSkus[$sku]['stock_now'] : null;
     $item['thumb'] = lh3Url($item['id']);
     $item['isVideo'] = str_starts_with($item['mimeType'] ?? '', 'video/');
 }
@@ -219,7 +220,7 @@ $shareDesc = implode(' · ', array_filter([
                             </div>
                             <div class="card-body">
                                 <div class="card-sku"><?= e($code) ?></div>
-                                <?php if (!empty($file['productUrl'])): ?><?= priceTag($file['price']) ?><?php endif; ?>
+                                <?php if (!empty($file['productUrl'])): ?><?= priceTag($file['price'], 'card-price', $file['stock'] ?? null) ?><?php endif; ?>
                                 <?php if (!empty($file['folder'])): ?>
                                     <div class="card-name" style="font-size:0.7rem; color:var(--color-text-muted);">📁 <?= e($file['folder']) ?></div>
                                 <?php endif; ?>
