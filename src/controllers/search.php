@@ -176,6 +176,9 @@ if (!$isMultiCode && $q !== '') {
     } catch (\PDOException $e) { /* drive_index aún no existe */ }
 }
 
+// Orden elegido en los filtros (código A→Z, precio mayor/menor); si no, el de la consulta
+catalogSortRows($allMatches, $filters['orden']);
+
 // Una tarjeta por referencia (código), sin agrupar variantes: las variantes se ven al abrir la ficha.
 // El orden es el de la consulta (en una búsqueda por código, el exacto va primero).
 $bySku = [];

@@ -155,6 +155,9 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
   `folderSubtreeIds()` sobre `visibleDriveFolders()`), `catalogFolderOptions()` (ruta «Marca › Sub» con `folderFilterLabel()`).
   Precio acepta «120.000». Opciones: marcas/categorías con 5+ productos y precio si hay 20+ (`searchFilterOptions()`, cacheado).
   El texto busca cada palabra (cualquier orden) en código, nombre, categoría, marca, color y nombre de la carpeta de su foto. Chips con ✕.
+  `contiene=` («Contiene la palabra»): cada palabra en el nombre del producto o en el nombre de su archivo en Drive.
+  `orden=codigo|precio_desc|precio_asc` (`catalogSortRows()`: código alfanumérico natural sin «M:», sin precio al final); también en
+  `/catalogo-pdf/lista` y Admin → Productos (`orden`, `contiene`).
 - **Sin resultados** → "¿Quisiste decir…?" (`searchSuggestions()`, helpers): códigos parecidos por distancia de letras
   (completo o el inicio del código), uno por familia, y marcas parecidas (abren el filtro). Sin servicios externos. Con
   filtros puestos no sugiere: avisa que los filtros pueden ocultar resultados.

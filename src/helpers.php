@@ -339,7 +339,30 @@ function catalogFiltersFromRequest(array $get): array
         'pmin' => $price($get['pmin'] ?? null),
         'pmax' => $price($get['pmax'] ?? null),
         'foto' => ($get['foto'] ?? '') === '1',
+        // «Contiene la palabra»: en el nombre del producto o en el nombre de su archivo en Drive
+        'contiene' => is_string($get['contiene'] ?? null) ? mb_substr(trim($get['contiene']), 0, 60) : '',
+        // Orden: codigo (A→Z alfanumérico), precio_desc (mayor a menor), precio_asc (menor a mayor); '' = el de siempre
+        'orden' => in_array($get['orden'] ?? '', ['codigo', 'precio_desc', 'precio_asc'], true) ? $get['orden'] : '',
     ];
+}
+
+/**
+ * Ordena filas de productos (claves sku, price_suggested) según $orden. Alfanumérico «natural»: M:8-1 antes que M:10-1.
+ * Por precio, los que no tienen precio van al final.
+ */
+function catalogSortRows(array &$rows, string $orden): void
+{
+    $code = fn($r) => skuSearchNorm(preg_replace('/^M[:\-]?/i', '', (string) $r['sku']));
+    if ($orden === 'codigo') {
+        usort($rows, fn($a, $b) => strnatcasecmp($code($a), $code($b)));
+    } elseif ($orden === 'precio_desc' || $orden === 'precio_asc') {
+        $dir = $orden === 'precio_desc' ? -1 : 1;
+        usort($rows, function ($a, $b) use ($dir, $code) {
+            $pa = (float) ($a['price_suggested'] ?? 0); $pb = (float) ($b['price_suggested'] ?? 0);
+            if (($pa > 0) !== ($pb > 0)) return $pa > 0 ? -1 : 1;
+            return $pa != $pb ? ($pa <=> $pb) * $dir : strnatcasecmp($code($a), $code($b));
+        });
+    }
 }
 
 /**
@@ -378,11 +401,13 @@ function catalogPdfItems(PDO $db, string $q, array $filters, int $limit = 300): 
     [$fSql, $fParams] = catalogFilterSql($db, $filters);
     $where = "p.archived = 0 AND p.cover_image_url > '' AND p.cover_image_url NOT LIKE '[VIDEO]%'"
         . ($parts ? ' AND ' . implode(' AND ', $parts) : '') . $fSql;
-    $stmt = $db->prepare("SELECT p.sku, p.cover_image_url FROM products p WHERE $where ORDER BY p.brand, p.sku");
+    $stmt = $db->prepare("SELECT p.sku, p.cover_image_url, p.price_suggested FROM products p WHERE $where ORDER BY p.brand, p.sku");
     $stmt->execute(array_merge($params, $fParams));
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    catalogSortRows($rows, $filters['orden'] ?? '');
     $items = [];
     $total = 0;
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    foreach ($rows as $r) {
         $id = driveIdFromUrl($r['cover_image_url']);
         if (!$id) continue;
         $total++;
@@ -394,7 +419,7 @@ function catalogPdfItems(PDO $db, string $q, array $filters, int $limit = 300): 
 /** ¿Hay algún filtro puesto? */
 function catalogFiltersActive(array $f): bool
 {
-    return $f['marca'] || $f['cat'] || $f['carpeta'] || $f['pmin'] !== null || $f['pmax'] !== null;
+    return $f['marca'] || $f['cat'] || $f['carpeta'] || $f['pmin'] !== null || $f['pmax'] !== null || ($f['contiene'] ?? '') !== '';
 }
 
 /**
@@ -413,6 +438,12 @@ function catalogFilterSql(PDO $db, array $f): array
     if ($f['pmin'] !== null) { $sql .= ' AND p.price_suggested >= ?'; $params[] = $f['pmin']; }
     if ($f['pmax'] !== null) { $sql .= ' AND p.price_suggested > 0 AND p.price_suggested <= ?'; $params[] = $f['pmax']; }
     if ($f['foto']) { $sql .= " AND p.cover_image_url IS NOT NULL AND p.cover_image_url <> ''"; }
+    foreach (array_slice(preg_split('/\s+/u', $f['contiene'] ?? '', -1, PREG_SPLIT_NO_EMPTY), 0, 5) as $w) {
+        $like = '%' . addcslashes($w, '%_\\') . '%';
+        $sql .= ' AND (p.name LIKE ? OR EXISTS (SELECT 1 FROM drive_index fx WHERE fx.is_folder = 0 AND fx.is_hidden = 0'
+            . ' AND fx.matched_sku IN (p.sku, p.parent_sku) AND fx.name LIKE ?))';
+        array_push($params, $like, $like);
+    }
     if ($f['carpeta']) {
         $ids = folderSubtreeIds($db, $f['carpeta']);
         if (!$ids) return [$sql . ' AND 0 = 1', $params];
@@ -887,6 +918,13 @@ function adminProductFilter(array $f): array
             $where[] = "price_suggested {$op} ?";
             $params[] = (int) $v;
         }
+    }
+    // «Contiene la palabra»: en el nombre del producto o en el nombre de su archivo en Drive
+    foreach (array_slice(preg_split('/\s+/u', is_string($f['contiene'] ?? null) ? $f['contiene'] : '', -1, PREG_SPLIT_NO_EMPTY), 0, 5) as $w) {
+        $like = '%' . addcslashes($w, '%_\\') . '%';
+        $where[] = '(name LIKE ? OR EXISTS (SELECT 1 FROM drive_index fx WHERE fx.is_folder = 0'
+            . ' AND fx.matched_sku IN (products.sku, products.parent_sku) AND fx.name LIKE ?))';
+        array_push($params, $like, $like);
     }
     // Carpeta de Drive: productos con una foto en ella o en cualquiera de sus subcarpetas
     if (is_string($f['carpeta'] ?? null) && $f['carpeta'] !== '') {

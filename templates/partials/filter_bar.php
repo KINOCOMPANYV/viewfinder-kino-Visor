@@ -22,7 +22,8 @@ foreach ($fbF['carpeta'] as $cid) {
     }
 }
 $fbFolderName = array_column($fbFolders, 'label', 'id');
-$fbAll = ['marca', 'cat', 'carpeta', 'pmin', 'pmax', 'foto'];
+$fbAll = ['marca', 'cat', 'carpeta', 'pmin', 'pmax', 'foto', 'contiene'];
+$fbOrders = ['' => '↕ Orden normal', 'codigo' => '↕ Código A → Z', 'precio_desc' => '↕ Precio mayor → menor', 'precio_asc' => '↕ Precio menor → mayor'];
 $fbUrl = function (array $drop, ?array $only = null) use ($fbQ, $fbReal, $fbTarget, $fbExtra): string {
     $fbF = $fbReal;
     $qs = $fbExtra + ['q' => $fbQ];
@@ -32,6 +33,7 @@ $fbUrl = function (array $drop, ?array $only = null) use ($fbQ, $fbReal, $fbTarg
         if ($vals && !in_array($k, $drop, true)) $qs[$k] = $vals;
     }
     foreach (['pmin', 'pmax'] as $k) if ($fbF[$k] !== null && !in_array($k, $drop, true)) $qs[$k] = (int) $fbF[$k];
+    foreach (['contiene', 'orden'] as $k) if ($fbF[$k] !== '' && !in_array($k, $drop, true)) $qs[$k] = $fbF[$k];
     return $fbTarget . '?' . http_build_query(array_filter($qs, fn($v) => $v !== '' && $v !== []));
 };
 $fbPrice = fn($v) => '$' . number_format((float) $v, 0, ',', '.');
@@ -39,6 +41,7 @@ $fbChips = [];
 foreach ($fbReal['marca'] as $v) $fbChips[] = [$v, $fbUrl([], ['marca', $v])];
 foreach ($fbReal['cat'] as $v) $fbChips[] = [ucfirst(mb_strtolower($v, 'UTF-8')), $fbUrl([], ['cat', $v])];
 foreach ($fbReal['carpeta'] as $v) $fbChips[] = ['📁 ' . ($fbFolderName[$v] ?? 'Carpeta'), $fbUrl([], ['carpeta', $v])];
+if ($fbReal['contiene'] !== '') $fbChips[] = ['Contiene «' . $fbReal['contiene'] . '»', $fbUrl(['contiene'])];
 if ($fbReal['pmin'] !== null || $fbReal['pmax'] !== null) {
     $fbChips[] = [($fbReal['pmin'] !== null ? $fbPrice($fbReal['pmin']) : '…') . ' – ' . ($fbReal['pmax'] !== null ? $fbPrice($fbReal['pmax']) : '…'), $fbUrl(['pmin', 'pmax'])];
 }
@@ -86,6 +89,14 @@ if (!$fbO['brands'] && !$fbO['categories'] && !$fbO['prices'] && !$fbFolders) re
                    class="filter-field<?= $fbF['pmax'] !== null ? ' on' : '' ?>" value="<?= $fbF['pmax'] !== null ? e(number_format($fbF['pmax'], 0, ',', '.')) : '' ?>">
         </span>
     <?php endif; ?>
+    <input type="text" name="contiene" value="<?= e($fbF['contiene']) ?>" maxlength="60" placeholder="Contiene la palabra…"
+           title="Muestra solo los productos cuyo nombre, o el nombre de su archivo en Drive, contiene esta palabra" aria-label="Contiene la palabra"
+           class="filter-field filter-contains<?= $fbF['contiene'] !== '' ? ' on' : '' ?>">
+    <select name="orden" aria-label="Ordenar" class="filter-field filter-sort<?= $fbF['orden'] !== '' ? ' on' : '' ?>">
+        <?php foreach ($fbOrders as $ov => $ol): ?>
+            <option value="<?= e($ov) ?>" <?= $fbF['orden'] === $ov ? 'selected' : '' ?>><?= e($ol) ?></option>
+        <?php endforeach; ?>
+    </select>
     <button type="submit" class="filter-field filter-go"><?= $fbExtra ? '📄 Armar catálogo' : 'Filtrar' ?></button>
 </form>
 <?php
@@ -95,8 +106,9 @@ if (!$fbExtra) {
     $pdfQs = ['desde' => 'filtro', 'q' => $fbQ];
     foreach (['marca', 'cat', 'carpeta'] as $k) if ($fbF[$k]) $pdfQs[$k] = $fbF[$k];
     foreach (['pmin', 'pmax'] as $k) if ($fbF[$k] !== null) $pdfQs[$k] = (int) $fbF[$k];
+    foreach (['contiene', 'orden'] as $k) if ($fbF[$k] !== '') $pdfQs[$k] = $fbF[$k];
     $pdfQs = array_filter($pdfQs, fn($v) => $v !== '' && $v !== []);
-    if (count($pdfQs) > 1) $fbPdf = '/catalogo-pdf?' . http_build_query($pdfQs);
+    if (count(array_diff_key($pdfQs, ['orden' => 1])) > 1) $fbPdf = '/catalogo-pdf?' . http_build_query($pdfQs);
 }
 ?>
 <?php if ($fbChips || $fbPdf): ?>
@@ -118,8 +130,10 @@ if (!$fbExtra) {
     const ff = document.getElementById('filterForm');
     if (!ff || ff.dataset.ready) return;
     ff.dataset.ready = '1';
-    let dirty = false;
+    let dirty = false, going = false;
     const go = () => {
+        if (going) return; // Enter en un campo dispara «change» y «submit»: una sola recarga
+        going = true;
         const target = ff.dataset.target || '/buscar';
         const input = target === '/buscar' ? document.getElementById('searchInput') : null;
         const qs = new URLSearchParams();

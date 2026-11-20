@@ -12,6 +12,8 @@ $filters = [
     'carpeta' => $_GET['carpeta'] ?? '',
     'pmin' => trim($_GET['pmin'] ?? ''),
     'pmax' => trim($_GET['pmax'] ?? ''),
+    'contiene' => trim($_GET['contiene'] ?? ''),
+    'orden' => in_array($_GET['orden'] ?? '', ['codigo', 'precio_desc', 'precio_asc'], true) ? $_GET['orden'] : '',
 ];
 $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 50;
@@ -24,11 +26,17 @@ $total = (int) $countStmt->fetchColumn();
 $totalPages = max(1, (int) ceil($total / $perPage));
 $page = min($page, $totalPages);
 
+// Orden: código (alfanumérico: por largo y luego texto, así 8-1 va antes que 10-1), precio, o el de la hoja
+$orderSql = [
+    'codigo' => "LENGTH(REPLACE(REPLACE(sku, 'M:', ''), 'M-', '')), REPLACE(REPLACE(sku, 'M:', ''), 'M-', ''), sku",
+    'precio_desc' => '(price_suggested IS NULL OR price_suggested <= 0), price_suggested DESC, sku',
+    'precio_asc' => '(price_suggested IS NULL OR price_suggested <= 0), price_suggested ASC, sku',
+][$filters['orden']] ?? 'in_sheet DESC, sheet_row ASC, sku ASC';
 $stmt = $db->prepare(
     "SELECT id, sku, name, brand, color, category, price_suggested, price_sheet, price_manual, stock, cover_image_url,
             is_active, in_sheet, from_drive, sheet_status
      FROM products WHERE {$where}
-     ORDER BY in_sheet DESC, sheet_row ASC, sku ASC LIMIT {$perPage} OFFSET " . (($page - 1) * $perPage)
+     ORDER BY {$orderSql} LIMIT {$perPage} OFFSET " . (($page - 1) * $perPage)
 );
 $stmt->execute($params);
 $products = $stmt->fetchAll();
