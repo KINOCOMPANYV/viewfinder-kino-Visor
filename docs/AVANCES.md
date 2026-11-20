@@ -18,7 +18,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   3 envío más rápido, 4 estética consistente, 5 app instalable, 6 búsqueda inteligente. Hechas: etapas 1 (#34), 2 (#35), 3 (#36) y 4 (#37).
 
 ## Decisiones vigentes (del dueño)
-- Stock público (2026-11-20): debajo de la foto, al lado del precio, «20 en stock» en verde y «0 en stock» en rojo (negativo = 0), en tarjetas y ficha. Fuente: Stock SYS (📦 Inventario) y si no hay, STOCK de la Hoja master; producto Solo Drive sin dato SYS = no se muestra nada (`stockSql()`/`stockTag()` en helpers).
+- Stock público (2026-11-20): debajo de la foto, al lado del precio, «20 en stock» en verde y «0 en stock» en rojo (negativo = 0), en tarjetas y ficha. Fuente: Stock SYS (📦 Inventario) y si no hay, STOCK de la Hoja master; producto Solo Drive sin dato SYS = no se muestra nada (`stockSql()`/`stockTag()` en helpers). Filtro «Stock: todos / Con stock / Sin stock» en todas las pantallas públicas, Catálogo PDF y Admin → Productos (sin dato de stock solo sale en «todos»).
 - **Búsqueda por foto con IA de imágenes** (2026-11-10): se eligió comparar "huellas" (jina-clip-v2, servicio de pago por uso,
   centavos) sobre la huella gratis (solo reconoce la misma foto) y sobre describir la foto con IA (lenta y cara).
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -312,4 +312,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Misma rama (2026-11-20, tras #93): el filtro «Carpetas» queda con 1 solo nivel (decisión del dueño).
 - Rama `claude/project-thread-n7lzzo` (2026-11-20): «Drive no respondió al listar carpetas»: el listado del sync reintenta
   (2/4/8 s, 60 s de espera, renueva el token si vence a mitad), parte la consulta en 4 si sigue fallando y el error muestra el motivo (HTTP/Google).
-- Rama `claude/project-thread-7o7t14` (2026-11-20): stock al lado del precio (verde con cantidad, rojo en 0) en inicio, búsqueda, carpetas, Novedades y ficha; sin consultas extra.
+- Rama `claude/project-thread-7o7t14` (2026-11-20): stock al lado del precio (verde con cantidad, rojo en 0) en inicio, búsqueda, carpetas, Novedades y ficha; sin consultas extra. Filtro Con stock / Sin stock / Todos.

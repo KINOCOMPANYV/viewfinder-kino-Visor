@@ -142,6 +142,11 @@
                     <option value="<?= e($ov) ?>" <?= $filters['ocodigo'] === $ov ? 'selected' : '' ?>><?= e($ol) ?></option>
                 <?php endforeach; ?>
             </select>
+            <select name="stock" class="form-input" onchange="this.form.submit()" title="Stock SYS o STOCK de la Hoja master">
+                <?php foreach (['' => 'Stock: todos', 'con' => 'Con stock', 'sin' => 'Sin stock (0)'] as $ov => $ol): ?>
+                    <option value="<?= e($ov) ?>" <?= $filters['stock'] === $ov ? 'selected' : '' ?>><?= e($ol) ?></option>
+                <?php endforeach; ?>
+            </select>
             <input type="text" name="pmin" value="<?= e($filters['pmin']) ?>" inputmode="numeric" placeholder="Precio desde $" class="form-input prod-price-f">
             <input type="text" name="pmax" value="<?= e($filters['pmax']) ?>" inputmode="numeric" placeholder="hasta $" class="form-input prod-price-f">
             <button type="submit" class="btn btn-sm btn-primary">Buscar</button>

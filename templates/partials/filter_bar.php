@@ -22,7 +22,8 @@ foreach ($fbF['carpeta'] as $cid) {
     }
 }
 $fbFolderName = array_column($fbFolders, 'label', 'id');
-$fbAll = ['marca', 'cat', 'carpeta', 'pmin', 'pmax', 'foto', 'contiene'];
+$fbAll = ['marca', 'cat', 'carpeta', 'pmin', 'pmax', 'foto', 'contiene', 'stock'];
+$fbStocks = ['' => 'Stock: todos', 'con' => 'Con stock', 'sin' => 'Sin stock'];
 $fbPriceOrders = ['' => '↕ Precio', 'desc' => 'Mayor precio', 'asc' => 'Menor precio'];
 $fbCodeOrders = ['' => '↕ Código', 'asc' => 'Código: A → Z', 'desc' => 'Código: Z → A'];
 $fbUrl = function (array $drop, ?array $only = null) use ($fbQ, $fbReal, $fbTarget, $fbExtra): string {
@@ -34,7 +35,7 @@ $fbUrl = function (array $drop, ?array $only = null) use ($fbQ, $fbReal, $fbTarg
         if ($vals && !in_array($k, $drop, true)) $qs[$k] = $vals;
     }
     foreach (['pmin', 'pmax'] as $k) if ($fbF[$k] !== null && !in_array($k, $drop, true)) $qs[$k] = (int) $fbF[$k];
-    foreach (['contiene', 'oprecio', 'ocodigo'] as $k) if ($fbF[$k] !== '' && !in_array($k, $drop, true)) $qs[$k] = $fbF[$k];
+    foreach (['contiene', 'stock', 'oprecio', 'ocodigo'] as $k) if ($fbF[$k] !== '' && !in_array($k, $drop, true)) $qs[$k] = $fbF[$k];
     return $fbTarget . '?' . http_build_query(array_filter($qs, fn($v) => $v !== '' && $v !== []));
 };
 $fbPrice = fn($v) => '$' . number_format((float) $v, 0, ',', '.');
@@ -42,6 +43,7 @@ $fbChips = [];
 foreach ($fbReal['marca'] as $v) $fbChips[] = [$v, $fbUrl([], ['marca', $v])];
 foreach ($fbReal['cat'] as $v) $fbChips[] = [ucfirst(mb_strtolower($v, 'UTF-8')), $fbUrl([], ['cat', $v])];
 foreach ($fbReal['carpeta'] as $v) $fbChips[] = ['📁 ' . ($fbFolderName[$v] ?? 'Carpeta'), $fbUrl([], ['carpeta', $v])];
+if ($fbReal['stock'] !== '') $fbChips[] = [$fbStocks[$fbReal['stock']], $fbUrl(['stock'])];
 if ($fbReal['contiene'] !== '') $fbChips[] = ['Contiene «' . $fbReal['contiene'] . '»', $fbUrl(['contiene'])];
 if ($fbReal['pmin'] !== null || $fbReal['pmax'] !== null) {
     $fbChips[] = [($fbReal['pmin'] !== null ? $fbPrice($fbReal['pmin']) : '…') . ' – ' . ($fbReal['pmax'] !== null ? $fbPrice($fbReal['pmax']) : '…'), $fbUrl(['pmin', 'pmax'])];
@@ -105,6 +107,11 @@ $fbFold = !$fbExtra;
     <input type="text" name="contiene" value="<?= e($fbF['contiene']) ?>" maxlength="60" placeholder="Contiene la palabra…"
            title="Muestra solo los productos cuyo nombre, o el nombre de su archivo en Drive, contiene esta palabra" aria-label="Contiene la palabra"
            class="filter-field filter-contains<?= $fbF['contiene'] !== '' ? ' on' : '' ?>">
+    <select name="stock" aria-label="Stock" title="Con stock: más de 0 · Sin stock: 0" class="filter-field filter-sort<?= $fbF['stock'] !== '' ? ' on' : '' ?>">
+        <?php foreach ($fbStocks as $sv => $sl): ?>
+            <option value="<?= e($sv) ?>" <?= $fbF['stock'] === $sv ? 'selected' : '' ?>><?= e($sl) ?></option>
+        <?php endforeach; ?>
+    </select>
     <?php foreach ([['oprecio', $fbPriceOrders, 'Ordenar por precio (se combina con el código)'], ['ocodigo', $fbCodeOrders, 'Ordenar por código (con precio: entre los de igual precio)']] as [$on, $oo, $ot]): ?>
         <select name="<?= $on ?>" aria-label="<?= e($ot) ?>" title="<?= e($ot) ?>" class="filter-field filter-sort<?= $fbF[$on] !== '' ? ' on' : '' ?>">
             <?php foreach ($oo as $ov => $ol): ?>
@@ -121,7 +128,7 @@ if (!$fbExtra) {
     $pdfQs = ['desde' => 'filtro', 'q' => $fbQ];
     foreach (['marca', 'cat', 'carpeta'] as $k) if ($fbF[$k]) $pdfQs[$k] = $fbF[$k];
     foreach (['pmin', 'pmax'] as $k) if ($fbF[$k] !== null) $pdfQs[$k] = (int) $fbF[$k];
-    foreach (['contiene', 'oprecio', 'ocodigo'] as $k) if ($fbF[$k] !== '') $pdfQs[$k] = $fbF[$k];
+    foreach (['contiene', 'stock', 'oprecio', 'ocodigo'] as $k) if ($fbF[$k] !== '') $pdfQs[$k] = $fbF[$k];
     $pdfQs = array_filter($pdfQs, fn($v) => $v !== '' && $v !== []);
     if (count(array_diff_key($pdfQs, ['oprecio' => 1, 'ocodigo' => 1])) > 1) $fbPdf = '/catalogo-pdf?' . http_build_query($pdfQs);
 }
