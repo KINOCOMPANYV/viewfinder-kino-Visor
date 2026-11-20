@@ -206,15 +206,14 @@ function stockSql(string $alias = ''): string
     return "COALESCE({$a}sys_stock, CASE WHEN {$a}in_sheet = 1 THEN {$a}stock END)";
 }
 
-/** «20 en stock» en verde, «0 en stock» en rojo (negativo = 0); sin dato = nada. */
+/** «In Stock» en verde (más de 0), «Out stock» en rojo (0 o negativo); sin dato = nada. Sin cantidad por ahora (decisión del dueño 2026-11-20). */
 function stockTag($stock): string
 {
     if ($stock === null || $stock === '' || $stock === false) return '';
-    $n = max(0, (int) $stock);
-    return '<span class="stock-tag ' . ($n > 0 ? 'in' : 'out') . '">' . number_format($n, 0, ',', '.') . ' en stock</span>';
+    return (int) $stock > 0 ? '<span class="stock-tag in">In Stock</span>' : '<span class="stock-tag out">Out stock</span>';
 }
 
-/** Línea de precio para tarjetas y ficha; con $stock (ver stockSql) pone al lado «N en stock». */
+/** Línea de precio para tarjetas y ficha; con $stock (ver stockSql) pone al lado «In Stock» / «Out stock». */
 function priceTag($price, string $class = 'card-price', $stock = null): string
 {
     $none = !((float) ($price ?? 0) > 0);
