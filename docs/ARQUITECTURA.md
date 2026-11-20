@@ -151,8 +151,12 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
 - **Filtros** (`/buscar?marca[]=&cat[]=&carpeta[]=&pmin=&pmax=`; también `marca=` suelto): barra única `templates/partials/filter_bar.php`
   (con su script) en inicio, `/buscar`, `/carpeta/{id}` (su carpeta marcada de entrada) y Novedades; siempre lleva a `/buscar`.
   Marca, categoría y carpeta admiten varias (listas con casillas y buscador, se aplican al cerrar o con «Aplicar»); todo se combina.
-  Helpers: `catalogFiltersFromRequest()`, `catalogFilterSql()` (carpeta = foto visible en ella o en cualquier subcarpeta,
-  `folderSubtreeIds()` sobre `visibleDriveFolders()`), `catalogFolderOptions()` (ruta «Marca › Sub» con `folderFilterLabel()`).
+  Helpers: `catalogFiltersFromRequest()`, `catalogFilterSql()`, `catalogWordsSql()`. **Índice de búsqueda** (migración 032,
+  `src/services/SearchIndex.php`): columnas `products.search_text` (código, nombre, marca, categoría, color, carpetas),
+  `contains_text` (nombre + nombres de archivo) y `folder_ids` (" id … " de sus carpetas y superiores = carpeta incluye subcarpetas);
+  carpetas del filtro en `search_meta.folder_options`. Lo rehace `SearchIndex::rebuild()` al final de `DriveIndex::relink()` y de
+  `refreshFolderState()` (cada sync, ~0,5 s con 6000 productos); `ensure()` lo arma si falta. Nunca cruzar drive_index por fila al buscar
+  (con `matched_sku IN (p.sku, p.parent_sku)` MySQL no usa el índice: 30+ s).
   Precio acepta «120.000». Opciones: marcas/categorías con 5+ productos y precio si hay 20+ (`searchFilterOptions()`, cacheado).
   El texto busca cada palabra (cualquier orden) en código, nombre, categoría, marca, color y nombre de la carpeta de su foto. Chips con ✕.
   `contiene=` («Contiene la palabra»): cada palabra en el nombre del producto o en el nombre de su archivo en Drive.
