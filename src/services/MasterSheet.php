@@ -37,6 +37,60 @@ class MasterSheet
         'stock', 'description', 'brand', 'case_material', 'strap_material', 'sheet_status',
     ];
 
+    /** Campo de products → qué es en el visor (para Admin → Hoja master) */
+    public const FIELD_LABELS = [
+        'sku' => 'Código (búsqueda y foto)', 'name' => 'Nombre del producto', 'color' => 'Color',
+        'category' => 'Categoría (filtro)', 'gender' => 'Género (filtro)', 'movement' => 'Movimiento',
+        'price_suggested' => 'Precio del visor', 'price_kyte' => 'Precio del visor (manda)',
+        'price_wholesale' => 'Precio por mayor (no público)', 'stock' => 'Stock', 'description' => 'Descripción',
+        'brand' => 'Marca (filtro)', 'case_material' => 'Material de caja', 'strap_material' => 'Material pulsera',
+        'sheet_status' => 'Estado (solo informativo)',
+    ];
+
+    /**
+     * Previo de la hoja tal cual viene: encabezados con el campo del visor que alimentan y las filas crudas.
+     * $filter: texto que debe contener alguna celda (vacío = primeras filas).
+     * @return array{headers: array<int, array{name:string, field:?string, label:?string}>, rows: array<int, array{line:int, cells:string[]}>, total:int, matched:int}
+     */
+    public static function preview(string $csv, int $limit = 50, string $filter = ''): array
+    {
+        $handle = fopen('php://temp', 'r+');
+        fwrite($handle, $csv);
+        rewind($handle);
+        $header = fgetcsv($handle) ?: [];
+        $hasKyte = false;
+        $headers = [];
+        foreach ($header as $h) {
+            $field = self::COLUMNS[self::headerKey((string) $h)] ?? null;
+            if ($field === 'price_kyte') $hasKyte = true;
+            $headers[] = ['name' => trim(str_replace("\xEF\xBB\xBF", '', (string) $h)), 'field' => $field, 'label' => $field ? (self::FIELD_LABELS[$field] ?? $field) : null];
+        }
+        // Con PRECIO KYTE, PRICE_SUGGESTED queda de respaldo (fillMissingPrices)
+        if ($hasKyte) {
+            foreach ($headers as &$h) {
+                if ($h['field'] === 'price_suggested') $h['label'] = 'Precio de respaldo (si falta PRECIO KYTE)';
+            }
+            unset($h);
+        }
+        $needle = mb_strtolower(trim($filter));
+        $rows = [];
+        $total = 0;
+        $matched = 0;
+        for ($line = 2; ($r = fgetcsv($handle)) !== false; $line++) {
+            if (!array_filter($r, fn($v) => trim((string) $v) !== '')) continue;
+            $total++;
+            if ($needle !== '' && !str_contains(mb_strtolower(implode("\t", $r)), $needle)) continue;
+            $matched++;
+            if (count($rows) < $limit) {
+                $cells = [];
+                foreach ($headers as $i => $_) $cells[] = trim((string) ($r[$i] ?? ''));
+                $rows[] = ['line' => $line, 'cells' => $cells];
+            }
+        }
+        fclose($handle);
+        return ['headers' => $headers, 'rows' => $rows, 'total' => $total, 'matched' => $matched];
+    }
+
     /** Descarga la hoja como CSV. @throws RuntimeException */
     public static function fetchCsv(int $timeout = 30): string
     {
