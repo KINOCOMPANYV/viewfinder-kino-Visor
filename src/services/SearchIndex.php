@@ -60,13 +60,17 @@ class SearchIndex
                 }
                 unset($c);
             }
-            // Carpetas para el filtro: las que tienen fotos de productos visibles (y sus superiores)
+            // Carpetas para el filtro: las que tienen fotos de productos visibles (y sus superiores), solo hasta
+            // 2 niveles («AUTOMATICOS › 427»; no «› 427-1»). La de nivel 2 ya incluye todo lo de sus subcarpetas
+            // porque folder_ids guarda también las carpetas superiores (decisión del dueño 2026-11-20).
             $visible = array_flip($db->query("SELECT sku FROM products WHERE archived = 0 AND cover_image_url > ''")->fetchAll(PDO::FETCH_COLUMN));
             $optIds = [];
             foreach ($byCode as $code => $c) if (isset($visible[$code])) foreach (($c['i'] ?? []) as $i => $_) $optIds[$i] = true;
             $options = [];
             foreach (array_keys($optIds) as $id) {
-                $label = implode(' › ', array_map('folderDisplayName', $up((string) $id)[1]));
+                $names = $up((string) $id)[1];
+                if (count($names) > 2) continue;
+                $label = implode(' › ', array_map('folderDisplayName', $names));
                 if ($label !== '') $options[] = ['id' => (string) $id, 'label' => $label];
             }
             usort($options, fn($a, $b) => strnatcasecmp($a['label'], $b['label']));
