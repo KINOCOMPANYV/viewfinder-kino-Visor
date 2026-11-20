@@ -310,7 +310,7 @@ unset($v);
                     <h1>
                         <?= e($product['name']) ?>
                     </h1>
-                    <?= priceTag($product['price_suggested'] ?? null, 'product-price') ?>
+                    <?= priceTag($product['price_suggested'] ?? null, 'product-price', $product['sys_stock'] ?? (!empty($product['in_sheet']) ? $product['stock'] : null)) ?>
 
                     <?php include __DIR__ . '/../../templates/partials/share_whatsapp.php'; ?>
 

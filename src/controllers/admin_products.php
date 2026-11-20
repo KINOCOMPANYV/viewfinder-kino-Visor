@@ -13,6 +13,7 @@ $filters = [
     'pmin' => trim($_GET['pmin'] ?? ''),
     'pmax' => trim($_GET['pmax'] ?? ''),
     'contiene' => trim($_GET['contiene'] ?? ''),
+    'stock' => in_array($_GET['stock'] ?? '', ['con', 'sin'], true) ? $_GET['stock'] : '',
     'oprecio' => in_array($_GET['oprecio'] ?? '', ['desc', 'asc'], true) ? $_GET['oprecio'] : '',
     'ocodigo' => in_array($_GET['ocodigo'] ?? '', ['asc', 'desc'], true) ? $_GET['ocodigo'] : '',
 ];
@@ -35,7 +36,7 @@ if ($filters['oprecio'] !== '') $orderParts[] = '(price_suggested IS NULL OR pri
 if ($filters['ocodigo'] !== '') { $d = strtoupper($filters['ocodigo']); $orderParts[] = "LENGTH($codeKey) $d, $codeKey $d"; }
 $orderSql = $orderParts ? implode(', ', $orderParts) . ', sku' : 'in_sheet DESC, sheet_row ASC, sku ASC';
 $stmt = $db->prepare(
-    "SELECT id, sku, name, brand, color, category, price_suggested, price_sheet, price_manual, COALESCE(sys_stock, stock) AS stock, cover_image_url,
+    "SELECT id, sku, name, brand, color, category, price_suggested, price_sheet, price_manual, " . stockSql() . " AS stock, cover_image_url,
             is_active, in_sheet, from_drive, sheet_status
      FROM products WHERE {$where}
      ORDER BY {$orderSql} LIMIT {$perPage} OFFSET " . (($page - 1) * $perPage)

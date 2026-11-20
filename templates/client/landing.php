@@ -205,7 +205,7 @@
                 ? "ORDER BY CASE WHEN album_id = " . $db->quote($poedagarAlbumId) . " THEN 0 ELSE 1 END, sheet_row DESC, id DESC"
                 : "ORDER BY sheet_row DESC, id DESC";
             $rows = $db->query(
-                "SELECT id, sku, parent_sku, name, category, gender, price_suggested, cover_image_url
+                "SELECT id, sku, parent_sku, name, category, gender, price_suggested, " . stockSql() . " AS stock_now, cover_image_url
                  FROM products WHERE $visibleWhere $orderClause LIMIT $perPage OFFSET $offset"
             )->fetchAll();
             foreach ($rows as $p) {
@@ -261,7 +261,7 @@
                                 <a href="/producto/<?= rawurlencode($parent['sku']) ?>" class="dynamic-card-link" style="text-decoration:none; color:inherit; display:block;">
                                     <div class="card-sku dynamic-card-sku"><?= e(cleanSkuDisplay($parent['sku'])) ?></div>
                                     <div class="card-name"><?= e($parent['name']) ?></div>
-                                    <?= priceTag($parent['price_suggested'] ?? null) ?>
+                                    <?= priceTag($parent['price_suggested'] ?? null, 'card-price', $parent['stock_now'] ?? null) ?>
                                 </a>
                                 <?php if ($parent['category']): ?>
                                     <div class="card-meta"><span><?= e($parent['category']) ?></span></div>

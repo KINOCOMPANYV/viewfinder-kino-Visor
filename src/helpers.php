@@ -196,11 +196,30 @@ function priceText($price): string
     return $p > 0 ? '$' . number_format($p, 0, ',', '.') : 'Sin precio en tabla';
 }
 
-/** Línea de precio para tarjetas y ficha. */
-function priceTag($price, string $class = 'card-price'): string
+/**
+ * SQL de las existencias que ve el público: Stock SYS (última subida en 📦 Inventario) y, si no hay,
+ * la columna STOCK de la Hoja master. NULL = sin dato (producto Solo Drive sin SYS) → no se muestra nada.
+ */
+function stockSql(string $alias = ''): string
+{
+    $a = $alias !== '' ? $alias . '.' : '';
+    return "COALESCE({$a}sys_stock, CASE WHEN {$a}in_sheet = 1 THEN {$a}stock END)";
+}
+
+/** «20 en stock» en verde, «0 en stock» en rojo (negativo = 0); sin dato = nada. */
+function stockTag($stock): string
+{
+    if ($stock === null || $stock === '' || $stock === false) return '';
+    $n = max(0, (int) $stock);
+    return '<span class="stock-tag ' . ($n > 0 ? 'in' : 'out') . '">' . number_format($n, 0, ',', '.') . ' en stock</span>';
+}
+
+/** Línea de precio para tarjetas y ficha; con $stock (ver stockSql) pone al lado «N en stock». */
+function priceTag($price, string $class = 'card-price', $stock = null): string
 {
     $none = !((float) ($price ?? 0) > 0);
-    return '<div class="' . $class . ($none ? ' no-price' : '') . '">' . e(priceText($price)) . '</div>';
+    $st = stockTag($stock);
+    return '<div class="' . $class . ($none ? ' no-price' : '') . ($st ? ' has-stock' : '') . '"><span class="price-val">' . e(priceText($price)) . '</span>' . $st . '</div>';
 }
 
 /**
@@ -275,6 +294,9 @@ function catalogFiltersFromRequest(array $get): array
         'pmin' => $price($get['pmin'] ?? null),
         'pmax' => $price($get['pmax'] ?? null),
         'foto' => ($get['foto'] ?? '') === '1',
+        // Existencias (Stock SYS o STOCK de la Hoja master): con = más de 0, sin = 0 o menos; '' = todos.
+        // Los que no tienen dato de stock (Solo Drive sin SYS) solo salen en «todos».
+        'stock' => in_array($get['stock'] ?? '', ['con', 'sin'], true) ? $get['stock'] : '',
         // «Contiene la palabra»: en el nombre del producto o en el nombre de su archivo en Drive
         'contiene' => is_string($get['contiene'] ?? null) ? mb_substr(trim($get['contiene']), 0, 60) : '',
         // Orden: codigo (A→Z alfanumérico), precio_desc (mayor a menor), precio_asc (menor a mayor); '' = el de siempre
@@ -365,7 +387,7 @@ function catalogPdfItems(PDO $db, string $q, array $filters, int $limit = 300): 
 /** ¿Hay algún filtro puesto? */
 function catalogFiltersActive(array $f): bool
 {
-    return $f['marca'] || $f['cat'] || $f['carpeta'] || $f['pmin'] !== null || $f['pmax'] !== null || ($f['contiene'] ?? '') !== '';
+    return $f['marca'] || $f['cat'] || $f['carpeta'] || $f['pmin'] !== null || $f['pmax'] !== null || ($f['contiene'] ?? '') !== '' || ($f['stock'] ?? '') !== '';
 }
 
 /**
@@ -384,6 +406,7 @@ function catalogFilterSql(PDO $db, array $f): array
     if ($f['pmin'] !== null) { $sql .= ' AND p.price_suggested >= ?'; $params[] = $f['pmin']; }
     if ($f['pmax'] !== null) { $sql .= ' AND p.price_suggested > 0 AND p.price_suggested <= ?'; $params[] = $f['pmax']; }
     if ($f['foto']) { $sql .= " AND p.cover_image_url IS NOT NULL AND p.cover_image_url <> ''"; }
+    if (($f['stock'] ?? '') !== '') $sql .= ' AND ' . stockSql('p') . ($f['stock'] === 'con' ? ' > 0' : ' <= 0');
     foreach (array_slice(preg_split('/\s+/u', $f['contiene'] ?? '', -1, PREG_SPLIT_NO_EMPTY), 0, 5) as $w) {
         $like = '%' . addcslashes($w, '%_\\') . '%';
         $sql .= SearchIndex::ready($db) ? ' AND p.contains_text LIKE ?' : ' AND p.name LIKE ?';
@@ -834,6 +857,8 @@ function adminProductFilter(array $f): array
         $params[] = '%' . addcslashes(skuSearchNorm($w), '%_\\') . '%';
         array_push($params, $like, $like);
     }
+    // Stock: con (> 0) / sin (0 o menos); sin dato de stock solo sale en «todos»
+    if (in_array($f['stock'] ?? '', ['con', 'sin'], true)) $where[] = stockSql() . ($f['stock'] === 'con' ? ' > 0' : ' <= 0');
     // Rango de precio (el que ve el público: price_suggested). Acepta «120.000», «$120000», «120000».
     foreach (['pmin' => '>=', 'pmax' => '<='] as $k => $op) {
         $v = preg_replace('/\D/', '', (string) ($f[$k] ?? ''));
