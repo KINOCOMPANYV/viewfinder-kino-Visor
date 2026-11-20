@@ -108,25 +108,8 @@ if ($q === '' && !$isMultiCode) {
     if (empty($words)) {
         $whereSimple = "p.archived = 0 AND p.cover_image_url > ''";
     } else {
-        foreach ($words as $word) {
-            $wordEscaped = addcslashes($word, '%_');
-            $wordLike = "%{$wordEscaped}%";
-            
-            // "M8363-3" encuentra "M:8363-3"; "8363-3" y "M8363-3" son el mismo código (skuExactForms)
-            $skuOr = [];
-            foreach (skuExactForms($word) as $form) {
-                $skuOr[] = skuSearchSql('p.sku') . " LIKE ?";
-                $paramsBase[] = '%' . addcslashes($form, '%_') . '%';
-            }
-
-            // Para cada palabra, buscar en los distintos campos
-            // …y en nombre, categoría, marca, color o el nombre de la carpeta de Drive de su foto
-            // («poedagar dama dorado» = las tres palabras, en cualquier orden)
-            $whereSimpleParts[] = "(" . implode(' OR ', $skuOr ?: ['0']) . " OR p.name LIKE ? OR p.category LIKE ? OR p.brand LIKE ? OR p.color LIKE ?"
-                . " OR EXISTS (SELECT 1 FROM drive_index fw JOIN drive_index fo ON fo.file_id = fw.parent_id"
-                . " WHERE fw.is_folder = 0 AND fw.is_hidden = 0 AND fw.matched_sku IN (p.sku, p.parent_sku) AND fo.name LIKE ?))";
-            array_push($paramsBase, $wordLike, $wordLike, $wordLike, $wordLike, $wordLike);
-        }
+        // Cada palabra, en cualquier orden: código (con o sin "M"), nombre, categoría, marca, color o carpeta de su foto
+        [$whereSimpleParts, $paramsBase] = catalogWordsSql($words);
         $whereSimple = "p.archived = 0 AND p.cover_image_url > '' AND (" . implode(' AND ', $whereSimpleParts) . ")";
     }
     $whereSimple .= $filterSql;

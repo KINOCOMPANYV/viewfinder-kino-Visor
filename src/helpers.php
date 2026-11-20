@@ -342,6 +342,55 @@ function catalogFiltersFromRequest(array $get): array
     ];
 }
 
+/**
+ * SQL de búsqueda por palabras (alias p = products): cada palabra debe aparecer, en cualquier orden, en el código
+ * ("M8363-3" = "M:8363-3" = "8363-3", vía skuExactForms), nombre, categoría, marca, color o en el nombre de la
+ * carpeta de Drive donde está su foto. «poedagar dama dorado» = las tres palabras.
+ * @return array{0: string[], 1: array} partes (unir con AND) y parámetros
+ */
+function catalogWordsSql(array $words): array
+{
+    $parts = [];
+    $params = [];
+    foreach (array_slice(array_values(array_filter($words, fn($w) => $w !== '')), 0, 8) as $word) {
+        $wordLike = '%' . addcslashes($word, '%_') . '%';
+        $skuOr = [];
+        foreach (skuExactForms($word) as $form) {
+            $skuOr[] = skuSearchSql('p.sku') . ' LIKE ?';
+            $params[] = '%' . addcslashes($form, '%_') . '%';
+        }
+        $parts[] = '(' . implode(' OR ', $skuOr ?: ['0']) . ' OR p.name LIKE ? OR p.category LIKE ? OR p.brand LIKE ? OR p.color LIKE ?'
+            . ' OR EXISTS (SELECT 1 FROM drive_index fw JOIN drive_index fo ON fo.file_id = fw.parent_id'
+            . ' WHERE fw.is_folder = 0 AND fw.is_hidden = 0 AND fw.matched_sku IN (p.sku, p.parent_sku) AND fo.name LIKE ?))';
+        array_push($params, $wordLike, $wordLike, $wordLike, $wordLike, $wordLike);
+    }
+    return [$parts, $params];
+}
+
+/**
+ * Fotos para un catálogo PDF filtrado (/catalogo-pdf/lista): la portada de cada producto visible (variantes incluidas)
+ * que cumple el texto y los filtros, ordenadas por marca y código. Sin videos (no van en el PDF).
+ * @return array{items: array<int, array{id: string, sku: string}>, total: int}
+ */
+function catalogPdfItems(PDO $db, string $q, array $filters, int $limit = 300): array
+{
+    [$parts, $params] = catalogWordsSql(preg_split('/\s+/u', trim(preg_replace('/\.\w{2,4}$/i', '', $q))) ?: []);
+    [$fSql, $fParams] = catalogFilterSql($db, $filters);
+    $where = "p.archived = 0 AND p.cover_image_url > '' AND p.cover_image_url NOT LIKE '[VIDEO]%'"
+        . ($parts ? ' AND ' . implode(' AND ', $parts) : '') . $fSql;
+    $stmt = $db->prepare("SELECT p.sku, p.cover_image_url FROM products p WHERE $where ORDER BY p.brand, p.sku");
+    $stmt->execute(array_merge($params, $fParams));
+    $items = [];
+    $total = 0;
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $id = driveIdFromUrl($r['cover_image_url']);
+        if (!$id) continue;
+        $total++;
+        if (count($items) < $limit) $items[] = ['id' => $id, 'sku' => $r['sku']];
+    }
+    return ['items' => $items, 'total' => $total];
+}
+
 /** ¿Hay algún filtro puesto? */
 function catalogFiltersActive(array $f): bool
 {

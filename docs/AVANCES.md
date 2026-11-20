@@ -323,3 +323,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-rd9wya` (2026-11-14): Remisión con plantilla editable (`/admin/remision`, `RemisionTemplate.php`,
   tabla `doc_templates`, migración 031) y diseño negro/rojo con logos según el modelo del dueño.
 - Rama `claude/project-thread-tvhp25` (2026-11-20): fotos más grandes (tarjetas 190 px mínimo en PC; Admin → Productos 96 px) y filtros inteligentes en todas las pantallas públicas (`filter_bar.php`: varias marcas/categorías/carpetas, precio, texto por marca/color/carpeta) y en Admin → Productos (carpeta, precio, texto por palabras).
+- Misma rama (2026-11-20): Catálogo PDF con fotos más grandes (opción 1 o 2 fotos por página, lista en pantalla 120 px) y catálogos filtrados: «🔎 Armar con filtros» en el generador y «📄 Catálogo PDF con esto» en la barra de filtros (`/catalogo-pdf/lista`).

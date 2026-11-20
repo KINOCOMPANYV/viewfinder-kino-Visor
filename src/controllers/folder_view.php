@@ -151,7 +151,7 @@ $shareDesc = implode(' · ', array_filter([
                 <?php include __DIR__ . '/../../templates/partials/share_whatsapp.php'; ?>
             </div>
             <div class="filter-wrap filter-wrap-left">
-                <?php $filterPreset = ['carpeta' => [$folderId]]; include __DIR__ . '/../../templates/partials/filter_bar.php'; ?>
+                <?php $filterPreset = $folderId !== env('GOOGLE_DRIVE_FOLDER_ID', '') ? ['carpeta' => [$folderId]] : []; include __DIR__ . '/../../templates/partials/filter_bar.php'; ?>
             </div>
         </div>
     </div>
