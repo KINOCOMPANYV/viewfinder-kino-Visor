@@ -35,7 +35,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/api/cron/sync-covers?token=` | `admin_sync_covers.php` | **Actualiza el índice de Drive** y asigna portada + álbum |
 | `/api/cron/precache-drive?token=` | `admin_sync_covers.php` | Nombre viejo del cron = `sync-covers` (compatibilidad) |
 | `/api/webhook/sheets` POST | `webhook_sheets.php` | Sync incremental desde Apps Script (misma regla que el sync completo) |
-| `/admin/products` (`?q=&estado=&marca=&categoria=&genero=`; estado: activos, inactivos, fuera, sinfoto, conportada, sinportada, hoy, sinprecio, preciomanual; las tarjetas de `/admin` enlazan aquí) | `admin_products.php` | Listado, activar/desactivar y precio editable. Cambio: `POST /admin/products/active` (`ids` o `all=1` + filtros); precio: `POST /admin/products/price` (`admin_products_price.php`: `id`+`price` → `price_manual=1`; `id`+`reset=1` → vuelve a `price_sheet`) |
+| `/admin/products` (`?q=&estado=&marca=&categoria=&genero=&carpeta=&pmin=&pmax=`; `q` por palabras en código/nombre/marca/categoría/color/carpeta; estado: activos, inactivos, fuera, sinfoto, conportada, sinportada, hoy, sinprecio, preciomanual; las tarjetas de `/admin` enlazan aquí) | `admin_products.php` | Listado, activar/desactivar y precio editable. Cambio: `POST /admin/products/active` (`ids` o `all=1` + filtros); precio: `POST /admin/products/price` (`admin_products_price.php`: `id`+`price` → `price_manual=1`; `id`+`reset=1` → vuelve a `price_sheet`) |
 | `/admin/sync` | `templates/admin/sync.php` | Botones: hoja maestra (`POST /admin/sync-sheets`, `?dry_run=1`) y Drive (`/admin/media/sync-covers`) |
 | `/admin/photo-check?sku=` | `admin_photo_check.php` | "¿Por qué no sale la foto?" (en Sincronizar): fotos del código en `drive_index`, ruta y qué las oculta (JSON) |
 | `/admin/problemas` (`?tab=sinfoto\|ocultas\|archivos\|hoja`, `&csv=1`) | `admin_problems.php` | **Problemas de fotos** (etapa G, solo BD): productos sin foto, foto en carpeta oculta, archivos sin código y filas de la hoja sin precio/nombre, con motivo y ruta en Drive; CSV completo; "¿Por qué?" abre Sincronizar con el código (`/admin/sync?sku=`) |
@@ -148,9 +148,13 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
 - Código sin importar "-", espacios, ":" ni "." (`skuSearchSql()` / `skuSearchNorm()`): "M8363-3" encuentra "M:8363-3".
 - Resultados mientras se escribe (`assets/js/search.js`, `/buscar?ajax=1`); una búsqueda nueva cancela la anterior.
 - Orden: código exacto, luego "empieza por", luego el resto (por nombre).
-- **Filtros** (`/buscar?marca=&cat=&pmin=&pmax=&foto=1`): en la BD (`$filterSql` en `search.php`), combinables, en la URL
-  (Atrás y la paginación los conservan) y viajan con la búsqueda en vivo. Solo se ofrecen marcas/categorías con 5+ productos
-  visibles y precio si hay 20+ con precio (`searchFilterOptions()`). Chips con ✕ y "Quitar filtros".
+- **Filtros** (`/buscar?marca[]=&cat[]=&carpeta[]=&pmin=&pmax=`; también `marca=` suelto): barra única `templates/partials/filter_bar.php`
+  (con su script) en inicio, `/buscar`, `/carpeta/{id}` (su carpeta marcada de entrada) y Novedades; siempre lleva a `/buscar`.
+  Marca, categoría y carpeta admiten varias (listas con casillas y buscador, se aplican al cerrar o con «Aplicar»); todo se combina.
+  Helpers: `catalogFiltersFromRequest()`, `catalogFilterSql()` (carpeta = foto visible en ella o en cualquier subcarpeta,
+  `folderSubtreeIds()` sobre `visibleDriveFolders()`), `catalogFolderOptions()` (ruta «Marca › Sub» con `folderFilterLabel()`).
+  Precio acepta «120.000». Opciones: marcas/categorías con 5+ productos y precio si hay 20+ (`searchFilterOptions()`, cacheado).
+  El texto busca cada palabra (cualquier orden) en código, nombre, categoría, marca, color y nombre de la carpeta de su foto. Chips con ✕.
 - **Sin resultados** → "¿Quisiste decir…?" (`searchSuggestions()`, helpers): códigos parecidos por distancia de letras
   (completo o el inicio del código), uno por familia, y marcas parecidas (abren el filtro). Sin servicios externos. Con
   filtros puestos no sugiere: avisa que los filtros pueden ocultar resultados.

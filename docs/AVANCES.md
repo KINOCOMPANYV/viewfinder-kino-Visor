@@ -146,7 +146,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Descarga original (`/api/download`): si el token de Google falta, baja el archivo público de Drive.
   "Drive not connected" = reconectar en Admin → Media (caducó y se reconectó el 2026-11-09).
 - Búsqueda: el código exacto primero ("8363-3" = "M:8363-3"), luego los que empiezan por él y el resto; carpetas cuyo
-  nombre coincide (también como código), arriba o, si el código existe, justo debajo de su tarjeta. Filtros por marca, categoría, precio y "solo con foto" (combinables, en la URL); si no encuentra nada,
+  nombre coincide (también como código), arriba o, si el código existe, justo debajo de su tarjeta. Filtros (2026-11-20) en inicio, búsqueda, carpetas y Novedades: varias marcas, categorías y carpetas a la vez + precio, todo combinable y en la URL; el texto busca también por marca, color y nombre de carpeta; si no encuentra nada,
   "¿Quisiste decir…?" con los códigos y marcas más parecidos.
 - Navegación (2026-11-11): en el celular, botón **←** junto al logo en todas las páginas menos el inicio (vuelve a la
   pantalla anterior; si se llegó por un enlace de fuera, va a la página de arriba). **Migas de pan** «Inicio › Sección ›
@@ -322,3 +322,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Misma rama (2026-11-14): respaldo de precio por familia y PRICE_SUGGESTED (`MasterSheet::fillMissingPrices`); precios de KYTE para «Solo Drive».
 - Rama `claude/project-thread-rd9wya` (2026-11-14): Remisión con plantilla editable (`/admin/remision`, `RemisionTemplate.php`,
   tabla `doc_templates`, migración 031) y diseño negro/rojo con logos según el modelo del dueño.
+- Rama `claude/project-thread-tvhp25` (2026-11-20): fotos más grandes (tarjetas 190 px mínimo en PC; Admin → Productos 96 px) y filtros inteligentes en todas las pantallas públicas (`filter_bar.php`: varias marcas/categorías/carpetas, precio, texto por marca/color/carpeta) y en Admin → Productos (carpeta, precio, texto por palabras).

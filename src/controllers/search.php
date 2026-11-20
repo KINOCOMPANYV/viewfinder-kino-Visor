@@ -19,21 +19,9 @@ $offset = ($page - 1) * $perPage;
 $db = getDB();
 
 // ── Filtros (etapa B): en la URL, combinables, se aplican en la BD a todas las búsquedas ──
-$filters = [
-    'marca' => trim((string) ($_GET['marca'] ?? '')),
-    'cat' => trim((string) ($_GET['cat'] ?? '')),
-    'pmin' => is_numeric($_GET['pmin'] ?? null) ? (float) $_GET['pmin'] : null,
-    'pmax' => is_numeric($_GET['pmax'] ?? null) ? (float) $_GET['pmax'] : null,
-    'foto' => ($_GET['foto'] ?? '') === '1',
-];
-$filterSql = '';
-$filterParams = [];
-if ($filters['marca'] !== '') { $filterSql .= ' AND p.brand = ?'; $filterParams[] = $filters['marca']; }
-if ($filters['cat'] !== '') { $filterSql .= ' AND p.category = ?'; $filterParams[] = $filters['cat']; }
-if ($filters['pmin'] !== null) { $filterSql .= ' AND p.price_suggested >= ?'; $filterParams[] = $filters['pmin']; }
-if ($filters['pmax'] !== null) { $filterSql .= ' AND p.price_suggested > 0 AND p.price_suggested <= ?'; $filterParams[] = $filters['pmax']; }
-if ($filters['foto']) { $filterSql .= " AND p.cover_image_url IS NOT NULL AND p.cover_image_url <> ''"; }
-$hasFilters = $filterSql !== '';
+$filters = catalogFiltersFromRequest($_GET);
+[$filterSql, $filterParams] = catalogFilterSql($db, $filters);
+$hasFilters = catalogFiltersActive($filters);
 // Opciones: solo valores con datos suficientes (5+ productos visibles)
 $filterOptions = searchFilterOptions($db);
 
@@ -132,9 +120,12 @@ if ($q === '' && !$isMultiCode) {
             }
 
             // Para cada palabra, buscar en los distintos campos
-            $whereSimpleParts[] = "(" . implode(' OR ', $skuOr ?: ['0']) . " OR p.name LIKE ? OR p.category LIKE ?)";
-            $paramsBase[] = $wordLike;
-            $paramsBase[] = $wordLike;
+            // …y en nombre, categoría, marca, color o el nombre de la carpeta de Drive de su foto
+            // («poedagar dama dorado» = las tres palabras, en cualquier orden)
+            $whereSimpleParts[] = "(" . implode(' OR ', $skuOr ?: ['0']) . " OR p.name LIKE ? OR p.category LIKE ? OR p.brand LIKE ? OR p.color LIKE ?"
+                . " OR EXISTS (SELECT 1 FROM drive_index fw JOIN drive_index fo ON fo.file_id = fw.parent_id"
+                . " WHERE fw.is_folder = 0 AND fw.is_hidden = 0 AND fw.matched_sku IN (p.sku, p.parent_sku) AND fo.name LIKE ?))";
+            array_push($paramsBase, $wordLike, $wordLike, $wordLike, $wordLike, $wordLike);
         }
         $whereSimple = "p.archived = 0 AND p.cover_image_url > '' AND (" . implode(' AND ', $whereSimpleParts) . ")";
     }
@@ -288,68 +279,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
             <div class="autocomplete-dropdown" id="autocomplete"></div>
         </div>
 
-        <?php
-        // Filtros: un formulario GET (la URL los guarda, Atrás los conserva). Cambiar uno vuelve a buscar.
-        $fo = $filterOptions;
-        $filterUrl = function (array $drop) use ($q, $filters): string {
-            $qs = ['q' => $q] + array_filter($filters, fn($v) => $v !== '' && $v !== null && $v !== false);
-            if (!empty($qs['foto'])) $qs['foto'] = '1';
-            foreach ($drop as $k) unset($qs[$k]);
-            return '/buscar?' . http_build_query(array_filter($qs, fn($v) => $v !== ''));
-        };
-        $fmtPrice = fn($v) => '$' . number_format((float) $v, 0, ',', '.');
-        $activeChips = [];
-        if ($filters['marca'] !== '') $activeChips[] = [$filters['marca'], ['marca']];
-        if ($filters['cat'] !== '') $activeChips[] = [ucfirst(strtolower($filters['cat'])), ['cat']];
-        if ($filters['pmin'] !== null || $filters['pmax'] !== null) {
-            $activeChips[] = [($filters['pmin'] !== null ? $fmtPrice($filters['pmin']) : '…') . ' – '
-                . ($filters['pmax'] !== null ? $fmtPrice($filters['pmax']) : '…'), ['pmin', 'pmax']];
-        }
-        if ($filters['foto']) $activeChips[] = ['Con foto', ['foto']];
-        ?>
-        <?php if ($fo['brands'] || $fo['categories'] || $fo['prices']): ?>
-        <form class="filter-bar" id="filterForm" action="/buscar" method="GET">
-            <input type="hidden" name="q" value="<?= e($q) ?>">
-            <?php if ($fo['brands']): ?>
-                <select name="marca" aria-label="Marca" class="filter-field<?= $filters['marca'] !== '' ? ' on' : '' ?>">
-                    <option value="">Todas las marcas</option>
-                    <?php foreach ($fo['brands'] as $b): ?>
-                        <option value="<?= e($b) ?>" <?= $b === $filters['marca'] ? 'selected' : '' ?>><?= e($b) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            <?php endif; ?>
-            <?php if ($fo['categories']): ?>
-                <select name="cat" aria-label="Categoría" class="filter-field<?= $filters['cat'] !== '' ? ' on' : '' ?>">
-                    <option value="">Todas las categorías</option>
-                    <?php foreach ($fo['categories'] as $c): ?>
-                        <option value="<?= e($c) ?>" <?= $c === $filters['cat'] ? 'selected' : '' ?>><?= e(ucfirst(strtolower($c))) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            <?php endif; ?>
-            <?php if ($fo['prices']): ?>
-                <span class="filter-price">
-                    <input type="number" name="pmin" min="0" step="1000" inputmode="numeric" placeholder="Precio desde" aria-label="Precio desde"
-                           class="filter-field<?= $filters['pmin'] !== null ? ' on' : '' ?>" value="<?= $filters['pmin'] !== null ? e((string) (int) $filters['pmin']) : '' ?>">
-                    <input type="number" name="pmax" min="0" step="1000" inputmode="numeric" placeholder="hasta" aria-label="Precio hasta"
-                           class="filter-field<?= $filters['pmax'] !== null ? ' on' : '' ?>" value="<?= $filters['pmax'] !== null ? e((string) (int) $filters['pmax']) : '' ?>">
-                </span>
-            <?php endif; ?>
-            <label class="filter-field filter-check<?= $filters['foto'] ? ' on' : '' ?>">
-                <input type="checkbox" name="foto" value="1" <?= $filters['foto'] ? 'checked' : '' ?>> Solo con foto
-            </label>
-            <noscript><button type="submit" class="btn btn-sm btn-secondary">Filtrar</button></noscript>
-        </form>
-        <?php if ($activeChips): ?>
-            <div class="filter-active">
-                <?php foreach ($activeChips as [$label, $drop]): ?>
-                    <a class="filter-chip" href="<?= e($filterUrl($drop)) ?>" aria-label="Quitar filtro <?= e($label) ?>"><?= e($label) ?> <span>✕</span></a>
-                <?php endforeach; ?>
-                <?php if (count($activeChips) > 1): ?>
-                    <a class="filter-clear" href="<?= e($filterUrl(['marca', 'cat', 'pmin', 'pmax', 'foto'])) ?>">Quitar filtros</a>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
-        <?php endif; ?>
+        <?php include __DIR__ . '/../../templates/partials/filter_bar.php'; ?>
 
         <!-- Results count -->
         <div id="searchResultsContainer">
@@ -403,7 +333,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
                 <?php endif; ?>
                 <?php if ($hasFilters): ?>
                     <p>Puede que los filtros estén ocultando resultados.
-                        <a href="<?= e($filterUrl(['marca', 'cat', 'pmin', 'pmax', 'foto'])) ?>">Quitar filtros</a></p>
+                        <a href="/buscar<?= $q !== '' ? '?' . e(http_build_query(['q' => $q])) : '' ?>">Quitar filtros</a></p>
                 <?php endif; ?>
             </div>
         <?php endif; ?>

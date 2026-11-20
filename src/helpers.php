@@ -316,19 +316,157 @@ function skuExactForms(string $q): array
 }
 
 /**
+ * Filtros del catálogo público desde la URL (/buscar y la barra de filtros de todas las pantallas).
+ * marca, cat y carpeta admiten varios valores (marca[]=A&marca[]=B) o uno solo (marca=A).
+ * @return array{marca: string[], cat: string[], carpeta: string[], pmin: ?float, pmax: ?float, foto: bool}
+ */
+function catalogFiltersFromRequest(array $get): array
+{
+    $list = function ($v): array {
+        $v = is_array($v) ? $v : ($v === null || $v === '' ? [] : [$v]);
+        $v = array_map(fn($x) => trim((string) $x), array_filter($v, 'is_scalar'));
+        return array_values(array_slice(array_unique(array_filter($v, fn($x) => $x !== '')), 0, 30));
+    };
+    $price = function ($v): ?float {
+        if (!is_scalar($v)) return null;
+        $d = preg_replace('/\D/', '', (string) $v); // «120.000», «$120000» → 120000
+        return $d === '' ? null : (float) $d;
+    };
+    return [
+        'marca' => $list($get['marca'] ?? null),
+        'cat' => $list($get['cat'] ?? null),
+        'carpeta' => $list($get['carpeta'] ?? null),
+        'pmin' => $price($get['pmin'] ?? null),
+        'pmax' => $price($get['pmax'] ?? null),
+        'foto' => ($get['foto'] ?? '') === '1',
+    ];
+}
+
+/** ¿Hay algún filtro puesto? */
+function catalogFiltersActive(array $f): bool
+{
+    return $f['marca'] || $f['cat'] || $f['carpeta'] || $f['pmin'] !== null || $f['pmax'] !== null;
+}
+
+/**
+ * SQL (" AND …", alias p = products) de los filtros del catálogo. Todos se combinan entre sí;
+ * dentro de marca/categoría/carpeta, varios valores = cualquiera de ellos.
+ * Carpeta: productos con una foto visible en esa carpeta o en cualquiera de sus subcarpetas.
+ * @return array{0: string, 1: array}
+ */
+function catalogFilterSql(PDO $db, array $f): array
+{
+    $sql = '';
+    $params = [];
+    $in = fn(array $v) => implode(',', array_fill(0, count($v), '?'));
+    if ($f['marca']) { $sql .= ' AND p.brand IN (' . $in($f['marca']) . ')'; array_push($params, ...$f['marca']); }
+    if ($f['cat']) { $sql .= ' AND p.category IN (' . $in($f['cat']) . ')'; array_push($params, ...$f['cat']); }
+    if ($f['pmin'] !== null) { $sql .= ' AND p.price_suggested >= ?'; $params[] = $f['pmin']; }
+    if ($f['pmax'] !== null) { $sql .= ' AND p.price_suggested > 0 AND p.price_suggested <= ?'; $params[] = $f['pmax']; }
+    if ($f['foto']) { $sql .= " AND p.cover_image_url IS NOT NULL AND p.cover_image_url <> ''"; }
+    if ($f['carpeta']) {
+        $ids = folderSubtreeIds($db, $f['carpeta']);
+        if (!$ids) return [$sql . ' AND 0 = 1', $params];
+        $sql .= ' AND EXISTS (SELECT 1 FROM drive_index fc WHERE fc.is_folder = 0 AND fc.is_hidden = 0'
+            . ' AND fc.matched_sku IN (p.sku, p.parent_sku) AND fc.parent_id IN (' . $in($ids) . '))';
+        array_push($params, ...$ids);
+    }
+    return [$sql, $params];
+}
+
+/**
+ * Carpetas visibles de Drive (id → [name, parent_id]), de la copia local. Una sola lectura por petición.
+ * @return array<string, array{0: string, 1: string}>
+ */
+function visibleDriveFolders(PDO $db): array
+{
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    $cache = [];
+    try {
+        foreach ($db->query("SELECT file_id, name, parent_id FROM drive_index WHERE is_folder = 1 AND is_hidden = 0")->fetchAll(PDO::FETCH_NUM) as [$id, $name, $parent]) {
+            $cache[$id] = [(string) $name, (string) $parent];
+        }
+    } catch (Throwable $e) {
+        $cache = [];
+    }
+    return $cache;
+}
+
+/** Ids de las carpetas pedidas y de todas sus subcarpetas visibles. @return string[] */
+function folderSubtreeIds(PDO $db, array $folderIds): array
+{
+    $folders = visibleDriveFolders($db);
+    $children = [];
+    foreach ($folders as $id => [, $parent]) $children[$parent][] = $id;
+    $out = [];
+    $stack = array_values(array_filter($folderIds, fn($id) => isset($folders[$id])));
+    while ($stack && count($out) < 5000) {
+        $id = array_pop($stack);
+        if (isset($out[$id])) continue;
+        $out[$id] = true;
+        foreach ($children[$id] ?? [] as $c) $stack[] = $c;
+    }
+    return array_map('strval', array_keys($out));
+}
+
+/** Nombre de carpeta con su ruta («CURREN › DAMA»), sin la raíz ni los números de orden. */
+function folderFilterLabel(PDO $db, string $folderId): string
+{
+    $folders = visibleDriveFolders($db);
+    $root = env('GOOGLE_DRIVE_FOLDER_ID', '');
+    $parts = [];
+    for ($id = $folderId, $i = 0; isset($folders[$id]) && $id !== $root && $i < 8; $i++) {
+        array_unshift($parts, folderDisplayName($folders[$id][0]));
+        $id = $folders[$id][1];
+    }
+    return implode(' › ', $parts);
+}
+
+/**
+ * Carpetas para el filtro: las que tienen fotos de productos visibles (directas) y las de primer nivel,
+ * ordenadas por su ruta. @return array<int, array{id: string, label: string}>
+ */
+function catalogFolderOptions(PDO $db): array
+{
+    try {
+        $ids = $db->query(
+            "SELECT DISTINCT fi.parent_id FROM drive_index fi
+             JOIN products p ON p.sku = fi.matched_sku AND p.archived = 0 AND p.cover_image_url > ''
+             WHERE fi.is_folder = 0 AND fi.is_hidden = 0 AND fi.parent_id IS NOT NULL
+             UNION SELECT DISTINCT fi.album_id FROM drive_index fi
+             JOIN products p ON p.sku = fi.matched_sku AND p.archived = 0 AND p.cover_image_url > ''
+             WHERE fi.is_folder = 0 AND fi.is_hidden = 0 AND fi.album_id IS NOT NULL"
+        )->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Throwable $e) {
+        return [];
+    }
+    $out = [];
+    foreach ($ids as $id) {
+        $label = folderFilterLabel($db, (string) $id);
+        if ($label !== '') $out[] = ['id' => (string) $id, 'label' => $label];
+    }
+    usort($out, fn($a, $b) => strnatcasecmp($a['label'], $b['label']));
+    return $out;
+}
+
+/**
  * Opciones de los filtros de la búsqueda: solo valores con datos suficientes (5+ productos visibles).
  * @return array{brands: string[], categories: string[], prices: bool}
  */
 function searchFilterOptions(PDO $db): array
 {
+    static $cache = null;
+    if ($cache !== null) return $cache;
     $pick = fn(string $col) => $db->query(
         "SELECT $col FROM products WHERE archived = 0 AND cover_image_url > '' AND $col IS NOT NULL AND TRIM($col) <> ''
          GROUP BY $col HAVING COUNT(*) >= 5 ORDER BY $col"
     )->fetchAll(PDO::FETCH_COLUMN);
     $categories = $pick('category');
-    return [
+    return $cache = [
         'brands' => $pick('brand'),
         'categories' => count($categories) >= 2 ? $categories : [],
+        'folders' => catalogFolderOptions($db),
         'prices' => (int) $db->query("SELECT COUNT(*) FROM products WHERE archived = 0 AND cover_image_url > '' AND price_suggested > 0")->fetchColumn() >= 20,
     ];
 }
@@ -681,11 +819,32 @@ function adminProductFilter(array $f): array
 {
     $where = ['1 = 1'];
     $params = [];
+    // Búsqueda inteligente: cada palabra debe aparecer (en cualquier orden) en el código, nombre, marca,
+    // categoría, color o en el nombre de la carpeta de Drive donde está su foto. Ej.: «poedagar dama dorado».
     $q = trim((string) ($f['q'] ?? ''));
-    if ($q !== '') {
-        $where[] = '(' . skuSearchSql('sku') . ' LIKE ? OR name LIKE ?)';
-        $params[] = '%' . addcslashes(skuSearchNorm($q), '%_\\') . '%';
-        $params[] = '%' . addcslashes($q, '%_\\') . '%';
+    $words = $q === '' ? [] : array_slice(preg_split('/\s+/u', $q), 0, 6);
+    foreach ($words as $w) {
+        $like = '%' . addcslashes($w, '%_\\') . '%';
+        $where[] = '(' . skuSearchSql('sku') . ' LIKE ? OR name LIKE ? OR brand LIKE ? OR category LIKE ? OR color LIKE ?'
+            . ' OR EXISTS (SELECT 1 FROM drive_index fi JOIN drive_index fo ON fo.file_id IN (fi.parent_id, fi.album_id)'
+            . ' WHERE fi.is_folder = 0 AND fi.matched_sku IN (products.sku, products.parent_sku) AND fo.name LIKE ?))';
+        $params[] = '%' . addcslashes(skuSearchNorm($w), '%_\\') . '%';
+        array_push($params, $like, $like, $like, $like, $like);
+    }
+    // Rango de precio (el que ve el público: price_suggested). Acepta «120.000», «$120000», «120000».
+    foreach (['pmin' => '>=', 'pmax' => '<='] as $k => $op) {
+        $v = preg_replace('/\D/', '', (string) ($f[$k] ?? ''));
+        if ($v !== '') {
+            $where[] = "price_suggested {$op} ?";
+            $params[] = (int) $v;
+        }
+    }
+    // Carpeta de Drive: productos con una foto en ella o en cualquiera de sus subcarpetas
+    if (is_string($f['carpeta'] ?? null) && $f['carpeta'] !== '') {
+        $ids = folderSubtreeIds(getDB(), [$f['carpeta']]) ?: [$f['carpeta']];
+        $where[] = 'EXISTS (SELECT 1 FROM drive_index fc WHERE fc.is_folder = 0'
+            . ' AND fc.matched_sku IN (products.sku, products.parent_sku) AND fc.parent_id IN (' . implode(',', array_fill(0, count($ids), '?')) . '))';
+        array_push($params, ...$ids);
     }
     switch ($f['estado'] ?? '') {
         case 'activos':   $where[] = 'is_active = 1 AND (in_sheet = 1 OR from_drive = 1)'; break;
