@@ -131,6 +131,12 @@
                 <?php endforeach; ?>
             </select>
             <?php endif; ?>
+            <input type="text" name="contiene" value="<?= e($filters['contiene']) ?>" placeholder="Contiene la palabra…" title="En el nombre del producto o del archivo en Drive" class="form-input" style="width:170px;">
+            <select name="orden" class="form-input" onchange="this.form.submit()">
+                <?php foreach (['' => 'Orden de la hoja', 'codigo' => 'Código A → Z', 'precio_desc' => 'Precio: mayor a menor', 'precio_asc' => 'Precio: menor a mayor'] as $ov => $ol): ?>
+                    <option value="<?= e($ov) ?>" <?= $filters['orden'] === $ov ? 'selected' : '' ?>><?= e($ol) ?></option>
+                <?php endforeach; ?>
+            </select>
             <input type="text" name="pmin" value="<?= e($filters['pmin']) ?>" inputmode="numeric" placeholder="Precio desde $" class="form-input prod-price-f">
             <input type="text" name="pmax" value="<?= e($filters['pmax']) ?>" inputmode="numeric" placeholder="hasta $" class="form-input prod-price-f">
             <button type="submit" class="btn btn-sm btn-primary">Buscar</button>
