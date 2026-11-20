@@ -1,0 +1,13 @@
+# No copiar al contenedor lo que la app no usa al correr (imagen más liviana, deploy más rápido)
+.git
+.gitignore
+.dockerignore
+docs
+README.md
+CLAUDE.md
+.env
+storage/ratelimit/*
+storage/og_cache
+storage/send_cache
+storage/inventario
+storage/cache

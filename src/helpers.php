@@ -203,70 +203,6 @@ function priceTag($price, string $class = 'card-price'): string
     return '<div class="' . $class . ($none ? ' no-price' : '') . '">' . e(priceText($price)) . '</div>';
 }
 
-function formatPrice(float $price): string
-{
-    return '$' . number_format($price, 2, '.', ',');
-}
-
-/**
- * Trunca un texto a N caracteres.
- */
-function truncate(string $text, int $length = 100): string
-{
-    if (mb_strlen($text) <= $length)
-        return $text;
-    return mb_substr($text, 0, $length) . '...';
-}
-
-/**
- * Verifica si un nombre de archivo coincide con un SKU usando regla de prefijo.
- * 
- * Regla: El nombre del archivo debe comenzar con el SKU y el siguiente carácter
- * (si existe) NO puede ser un dígito (evita que "123-1" coincida con "123-10").
- * 
- * Soporta variantes de SKU separadas por: guion bajo, punto, espacio o letra directa.
- * 
- * Ejemplos para SKU "123-1":
- *   ✅ 123-1.jpg        (SKU + extensión)
- *   ✅ 123-1f1.jpg      (SKU + letra + ...)
- *   ✅ 123-1v2.jpg      (SKU + letra + ...)
- *   ✅ 123-1_foto.jpg   (SKU + guion bajo + ...)
- *   ✅ 123-1_V1.jpg     (Variante V1)
- *   ✅ 123-1_ROJO.jpg   (Variante ROJO)
- *   ✅ 123-1.A.jpg      (Variante .A)
- *   ✅ 123-1 foto.jpg   (SKU + espacio + ...)
- *   ❌ 123-10.jpg       (SKU + dígito = otro producto)
- *   ❌ 123-12.jpg       (SKU + dígito = otro producto)
- *   ❌ 456-1.jpg        (SKU diferente)
- */
-function skuMatchesFilename(string $sku, string $filename): bool
-{
-    // Quitar extensión del nombre para comparar
-    $nameOnly = pathinfo($filename, PATHINFO_FILENAME);
-
-    // Verificar que el nombre comience con el SKU (case-insensitive)
-    if (stripos($nameOnly, $sku) !== 0) {
-        return false;
-    }
-
-    // Si el nombre es exactamente el SKU, es match
-    if (strlen($nameOnly) === strlen($sku)) {
-        return true;
-    }
-
-    // El carácter siguiente al SKU determina si es match
-    $nextChar = $nameOnly[strlen($sku)];
-
-    // Si es dígito, NO es match (evita 123-1 → 123-10)
-    if (ctype_digit($nextChar)) {
-        return false;
-    }
-
-    // Cualquier otro carácter es válido: letra (f, v), guion bajo (_), 
-    // punto (.), espacio ( ), guion (-) → soporta variantes y sufijos
-    return true;
-}
-
 /**
  * Regla de coincidencia foto ↔ SKU usada al buscar media de un producto:
  * el nombre (sin extensión) empieza con el SKU y lo que sigue es un separador
@@ -517,17 +453,26 @@ function searchFilterOptions(PDO $db): array
 {
     static $cache = null;
     if ($cache !== null) return $cache;
+    // Marcas, categorías y "hay precios" cambian solo con el sync o el admin: se guardan 2 min en disco para no
+    // recorrer todos los productos en cada página que muestra la barra de filtros. Las carpetas ya vienen del índice.
+    $file = BASE_DIR . '/storage/cache/filter_options.json';
+    $saved = @filemtime($file) > time() - 120 ? json_decode((string) @file_get_contents($file), true) : null;
+    if (is_array($saved) && isset($saved['brands'], $saved['categories'], $saved['prices'])) {
+        return $cache = $saved + ['folders' => catalogFolderOptions($db)];
+    }
     $pick = fn(string $col) => $db->query(
         "SELECT $col FROM products WHERE archived = 0 AND cover_image_url > '' AND $col IS NOT NULL AND TRIM($col) <> ''
          GROUP BY $col HAVING COUNT(*) >= 5 ORDER BY $col"
     )->fetchAll(PDO::FETCH_COLUMN);
     $categories = $pick('category');
-    return $cache = [
+    $opts = [
         'brands' => $pick('brand'),
         'categories' => count($categories) >= 2 ? $categories : [],
-        'folders' => catalogFolderOptions($db),
         'prices' => (int) $db->query("SELECT COUNT(*) FROM products WHERE archived = 0 AND cover_image_url > '' AND price_suggested > 0")->fetchColumn() >= 20,
     ];
+    @mkdir(dirname($file), 0775, true);
+    @file_put_contents($file . '.tmp', json_encode($opts, JSON_UNESCAPED_UNICODE)) && @rename($file . '.tmp', $file);
+    return $cache = $opts + ['folders' => catalogFolderOptions($db)];
 }
 
 /**
@@ -991,38 +936,6 @@ function isGenericMediaForSku(string $sku, string $filename): bool
     // Sin " (1)", " (2)" de Drive. "M:8363" en la hoja = "M8363.jpg" / "M-8363.jpg" en Drive
     $nameOnly = genericMediaStem($filename);
     return $nameOnly === strtolower($sku) || in_array($nameOnly, skuNameVariants($sku), true);
-}
-
-/**
- * Extrae el SKU sin el prefijo de marca (letras antes del primer dígito).
- * 
- * Muchas veces los archivos en Drive se nombran sin el prefijo de marca
- * del catálogo. Esta función permite matchear ambos formatos.
- * 
- * Ejemplos:
- *   "KNM-8845-RG"  → "8845-RG"     (quita KNM-)
- *   "KNM-8845"     → "8845"         (quita KNM-)
- *   "ABC-1234-V1"  → "1234-V1"      (quita ABC-)
- *   "8845-RG"      → "8845-RG"      (ya no tiene prefijo, no cambia)
- *   "WATCH-99"     → "99"           (quita WATCH-)
- *   "123-456"      → "123-456"      (empieza con dígito, no cambia)
- */
-function extractSkuWithoutPrefix(string $sku): string
-{
-    $sku = trim($sku);
-    
-    // Si ya empieza con dígito, no tiene prefijo
-    if (preg_match('/^\d/', $sku)) {
-        return $sku;
-    }
-    
-    // Quitar prefijo de letras seguido opcionalmente de guion, punto, espacio o guion bajo:
-    // "KNM-8845-RG" → "8845-RG", "NO 2218" → "2218", "NO.2405" → "2405"
-    if (preg_match('/^[A-Za-z]+[-. _]?(\d.*)$/', $sku, $matches)) {
-        return $matches[1];
-    }
-    
-    return $sku;
 }
 
 /**

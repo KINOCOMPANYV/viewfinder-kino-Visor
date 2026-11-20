@@ -16,7 +16,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 ## Rutas (`index.php`)
 | Ruta | Archivo | Qué hace |
 |---|---|---|
-| `/` | `templates/client/landing.php` | Carpetas de primer nivel (abren `/carpeta/{id}`) + "Productos recientes" (60 referencias/página, una tarjeta por código) |
+| `/` | `templates/client/landing.php` | Carpetas de primer nivel (abren `/carpeta/{id}`, foto de portada en la misma consulta) + "Productos recientes" (60 referencias/página con LIMIT en MySQL, una tarjeta por código) |
 | `/buscar` (`?q=`, `?ajax=1`) | `src/controllers/search.php` | Una tarjeta por código (60/página, sin variantes; orden: exacto con/sin "M" vía `skuExactForms()`, empieza por, resto), multi-código, carpetas de `drive_index` (por nombre o código; si el código existe, van tras su tarjeta). `?album=ID` (viejo) redirige a `/carpeta/ID` |
 | `/producto/{sku}` | `src/controllers/product.php` | Ficha; galería se carga por JS desde `/api/media/{sku}`. Si no hay producto pero es el nombre de un archivo indexado, redirige a su carpeta |
 | `/carpeta/{id}` | `src/controllers/folder_view.php` | Lista una carpeta (índice local; Drive en vivo solo si no está indexada). Cada foto enlaza a `/producto/{matched_sku}` solo si ese producto es visible; si no, a la foto en grande |
@@ -160,7 +160,7 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
   tandas de 300 (~0,3 s con 6000). `migrate.php` usa `lock_wait_timeout = 20` (un ALTER que espera no traba el arranque) y
   `sync_loop.sh` vuelve a correr las migraciones pendientes en cada vuelta. Nunca cruzar drive_index por fila al buscar
   (con `matched_sku IN (p.sku, p.parent_sku)` MySQL no usa el índice: 30+ s).
-  Precio acepta «120.000». Opciones: marcas/categorías con 5+ productos y precio si hay 20+ (`searchFilterOptions()`, cacheado).
+  Precio acepta «120.000». Opciones: marcas/categorías con 5+ productos y precio si hay 20+ (`searchFilterOptions()`, 2 min en `storage/cache/filter_options.json`).
   El texto busca cada palabra (cualquier orden) en código, nombre, categoría, marca, color y nombre de la carpeta de su foto. Chips con ✕.
   `contiene=` («Contiene la palabra»): cada palabra en el nombre del producto o en el nombre de su archivo en Drive.
   Orden en dos controles que se combinan: `oprecio=desc|asc` (primero; sin precio al final) y `ocodigo=asc|desc` (código
@@ -175,7 +175,7 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
   de las portadas visibles (foto, no video), 30 más parecidas en una ventana; mientras faltan portadas por preparar avisa
   "N de M listas" (sin ninguna lista no llama a Jina). `cli_sync.php imagenes` corre en su propio ciclo cada 5 min en
   `sync_loop.sh` (máx. `IMAGE_INDEX_MAX_SECONDS`=1500 por vuelta) y prepara las portadas nuevas (lh3 `=s512`, 8 por llamada).
-  Última vuelta en `storage/image_index_status.json`; estado y errores de Jina en Admin → Sincronizar.
+  Última vuelta en `storage/image_index_status.json` (si fue «saldo» o «clave», el ciclo espera 1 hora antes de reintentar); estado y errores de Jina en Admin → Sincronizar.
   Si Jina falla, la ventana dice la causa (`ImageSearch::classify`: saldo 402, clave 401/403, límite 429, otro) y el detalle va
   al log. `GET /buscar-foto/estado` (público, solo cuentas): fotos, listas, última vuelta y estado
   (listo/preparando/saldo/clave/limite/error/sin_datos).

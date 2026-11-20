@@ -43,6 +43,11 @@ if ($step === 'imagenes') {
     if (!ImageSearch::enabled()) {
         exit(0); // sin JINA_API_KEY la búsqueda por foto está apagada
     }
+    // Sin saldo o clave mala: no reintentar cada 5 min (cada vuelta descarga fotos en vano); probar 1 vez por hora
+    $last = ImageSearch::lastRun();
+    if ($last && in_array($last['causa'] ?? '', ['saldo', 'clave'], true) && strtotime($last['at'] ?? '') > time() - 3600) {
+        exit(0);
+    }
     $r = ImageSearch::indexPending(getDB(), (int) env('IMAGE_INDEX_MAX_SECONDS', '1500'));
     if ($r['pendientes'] > 0 || $r['error']) { // sin nada pendiente no ensucia el log (corre cada 5 min)
         ImageSearch::saveLastRun($r);
