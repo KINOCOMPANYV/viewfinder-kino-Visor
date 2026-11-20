@@ -155,7 +155,7 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
   Helpers: `catalogFiltersFromRequest()`, `catalogFilterSql()`, `catalogWordsSql()`. **Índice de búsqueda** (migración 032,
   `src/services/SearchIndex.php`): columnas `products.search_text` (código, nombre, marca, categoría, color, carpetas),
   `contains_text` (nombre + nombres de archivo) y `folder_ids` (" id … " de sus carpetas y superiores = carpeta incluye subcarpetas);
-  carpetas del filtro en `search_meta.folder_options` (solo hasta 2 niveles, «MARCA › SUB»; la de nivel 2 incluye sus subcarpetas). Lo rehace `SearchIndex::rebuild()` al final de `DriveIndex::relink()` y de
+  carpetas del filtro en `search_meta.folder_options` (solo las de 1.er nivel, «MARCA»; cada una incluye sus subcarpetas). Lo rehace `SearchIndex::rebuild()` al final de `DriveIndex::relink()` y de
   `refreshFolderState()` y como primer paso de `sync_loop.sh` (`cli_sync.php indice`, en segundo plano). **Las páginas nunca lo arman**
   (`SearchIndex::ready()`; sin índice buscan solo en columnas de products). `GET_LOCK` evita armados simultáneos; UPDATE … CASE en
   tandas de 300 (~0,3 s con 6000). `migrate.php` usa `lock_wait_timeout = 20` (un ALTER que espera no traba el arranque) y

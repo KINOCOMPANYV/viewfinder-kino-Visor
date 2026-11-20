@@ -33,8 +33,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Carpeta fuera de la lista** (2026-11-13): en Admin → Carpetas cada carpeta tiene, aparte de mostrar/ocultar, el interruptor
   «Como carpeta». Apagado (p. ej. ECONOMICOS): la carpeta no sale en la lista de inicio ni en la de su carpeta superior, pero
   sus fotos y productos se siguen viendo y la carpeta sigue saliendo al buscar y por enlace.
-- **Filtro «Carpetas» con 2 niveles** (2026-11-20): la lista del filtro muestra solo carpetas de 1.º y 2.º nivel
-  (AUTOMATICOS, AUTOMATICOS › 427), ya no las de cada referencia (› 427-1). Elegir la de 2.º nivel trae también sus subcarpetas.
+- **Filtro «Carpetas» con 1 nivel** (2026-11-20, primero se probaron 2): la lista del filtro muestra solo las carpetas de
+  1.er nivel (ACCESORIOS, AUTOMATICOS, CURREN…), ya no sus subcarpetas (› 427, › 427-1). Cada una trae también sus subcarpetas.
 - **Carpetas "archivado" y "desactivados"** (2026-11-09): toda carpeta cuyo nombre diga archivado(s)/desactivado(s) (sin importar
   mayúsculas ni tildes) queda oculta por defecto con todo su contenido, ya indexada o nueva. Si el admin la muestra, el
   sync no la vuelve a ocultar. Mientras está oculta tampoco crea productos "Solo Drive".
@@ -307,3 +307,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-s1i6yo` (2026-11-20): los PDF (Catálogo, Lista Bodega, Remisión) se pueden renombrar antes de Descargar/Compartir: casilla «📝 Nombre del archivo» con el nombre sugerido; si se escribe uno propio se mantiene al rehacer el PDF (`KinoPdf.setName/named`).
 - Rama `claude/project-thread-slbho8` (2026-11-20): celular más rápido de usar: filtros plegados, «⭐ Selección» con contador en la barra de abajo, ficha sin botón repetido, «Cargar más» (60 en 60) en carpetas y Novedades; migas de pan como botones dorados y botón «← Atrás» con texto.
 - Rama `claude/proyecto-ce9a49` (2026-11-20): filtro «Carpetas» solo con 2 niveles (fuera las subcarpetas por referencia como 427 › 427-1); `SearchIndex::rebuild()`.
+- Misma rama (2026-11-20, tras #93): el filtro «Carpetas» queda con 1 solo nivel (decisión del dueño).
