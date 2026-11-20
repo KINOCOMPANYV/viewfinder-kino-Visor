@@ -6,7 +6,7 @@
  * lo cruza con la hoja maestra y arma:
  *   - el reporte de diferencias (duplicados, stock distinto, negativos, faltantes, precio distinto)
  *   - la columna STOCK nueva en el orden de filas de la hoja, para pegarla en la hoja.
- * No escribe en la hoja ni en la BD: la hoja sigue mandando y el sync la trae como siempre.
+ * compare() no escribe nada; applyToVisor() guarda sys_price/sys_stock y SheetWriter escribe la hoja (desde el controller).
  *
  * Cruce de códigos: primero el código exacto (sin espacios, mayúsculas), luego la clave
  * normalizada (sin espacios, el separador tras las letras iniciales no cuenta: M:8291-1 = M8291-1 = M-8291-1,

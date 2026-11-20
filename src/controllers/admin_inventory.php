@@ -6,11 +6,12 @@
  *   ?descargar=precio  columna PRICE nueva (Precio SYS) en el mismo orden (decisión del dueño 2026-11-20)
  *   ?csv=reporte  diferencias (duplicados, stock distinto, negativos, faltantes, precio distinto)
  * Al subir el archivo, el visor guarda al momento Precio SYS y existencias SYS (products.sys_price / sys_stock;
- * el precio SYS no se muestra al público). No escribe en la Hoja master. El último resultado queda en storage/inventario/ultimo.json.
+ * el precio SYS no se muestra al público) y, con la casilla, escribe STOCK y PRICE en la Hoja master (SheetWriter). El último resultado queda en storage/inventario/ultimo.json.
  */
 require_once __DIR__ . '/../services/MasterSheet.php';
 require_once __DIR__ . '/../services/InventoryImport.php';
 require_once __DIR__ . '/../services/XlsxWriter.php';
+require_once __DIR__ . '/../services/SheetWriter.php';
 
 $dir = BASE_DIR . '/storage/inventario';
 $file = $dir . '/ultimo.json';
@@ -30,6 +31,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $result['meta'] = ['archivo' => $up['name'], 'fecha' => date('Y-m-d H:i'), 'columnas' => $parsed['columns'],
             'fuente_hoja' => $sheet['source'], 'neg_cero' => !empty($_POST['neg_cero']),
             'aplicado' => InventoryImport::applyToVisor(getDB(), $parsed['items'], !empty($_POST['neg_cero']))];
+        // Y en la Hoja master (decisión del dueño 2026-11-20): PRICE = Precio SYS y STOCK, solo lo que cambia
+        if (!empty($_POST['hoja'])) {
+            $price = $stock = [];
+            foreach ($result['paste'] as $p) {
+                if ($p['SKU'] === '') continue;
+                if (($p['PRICE_nuevo'] ?? null) !== null && $p['PRICE_nuevo'] !== $p['PRICE_actual']) $price[$p['SKU']] = $p['PRICE_nuevo'];
+                if ($p['STOCK_nuevo'] !== null && $p['STOCK_nuevo'] !== $p['STOCK_actual']) $stock[$p['SKU']] = $p['STOCK_nuevo'];
+            }
+            $result['meta']['hoja'] = sheetWriteNote(fn() => SheetWriter::writeColumns(getDB(), ['PRICE' => $price, 'STOCK' => $stock]));
+        }
         if (!is_dir($dir)) @mkdir($dir, 0775, true);
         if (@file_put_contents($file, json_encode($result, JSON_UNESCAPED_UNICODE)) === false) throw new RuntimeException('No se pudo guardar el resultado en storage/inventario.');
         redirect('/admin/inventario');
@@ -88,13 +99,15 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
         <h1 class="pb-title">📦 Importar inventario SYS</h1>
         <p class="pb-help">Sube el Excel de existencias de <b>SYS</b> (por ejemplo «INVENTARIO GENERAL.xlsx»: Artículo, Exist. unidades, Precio).
             <b>Al subirlo, el visor guarda al momento el Precio SYS y las existencias</b> de cada código (el Precio SYS no se muestra al público).
-            Además te da las columnas <b>STOCK</b> y <b>PRICE</b> (= Precio SYS) listas para pegar en la Hoja master, en el mismo orden de filas
+            y <b>escribe en la Hoja master</b> las columnas <b>STOCK</b> y <b>PRICE</b> (= Precio SYS), solo las celdas que cambian
+            (la cuenta de Google conectada debe poder editar la hoja). También te da esas columnas para pegarlas a mano, en el mismo orden de filas
             (cruce por código: exacto primero; «M:», «M» y «M-» cuentan igual). El precio que ve el público es el de KYTE (💲 Precios).</p>
 
         <form method="post" enctype="multipart/form-data" class="pb-bar" style="flex-wrap:wrap;gap:10px">
             <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
             <input type="file" name="archivo" accept=".xlsx,.csv,.txt" required>
             <label><input type="checkbox" name="neg_cero" value="1" checked> Negativos → 0</label>
+            <label><input type="checkbox" name="hoja" value="1" checked> También escribir en la Hoja master</label>
             <button type="submit" class="btn btn-sm btn-primary">Comparar con la Hoja master</button>
         </form>
         <?php if ($error): ?><p class="pb-empty" style="color:#ff8080">⚠️ <?= e($error) ?></p><?php endif; ?>
@@ -112,6 +125,7 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
                 duplicados: <?= $n($s['duplicados_inventario']) ?> en SYS, <?= $n($s['duplicados_hoja']) ?> en la Hoja master.
             </p>
             <?php if (isset($result['meta']['aplicado'])): ?><p class="pb-help" style="color:#7ee2a8">✅ Guardado en el visor: Precio SYS y existencias de <?= $n($result['meta']['aplicado']) ?> productos.</p><?php endif; ?>
+            <?php if (!empty($result['meta']['hoja'])): ?><p class="pb-help" style="color:<?= str_starts_with($result['meta']['hoja'], '✅') ? '#7ee2a8' : '#ffb366' ?>"><?= e($result['meta']['hoja']) ?></p><?php endif; ?>
             <div class="pb-bar">
                 <a class="btn btn-sm btn-primary" href="/admin/inventario?descargar=stock">📥 Columna STOCK para pegar (Excel)</a>
                 <?php if (isset($result['paste'][0]) && array_key_exists('PRICE_nuevo', $result['paste'][0])): ?>

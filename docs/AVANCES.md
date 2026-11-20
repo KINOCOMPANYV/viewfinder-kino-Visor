@@ -58,7 +58,11 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
     Admin → 📦 Inventario: al subir **se guardan al momento** Precio SYS y existencias en el visor (`sys_price`, `sys_stock`)
     y da las columnas STOCK y PRICE para pegar. Si se sube el archivo SYS en Precios, avisa que va en Inventario.
   - La columna «PRECIO KYTE» ya no se usa (si sigue en la hoja, se ignora). Fila sin PRICE_SUGGESTED → el de su familia
-    (si es uno solo) → «Sin precio en tabla». El precio editado en el admin sigue ganando. El visor no escribe en la Hoja master.
+    (si es uno solo) → «Sin precio en tabla». El precio editado en el admin sigue ganando.
+  - **Subir = escribir en la Hoja master** (decisión del dueño 2026-11-20, reemplaza «pegar a mano» del 2026-11-13): con la
+    casilla «También escribir en la Hoja master» (marcada por defecto), KYTE escribe PRICE_SUGGESTED y SYS escribe PRICE y
+    STOCK, solo celdas que cambian, buscando cada código en la columna SKU (`SheetWriter`). Usa la conexión de Google del
+    admin; la cuenta conectada debe ser Editor de la hoja. Si falla, el visor igual queda actualizado y avisa el motivo.
 - **Nombres** (2026-11-13): la hoja maestra se llama siempre **«Hoja master»**; el sistema contable es **«SYS»** (sus datos: «Stock SYS»,
   «Precio SYS»). Otro sistema, **«KYTE»**, traerá sus datos aparte más adelante.
 - **Inventario SYS → Hoja master** (2026-11-13): el stock de SYS («INVENTARIO GENERAL.xlsx») se carga en la columna
@@ -294,3 +298,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-24a45y` (2026-11-20, tras #86): optimización sin cambios visibles: inicio con 7 consultas en vez de 31 (portadas de carpetas en una sola, página cortada en MySQL), opciones de filtros guardadas 2 min, búsqueda por foto sin saldo reintenta cada hora (no cada 5 min), `.dockerignore` (sin `.git` ni docs en el contenedor), 4 funciones sin uso quitadas.
 - Rama `claude/project-thread-xsk99w` (2026-11-20): Admin → 📋 Hoja master (`/admin/hoja`): previo de la tabla de la hoja (todas las columnas, qué campo del visor llena cada una, buscador) junto al nombre actual en el visor. El nombre sale de NAME (vacía o Solo Drive → el código).
 - Rama `claude/project-thread-2f2p99` (2026-11-20): precios simplificados: KYTE → PRICE_SUGGESTED (público, se aplica al subir), SYS → PRICE (guardado, no público) + STOCK; fuera «PRECIO KYTE». Migración 033 (`sys_price`, `sys_stock`, `sys_at`).
+- Misma rama (2026-11-20, tras #89): subir KYTE/SYS también escribe sus columnas en la Hoja master (`src/services/SheetWriter.php`, API de Sheets con la conexión de Google del admin).
