@@ -155,7 +155,10 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
   `src/services/SearchIndex.php`): columnas `products.search_text` (código, nombre, marca, categoría, color, carpetas),
   `contains_text` (nombre + nombres de archivo) y `folder_ids` (" id … " de sus carpetas y superiores = carpeta incluye subcarpetas);
   carpetas del filtro en `search_meta.folder_options`. Lo rehace `SearchIndex::rebuild()` al final de `DriveIndex::relink()` y de
-  `refreshFolderState()` (cada sync, ~0,5 s con 6000 productos); `ensure()` lo arma si falta. Nunca cruzar drive_index por fila al buscar
+  `refreshFolderState()` y como primer paso de `sync_loop.sh` (`cli_sync.php indice`, en segundo plano). **Las páginas nunca lo arman**
+  (`SearchIndex::ready()`; sin índice buscan solo en columnas de products). `GET_LOCK` evita armados simultáneos; UPDATE … CASE en
+  tandas de 300 (~0,3 s con 6000). `migrate.php` usa `lock_wait_timeout = 20` (un ALTER que espera no traba el arranque) y
+  `sync_loop.sh` vuelve a correr las migraciones pendientes en cada vuelta. Nunca cruzar drive_index por fila al buscar
   (con `matched_sku IN (p.sku, p.parent_sku)` MySQL no usa el índice: 30+ s).
   Precio acepta «120.000». Opciones: marcas/categorías con 5+ productos y precio si hay 20+ (`searchFilterOptions()`, cacheado).
   El texto busca cada palabra (cualquier orden) en código, nombre, categoría, marca, color y nombre de la carpeta de su foto. Chips con ✕.

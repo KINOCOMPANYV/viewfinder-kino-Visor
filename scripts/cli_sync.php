@@ -5,6 +5,7 @@
  *   php scripts/cli_sync.php portadas   = Admin → "Sincronizar portadas" (índice de Drive, carpetas, enlace y portadas)
  *   php scripts/cli_sync.php carpetas   = solo BD: oculta carpetas "archivado"/"desactivados" y recalcula carpetas ocultas
  *                                         (rápido; corre primero para no esperar a la hoja ni a Drive)
+ *   php scripts/cli_sync.php indice     = índice de búsqueda (SearchIndex::rebuild); también lo rehacen relink y carpetas
  *   php scripts/cli_sync.php imagenes   = búsqueda por foto: huella de las portadas nuevas (solo con JINA_API_KEY;
  *                                         sync_loop.sh la corre en su propio ciclo cada 5 min)
  * Ejecuta el MISMO controlador que el botón del admin (con su seguro de "no ocultar medio catálogo").
@@ -32,6 +33,11 @@ if ($step === 'carpetas') {
     echo '[' . date('Y-m-d H:i:s') . '] Sincronizar carpetas: ' . json_encode($s + ['relinked' => (bool) $link]) . "\n";
     exit(0);
 }
+if ($step === 'indice') {
+    $r = SearchIndex::rebuild(getDB());
+    echo '[' . date('Y-m-d H:i:s') . '] Índice de búsqueda: ' . json_encode($r) . "\n";
+    exit(0);
+}
 if ($step === 'imagenes') {
     require_once __DIR__ . '/../src/services/ImageSearch.php';
     if (!ImageSearch::enabled()) {
@@ -45,7 +51,7 @@ if ($step === 'imagenes') {
     exit(0);
 }
 if (!isset($controllers[$step])) {
-    fwrite(STDERR, "Uso: php scripts/cli_sync.php hoja|portadas|carpetas|imagenes\n");
+    fwrite(STDERR, "Uso: php scripts/cli_sync.php hoja|portadas|carpetas|indice|imagenes\n");
     exit(1);
 }
 

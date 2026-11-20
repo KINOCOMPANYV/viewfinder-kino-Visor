@@ -7,21 +7,32 @@
  */
 class SearchIndex
 {
-    /** Arma el índice si nunca se armó (p. ej. justo después de desplegar la migración). */
-    public static function ensure(PDO $db): void
+    /**
+     * ¿Ya hay índice armado? Las páginas NUNCA lo arman (eso trabó el arranque en Railway el 2026-11-20):
+     * lo arma el sync en segundo plano. Mientras no exista, la búsqueda usa solo columnas propias de products.
+     */
+    public static function ready(PDO $db): bool
     {
-        static $checked = false;
-        if ($checked) return;
-        $checked = true;
+        static $ready = null;
+        if ($ready !== null) return $ready;
         try {
-            if (!$db->query("SELECT 1 FROM search_meta WHERE k = 'built_at'")->fetchColumn()) self::rebuild($db);
-        } catch (Throwable $e) { /* migración 032 aún no aplicada */ }
+            $ready = (bool) $db->query("SELECT 1 FROM search_meta WHERE k = 'built_at'")->fetchColumn();
+        } catch (Throwable $e) {
+            $ready = false; // migración 032 aún no aplicada
+        }
+        return $ready;
     }
 
     /** @return array{products: int, folders: int, ms: int}|null */
     public static function rebuild(PDO $db): ?array
     {
         $t0 = microtime(true);
+        // Uno a la vez (sync, admin y arranque pueden pedirlo juntos); si ya se está armando, no esperar
+        try {
+            if (!(int) $db->query("SELECT GET_LOCK('kino_search_index', 0)")->fetchColumn()) return null;
+        } catch (Throwable $e) {
+            return null;
+        }
         try {
             $root = env('GOOGLE_DRIVE_FOLDER_ID', '');
             // Carpetas visibles: id → [nombre, carpeta superior]
@@ -60,9 +71,8 @@ class SearchIndex
             }
             usort($options, fn($a, $b) => strnatcasecmp($a['label'], $b['label']));
 
-            $upd = $db->prepare("UPDATE products SET search_text = ?, contains_text = ?, folder_ids = ? WHERE id = ?");
-            $n = 0;
-            $db->beginTransaction();
+            // En tandas de 300 con un solo UPDATE … CASE (6000 UPDATE sueltos por red tardaban demasiado)
+            $rows = [];
             foreach ($db->query("SELECT id, sku, parent_sku, name, brand, category, color FROM products")->fetchAll(PDO::FETCH_ASSOC) as $p) {
                 $ids = []; $fnames = []; $files = [];
                 foreach (array_unique(array_filter([$p['sku'], $p['parent_sku']])) as $code) {
@@ -72,19 +82,28 @@ class SearchIndex
                 $sku = (string) $p['sku'];
                 $search = implode(' ', array_unique(array_filter(array_merge(
                     [$sku, skuSearchNorm($sku), (string) $p['name'], (string) $p['brand'], (string) $p['category'], (string) $p['color']],
-                    array_map('folderDisplayName', array_keys($fnames)), array_keys($fnames)
+                    array_map('folderDisplayName', array_keys($fnames)), array_map('strval', array_keys($fnames))
                 ), fn($x) => $x !== '')));
                 $contains = implode(' ', array_filter(array_merge([(string) $p['name']], array_map('strval', array_keys($files))), fn($x) => $x !== ''));
-                $upd->execute([mb_substr($search, 0, 4000), mb_substr($contains, 0, 8000), $ids ? ' ' . implode(' ', array_keys($ids)) . ' ' : '', $p['id']]);
-                $n++;
+                $rows[] = [(int) $p['id'], mb_substr($search, 0, 4000), mb_substr($contains, 0, 8000), $ids ? ' ' . implode(' ', array_keys($ids)) . ' ' : ''];
             }
+            foreach (array_chunk($rows, 300) as $chunk) {
+                $case = str_repeat('WHEN ? THEN ? ', count($chunk));
+                $params = [];
+                foreach ([1, 2, 3] as $col) foreach ($chunk as $r) array_push($params, $r[0], $r[$col]);
+                foreach ($chunk as $r) $params[] = $r[0];
+                $db->prepare("UPDATE products SET search_text = CASE id {$case}END, contains_text = CASE id {$case}END,
+                              folder_ids = CASE id {$case}END WHERE id IN (" . implode(',', array_fill(0, count($chunk), '?')) . ")")
+                   ->execute($params);
+            }
+            $n = count($rows);
             $meta = $db->prepare("REPLACE INTO search_meta (k, v, updated_at) VALUES (?, ?, NOW())");
             $meta->execute(['folder_options', json_encode($options, JSON_UNESCAPED_UNICODE)]);
             $meta->execute(['built_at', date('c')]);
-            $db->commit();
+            $db->query("SELECT RELEASE_LOCK('kino_search_index')");
             return ['products' => $n, 'folders' => count($options), 'ms' => (int) ((microtime(true) - $t0) * 1000)];
         } catch (Throwable $e) {
-            if ($db->inTransaction()) $db->rollBack();
+            try { $db->query("SELECT RELEASE_LOCK('kino_search_index')"); } catch (Throwable $e2) {}
             error_log('SearchIndex::rebuild: ' . $e->getMessage());
             return null;
         }
@@ -93,7 +112,7 @@ class SearchIndex
     /** Carpetas del filtro guardadas en el último armado. @return array<int, array{id: string, label: string}> */
     public static function folderOptions(PDO $db): array
     {
-        self::ensure($db);
+        if (!self::ready($db)) return []; // aparecen tras el primer sync (un minuto después del deploy)
         try {
             $v = $db->query("SELECT v FROM search_meta WHERE k = 'folder_options'")->fetchColumn();
             $d = $v ? json_decode($v, true) : [];
