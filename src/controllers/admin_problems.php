@@ -5,7 +5,7 @@
  *   sinfoto   productos visibles sin ninguna foto propia ni de la familia
  *   ocultas   productos visibles cuya foto existe pero está en una carpeta oculta
  *   archivos  fotos/videos cuyo nombre no es un código (para renombrar)
- *   hoja      filas de la hoja sin precio (PRECIO KYTE) o sin nombre
+ *   hoja      filas de la hoja sin precio (PRICE_SUGGESTED) o sin nombre
  * Cada lista muestra el motivo y la ruta en Drive; ?csv=1 descarga la lista completa.
  */
 $db = getDB();

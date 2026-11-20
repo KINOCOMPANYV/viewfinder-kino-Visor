@@ -79,7 +79,7 @@ if ($stats['unchanged']) $parts[] = "✅ {$stats['unchanged']} sin cambios";
 if ($removed) $parts[] = '📦 ' . count($removed) . ' ya no están en la hoja (se ocultan)';
 $pf = $sheet['price_from'] ?? [];
 $parts[] = '💲 precio del visor: columna ' . $sheet['price_column']
-    . ($pf ? " ({$pf['kyte']} KYTE, {$pf['familia']} de su familia, {$pf['price_suggested']} de PRICE_SUGGESTED, {$pf['sin_precio']} sin precio)" : '');
+    . ($pf ? " ({$pf['propio']} propio, {$pf['familia']} de su familia, {$pf['sin_precio']} sin precio)" : '');
 if ($sheet['duplicates']) $parts[] = '⚠️ ' . count($sheet['duplicates']) . ' códigos repetidos en la hoja (se usó la última fila)';
 if ($sheet['skipped']) $parts[] = '⚠️ ' . $sheet['skipped'] . ' filas sin código (no se cargan)';
 if ($inactive) $parts[] = "⏸️ {$inactive} desactivados por el admin";

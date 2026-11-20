@@ -189,7 +189,7 @@ function verifyCsrf(): bool
 /**
  * Formatea un precio.
  */
-/** Precio público: "$12.345" o "Sin precio en tabla" (sin PRECIO KYTE en la Hoja master —o PRICE_SUGGESTED si no existe esa columna— ni precio del admin). */
+/** Precio público: "$12.345" o "Sin precio en tabla" (sin PRICE_SUGGESTED en la Hoja master, ni de su familia, ni precio del admin). */
 function priceText($price): string
 {
     $p = (float) ($price ?? 0);
