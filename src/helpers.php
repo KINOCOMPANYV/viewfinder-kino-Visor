@@ -342,27 +342,32 @@ function catalogFiltersFromRequest(array $get): array
         // «Contiene la palabra»: en el nombre del producto o en el nombre de su archivo en Drive
         'contiene' => is_string($get['contiene'] ?? null) ? mb_substr(trim($get['contiene']), 0, 60) : '',
         // Orden: codigo (A→Z alfanumérico), precio_desc (mayor a menor), precio_asc (menor a mayor); '' = el de siempre
-        'orden' => in_array($get['orden'] ?? '', ['codigo', 'precio_desc', 'precio_asc'], true) ? $get['orden'] : '',
+        // Dos órdenes que se combinan: precio (desc|asc) primero y código alfanumérico (asc|desc) después
+        'oprecio' => in_array($get['oprecio'] ?? '', ['desc', 'asc'], true) ? $get['oprecio']
+            : (in_array($get['orden'] ?? '', ['precio_desc', 'precio_asc'], true) ? substr($get['orden'], 7) : ''), // ?orden= viejo
+        'ocodigo' => in_array($get['ocodigo'] ?? '', ['asc', 'desc'], true) ? $get['ocodigo'] : (($get['orden'] ?? '') === 'codigo' ? 'asc' : ''),
     ];
 }
 
 /**
- * Ordena filas de productos (claves sku, price_suggested) según $orden. Alfanumérico «natural»: M:8-1 antes que M:10-1.
- * Por precio, los que no tienen precio van al final.
+ * Ordena filas de productos (claves sku, price_suggested). Se combinan: primero por precio ($precio desc|asc; los sin
+ * precio al final) y, a igual precio, por código ($codigo asc|desc, alfanumérico «natural»: M:8-1 antes que M:10-1).
+ * Solo código: ordena por código. Ninguno: deja el orden de la consulta.
  */
-function catalogSortRows(array &$rows, string $orden): void
+function catalogSortRows(array &$rows, string $precio, string $codigo = ''): void
 {
+    if ($precio === '' && $codigo === '') return;
     $code = fn($r) => skuSearchNorm(preg_replace('/^M[:\-]?/i', '', (string) $r['sku']));
-    if ($orden === 'codigo') {
-        usort($rows, fn($a, $b) => strnatcasecmp($code($a), $code($b)));
-    } elseif ($orden === 'precio_desc' || $orden === 'precio_asc') {
-        $dir = $orden === 'precio_desc' ? -1 : 1;
-        usort($rows, function ($a, $b) use ($dir, $code) {
+    $cdir = $codigo === 'desc' ? -1 : 1;
+    $pdir = $precio === 'desc' ? -1 : 1;
+    usort($rows, function ($a, $b) use ($precio, $codigo, $code, $cdir, $pdir) {
+        if ($precio !== '') {
             $pa = (float) ($a['price_suggested'] ?? 0); $pb = (float) ($b['price_suggested'] ?? 0);
             if (($pa > 0) !== ($pb > 0)) return $pa > 0 ? -1 : 1;
-            return $pa != $pb ? ($pa <=> $pb) * $dir : strnatcasecmp($code($a), $code($b));
-        });
-    }
+            if ($pa != $pb) return ($pa <=> $pb) * $pdir;
+        }
+        return strnatcasecmp($code($a), $code($b)) * $cdir;
+    });
 }
 
 /**
@@ -409,7 +414,7 @@ function catalogPdfItems(PDO $db, string $q, array $filters, int $limit = 300): 
     $stmt = $db->prepare("SELECT p.sku, p.cover_image_url, p.price_suggested FROM products p WHERE $where ORDER BY p.brand, p.sku");
     $stmt->execute(array_merge($params, $fParams));
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    catalogSortRows($rows, $filters['orden'] ?? '');
+    catalogSortRows($rows, $filters['oprecio'] ?? '', $filters['ocodigo'] ?? '');
     $items = [];
     $total = 0;
     foreach ($rows as $r) {

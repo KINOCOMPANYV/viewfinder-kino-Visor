@@ -13,7 +13,8 @@ $filters = [
     'pmin' => trim($_GET['pmin'] ?? ''),
     'pmax' => trim($_GET['pmax'] ?? ''),
     'contiene' => trim($_GET['contiene'] ?? ''),
-    'orden' => in_array($_GET['orden'] ?? '', ['codigo', 'precio_desc', 'precio_asc'], true) ? $_GET['orden'] : '',
+    'oprecio' => in_array($_GET['oprecio'] ?? '', ['desc', 'asc'], true) ? $_GET['oprecio'] : '',
+    'ocodigo' => in_array($_GET['ocodigo'] ?? '', ['asc', 'desc'], true) ? $_GET['ocodigo'] : '',
 ];
 $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 50;
@@ -26,12 +27,13 @@ $total = (int) $countStmt->fetchColumn();
 $totalPages = max(1, (int) ceil($total / $perPage));
 $page = min($page, $totalPages);
 
-// Orden: código (alfanumérico: por largo y luego texto, así 8-1 va antes que 10-1), precio, o el de la hoja
-$orderSql = [
-    'codigo' => "LENGTH(REPLACE(REPLACE(sku, 'M:', ''), 'M-', '')), REPLACE(REPLACE(sku, 'M:', ''), 'M-', ''), sku",
-    'precio_desc' => '(price_suggested IS NULL OR price_suggested <= 0), price_suggested DESC, sku',
-    'precio_asc' => '(price_suggested IS NULL OR price_suggested <= 0), price_suggested ASC, sku',
-][$filters['orden']] ?? 'in_sheet DESC, sheet_row ASC, sku ASC';
+// Orden combinable: precio (sin precio al final) y luego código (alfanumérico: por largo y luego texto, así 8-1 va
+// antes que 10-1); sin ninguno, el de la hoja
+$codeKey = "REPLACE(REPLACE(sku, 'M:', ''), 'M-', '')";
+$orderParts = [];
+if ($filters['oprecio'] !== '') $orderParts[] = '(price_suggested IS NULL OR price_suggested <= 0), price_suggested ' . strtoupper($filters['oprecio']);
+if ($filters['ocodigo'] !== '') { $d = strtoupper($filters['ocodigo']); $orderParts[] = "LENGTH($codeKey) $d, $codeKey $d"; }
+$orderSql = $orderParts ? implode(', ', $orderParts) . ', sku' : 'in_sheet DESC, sheet_row ASC, sku ASC';
 $stmt = $db->prepare(
     "SELECT id, sku, name, brand, color, category, price_suggested, price_sheet, price_manual, stock, cover_image_url,
             is_active, in_sheet, from_drive, sheet_status
