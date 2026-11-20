@@ -273,6 +273,8 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
   `.filter-toggle` («⚙️ Filtros y orden (N)») y la barra `.fb-fold` queda plegada hasta tocarlo (no en `/catalogo-pdf`);
   la barra de abajo tiene 5 botones (+ «⭐ Selección» → `/mi-seleccion`, contador `#mnavSelCount` que lee `kinoWaSel` y
   escucha el evento `kinoselchange` que dispara `wa_batch.js` al guardar); la ficha esconde `#btnBackCatalog`.
+- Migas de pan visibles (todas las pantallas, final de `style.css`): cada paso de `.crumbs`, `.breadcrumb-path` (ficha) y
+  `.folder-breadcrumb` (carpetas) es un botón dorado redondeado; «Inicio» lleva 🏠; la página actual va en blanco y negrita.
 - «Cargar más» (carpetas y Novedades, todas las pantallas): las tarjetas desde la 61 llevan `loadMoreClass($idx)` (`.lm-hide`,
   oculta; sus fotos lazy no se bajan) y `loadMoreButton(count)` debajo de la grilla muestra de a `LOAD_MORE_STEP` (60).
   «Marcar todas (esta vista)» solo marca las visibles.

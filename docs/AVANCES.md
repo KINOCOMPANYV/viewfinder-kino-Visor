@@ -77,7 +77,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Catálogo público en grilla densa (60 por página, **una tarjeta por referencia**; contador "N referencias").
 - Celular (2026-11-20): filtros plegados tras «⚙️ Filtros y orden» (los activos siguen como chips), barra de abajo con
   «⭐ Selección» y el número de fotos marcadas, ficha sin el botón repetido «Volver al catálogo», y carpetas grandes y
-  Novedades muestran 60 fotos con «Cargar más».
+  Novedades muestran 60 fotos con «Cargar más». Las migas de pan (Inicio › Carpeta › …) son botones dorados que se ven y se tocan.
 - Ficha de producto con variantes, galería, visor grande; WhatsApp + Descargar en cada foto.
 - Botón WhatsApp de cada foto: manda solo la imagen liviana (800 px) con el código como pie, sin enlace. En el computador
   copia la foto para pegarla en WhatsApp Web (Ctrl+V).
@@ -303,4 +303,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-2f2p99` (2026-11-20): precios simplificados: KYTE → PRICE_SUGGESTED (público, se aplica al subir), SYS → PRICE (guardado, no público) + STOCK; fuera «PRECIO KYTE». Migración 033 (`sys_price`, `sys_stock`, `sys_at`).
 - Misma rama (2026-11-20, tras #89): subir KYTE/SYS también escribe sus columnas en la Hoja master (`src/services/SheetWriter.php`, API de Sheets con la conexión de Google del admin).
 - Rama `claude/project-thread-s1i6yo` (2026-11-20): los PDF (Catálogo, Lista Bodega, Remisión) se pueden renombrar antes de Descargar/Compartir: casilla «📝 Nombre del archivo» con el nombre sugerido; si se escribe uno propio se mantiene al rehacer el PDF (`KinoPdf.setName/named`).
-- Rama `claude/project-thread-slbho8` (2026-11-20): celular más rápido de usar: filtros plegados, «⭐ Selección» con contador en la barra de abajo, ficha sin botón repetido, «Cargar más» (60 en 60) en carpetas y Novedades.
+- Rama `claude/project-thread-slbho8` (2026-11-20): celular más rápido de usar: filtros plegados, «⭐ Selección» con contador en la barra de abajo, ficha sin botón repetido, «Cargar más» (60 en 60) en carpetas y Novedades; migas de pan como botones dorados.

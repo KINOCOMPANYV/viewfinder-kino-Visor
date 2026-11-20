@@ -3305,3 +3305,31 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .parent-grid > .lm-hide { display: none !important; }
 .lm-wrap { display: flex; justify-content: center; margin: 1.25rem 0 0.5rem; }
 .lm-btn { min-height: 46px; min-width: 220px; justify-content: center; font-weight: 700; }
+/* Migas de pan más visibles (todas las pantallas): cada paso es un botón dorado que se puede tocar,
+   «Inicio» con 🏠, y la página actual en blanco y negrita. Vale para breadcrumbs() (.crumbs), la ficha
+   (.breadcrumb-path) y las carpetas (.folder-breadcrumb). */
+nav.crumbs, .breadcrumb-bar .breadcrumb-path, .folder-breadcrumb {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.35rem;
+    color: var(--color-primary) !important; font-weight: 700;
+}
+nav.crumbs a, .breadcrumb-bar .breadcrumb-path a, .folder-breadcrumb a {
+    display: inline-flex; align-items: center; gap: 0.3rem; min-height: 34px; padding: 0.3rem 0.8rem !important;
+    border-radius: 999px; border: 1.5px solid var(--color-primary); background: var(--color-primary-glow);
+    color: var(--color-primary-light) !important; font-size: 0.85rem; font-weight: 700; text-decoration: none;
+    -webkit-tap-highlight-color: transparent; transition: background 0.15s, color 0.15s;
+}
+nav.crumbs a:hover, .breadcrumb-bar .breadcrumb-path a:hover, .folder-breadcrumb a:hover,
+nav.crumbs a:active, .breadcrumb-bar .breadcrumb-path a:active, .folder-breadcrumb a:active {
+    background: var(--color-primary); color: var(--color-bg) !important; text-decoration: none;
+}
+nav.crumbs > a:first-child::before, .breadcrumb-bar .breadcrumb-path > a:first-child::before, .folder-breadcrumb > a:first-child::before {
+    content: '🏠';
+}
+nav.crumbs [aria-current], .breadcrumb-bar .breadcrumb-path > span, .folder-breadcrumb > span {
+    color: var(--color-text) !important; font-size: 0.9rem; font-weight: 700; padding: 0.3rem 0.2rem;
+}
+nav.crumbs .crumbs-sep { color: var(--color-primary); font-weight: 700; }
+@media (max-width: 640px) {
+    .product-detail .breadcrumb-path { font-size: 0.85rem; }
+    nav.crumbs { margin-bottom: 0.9rem; }
+}
