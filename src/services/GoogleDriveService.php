@@ -14,6 +14,9 @@ class GoogleDriveService
 
     /** true si la última llamada GET a la API falló (red, timeout o error de Drive). */
     public bool $lastRequestFailed = false;
+    /** Motivo de la última falla (código HTTP y mensaje de Google, o error de red). */
+    public string $lastRequestError = '';
+    private int $lastHttpCode = 0;
 
     public function __construct()
     {
@@ -636,8 +639,8 @@ class GoogleDriveService
             if ($token)
                 $params['pageToken'] = $token;
 
-            $data = json_decode($this->httpGet('https://www.googleapis.com/drive/v3/files?' . http_build_query($params)), true);
-            if ($this->lastRequestFailed || !is_array($data))
+            $data = $this->getJsonWithRetry('https://www.googleapis.com/drive/v3/files?' . http_build_query($params));
+            if ($data === null)
                 return null;
 
             $all = array_merge($all, $data['files'] ?? []);
@@ -645,6 +648,41 @@ class GoogleDriveService
         } while ($token !== '');
 
         return $all;
+    }
+
+    /**
+     * GET con reintentos para el sync: Google a veces tarda o responde 429/5xx/403 de
+     * límite justo después de otro sync. 401 = token vencido a mitad del recorrido: se renueva.
+     */
+    private function getJsonWithRetry(string $url, int $attempts = 4): ?array
+    {
+        $refreshed = false;
+        for ($i = 0; $i < $attempts; $i++) {
+            if ($i > 0) sleep(min(2 ** $i, 8)); // 2, 4, 8 s
+            $data = json_decode($this->httpGet($url, 60), true);
+            if (!$this->lastRequestFailed && is_array($data))
+                return $data;
+            if (!$this->lastRequestFailed) // 200 pero no JSON
+                $this->lastRequestError = 'respuesta no válida de Drive';
+            $this->lastRequestFailed = true;
+
+            $code = $this->lastHttpCode;
+            if ($code === 401 && !$refreshed && $this->refreshToken) {
+                $new = $this->refreshAccessToken($this->refreshToken);
+                if (!empty($new['access_token'])) {
+                    $this->accessToken = $new['access_token'];
+                    $refreshed = true;
+                    $i--; // la renovación no cuenta como intento
+                    continue;
+                }
+                return null; // no se pudo renovar: reconectar
+            }
+            // 400/404 y 403 sin límite (permiso) no mejoran reintentando
+            $rateLimited = $code === 403 && preg_match('/rate ?limit|quota/i', $this->lastRequestError);
+            if ($code >= 400 && $code < 500 && $code !== 429 && $code !== 408 && !$rateLimited)
+                return null;
+        }
+        return null;
     }
 
     /**
@@ -685,23 +723,32 @@ class GoogleDriveService
     // HTTP helpers
     // ========================================
 
-    private function httpGet(string $url): string
+    private function httpGet(string $url, int $timeout = 20): string
     {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             // Sin timeout, una respuesta lenta de Google dejaba la página colgada
             CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 20,
+            CURLOPT_TIMEOUT => $timeout,
             CURLOPT_ENCODING => '', // acepta gzip
             CURLOPT_HTTPHEADER => [
                 "Authorization: Bearer {$this->accessToken}",
             ],
         ]);
         $response = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
+        $this->lastHttpCode = $code;
         $this->lastRequestFailed = ($response === false || $code >= 400);
+        $this->lastRequestError = '';
+        if ($response === false) {
+            $this->lastRequestError = 'sin respuesta (' . ($curlError ?: 'red') . ')';
+        } elseif ($code >= 400) {
+            $msg = json_decode($response, true)['error']['message'] ?? '';
+            $this->lastRequestError = "HTTP {$code}" . ($msg !== '' ? ': ' . mb_substr($msg, 0, 200) : '');
+        }
         return $response ?: '';
     }
 
