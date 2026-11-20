@@ -35,6 +35,7 @@
     const store = (() => { try { localStorage.setItem('kinoT', '1'); localStorage.removeItem('kinoT'); return localStorage; } catch (e) { return sessionStorage; } })();
     function saveSel() {
         try { store.setItem(STORE, JSON.stringify({ items: Array.from(sel.values()), tanda: tandaNum, last })); } catch (e) {}
+        try { window.dispatchEvent(new CustomEvent('kinoselchange', { detail: sel.size })); } catch (e) {} // contador de la barra de abajo
     }
     function loadSel() {
         sel = new Map();

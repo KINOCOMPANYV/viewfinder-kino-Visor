@@ -1,20 +1,22 @@
 <?php
 /**
  * Barra inferior tipo app, solo en el celular (≤ 640 px; estilos al final de style.css, "Etapa 2").
- * Antes de incluirla, la página pone $mnavActive = 'inicio' | 'buscar' | 'carpetas' | 'enviar' (o nada).
+ * Antes de incluirla, la página pone $mnavActive = 'inicio' | 'buscar' | 'carpetas' | 'seleccion' | 'enviar' (o nada).
+ * «Selección» lleva el número de fotos marcadas (kinoWaSel de wa_batch.js).
  */
 $mnavActive = $mnavActive ?? '';
 $mnavItems = [
     'inicio'   => ['/', '🏠', 'Inicio'],
     'buscar'   => ['/buscar', '🔍', 'Buscar'],
     'carpetas' => ['/#carpetas', '📂', 'Carpetas'],
+    'seleccion' => ['/mi-seleccion', '⭐', 'Selección'],
     'enviar'   => ['/enviar-catalogo', '📤', 'Enviar'],
 ];
 ?>
 <nav class="mnav" id="mobileNav" aria-label="Navegación">
     <?php foreach ($mnavItems as $mnavKey => [$mnavHref, $mnavIcon, $mnavLabel]): ?>
         <a href="<?= $mnavHref ?>" class="mnav-item<?= $mnavKey === $mnavActive ? ' active' : '' ?>" data-mnav="<?= $mnavKey ?>"<?= $mnavKey === $mnavActive ? ' aria-current="page"' : '' ?>>
-            <span class="mnav-icon" aria-hidden="true"><?= $mnavIcon ?></span>
+            <span class="mnav-icon" aria-hidden="true"><?= $mnavIcon ?><?php if ($mnavKey === 'seleccion'): ?><span class="mnav-badge" id="mnavSelCount" hidden></span><?php endif; ?></span>
             <span class="mnav-label"><?= $mnavLabel ?></span>
         </a>
     <?php endforeach; ?>
@@ -41,6 +43,27 @@ $mnavItems = [
             if (fromHere && history.length > 1) { ev.preventDefault(); history.back(); }
         });
         inner.insertBefore(back, inner.firstChild);
+    })();
+
+    // Número de fotos marcadas sobre «Selección» (se actualiza al marcar, y si se marca en otra pestaña)
+    (function () {
+        var badge = document.getElementById('mnavSelCount');
+        if (!badge) return;
+        function paint(n) {
+            if (typeof n !== 'number') {
+                n = 0;
+                try {
+                    var d = JSON.parse(localStorage.getItem('kinoWaSel') || sessionStorage.getItem('kinoWaSel') || 'null');
+                    n = d && Array.isArray(d.items) ? d.items.length : 0;
+                } catch (err) {}
+            }
+            badge.textContent = n > 99 ? '99+' : String(n);
+            badge.hidden = !n;
+        }
+        paint();
+        window.addEventListener('kinoselchange', function (e) { paint(typeof e.detail === 'number' ? e.detail : undefined); });
+        window.addEventListener('storage', function (e) { if (e.key === 'kinoWaSel') paint(); });
+        window.addEventListener('pageshow', function () { paint(); });
     })();
 
     document.getElementById('mobileNav').addEventListener('click', function (e) {

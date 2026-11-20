@@ -81,7 +81,7 @@ $fmtDay = function (string $d): string {
                     $href = $f['matched_sku'] ? '/producto/' . rawurlencode($f['matched_sku']) : '#';
                     $thumb = lh3Url($f['file_id'], 400);
                 ?>
-                    <div class="parent-card search-selectable-card">
+                    <div class="parent-card search-selectable-card<?= loadMoreClass($idx) ?>">
                         <a href="<?= e($href) ?>" style="display:block;color:inherit;text-decoration:none;">
                             <div class="card-image" style="position:relative;">
                                 <span class="nw-badge"><?= $isVideo ? '🎬 ' : '' ?><?= e($fmtDay($f['first_seen_at'])) ?></span>
@@ -105,6 +105,7 @@ $fmtDay = function (string $d): string {
                     </div>
                 <?php endforeach; ?>
             </div>
+            <?= loadMoreButton(count($files)) ?>
         <?php endif; ?>
     </section>
 

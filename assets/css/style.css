@@ -3268,3 +3268,40 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 .product-price.no-price { font-size: 0.72rem; font-weight: 500; color: var(--color-text-muted); font-style: italic; }
 .product-price { font-size: 1.6rem; font-weight: 700; color: #22c55e; margin: 0.25rem 0 0.75rem; }
 .product-price.no-price { font-size: 0.9rem; }
+
+/* ===== Celular: navegación y rapidez (2026-11-20) ===== */
+/* Filtros plegados tras un botón (solo celular); en el computador la barra se ve siempre */
+.filter-toggle { display: none; }
+@media (max-width: 640px) {
+    .filter-toggle {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%;
+        min-height: 44px; padding: 0.5rem 0.9rem; margin: 0 0 0.6rem;
+        border-radius: 12px; border: 1.5px solid var(--color-border); background: var(--color-surface-2);
+        color: var(--color-text); font: 600 0.9rem var(--font); cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .filter-toggle.on { border-color: var(--color-primary); color: var(--color-primary); }
+    .filter-toggle[aria-expanded="true"] .filter-toggle-arrow { transform: rotate(180deg); }
+    .filter-bar.fb-fold:not(.fb-open) { display: none; }
+    .filter-bar.fb-fold.fb-open { margin-bottom: 0.9rem; }
+    .filter-wrap { margin-top: 0.6rem; }
+}
+@media (max-width: 640px) {
+    /* Barra de abajo con 5 botones: Inicio, Buscar, Carpetas, Selección (con contador), Enviar */
+    .mnav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .mnav-icon { position: relative; }
+    .mnav-badge {
+        position: absolute; top: -6px; left: calc(100% - 6px);
+        min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+        background: var(--color-primary); color: var(--color-bg);
+        font: 700 0.66rem/18px var(--font); text-align: center;
+    }
+    .mnav-item:not(.active) .mnav-icon:has(.mnav-badge:not([hidden])) { filter: none; opacity: 1; }
+    /* Ficha de producto: sin «Volver al catálogo» (ya está la ← del encabezado); la ruta queda en una línea chica */
+    #btnBackCatalog { display: none; }
+    .product-detail .breadcrumb-bar { margin-bottom: 0.6rem; }
+    .product-detail .breadcrumb-path { font-size: 0.8rem; }
+}
+/* «Cargar más» en carpetas grandes y Novedades (helpers.php loadMoreButton) */
+.parent-grid > .lm-hide { display: none !important; }
+.lm-wrap { display: flex; justify-content: center; margin: 1.25rem 0 0.5rem; }
+.lm-btn { min-height: 46px; min-width: 220px; justify-content: center; font-weight: 700; }

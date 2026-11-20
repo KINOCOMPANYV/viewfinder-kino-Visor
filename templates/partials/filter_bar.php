@@ -71,7 +71,19 @@ $fbMulti = function (string $name, string $title, array $opts, array $sel) {
 };
 if (!$fbO['brands'] && !$fbO['categories'] && !$fbO['prices'] && !$fbFolders) return;
 ?>
-<form class="filter-bar" id="filterForm" action="<?= e($fbTarget) ?>" method="GET" data-target="<?= e($fbTarget) ?>">
+<?php
+// Celular: la barra va plegada tras un botón «⚙️ Filtros» (los chips de lo activo siguen a la vista).
+// En el catálogo PDF (filtrar es lo principal de esa pantalla) queda abierta.
+$fbOn = count($fbChips) + ($fbF['oprecio'] !== '' ? 1 : 0) + ($fbF['ocodigo'] !== '' ? 1 : 0);
+$fbFold = !$fbExtra;
+?>
+<?php if ($fbFold): ?>
+    <button type="button" class="filter-toggle<?= $fbOn ? ' on' : '' ?>" aria-expanded="false" aria-controls="filterForm"
+            onclick="var f=document.getElementById('filterForm'),o=f.classList.toggle('fb-open');this.setAttribute('aria-expanded',o)">
+        <span>⚙️ Filtros y orden<?= $fbOn ? ' (' . $fbOn . ')' : '' ?></span><span class="filter-toggle-arrow" aria-hidden="true">▾</span>
+    </button>
+<?php endif; ?>
+<form class="filter-bar<?= $fbFold ? ' fb-fold' : '' ?>" id="filterForm" action="<?= e($fbTarget) ?>" method="GET" data-target="<?= e($fbTarget) ?>">
     <?php if ($fbExtra): ?>
         <input type="text" name="q" value="<?= e($fbQ) ?>" placeholder="Texto: nombre, color, carpeta…" aria-label="Texto" class="filter-field filter-q<?= $fbQ !== '' ? ' on' : '' ?>">
     <?php else: ?>
