@@ -77,4 +77,20 @@ foreach ($results as $r) {
     }
 }
 
+// Nombre completo de una foto de Drive pegado en la búsqueda ("S-640+S-647-3.jpg"): su producto.
+// Ese nombre no es un código (el "+" une dos códigos), así que se busca el archivo en drive_index.
+if (!$unique) {
+    $filePhotos = photosByFileName($db, $q, 10);
+    if ($filePhotos) {
+        $stmt = $db->prepare(
+            "SELECT sku, name, category, cover_image_url, parent_sku FROM products
+             WHERE archived = 0 AND cover_image_url > ''
+               AND sku IN (" . implode(',', array_fill(0, count($filePhotos), '?')) . ")
+             ORDER BY sku ASC LIMIT 10"
+        );
+        $stmt->execute(array_keys($filePhotos));
+        $unique = $stmt->fetchAll();
+    }
+}
+
 jsonCachedResponse(array_slice($unique, 0, 10), 30);

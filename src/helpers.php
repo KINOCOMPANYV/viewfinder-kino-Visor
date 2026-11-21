@@ -371,6 +371,24 @@ function catalogPdfItems(PDO $db, string $q, array $filters, int $limit = 300): 
     $stmt = $db->prepare("SELECT p.sku, p.cover_image_url, p.price_suggested FROM products p WHERE $where ORDER BY p.brand, p.sku");
     $stmt->execute(array_merge($params, $fParams));
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Nombre exacto de archivo en el texto ("S-640+S-647-3.jpg"): va al PDF **esa** foto, no la
+    // portada del producto (es para lo que se pega el nombre). Sin videos: no van en el PDF.
+    if (!$rows && $q !== '') {
+        $photos = array_filter(photosByFileName($db, $q, max(1, $limit)), fn($ph) => !$ph['video']);
+        if ($photos) {
+            $stmt = $db->prepare(
+                "SELECT p.sku, p.price_suggested FROM products p
+                 WHERE p.archived = 0 AND p.cover_image_url > ''
+                   AND p.sku IN (" . implode(',', array_fill(0, count($photos), '?')) . ")" . $fSql . "
+                 ORDER BY p.brand, p.sku"
+            );
+            $stmt->execute(array_merge(array_keys($photos), $fParams));
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $r['cover_image_url'] = coverStringForFile($photos[$r['sku']]['id'], false);
+                $rows[] = $r;
+            }
+        }
+    }
     catalogSortRows($rows, $filters['oprecio'] ?? '', $filters['ocodigo'] ?? '');
     $items = [];
     $total = 0;
@@ -568,6 +586,69 @@ function fileNameStartsWithSku(string $filename, string $sku): bool
     if (!str_starts_with($name, $skuLower)) return false;
     $len = strlen($skuLower);
     return strlen($name) === $len || !ctype_alnum($name[$len]);
+}
+
+/**
+ * BÚSQUEDA POR NOMBRE EXACTO DE ARCHIVO. Para pegar en cualquier buscador o lista el nombre de un
+ * archivo de Drive ("S-640+S-647-3.jpg"): devuelve el código al que está enlazado **y esa foto**,
+ * así se puede mostrar, mandar o imprimir la foto exacta y no la portada del producto.
+ * Hace falta porque esos nombres no son un código: el "+" une dos códigos y el archivo queda
+ * enlazado solo al primero (S-640), así que ninguna búsqueda por código los encuentra.
+ * Misma regla que las fotos de un producto (fileNameStartsWithSku): el nombre sin extensión es
+ * igual a lo buscado o sigue con un separador ("S-640+S-647" encuentra "S-640+S-647-3.jpg").
+ * Una foto por código (la primera por nombre). No mira si el producto es público: eso lo decide
+ * quien llama (el catálogo público pide `archived = 0 AND cover_image_url > ''`).
+ * $includeHidden = también las fotos de carpetas ocultas (solo para el admin «¿por qué no sale?»).
+ * @return array<string, array{id: string, name: string, video: bool}> código => foto exacta
+ */
+function photosByFileName(PDO $db, string $q, int $limit = 20, bool $includeHidden = false): array
+{
+    $stem = trim(cleanSkuDisplay(trim($q)));
+    if (strlen($stem) < 3 || !preg_match('/\d/', $stem)) return []; // muy corto o sin números: no es un nombre de foto
+    try {
+        $stmt = $db->prepare(
+            "SELECT file_id, name, mime_type, matched_sku FROM drive_index
+             WHERE is_folder = 0 " . ($includeHidden ? '' : 'AND is_hidden = 0 ') . "AND matched_sku IS NOT NULL AND name_stem LIKE ?
+             ORDER BY name_stem = ? DESC, name ASC LIMIT 200"
+        );
+        // Primero el archivo que se llama EXACTAMENTE así: "1971-1.jpg" antes que "1971-1-2.jpg"
+        // (por nombre, "-" va antes que ".", y saldría la foto 2 en vez de la pedida).
+        $stmt->execute([addcslashes($stem, '%_\\') . '%', $stem]);
+    } catch (\PDOException $e) {
+        return []; // drive_index / matched_sku aún sin migrar
+    }
+    $out = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        if (!fileNameStartsWithSku((string) $r['name'], $stem)) continue;
+        $sku = (string) $r['matched_sku'];
+        if (isset($out[$sku])) continue;
+        $out[$sku] = [
+            'id' => (string) $r['file_id'],
+            'name' => (string) $r['name'],
+            'video' => str_starts_with((string) $r['mime_type'], 'video/'),
+        ];
+        if (count($out) >= $limit) break;
+    }
+    return $out;
+}
+
+/**
+ * ¿Lo escrito parece el nombre de un archivo y no un código? Lleva un signo que no va en un código
+ * (el "+" de "S-640+S-647-3") o termina en una extensión de foto/video. Sirve para no ir a la BD por
+ * cada palabra de una lista larga: solo estas se buscan con photosByFileName().
+ */
+function looksLikeFileName(string $text): bool
+{
+    $t = trim($text);
+    if ($t === '' || !preg_match('/\d/', $t)) return false; // sin números no es el nombre de una foto
+    return (bool) preg_match('/[^\w:.\- ]/u', $t)
+        || (bool) preg_match('/\.(jpe?g|png|webp|gif|bmp|heic|mp4|mov|avi|mkv)$/i', $t);
+}
+
+/** Portada en el formato que guarda `products.cover_image_url`: `lh3Url()` y "[VIDEO]" si es video. */
+function coverStringForFile(string $fileId, bool $isVideo): string
+{
+    return $isVideo ? '[VIDEO]https://lh3.googleusercontent.com/d/' . $fileId : lh3Url($fileId);
 }
 
 /**
@@ -848,6 +929,13 @@ function adminProductFilter(array $f): array
     // Búsqueda inteligente: cada palabra debe aparecer (en cualquier orden) en el código, nombre, marca,
     // categoría, color o en el nombre de la carpeta de Drive donde está su foto. Ej.: «poedagar dama dorado».
     $q = trim((string) ($f['q'] ?? ''));
+    // Nombre exacto de archivo pegado en el buscador («S-640+S-647-3.jpg», que no es ningún código):
+    // se busca por el código al que está enlazada esa foto (aquí, así el listado y activar/desactivar
+    // «todos los del filtro» ven exactamente lo mismo).
+    if ($q !== '' && looksLikeFileName($q)) {
+        $byFile = photosByFileName(getDB(), $q, 1);
+        if ($byFile) $q = (string) array_key_first($byFile);
+    }
     $words = $q === '' ? [] : array_slice(preg_split('/\s+/u', $q), 0, 6);
     foreach ($words as $w) {
         $like = '%' . addcslashes($w, '%_\\') . '%';

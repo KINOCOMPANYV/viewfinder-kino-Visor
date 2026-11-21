@@ -23,6 +23,12 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   centavos) sobre la huella gratis (solo reconoce la misma foto) y sobre describir la foto con IA (lenta y cara).
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
   código. El nombre de la carpeta no cuenta. Lo que no coincide se lista para renombrar (Admin → Media, CSV).
+- **Fotos con dos códigos en el nombre** (2026-11-21, decisión del dueño, caso «S-640+S-647-3.jpg»): la foto sigue siendo
+  solo del primer código (S-640); no se reparte entre los dos. Lo que faltaba era el buscador: pegando el nombre completo
+  de la foto sale su producto con esa foto. Buscar solo «S-647» no la trae.
+- **Búsqueda por nombre exacto de archivo en todas partes** (2026-11-21, decisión del dueño): además de las búsquedas
+  de siempre, cualquier buscador o lista acepta el nombre exacto de una foto. Sobre todo para **crear PDF**: hace falta
+  la imagen exacta del producto, así que va esa foto y no la portada. Gana el nombre idéntico («1971-1.jpg», no «1971-1-2.jpg»).
 - **Un solo flujo de enlace**: `DriveIndex::relink()` → `drive_index.matched_sku`. Portada: propia > familia > video. Todo lo
   público (galería, tarjetas, ficha, envíos) lee ese enlace. Nada de Drive en vivo al navegar.
 - **Productos "Solo Drive"**: una foto cuyo nombre es un código que no está en la hoja crea el producto (nombre = código,
@@ -122,6 +128,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Búsqueda: el código exacto primero ("8363-3" = "M:8363-3"), luego los que empiezan por él y el resto; carpetas cuyo
   nombre coincide (también como código), arriba o, si el código existe, justo debajo de su tarjeta. Filtros (2026-11-20) en inicio, búsqueda, carpetas y Novedades: varias marcas, categorías y carpetas a la vez + precio, todo combinable y en la URL; el texto busca también por marca, color y nombre de carpeta; si no encuentra nada,
   "¿Quisiste decir…?" con los códigos y marcas más parecidos.
+- Nombre exacto de un archivo de Drive, en todas partes (2026-11-21): si lo pegado no es ningún código pero es el nombre
+  de una foto («S-640+S-647-3.jpg»), sale el producto de esa foto **con esa misma foto**: buscador y autocompletar,
+  **Catálogo PDF** («🔎 Armar con filtros»), Enviar catálogo y Lista pedido (esa foto va primera), lista de varios
+  códigos, la ficha (`/producto/…`), Admin → Productos y «¿Por qué no sale la foto?». Además de las búsquedas de siempre.
 - Navegación (2026-11-11): en el celular, botón **←** junto al logo en todas las páginas menos el inicio (vuelve a la
   pantalla anterior; si se llegó por un enlace de fuera, va a la página de arriba). **Migas de pan** «Inicio › Sección ›
   Página» en Mi selección, Catálogo en PDF (la del medio dice de dónde vino la lista), Enviar catálogo y Novedades;
@@ -314,3 +324,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   (2/4/8 s, 60 s de espera, renueva el token si vence a mitad), parte la consulta en 4 si sigue fallando y el error muestra el motivo (HTTP/Google).
 - Rama `claude/project-thread-7o7t14` (2026-11-20): stock al lado del precio (verde con cantidad, rojo en 0) en inicio, búsqueda, carpetas, Novedades y ficha; sin consultas extra. Filtro Con stock / Sin stock / Todos.
 - Misma rama (2026-11-20, tras #96): el stock público ya no muestra la cantidad, solo «In Stock» (verde) / «Out stock» (rojo); el filtro sigue igual.
+- Rama `claude/search-file-s640-s647-5c99af` (2026-11-21): el buscador encuentra una foto por su nombre completo de archivo
+  («S-640+S-647-3.jpg», dos códigos unidos con «+», que no es ningún código): `skusByFileName()` busca el archivo en
+  `drive_index` y muestra el producto al que está enlazado, con esa foto en la tarjeta. Vale en `/buscar`, en el
+  autocomplete y en una lista de varios códigos.
+- Misma rama y PR #98 (2026-11-21): búsqueda por nombre exacto de archivo en todas partes, con la foto exacta
+  (`photosByFileName()`): Catálogo PDF, Enviar catálogo, Lista pedido, lista de códigos, ficha, Admin → Productos y
+  «¿Por qué no sale la foto?». Gana el nombre idéntico sobre «nombre + sufijo».

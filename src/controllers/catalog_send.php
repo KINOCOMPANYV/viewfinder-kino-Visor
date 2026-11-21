@@ -103,6 +103,7 @@ function catalogSendExtract(PDO $db, string $text): array
     $found = [];
     $notFound = [];
     $corrected = [];   // código del catálogo → como venía escrito (corregido B↔8, O↔0…)
+    $forced = [];      // código → foto exacta pedida por su nombre de archivo (va primera)
     $n = count($clean);
     for ($i = 0; $i < $n; $i++) {
         $tok = $clean[$i];
@@ -128,6 +129,16 @@ function catalogSendExtract(PDO $db, string $text): array
                 if (catalogSendKey($read) !== catalogSendKey($p['sku'])) $corrected[$p['sku']] ??= $read;
             }
         }
+        // Nombre exacto de archivo pegado en la lista ("S-640+S-647-3.jpg", que no es ningún código):
+        // su producto y, de sus fotos, ESA (es la que se pegó). Solo lo que no puede ser un código.
+        if (!$p && looksLikeFileName($tok) && ($byFile = photosByFileName($db, $tok, 1))) {
+            $ph = reset($byFile);
+            $row = $exact[strtoupper((string) array_key_first($byFile))] ?? null; // solo productos visibles
+            if ($row && !$ph['video']) {
+                $p = $row;
+                $forced[$row['sku']] ??= $ph['id'];
+            }
+        }
         if ($p) {
             $found[$p['sku']] ??= $p;
             $i += $used - 1;
@@ -148,7 +159,7 @@ function catalogSendExtract(PDO $db, string $text): array
             'read_as' => $corrected[$sku] ?? null,
             'name' => (string) ($p['name'] ?? ''),
             'price' => (float) ($p['price_suggested'] ?? 0),
-            'photos' => catalogSendPhotos($db, $sku, (string) ($p['cover_image_url'] ?? ''), $indexReady),
+            'photos' => catalogSendPhotos($db, $sku, (string) ($p['cover_image_url'] ?? ''), $indexReady, $forced[$sku] ?? null),
         ];
     }
 
@@ -161,6 +172,7 @@ function catalogSendExtract(PDO $db, string $text): array
  * Lista pedido: para cada código del PDF (tal cual), su producto visible y su foto principal, o null si no hay.
  * Solo coincidencia exacta (con o sin "M", "M:", "M-"; sin espacios, guiones, ":" ni "."): sin la corrección del
  * lector de fotos (B↔8…) ni juntar palabras, para que un código nunca tome la foto de otro.
+ * Si lo pegado es el nombre exacto de un archivo ("S-640+S-647-3.jpg"), va su producto con ESA foto.
  * @return array{photos: array<string, ?array{sku: string, id: string}>}
  */
 function catalogSendLookup(PDO $db, array $codes): array
@@ -185,7 +197,17 @@ function catalogSendLookup(PDO $db, array $codes): array
                 if ($p = $norm[strtoupper($form)] ?? null) break;
             }
         }
-        $photo = $p ? (catalogSendPhotos($db, $p['sku'], (string) $p['cover_image_url'], $indexReady)[0] ?? null) : null;
+        // Nombre exacto de archivo ("S-640+S-647-3.jpg"): su producto y ESA foto, no la portada
+        $forcedId = null;
+        if (!$p && looksLikeFileName($code) && ($byFile = photosByFileName($db, $code, 1))) {
+            $ph = reset($byFile);
+            $row = $exact[strtoupper((string) array_key_first($byFile))] ?? null; // solo productos visibles
+            if ($row && !$ph['video']) {
+                $p = $row;
+                $forcedId = $ph['id'];
+            }
+        }
+        $photo = $p ? (catalogSendPhotos($db, $p['sku'], (string) $p['cover_image_url'], $indexReady, $forcedId)[0] ?? null) : null;
         $out[$code] = $photo ? ['sku' => $p['sku'], 'id' => $photo['id']] : null;
     }
     return ['photos' => (object) $out];
@@ -194,8 +216,9 @@ function catalogSendLookup(PDO $db, array $codes): array
 /**
  * Fotos de un código: la portada primero y luego las demás enlazadas (DriveIndex::filesForSku,
  * o sea drive_index.matched_sku). Solo imágenes; los videos no se envían.
+ * $firstId = foto que va de primera por delante de la portada (la que se pidió por su nombre de archivo).
  */
-function catalogSendPhotos(PDO $db, string $sku, string $storedCover, bool $indexReady): array
+function catalogSendPhotos(PDO $db, string $sku, string $storedCover, bool $indexReady, ?string $firstId = null): array
 {
     $coverId = null;
     $cover = parseStoredCover($storedCover, 400);
@@ -214,6 +237,11 @@ function catalogSendPhotos(PDO $db, string $sku, string $storedCover, bool $inde
         $first = $photos[$coverId] ?? ['id' => $coverId, 'name' => $sku];
         unset($photos[$coverId]);
         $photos = [$coverId => $first] + $photos;
+    }
+    if ($firstId !== null && $firstId !== '') { // la pedida por su nombre de archivo manda
+        $first = $photos[$firstId] ?? ['id' => $firstId, 'name' => $sku];
+        unset($photos[$firstId]);
+        $photos = [$firstId => $first] + $photos;
     }
     $out = [];
     foreach ($photos as $ph) {

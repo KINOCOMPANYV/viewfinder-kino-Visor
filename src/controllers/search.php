@@ -75,6 +75,16 @@ if ($q === '' && !$isMultiCode) {
         $conditions[] = "sku LIKE ?";
         $params[] = $codeClean . '%';
     }
+    // Nombres de archivo en la lista ("S-640+S-647-3.jpg"): "sku LIKE" no los encuentra, así que se
+    // busca el archivo por su nombre exacto en drive_index. Solo los que no pueden ser un código.
+    $filePhotos = [];
+    foreach ($multiCodes as $code) {
+        if (looksLikeFileName($code)) $filePhotos += photosByFileName($db, $code, 5);
+    }
+    if ($filePhotos) {
+        $conditions[] = "sku IN (" . implode(',', array_fill(0, count($filePhotos), '?')) . ")";
+        array_push($params, ...array_keys($filePhotos));
+    }
     $whereMulti = "archived = 0 AND cover_image_url > '' AND (" . implode(' OR ', $conditions) . ")" . $filterSql;
     $params = array_merge($params, $filterParams);
     
@@ -94,6 +104,12 @@ if ($q === '' && !$isMultiCode) {
     );
     $stmt->execute($params);
     $allMatches = $stmt->fetchAll();
+    // De los que entraron por nombre de archivo, la tarjeta muestra esa foto (es la que se pegó)
+    foreach ($allMatches as $i => $m) {
+        if (isset($filePhotos[$m['sku']])) {
+            $allMatches[$i]['cover_image_url'] = coverStringForFile($filePhotos[$m['sku']]['id'], $filePhotos[$m['sku']]['video']);
+        }
+    }
     
     // Sin paginación para multi-código
     $perPage = max($total, 1);
@@ -142,6 +158,30 @@ if ($q === '' && !$isMultiCode) {
     $finalParams = array_merge($paramsBase, $forms, $startsParams, $forms, $startsParams);
     $stmt->execute($finalParams);
     $allMatches = $stmt->fetchAll();
+}
+
+// Pegar el nombre completo de una foto de Drive ("S-640+S-647-3.jpg"): su producto, con esa misma
+// foto en la tarjeta. Esos nombres con dos códigos unidos ("+") no son un código, así que se busca
+// el archivo por nombre en drive_index (photosByFileName) y se muestra el producto al que está enlazado.
+if (empty($allMatches) && !$isMultiCode && $q !== '') {
+    $filePhotos = photosByFileName($db, $q);
+    if ($filePhotos) {
+        $stmt = $db->prepare(
+            "SELECT p.sku, p.name, p.category, p.gender, p.price_suggested, " . stockSql('p') . " AS stock_now, p.cover_image_url, p.parent_sku
+             FROM products p
+             WHERE p.archived = 0 AND p.cover_image_url > ''
+               AND p.sku IN (" . implode(',', array_fill(0, count($filePhotos), '?')) . ")" . $filterSql . "
+             ORDER BY p.sku ASC"
+        );
+        $stmt->execute(array_merge(array_keys($filePhotos), $filterParams));
+        $allMatches = $stmt->fetchAll();
+        // La tarjeta muestra la foto buscada, no la portada del producto (es la que se pegó)
+        foreach ($allMatches as $i => $m) {
+            if (isset($filePhotos[$m['sku']])) {
+                $allMatches[$i]['cover_image_url'] = coverStringForFile($filePhotos[$m['sku']]['id'], $filePhotos[$m['sku']]['video']);
+            }
+        }
+    }
 }
 
 // Sin resultados por un código mal escrito: "¿Quisiste decir…?" (los más parecidos, sin filtros)
