@@ -238,6 +238,10 @@ class DriveIndex
         $stats = ['ok' => false, 'files' => 0, 'linked' => 0, 'family' => 0, 'unlinked' => [], 'drive_products' => 0,
                   'covers_set' => 0, 'covers_cleared' => 0, 'without_photo' => 0, 'album_of' => []];
         if (!self::isReady($db)) return $stats;
+        // Códigos condenados (Admin → 🚫 Condenados): su producto se borra y sus archivos no se enlazan a nada
+        // (ni crean «Solo Drive»)
+        purgeCondemnedProducts($db);
+        $condemned = condemnedIndex($db);
         $productsSql = "SELECT id, sku, parent_sku, cover_image_url, in_sheet, from_drive, is_active, archived FROM products ORDER BY archived ASC, id ASC";
         try {
             // Todos los productos (también los ocultos): así la foto de uno desactivado no se
@@ -250,6 +254,9 @@ class DriveIndex
             )->fetchAll(PDO::FETCH_ASSOC);
         } catch (\PDOException $e) {
             return $stats; // migración 020/021/024 aún no aplicada
+        }
+        if ($condemned) {
+            $files = array_values(array_filter($files, fn($f) => !isCondemnedFile($f['name'], $condemned)));
         }
         $stats['files'] = count($files);
 

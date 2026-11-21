@@ -343,6 +343,12 @@ if ($uri === '/admin/sync') {
     exit;
 }
 
+if ($uri === '/admin/condenados') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_condemned.php';
+    exit;
+}
+
 if ($uri === '/admin/hoja') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_sheet_preview.php';

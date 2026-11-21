@@ -79,6 +79,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   STOCK de la hoja **pegándola a mano**; el visor no escribe en la hoja. Admin → 📦 Inventario arma la columna en el orden de
   filas de la hoja y el reporte de diferencias. Cruce: código exacto primero (NO:610-1 y NO610-1 son filas distintas en ambos
   archivos), luego "M:", "M", "M-" iguales. Negativos → 0. Códigos del inventario que no están en la hoja no se agregan.
+- **Códigos condenados** (2026-11-21): Admin → 🚫 Condenados, lista manual. Un código condenado no se tiene en cuenta en la
+  Hoja master, «Solo Drive», enlace de fotos ni búsqueda; si estaba en el visor **se borra** (única excepción a «no se borran
+  productos»). «M:», «M», «M-» = mismo código. Primero: M:8325-1. Quitar de la lista = vuelve en el próximo sync.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -334,3 +337,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/ficha-galeria-nombre-archivo` (2026-11-21, tras #98, probado en producción): la ficha abierta por nombre
   de archivo (`/producto/S-640+S-647-3.jpg`) salía con la galería vacía (pedía `/api/media/S-640+S-647-3`); ahora la pide
   con el código del producto (S-640). Todo lo demás de #98 probado en producción y bien.
+- Rama `claude/project-thread-7pcp5a` (2026-11-21): Admin → 🚫 Condenados (migración 034 `condemned_codes`, empieza con M:8325-1): la hoja, «Solo Drive», el enlace de fotos y la búsqueda de carpetas ignoran esos códigos y el producto se borra.
