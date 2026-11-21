@@ -92,7 +92,12 @@ if (!$product) {
         $stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
         $stmt->execute([(string) array_key_first($byFile)]);
         $product = $stmt->fetch() ?: null;
-        if ($product) break;
+        if ($product) {
+            // La galería (SEARCH_SKU → /api/media/…) se pide con el código del producto, no con el
+            // nombre del archivo: "S-640+S-647-3" no es un código y la galería salía vacía.
+            $originalSku = $product['sku'];
+            break;
+        }
     }
 }
 
