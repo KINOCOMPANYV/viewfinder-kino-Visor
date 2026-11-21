@@ -1,7 +1,7 @@
 # Plan: Pedido de bodega (alistar y chequear un pedido)
 
 Estado: **aprobado por el dueño (2026-11-21)**; se tomaron mis propuestas en las preguntas. **B1 y B2 hechas** (un solo PR);
-B3 (historial en servidor) no se hace por ahora.
+**B3 hecha (2026-11-21)** en forma de «Pedidos a alistar» (`/pedidos-alistar`, tabla `warehouse_orders`): rojo = por alistar, verde = listo.
 
 Cambios al construirlo: en vez de «cantidad encontrada» + «estado», cada ítem tiene una sola **cantidad final** (+/−, empieza
 igual a la pedida) y el estado sale solo (Completo / Menos / Más / Cambiado / Agregado / Quitado). El precio de cada ítem se
