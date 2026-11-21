@@ -283,6 +283,29 @@ if ($uri === '/pedido-bodega') {
     exit;
 }
 
+// Pedidos a alistar (warehouse_orders): lista roja/verde y su API JSON
+if ($uri === '/pedidos-alistar') {
+    include __DIR__ . '/templates/client/warehouse_orders.php';
+    exit;
+}
+if ($uri === '/pedidos-alistar/api' && $method === 'GET') {
+    $woAction = 'list';
+    include __DIR__ . '/src/controllers/warehouse_orders.php';
+}
+if ($uri === '/pedidos-alistar/api' && $method === 'POST') {
+    checkRateLimit(30);
+    $woAction = 'create';
+    include __DIR__ . '/src/controllers/warehouse_orders.php';
+}
+if (preg_match('#^/pedidos-alistar/api/(\d+)$#', $uri, $matches)) {
+    if ($method === 'POST') {
+        checkRateLimit(120); // el panel guarda el avance cada vez que se marca algo
+    }
+    $woAction = $method === 'POST' ? 'save' : 'get';
+    $woId = (int) $matches[1];
+    include __DIR__ . '/src/controllers/warehouse_orders.php';
+}
+
 // Logo subido de la plantilla de Remisión (Admin → 🚚 Remisión)
 if (preg_match('#^/lista-pedido/logo/([a-z0-9_-]+)$#', $uri, $matches)) {
     require_once __DIR__ . '/src/services/RemisionTemplate.php';

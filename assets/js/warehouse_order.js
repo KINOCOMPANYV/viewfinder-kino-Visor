@@ -3,16 +3,31 @@
  * Por producto: foto, código, nombre, precio, cantidad pedida y final (+/−), cambiar de producto, nota y casilla
  * «Alistado». Total final recalculado contra el original. «Chequeado por» + «Finalizar» arman el PDF «Pedido finalizado»
  * (jsPDF en el dispositivo, nombre editable; pdf_shared.js). El avance se guarda en localStorage (kinoBodega).
- * Nada se guarda en el servidor; solo se consulta nombre/precio/foto con POST /enviar-catalogo/extraer {codes}.
+ * Con ?id=N (Pedidos a alistar, tabla warehouse_orders) el pedido y su avance se leen y guardan en el servidor
+ * (GET/POST /pedidos-alistar/api/N); al finalizar queda «listo» (verde). Sin id: pedido de sessionStorage, solo local.
+ * Nombre/precio/foto: POST /enviar-catalogo/extraer {codes}.
  */
-(function () {
+(async function () {
     const KP = window.KinoPdf;
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const msg = (t) => { $('pbMsg').textContent = t || ''; };
 
-    let data = null;
-    try { data = JSON.parse(sessionStorage.getItem('kinoPedido') || 'null'); } catch (e) { data = null; }
+    const SID = Number(new URLSearchParams(location.search).get('id')) || 0;
+    let data = null, srv = null;
+    if (SID) {
+        try {
+            const r = await fetch('/pedidos-alistar/api/' + SID, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+            srv = await r.json();
+            if (!r.ok) throw new Error(srv.error || 'error ' + r.status);
+            data = srv.order;
+        } catch (e) {
+            $('pbEmpty').innerHTML = '<p>⚠️ No se pudo abrir el pedido (' + esc(e && e.message ? e.message : e) + ').</p><p><a href="/pedidos-alistar">← Volver a Pedidos a alistar</a></p>';
+            $('pbEmpty').hidden = false; return;
+        }
+    } else {
+        try { data = JSON.parse(sessionStorage.getItem('kinoPedido') || 'null'); } catch (e) { data = null; }
+    }
     if (!data || !Array.isArray(data.items) || !data.items.length) { $('pbEmpty').hidden = false; return; }
     const order = data.order || {};
 
@@ -39,10 +54,40 @@
 
     // ---- Guardado local ----
     const KEY = (order.number || '') + '|' + (order.client || '') + '|' + data.items.map((i) => i.code + ':' + i.qty).join(',');
+    let srvTimer = null, srvBusy = Promise.resolve();
+    const cleanLines = () => lines.map((l) => Object.assign({}, l, { photo: l.photo === undefined ? null : l.photo }));
+    function saveServer(done) {
+        if (!SID) return Promise.resolve();
+        clearTimeout(srvTimer); srvTimer = null;
+        const body = JSON.stringify({ lines: cleanLines(), who: who.trim(), checked: lines.filter((l) => l.checked).length, total: totals().fin, done: !!done });
+        srvBusy = srvBusy.then(() => fetch('/pedidos-alistar/api/' + SID, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.CS_CSRF || '', Accept: 'application/json' }, body,
+        }).then((r) => r.json().then((j) => { if (!r.ok) throw new Error(j.error || 'error ' + r.status); if (j.status) setStatus(j.status); }))
+            .catch((e) => { msg('⚠️ No se guardó en el servidor (' + (e && e.message ? e.message : e) + '). Sigue guardado en este dispositivo.'); $('pbMsg').dataset.keep = '1'; }));
+        return srvBusy;
+    }
     function save() {
         try { localStorage.setItem('kinoBodega', JSON.stringify({ key: KEY, who, lines })); } catch (e) { /* sin guardado */ }
+        if (SID) { clearTimeout(srvTimer); srvTimer = setTimeout(() => saveServer(false), 1200); }
     }
-    try {
+    window.addEventListener('pagehide', () => { if (srvTimer) saveServer(false); });
+    let isDone = !!(srv && srv.status === 'listo');
+    function setStatus(st) {
+        isDone = st === 'listo';
+        const b = $('pbState');
+        if (!b) return;
+        b.hidden = !SID;
+        b.className = 'pb-state ' + (isDone ? 'green' : 'red');
+        b.innerHTML = isDone
+            ? '🟢 <b>Pedido listo</b>' + (srv && srv.who ? ' · chequeó ' + esc(srv.who) : '') + (srv && srv.finished ? ' · ' + esc(new Date(srv.finished * 1000).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })) : '').replace(/\.$/, '') + '. Verifica y descarga el PDF abajo.'
+            : '🔴 <b>Falta alistar.</b> El avance se guarda solo en el servidor: otro celular puede seguirlo.';
+        $('pbDone').textContent = isDone ? '📄 Ver PDF y descargar' : '✅ Finalizar pedido';
+    }
+    if (srv && Array.isArray(srv.lines) && srv.lines.length) {
+        lines = srv.lines; who = srv.who || ''; uid = lines.reduce((m, l) => Math.max(m, l.id), 0);
+        try { if (!who) { const s = JSON.parse(localStorage.getItem('kinoBodega') || 'null'); if (s && s.who) who = s.who; } } catch (e) { /* sin guardado */ }
+    } else try {
         const s = JSON.parse(localStorage.getItem('kinoBodega') || 'null');
         if (s && s.key === KEY && Array.isArray(s.lines) && s.lines.length) { lines = s.lines; who = s.who || ''; uid = lines.reduce((m, l) => Math.max(m, l.id), 0); }
         else if (s && s.who) who = s.who; // el nombre de quien chequea se recuerda entre pedidos
@@ -305,7 +350,8 @@
         try {
             pdfFile = await build();
             KP.setName([$('pbName')], pdfFile.name);
-            msg('✅ Pedido finalizado. Revisa el previo, cambia el nombre si quieres y descarga.');
+            if (SID) { if (srv) { srv.who = who.trim(); if (!isDone) srv.finished = Math.floor(Date.now() / 1000); } await saveServer(true); }
+            msg('✅ Pedido finalizado' + (SID ? ' y marcado en verde en Pedidos a alistar' : '') + '. Revisa el previo, cambia el nombre si quieres y descarga.');
             await showPreview();
         } catch (e) { msg('⚠️ No se pudo armar el PDF (' + (e && e.message ? e.message : e) + ').'); }
         busy = false; delete $('pbMsg').dataset.keep; $('pbDone').disabled = false;
@@ -313,6 +359,7 @@
 
     // ---- Arranque ----
     $('pbBody').hidden = false; $('pbFin').hidden = false;
+    setStatus(isDone ? 'listo' : 'pendiente');
     drawOrder(); drawProg(); drawList();
     (async () => {
         try {

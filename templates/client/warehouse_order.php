@@ -2,7 +2,7 @@
 /**
  * Pedido de bodega (/pedido-bodega): panel para alistar y chequear un pedido. Lee sessionStorage kinoPedido (el mismo
  * pedido que arma Lista Bodega / Remisión), deja cambiar producto y cantidad, recalcula el total y genera el PDF
- * «Pedido finalizado». Todo en el dispositivo (assets/js/warehouse_order.js + pdf_shared.js); plan: docs/PLAN_PEDIDO_BODEGA.md.
+ * «Pedido finalizado». Con ?id=N el pedido viene de Pedidos a alistar y el avance se guarda en el servidor. PDF en el dispositivo (assets/js/warehouse_order.js + pdf_shared.js); plan: docs/PLAN_PEDIDO_BODEGA.md.
  */
 $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
 ?>
@@ -65,6 +65,11 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-pv-head strong { flex:1; min-width:9rem; }
         .pb-pv-pages { flex:1; overflow:auto; padding:1rem; display:flex; flex-direction:column; align-items:center; gap:1rem; }
         .pb-pv-pages canvas { width:100%; max-width:820px; height:auto; background:#fff; border-radius:2px; }
+        .pb-state { border-radius:12px; padding:0.8rem 1rem; margin-bottom:1rem; border:1px solid; border-left-width:6px; }
+        .pb-state.red { border-color:#e0505a88; border-left-color:#e0505a; background:#e0505a14; }
+        .pb-state.green { border-color:#3fb95088; border-left-color:#3fb950; background:#3fb95012; }
+        .pb-state[hidden] { display:none; }
+        @media (max-width:640px) { body:has(.mnav) .pb-fin { bottom:calc(68px + env(safe-area-inset-bottom, 0px)); padding-bottom:0.6rem; } }
         main.pb-main { padding-bottom:11rem !important; }
     </style>
 </head>
@@ -73,20 +78,24 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
-            <a href="/lista-pedido" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Lista Bodega</a>
+            <div style="display:flex; gap:0.4rem; align-items:center;">
+                <a href="/lista-pedido" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Lista Bodega</a>
+                <a href="/pedidos-alistar" class="btn btn-sm btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📋 Pedidos a alistar</a>
+            </div>
         </div>
     </header>
 
     <main class="container pb-main" style="padding-top:2rem; max-width:900px;">
-        <?= breadcrumbs([['Extractor', '/extractor'], ['Lista Bodega', '/lista-pedido'], ['Pedido de bodega', null]]) ?>
+        <?= breadcrumbs([['Extractor', '/extractor'], ['Pedidos a alistar', '/pedidos-alistar'], ['Pedido de bodega', null]]) ?>
         <h1 style="font-size:1.5rem; margin-bottom:1rem;">📦 Pedido de bodega</h1>
 
         <div class="pb-card" id="pbEmpty" hidden>
             <p>No hay un pedido para alistar.</p>
-            <p class="pb-help">Abre el <a href="/extractor">Extractor</a>, procesa el PDF del pedido y toca «🧾 Lista Bodega» o «🚚 Remisión»; ahí está el botón «📦 Pedido de bodega».</p>
+            <p class="pb-help">Abre los <a href="/pedidos-alistar">📋 Pedidos a alistar</a>, o en el <a href="/extractor">Extractor</a> procesa el PDF del pedido, toca «🧾 Lista Bodega» y luego «📦 Enviar a pedidos a alistar».</p>
         </div>
 
         <div id="pbBody" hidden>
+            <div class="pb-state" id="pbState" hidden></div>
             <section class="pb-card">
                 <h2>Datos del pedido</h2>
                 <div class="pb-order" id="pbOrder"></div>

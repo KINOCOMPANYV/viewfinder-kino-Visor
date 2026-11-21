@@ -85,7 +85,10 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
-            <a href="/extractor" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Extractor</a>
+            <div style="display:flex; gap:0.4rem; align-items:center;">
+                <a href="/extractor" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Extractor</a>
+                <a href="/pedidos-alistar" class="btn btn-sm btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📋 Pedidos a alistar</a>
+            </div>
         </div>
     </header>
 
@@ -124,7 +127,7 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
             <button type="button" class="btn ol-preview-btn" id="olMake" disabled>⏳ Buscando fotos…</button>
             <button type="button" class="btn cp-share" id="olShare" hidden>📲 Compartir</button>
             <button type="button" class="btn btn-secondary" id="olDown" hidden>⬇️ Descargar</button>
-            <a class="btn btn-secondary" href="/pedido-bodega">📦 Pedido de bodega</a>
+            <button type="button" class="btn btn-secondary" id="olToWh">📦 Enviar a pedidos a alistar</button>
         </div>
         <div class="cp-msg" id="olMsg" aria-live="polite"></div>
     </div>
@@ -147,6 +150,24 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
     <script src="/assets/vendor/jspdf-4.2.1.umd.min.js" defer></script>
     <script src="/assets/js/pdf_shared.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="/assets/js/order_list.js?v=<?= $olJs ?>" defer></script>
+    <script>
+        // «📦 Enviar a pedidos a alistar»: guarda el pedido (sessionStorage kinoPedido) en el servidor y abre la lista
+        document.getElementById('olToWh').addEventListener('click', async (e) => {
+            const b = e.currentTarget, m = document.getElementById('olMsg');
+            let data = null;
+            try { data = JSON.parse(sessionStorage.getItem('kinoPedido') || 'null'); } catch (x) { data = null; }
+            if (!data || !Array.isArray(data.items) || !data.items.length) { m.textContent = '⚠️ No hay pedido para enviar. Ábrelo desde el Extractor.'; return; }
+            b.disabled = true; m.textContent = 'Enviando a Pedidos a alistar…';
+            try {
+                const r = await fetch('/pedidos-alistar/api', { method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.CS_CSRF || '', Accept: 'application/json' },
+                    body: JSON.stringify({ order: data }) });
+                const j = await r.json().catch(() => ({}));
+                if (!r.ok || !j.id) throw new Error(j.error || 'error ' + r.status);
+                location.href = '/pedidos-alistar?nuevo=' + j.id + (j.existing ? '&ya=1' : '');
+            } catch (x) { m.textContent = '⚠️ No se pudo enviar (' + (x && x.message ? x.message : x) + ').'; b.disabled = false; }
+        });
+    </script>
     <?php $mnavActive = 'enviar'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 
