@@ -23,6 +23,13 @@ $stmt = $db->prepare("SELECT sku, name, is_active, in_sheet, archived, parent_sk
                       ORDER BY archived ASC, sku = ? DESC LIMIT 1");
 $stmt->execute(array_merge($names, [$sku]));
 $product = $stmt->fetch() ?: null;
+// Nombre exacto de un archivo que no es ningún código («S-640+S-647-3.jpg»): el producto de esa foto
+// (también si está en una carpeta oculta: justo eso es lo que se viene a revisar aquí)
+if (!$product && looksLikeFileName($sku) && ($byFile = photosByFileName($db, $sku, 1, true))) {
+    $stmt = $db->prepare("SELECT sku, name, is_active, in_sheet, archived, parent_sku, cover_image_url FROM products WHERE sku = ?");
+    $stmt->execute([(string) array_key_first($byFile)]);
+    $product = $stmt->fetch() ?: null;
+}
 $code = $product['sku'] ?? $sku;
 
 // Carpetas apagadas a mano (admin Carpetas o álbum apagado)

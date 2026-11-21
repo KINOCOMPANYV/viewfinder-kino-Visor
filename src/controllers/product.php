@@ -80,6 +80,22 @@ if (!$product) {
     $product = $stmt->fetch();
 }
 
+if (!$product) {
+    // 6) Nombre exacto de un archivo de Drive que no es ningún código ("S-640+S-647-3.jpg"): el
+    //    producto al que está enlazada esa foto (si no, más abajo se va a su carpeta).
+    //    El "+" llega como espacio porque el router pasa el SKU por urldecode(): se prueban las dos.
+    $tries = [$sku];
+    if (str_contains($sku, ' ')) $tries[] = str_replace(' ', '+', $sku);
+    foreach ($tries as $try) {
+        $byFile = photosByFileName($db, $try, 1);
+        if (!$byFile) continue;
+        $stmt = $db->prepare("SELECT * FROM products WHERE sku = ?");
+        $stmt->execute([(string) array_key_first($byFile)]);
+        $product = $stmt->fetch() ?: null;
+        if ($product) break;
+    }
+}
+
 // Desactivado en el admin, fuera de la hoja maestra o sin foto/video en PRODUCTOS: no se muestra al público
 // (decisión del dueño 2026-11-10: sin foto no se muestra; aparece solo cuando llega su foto)
 if ($product && (!empty($product['archived']) || (string) $product['cover_image_url'] === '') && !isAdminLoggedIn()) {
