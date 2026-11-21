@@ -124,6 +124,7 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
             <button type="button" class="btn ol-preview-btn" id="olMake" disabled>⏳ Buscando fotos…</button>
             <button type="button" class="btn cp-share" id="olShare" hidden>📲 Compartir</button>
             <button type="button" class="btn btn-secondary" id="olDown" hidden>⬇️ Descargar</button>
+            <a class="btn btn-secondary" href="/pedido-bodega">📦 Pedido de bodega</a>
         </div>
         <div class="cp-msg" id="olMsg" aria-live="polite"></div>
     </div>

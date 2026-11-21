@@ -178,7 +178,7 @@ function catalogSendExtract(PDO $db, string $text): array
 function catalogSendLookup(PDO $db, array $codes): array
 {
     $rows = $db->query(
-        "SELECT sku, cover_image_url FROM products WHERE archived = 0 AND cover_image_url > '' ORDER BY id ASC"
+        "SELECT sku, name, price_suggested, cover_image_url FROM products WHERE archived = 0 AND cover_image_url > '' ORDER BY id ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
     $exact = [];
     $norm = [];
@@ -208,7 +208,11 @@ function catalogSendLookup(PDO $db, array $codes): array
             }
         }
         $photo = $p ? (catalogSendPhotos($db, $p['sku'], (string) $p['cover_image_url'], $indexReady, $forcedId)[0] ?? null) : null;
-        $out[$code] = $photo ? ['sku' => $p['sku'], 'id' => $photo['id']] : null;
+        // Nombre y precio del visor (los usa «Pedido de bodega»; Lista Bodega los ignora). Sin foto no hay entrada.
+        $out[$code] = $photo ? [
+            'sku' => $p['sku'], 'id' => $photo['id'], 'name' => (string) ($p['name'] ?? ''),
+            'price' => ($p['price_suggested'] ?? null) !== null && (float) $p['price_suggested'] > 0 ? (float) $p['price_suggested'] : null,
+        ] : null;
     }
     return ['photos' => (object) $out];
 }
