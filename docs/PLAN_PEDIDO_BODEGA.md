@@ -1,6 +1,11 @@
 # Plan: Pedido de bodega (alistar y chequear un pedido)
 
-Estado: **propuesta, esperando aprobación del dueño** (2026-11-21). No hay código todavía.
+Estado: **aprobado por el dueño (2026-11-21)**; se tomaron mis propuestas en las preguntas. **B1 y B2 hechas** (un solo PR);
+B3 (historial en servidor) no se hace por ahora.
+
+Cambios al construirlo: en vez de «cantidad encontrada» + «estado», cada ítem tiene una sola **cantidad final** (+/−, empieza
+igual a la pedida) y el estado sale solo (Completo / Menos / Más / Cambiado / Agregado / Quitado). El precio de cada ítem se
+puede editar a mano. Sin clave: entra cualquiera con el enlace, igual que Lista Bodega.
 
 ## Qué se quiere
 Un módulo aparte, conectado al generador de pedido (Extractor → Lista Bodega / Remisión), para que la bodega

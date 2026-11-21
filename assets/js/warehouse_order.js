@@ -1,0 +1,335 @@
+/**
+ * Pedido de bodega (/pedido-bodega): alistar y chequear el pedido que leyó el Extractor (sessionStorage kinoPedido).
+ * Por producto: foto, código, nombre, precio, cantidad pedida y final (+/−), cambiar de producto, nota y casilla
+ * «Alistado». Total final recalculado contra el original. «Chequeado por» + «Finalizar» arman el PDF «Pedido finalizado»
+ * (jsPDF en el dispositivo, nombre editable; pdf_shared.js). El avance se guarda en localStorage (kinoBodega).
+ * Nada se guarda en el servidor; solo se consulta nombre/precio/foto con POST /enviar-catalogo/extraer {codes}.
+ */
+(function () {
+    const KP = window.KinoPdf;
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const msg = (t) => { $('pbMsg').textContent = t || ''; };
+
+    let data = null;
+    try { data = JSON.parse(sessionStorage.getItem('kinoPedido') || 'null'); } catch (e) { data = null; }
+    if (!data || !Array.isArray(data.items) || !data.items.length) { $('pbEmpty').hidden = false; return; }
+    const order = data.order || {};
+
+    // «$12.500» o «$12.500,00» → 12500 (los puntos son miles; coma + 1-2 dígitos al final = decimales)
+    function parsePrice(t) {
+        let s = String(t || '').replace(/[^\d.,]/g, '');
+        if (!s) return null;
+        if (/,\d{1,2}$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(/[.,]/g, '');
+        const n = parseFloat(s);
+        return isFinite(n) && n > 0 ? n : null;
+    }
+    const money = (n) => '$' + Math.round(n).toLocaleString('es-CO');
+
+    // Líneas del pedido, en el orden del Extractor
+    let uid = 0;
+    const mk = (o) => Object.assign({ id: ++uid, code: '', name: '', price: null, orig: true, origQty: 1, qty: 1, checked: false, note: '', photo: undefined, base: null }, o);
+    let lines = data.items.map((it) => {
+        const q = it.qty == null ? 1 : Number(it.qty);
+        const l = mk({ code: String(it.code || ''), name: String(it.desc || ''), price: parsePrice(it.priceText), origQty: q, qty: q });
+        l.base = { code: l.code, name: l.name, price: l.price, photo: null };
+        return l;
+    });
+    let who = '', onlyPending = false;
+
+    // ---- Guardado local ----
+    const KEY = (order.number || '') + '|' + (order.client || '') + '|' + data.items.map((i) => i.code + ':' + i.qty).join(',');
+    function save() {
+        try { localStorage.setItem('kinoBodega', JSON.stringify({ key: KEY, who, lines })); } catch (e) { /* sin guardado */ }
+    }
+    try {
+        const s = JSON.parse(localStorage.getItem('kinoBodega') || 'null');
+        if (s && s.key === KEY && Array.isArray(s.lines) && s.lines.length) { lines = s.lines; who = s.who || ''; uid = lines.reduce((m, l) => Math.max(m, l.id), 0); }
+        else if (s && s.who) who = s.who; // el nombre de quien chequea se recuerda entre pedidos
+    } catch (e) { /* sin guardado */ }
+
+    // ---- Estado de cada línea ----
+    function status(l) {
+        if (!l.orig) return { t: 'Agregado', c: 'green' };
+        if (l.qty === 0) return { t: 'Quitado', c: 'red' };
+        if (l.base && l.code !== l.base.code) return { t: 'Cambiado', c: '' };
+        if (l.qty < l.origQty) return { t: 'Menos', c: 'red' };
+        if (l.qty > l.origQty) return { t: 'Más', c: 'green' };
+        return { t: 'Completo', c: 'green' };
+    }
+    const sub = (l) => l.price == null ? null : l.price * l.qty;
+    function totals() {
+        let orig = 0, fin = 0, noPrice = 0;
+        lines.forEach((l) => {
+            if (l.orig && l.base && l.base.price != null) orig += l.base.price * l.origQty;
+            if (l.qty > 0 && l.price == null) noPrice++;
+            const s = sub(l);
+            if (s != null) fin += s;
+        });
+        return { orig, fin, noPrice };
+    }
+
+    // ---- Pantalla ----
+    function drawOrder() {
+        const f = [['N.º', order.number], ['Cliente', order.client], ['Fecha', order.date], ['Total de ítems', order.itemsPdf], ['Unidades', order.noQty ? null : order.unitsPdf], ['Valor total (PDF)', order.totalText]]
+            .filter((x) => x[1] != null && String(x[1]).trim() !== '');
+        $('pbOrder').innerHTML = f.map((x) => '<div><span>' + esc(x[0]) + '</span>' + esc(x[1]) + '</div>').join('') || '<div>Sin datos del pedido</div>';
+    }
+    function drawProg() {
+        const done = lines.filter((l) => l.checked).length;
+        $('pbProg').innerHTML = '<b>' + done + ' de ' + lines.length + ' chequeados</b>' +
+            '<label><input type="checkbox" id="pbOnly"' + (onlyPending ? ' checked' : '') + '> Ver solo pendientes</label>';
+        $('pbOnly').addEventListener('change', (e) => { onlyPending = e.target.checked; drawList(); });
+    }
+    function itemHtml(l) {
+        const st = status(l), s = sub(l);
+        const ph = l.photo === undefined ? '<div class="pb-ph none">Buscando…</div>' : l.photo
+            ? '<div class="pb-ph"><img src="/enviar-catalogo/foto/' + encodeURIComponent(l.photo.id) + '" alt="" loading="lazy" decoding="async"></div>'
+            : '<div class="pb-ph none">Foto no disponible</div>';
+        const was = l.base && l.code !== l.base.code ? '<div class="pb-help">Antes: ' + esc(l.base.code) + ' <button type="button" class="btn btn-sm btn-secondary" data-act="undo" data-id="' + l.id + '">Deshacer cambio</button></div>' : '';
+        return '<div class="pb-item' + (l.checked ? ' done' : '') + (l.qty === 0 ? ' gone' : '') + '" data-id="' + l.id + '">' + ph +
+            '<div><div class="pb-code">' + esc(l.code) + '<span class="pb-tag ' + st.c + '">' + st.t + '</span></div>' +
+            '<div class="pb-name">' + esc(l.name || 'Sin nombre') + '</div>' +
+            '<div class="pb-help">Pedido: ' + (l.orig ? l.origQty : 0) + (l.orig ? '' : ' (no estaba)') + '</div>' + was + '</div>' +
+            '<div class="pb-ctl">' +
+            '<label class="pb-chk"><input type="checkbox" data-act="chk" data-id="' + l.id + '"' + (l.checked ? ' checked' : '') + '> Alistado</label>' +
+            '<span class="pb-qty"><button type="button" data-act="minus" data-id="' + l.id + '" aria-label="Menos">−</button>' +
+            '<input type="number" min="0" inputmode="numeric" value="' + l.qty + '" data-act="qty" data-id="' + l.id + '" aria-label="Cantidad final">' +
+            '<button type="button" data-act="plus" data-id="' + l.id + '" aria-label="Más">+</button></span>' +
+            '<input class="pb-price" inputmode="numeric" placeholder="Precio" value="' + (l.price == null ? '' : Math.round(l.price)) + '" data-act="price" data-id="' + l.id + '" aria-label="Precio unitario">' +
+            '<span class="pb-sub">' + (s == null ? 'Sin precio' : money(s)) + '</span></div>' +
+            '<div class="pb-ctl"><input class="pb-note" maxlength="120" placeholder="Nota (opcional)" value="' + esc(l.note) + '" data-act="note" data-id="' + l.id + '">' +
+            '<button type="button" class="btn btn-sm btn-secondary" data-act="swap" data-id="' + l.id + '">🔄 Cambiar producto</button></div>' +
+            '<div class="pb-sw" id="sw' + l.id + '" hidden></div></div>';
+    }
+    function drawList() {
+        const shown = lines.filter((l) => !onlyPending || !l.checked);
+        $('pbList').innerHTML = shown.map(itemHtml).join('') || '<div class="pb-card">✅ Todo chequeado.</div>';
+        $('pbList').querySelectorAll('.pb-sw').forEach((e) => { e.hidden = true; });
+        drawTotal(); drawFin();
+    }
+    function drawTotal() {
+        const t = totals(), d = t.fin - t.orig;
+        $('pbTotal').innerHTML = '<div><span>Total original (suma de líneas)</span>' + money(t.orig) + '</div>' +
+            '<div><span>Total final</span><b class="big">' + money(t.fin) + '</b></div>' +
+            '<div><span>Diferencia</span><b class="' + (d > 0 ? 'up' : d < 0 ? 'down' : '') + '">' + (d > 0 ? '+' : d < 0 ? '−' : '') + money(Math.abs(d)) + '</b></div>' +
+            (t.noPrice ? '<div><span>Atención</span>' + t.noPrice + ' ítem(s) sin precio no suman</div>' : '');
+    }
+    function drawFin() {
+        const pend = lines.filter((l) => !l.checked).length;
+        $('pbDone').disabled = pend > 0 || !who.trim();
+        $('pbDone').title = pend ? 'Faltan ' + pend + ' por chequear' : (!who.trim() ? 'Escribe quién chequea' : '');
+        if (!$('pbMsg').dataset.keep) msg(pend ? 'Faltan ' + pend + ' ítem(s) por chequear.' : !who.trim() ? 'Escribe el nombre de quien chequea.' : 'Listo para finalizar.');
+    }
+    const refresh = () => { save(); drawProg(); drawList(); };
+
+    // ---- Datos del visor (foto, nombre, precio) ----
+    async function lookup(codes) {
+        const r = await fetch('/enviar-catalogo/extraer', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.CS_CSRF || '', 'Accept': 'application/json' },
+            body: JSON.stringify({ codes }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.photos) throw new Error(j.error || 'error ' + r.status);
+        return j.photos;
+    }
+    const pick = (p, code) => p && Object.prototype.hasOwnProperty.call(p, code) ? p[code] : null;
+
+    // ---- Acciones ----
+    const byId = (id) => lines.find((l) => l.id === Number(id));
+    $('pbList').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-act]'); if (!b) return;
+        const l = byId(b.dataset.id); if (!l) return;
+        const act = b.dataset.act;
+        if (act === 'plus') { l.qty++; refresh(); }
+        else if (act === 'minus') { l.qty = Math.max(0, l.qty - 1); refresh(); }
+        else if (act === 'undo') { Object.assign(l, { code: l.base.code, name: l.base.name, price: l.base.price, photo: l.base.photo }); refresh(); }
+        else if (act === 'swap') {
+            const box = $('sw' + l.id); box.hidden = !box.hidden;
+            if (!box.hidden) {
+                box.innerHTML = '<input class="pb-in" id="swc' + l.id + '" placeholder="Código nuevo" autocapitalize="characters" autocomplete="off">' +
+                    '<button type="button" class="btn btn-sm btn-primary" data-act="swapok" data-id="' + l.id + '">Cambiar</button><span class="pb-help" id="sws' + l.id + '"></span>';
+                $('swc' + l.id).focus();
+            }
+        } else if (act === 'swapok') swapTo(l);
+    });
+    $('pbList').addEventListener('change', (e) => {
+        const b = e.target.closest('[data-act]'); if (!b) return;
+        const l = byId(b.dataset.id); if (!l) return;
+        const act = b.dataset.act;
+        if (act === 'chk') l.checked = b.checked;
+        else if (act === 'qty') l.qty = Math.max(0, Math.floor(Number(b.value) || 0));
+        else if (act === 'price') l.price = parsePrice(b.value);
+        else if (act === 'note') { l.note = b.value.trim(); save(); return; }
+        refresh();
+    });
+    async function swapTo(l) {
+        const code = ($('swc' + l.id).value || '').trim(), st = $('sws' + l.id);
+        if (!code) return;
+        st.textContent = 'Buscando…';
+        try {
+            const p = pick(await lookup([code]), code);
+            if (!p) { st.textContent = '⚠️ No está en el visor (o no tiene foto).'; return; }
+            Object.assign(l, { code: p.sku || code, name: p.name || '', price: p.price == null ? null : Number(p.price), photo: { id: String(p.id), sku: String(p.sku || code) }, checked: false });
+            refresh();
+        } catch (e) { st.textContent = '⚠️ No se pudo buscar (' + (e && e.message ? e.message : e) + ').'; }
+    }
+    $('pbAddBtn').addEventListener('click', async () => {
+        const code = $('pbAddCode').value.trim(), st = $('pbAddMsg');
+        if (!code) return;
+        st.textContent = 'Buscando…';
+        try {
+            const p = pick(await lookup([code]), code);
+            if (!p) { st.textContent = '⚠️ No está en el visor (o no tiene foto).'; return; }
+            lines.push(mk({ code: p.sku || code, name: p.name || '', price: p.price == null ? null : Number(p.price), orig: false, origQty: 0, qty: 1,
+                photo: { id: String(p.id), sku: String(p.sku || code) } }));
+            $('pbAddCode').value = ''; st.textContent = '✅ Agregado al final de la lista.';
+            refresh();
+        } catch (e) { st.textContent = '⚠️ No se pudo buscar (' + (e && e.message ? e.message : e) + ').'; }
+    });
+    $('pbWho').value = who;
+    $('pbWho').addEventListener('input', () => { who = $('pbWho').value; delete $('pbMsg').dataset.keep; save(); drawFin(); });
+
+    // ---- PDF «Pedido finalizado» ----
+    const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    const nowText = () => new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+    const defName = () => 'Pedido_finalizado_' + ((KP.clean(order.number || order.client).replace(/[^\wÁÉÍÓÚÜÑáéíóúüñ -]+/g, '').trim().replace(/\s+/g, '_')) || today()) + '_' + today();
+    let pdfFile = null, busy = false;
+
+    async function build() {
+        if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('El generador de PDF no cargó; recarga la página');
+        const imgs = new Map();
+        const todo = lines.filter((l) => l.photo);
+        for (let i = 0; i < todo.length; i += 6) {
+            await Promise.all(todo.slice(i, i + 6).map((l) => KP.prepare(l.photo.id, 300).then((x) => imgs.set(l.id, x)).catch(() => {})));
+            msg('Preparando fotos… ' + Math.min(i + 6, todo.length) + ' de ' + todo.length);
+        }
+        const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+        const W = 210, M = 10, T = KP.clean;
+        const cols = [['N.º', 7], ['Foto', 16], ['Código', 28], ['Producto / nota', 50], ['Precio', 23], ['Ped.', 10], ['Final', 11], ['Subtotal', 25], ['Estado', 20]];
+        const t = totals(), d = t.fin - t.orig;
+        let y = 0;
+        const band = () => {
+            doc.setFillColor(28, 28, 30); doc.rect(0, 0, W, 22, 'F');
+            doc.setTextColor(201, 168, 76); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text('Pedido finalizado', M, 14);
+            doc.setTextColor(30, 30, 30);
+        };
+        const head = () => {
+            doc.setFillColor(201, 168, 76); doc.rect(M, y, W - 2 * M, 7, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(28, 28, 30);
+            let x = M; cols.forEach((c) => { doc.text(c[0], x + 1, y + 4.8); x += c[1]; });
+            doc.setTextColor(30, 30, 30); y += 7;
+        };
+        band(); y = 30;
+        doc.setFontSize(10);
+        const info = [['Pedido N.º', order.number], ['Cliente', order.client], ['Fecha del pedido', order.date], ['Finalizado', nowText()], ['Chequeado por', who.trim()]].filter((x) => x[1]);
+        info.forEach((x) => { doc.setFont('helvetica', 'bold'); doc.text(T(x[0]) + ':', M, y); doc.setFont('helvetica', 'normal'); doc.text(T(x[1]), M + 38, y); y += 5.5; });
+        y += 2;
+        const cnt = (f) => lines.filter(f).length;
+        const sum = [['Total original', money(t.orig)], ['Total final', money(t.fin)], ['Diferencia', (d > 0 ? '+' : d < 0 ? '-' : '') + money(Math.abs(d))]];
+        doc.setFillColor(245, 240, 225); doc.rect(M, y, W - 2 * M, 16, 'F');
+        sum.forEach((x, i) => { const sx = M + 4 + i * 62; doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(x[0], sx, y + 5); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text(x[1], sx, y + 12); });
+        y += 20; doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+        doc.text(T(cnt((l) => status(l).t === 'Completo') + ' completos · ' + cnt((l) => status(l).t === 'Menos') + ' con menos · ' + cnt((l) => status(l).t === 'Más') + ' con más · ' +
+            cnt((l) => status(l).t === 'Cambiado') + ' cambiados · ' + cnt((l) => status(l).t === 'Agregado') + ' agregados · ' + cnt((l) => status(l).t === 'Quitado') + ' quitados' +
+            (t.noPrice ? ' · ' + t.noPrice + ' sin precio' : '')), M, y);
+        y += 6; head();
+        const RH = 16;
+        lines.forEach((l, i) => {
+            if (y + RH > 284) { doc.addPage(); y = 12; head(); }
+            const st = status(l), s = sub(l);
+            if (st.t === 'Menos' || st.t === 'Quitado') { doc.setFillColor(253, 232, 232); doc.rect(M, y, W - 2 * M, RH, 'F'); }
+            doc.setDrawColor(210, 210, 210); doc.line(M, y + RH, W - M, y + RH);
+            const im = imgs.get(l.id);
+            if (im) { try { const k = Math.min(14 / im.w, 14 / im.h); doc.addImage(im.data, 'JPEG', M + 7 + 1 + (14 - im.w * k) / 2, y + 1 + (14 - im.h * k) / 2, im.w * k, im.h * k); } catch (e) { /* sin foto */ } }
+            if (l.photo) doc.link(M + 7, y, 16, RH, { url: 'https://drive.google.com/file/d/' + encodeURIComponent(l.photo.id) + '/view' });
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(30, 30, 30);
+            let x = M; const cell = (txt, w, o) => { doc.text(T(txt), x + 1, y + (o || 6), { maxWidth: w - 2 }); x += w; };
+            cell(String(i + 1), 7); x += 16;
+            doc.setFont('helvetica', 'bold'); cell(l.code, 28); doc.setFont('helvetica', 'normal');
+            const nm = doc.splitTextToSize(T(l.name || 'Sin nombre'), 48).slice(0, 2);
+            doc.text(nm, x + 1, y + 5);
+            if (l.note) { doc.setFontSize(7); doc.setTextColor(110, 110, 110); doc.text(doc.splitTextToSize(T('Nota: ' + l.note), 48).slice(0, 2), x + 1, y + 5 + nm.length * 3.4 + 0.5); doc.setFontSize(8); doc.setTextColor(30, 30, 30); }
+            x += 50;
+            cell(l.price == null ? 'Sin precio' : money(l.price), 23); cell(String(l.orig ? l.origQty : 0), 10); cell(String(l.qty), 11);
+            doc.setFont('helvetica', 'bold'); cell(s == null ? '-' : money(s), 25); doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...(st.c === 'red' ? [190, 40, 50] : st.c === 'green' ? [30, 130, 60] : [160, 110, 20]));
+            const stx = st.t + (st.t === 'Cambiado' && l.base ? ' (de ' + l.base.code + ')' : '');
+            doc.setFontSize(7); doc.text(doc.splitTextToSize(T(stx), 18), x + 1, y + 6); doc.setTextColor(30, 30, 30);
+            y += RH;
+        });
+        y += 4; if (y > 280) { doc.addPage(); y = 14; }
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.text('Total final: ' + money(t.fin) + '   (original ' + money(t.orig) + ')', W - M, y, { align: 'right' });
+        const n = doc.getNumberOfPages();
+        for (let p = 1; p <= n; p++) { doc.setPage(p); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(120, 120, 120); doc.text('Pág. ' + p + ' de ' + n, W - M, 292, { align: 'right' }); }
+        return new File([doc.output('blob')], defName() + '.pdf', { type: 'application/pdf' });
+    }
+
+    let pdfjs = null, pvToken = 0;
+    async function showPreview() {
+        const pages = $('pbPages');
+        pages.innerHTML = '<p>Cargando el previo…</p>';
+        $('pbShare').hidden = !KP.canShareFiles;
+        $('pbPv').hidden = false; document.body.style.overflow = 'hidden';
+        const my = ++pvToken;
+        try {
+            if (!pdfjs) {
+                pdfjs = await import('/assets/vendor/pdfjs/pdf.min.js');
+                pdfjs.GlobalWorkerOptions.workerSrc = '/assets/vendor/pdfjs/pdf.worker.min.js';
+            }
+            const pdf = await pdfjs.getDocument({ data: new Uint8Array(await pdfFile.arrayBuffer()) }).promise;
+            if (my !== pvToken) return;
+            pages.innerHTML = '';
+            const width = Math.min(820, pages.clientWidth - 32) * (window.devicePixelRatio || 1);
+            for (let n = 1; n <= pdf.numPages; n++) {
+                const page = await pdf.getPage(n);
+                if (my !== pvToken) return;
+                const v = page.getViewport({ scale: width / page.getViewport({ scale: 1 }).width });
+                const cv = document.createElement('canvas'); cv.width = v.width; cv.height = v.height;
+                pages.appendChild(cv);
+                await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+            }
+        } catch (e) { pages.innerHTML = '<p>No se pudo mostrar el previo (' + esc(e && e.message ? e.message : e) + '). Puedes descargarlo igual.</p>'; }
+    }
+    const closePv = () => { pvToken++; $('pbPv').hidden = true; $('pbPages').innerHTML = ''; document.body.style.overflow = ''; };
+    $('pbClose').addEventListener('click', closePv);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('pbPv').hidden) closePv(); });
+    const outFile = () => KP.named(pdfFile, $('pbName'));
+    $('pbDown').addEventListener('click', () => KP.download(outFile(), msg));
+    $('pbShare').addEventListener('click', () => KP.share(outFile(), 'Pedido finalizado', msg));
+
+    $('pbDone').addEventListener('click', async () => {
+        if (busy) return;
+        busy = true; $('pbDone').disabled = true; $('pbMsg').dataset.keep = '1';
+        try {
+            pdfFile = await build();
+            KP.setName([$('pbName')], pdfFile.name);
+            msg('✅ Pedido finalizado. Revisa el previo, cambia el nombre si quieres y descarga.');
+            await showPreview();
+        } catch (e) { msg('⚠️ No se pudo armar el PDF (' + (e && e.message ? e.message : e) + ').'); }
+        busy = false; delete $('pbMsg').dataset.keep; $('pbDone').disabled = false;
+    });
+
+    // ---- Arranque ----
+    $('pbBody').hidden = false; $('pbFin').hidden = false;
+    drawOrder(); drawProg(); drawList();
+    (async () => {
+        try {
+            const need = lines.filter((l) => l.photo === undefined || (l.orig && !l.name) || l.price == null);
+            const codes = [...new Set(need.map((l) => l.code).filter(Boolean))];
+            if (!codes.length) { lines.forEach((l) => { if (l.photo === undefined) l.photo = null; }); return; }
+            const p = await lookup(codes);
+            lines.forEach((l) => {
+                const x = pick(p, l.code);
+                if (l.photo === undefined) l.photo = x && x.id ? { id: String(x.id), sku: String(x.sku || l.code) } : null;
+                if (x) {
+                    if (!l.name) l.name = x.name || '';
+                    if (l.price == null && x.price != null) l.price = Number(x.price); // precio del pedido primero; el del visor solo si falta
+                    if (l.base && l.base.code === l.code) { l.base.name = l.name; l.base.price = l.price; l.base.photo = l.photo; }
+                }
+            });
+            save(); drawList();
+        } catch (e) { lines.forEach((l) => { if (l.photo === undefined) l.photo = null; }); drawList(); msg('⚠️ No se pudieron buscar las fotos (' + (e && e.message ? e.message : e) + ').'); $('pbMsg').dataset.keep = '1'; }
+    })();
+})();

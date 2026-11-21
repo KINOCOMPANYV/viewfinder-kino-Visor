@@ -278,6 +278,11 @@ if ($uri === '/lista-pedido') {
     exit;
 }
 
+if ($uri === '/pedido-bodega') {
+    include __DIR__ . '/templates/client/warehouse_order.php';
+    exit;
+}
+
 // Logo subido de la plantilla de Remisión (Admin → 🚚 Remisión)
 if (preg_match('#^/lista-pedido/logo/([a-z0-9_-]+)$#', $uri, $matches)) {
     require_once __DIR__ . '/src/services/RemisionTemplate.php';
