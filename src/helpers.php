@@ -1527,3 +1527,10 @@ function loadMoreButton(int $total): string
         . 'if(r>0){b.textContent=\'Cargar más · quedan \'+r;}else{b.parentNode.remove();}})(this)">'
         . 'Cargar más · quedan ' . $left . '</button></div>';
 }
+
+
+/** Botón fijo «📋 Pedidos a alistar» del encabezado de todas las páginas públicas (enlace siempre /pedidos-alistar; visible también en celular). */
+function pedidosHeaderBtn(): string
+{
+    return '<a href="/pedidos-alistar" class="btn btn-sm btn-primary hdr-pedidos" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Pedidos por alistar (rojo) y listos (verde)">📋 Pedidos a alistar</a>';
+}

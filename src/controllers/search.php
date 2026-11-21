@@ -283,7 +283,10 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
-            <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar fotos con lista</a>
+            <div style="display:flex; gap:0.4rem; align-items:center;">
+                <?= pedidosHeaderBtn() ?>
+                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar fotos con lista</a>
+            </div>
         </div>
     </header>
 
