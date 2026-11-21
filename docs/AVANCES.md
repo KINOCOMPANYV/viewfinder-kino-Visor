@@ -338,3 +338,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   de archivo (`/producto/S-640+S-647-3.jpg`) salía con la galería vacía (pedía `/api/media/S-640+S-647-3`); ahora la pide
   con el código del producto (S-640). Todo lo demás de #98 probado en producción y bien.
 - Rama `claude/project-thread-7pcp5a` (2026-11-21): Admin → 🚫 Condenados (migración 034 `condemned_codes`, empieza con M:8325-1): la hoja, «Solo Drive», el enlace de fotos y la búsqueda de carpetas ignoran esos códigos y el producto se borra.
+- Rama `claude/project-thread-8eqa8h` (2026-11-21): CLAUDE.md con encabezado estándar, comandos locales, orden del sync y reglas de migraciones/`env()`.
