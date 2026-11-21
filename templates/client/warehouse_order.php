@@ -116,7 +116,6 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
                 <textarea id="pbCopyText" readonly rows="10" style="width:100%; font-family:monospace; font-size:0.85rem; background:#0f0f16; color:#fff; border:1px solid #444; border-radius:8px; padding:0.6rem; white-space:pre;" aria-label="Listado de códigos y cantidades"></textarea>
                 <div class="pb-sw" style="margin-top:0.6rem;">
                     <button type="button" class="btn btn-primary" id="pbCopyBtn">📋 Copiar</button>
-                    <button type="button" class="btn btn-secondary" id="pbPdf">📄 PDF (opcional)</button>
                     <span class="pb-help" id="pbCopyInfo"></span> <span class="pb-help" id="pbCopyMsg" aria-live="polite"></span>
                 </div>
             </section>

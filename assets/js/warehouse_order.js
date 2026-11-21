@@ -367,19 +367,6 @@
     $('pbDown').addEventListener('click', () => KP.download(outFile(), msg));
     $('pbShare').addEventListener('click', () => KP.share(outFile(), 'Pedido finalizado', msg));
 
-    async function makePdf() {
-        if (busy) return;
-        busy = true; $('pbPdf').disabled = true; $('pbMsg').dataset.keep = '1';
-        try {
-            pdfFile = await build();
-            KP.setName([$('pbName')], pdfFile.name);
-            msg('PDF listo. Revisa el previo, cambia el nombre si quieres y descarga.');
-            await showPreview();
-        } catch (e) { msg('⚠️ No se pudo armar el PDF (' + (e && e.message ? e.message : e) + ').'); }
-        busy = false; delete $('pbMsg').dataset.keep; $('pbPdf').disabled = false;
-    }
-    $('pbPdf').addEventListener('click', makePdf);
-
     $('pbDone').addEventListener('click', async () => {
         if (busy) return;
         if (!isDone) {
