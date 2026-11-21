@@ -571,6 +571,42 @@ function fileNameStartsWithSku(string $filename, string $sku): bool
 }
 
 /**
+ * Códigos de los productos cuyas fotos se llaman como lo buscado: para pegar en el buscador el
+ * nombre de un archivo de Drive ("S-640+S-647-3.jpg"). Esos nombres no son un código (el "+" une
+ * dos códigos y el archivo queda enlazado solo al primero), así que se busca el archivo en
+ * `drive_index` por su nombre y se devuelve el código al que está enlazado.
+ * Misma regla que las fotos de un producto (fileNameStartsWithSku): el nombre sin extensión es
+ * igual a lo buscado o sigue con un separador ("S-640+S-647" encuentra "S-640+S-647-3.jpg").
+ * @return array<string,string> código => portada de esa foto (lh3Url, con "[VIDEO]" si es video)
+ */
+function skusByFileName(PDO $db, string $q, int $limit = 20): array
+{
+    $stem = trim(cleanSkuDisplay(trim($q)));
+    if (strlen($stem) < 3 || !preg_match('/\d/', $stem)) return []; // muy corto o sin números: no es un nombre de foto
+    try {
+        $stmt = $db->prepare(
+            "SELECT file_id, name, mime_type, matched_sku FROM drive_index
+             WHERE is_folder = 0 AND is_hidden = 0 AND matched_sku IS NOT NULL AND name_stem LIKE ?
+             ORDER BY name ASC LIMIT 200"
+        );
+        $stmt->execute([addcslashes($stem, '%_\\') . '%']);
+    } catch (\PDOException $e) {
+        return []; // drive_index / matched_sku aún sin migrar
+    }
+    $out = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        if (!fileNameStartsWithSku((string) $r['name'], $stem)) continue;
+        $sku = (string) $r['matched_sku'];
+        if (isset($out[$sku])) continue;
+        $out[$sku] = str_starts_with((string) $r['mime_type'], 'video/')
+            ? '[VIDEO]https://lh3.googleusercontent.com/d/' . $r['file_id']
+            : lh3Url((string) $r['file_id']);
+        if (count($out) >= $limit) break;
+    }
+    return $out;
+}
+
+/**
  * Extrae el SKU raíz (padre) de un código de variante.
  *
  * REGLA: Solo se considera "variante" un sufijo que sea EXCLUSIVAMENTE letras

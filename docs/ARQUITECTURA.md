@@ -149,6 +149,11 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
 - Código sin importar "-", espacios, ":" ni "." (`skuSearchSql()` / `skuSearchNorm()`): "M8363-3" encuentra "M:8363-3".
 - Resultados mientras se escribe (`assets/js/search.js`, `/buscar?ajax=1`); una búsqueda nueva cancela la anterior.
 - Orden: código exacto, luego "empieza por", luego el resto (por nombre).
+- **Nombre de archivo pegado en el buscador** (`skusByFileName()` en helpers): si lo buscado no da ningún producto pero es
+  el nombre de una foto de `drive_index` (`name_stem LIKE` + `fileNameStartsWithSku()`), sale el producto de `matched_sku`
+  y la tarjeta muestra esa foto (`lh3Url()`, con `[VIDEO]` si es video). Para nombres que no son un código, como
+  «S-640+S-647-3.jpg» (dos códigos unidos con «+»; la foto queda enlazada solo al primero). Lo usan `/buscar` (consulta
+  simple sin resultados y, en una lista de códigos, los que llevan caracteres que no van en un código) y `/api/search`.
 - **Filtros** (`/buscar?marca[]=&cat[]=&carpeta[]=&pmin=&pmax=`; también `marca=` suelto): barra única `templates/partials/filter_bar.php`
   (con su script) en inicio, `/buscar`, `/carpeta/{id}` (su carpeta marcada de entrada) y Novedades; siempre lleva a `/buscar`.
   Marca, categoría y carpeta admiten varias (listas con casillas y buscador, se aplican al cerrar o con «Aplicar»); todo se combina.
