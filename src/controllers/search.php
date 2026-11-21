@@ -209,7 +209,9 @@ if (!$isMultiCode && $q !== '') {
             array_map(fn($f) => '%' . addcslashes($f, '%_') . '%', $fForms),
             $fForms ?: ['']
         ));
+        $condemned = condemnedIndex($db);
         foreach ($folderStmt->fetchAll(PDO::FETCH_ASSOC) as $f) {
+            if (isCondemnedFile($f['name'], $condemned)) continue; // carpeta de un código condenado
             $f['icon_url'] = $f['thumb_id'] ? lh3Url($f['thumb_id'], 400) : '';
             $matchedFolders[] = $f;
         }

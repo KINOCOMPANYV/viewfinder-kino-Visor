@@ -897,6 +897,84 @@ function recomputeParentSkus(PDO $db): int
     return $changed;
 }
 
+// ── Códigos condenados (Admin → 🚫 Condenados, migración 034) ──
+// Un código condenado se ignora en todo el visor: Hoja master, «Solo Drive», enlace de fotos y búsqueda.
+// Si el producto existía, se borra (purgeCondemnedProducts). "M:", "M" y "M-" cuentan como el mismo código.
+
+/** Clave única de un código condenado: minúsculas, sin extensión ni puntos finales, "M:"/"M-"/"M " → "m". */
+function condemnedKey(string $code): string
+{
+    $k = strtolower(rtrim(trim(cleanSkuDisplay(trim($code))), '. '));
+    return preg_replace('/^m[:\-. _]?(?=\d)/', 'm', $k);
+}
+
+/**
+ * Índice de los códigos condenados (skuMatchIndex: todas sus formas de escribirse). Vacío si no hay o si la
+ * migración 034 aún no corrió. $fresh = volver a leer la tabla (tras agregar o quitar uno).
+ * @return array<string,string>
+ */
+function condemnedIndex(PDO $db, bool $fresh = false): array
+{
+    static $cache = null;
+    if ($cache !== null && !$fresh) return $cache;
+    try {
+        $codes = $db->query("SELECT code FROM condemned_codes")->fetchAll(PDO::FETCH_COLUMN);
+    } catch (\PDOException $e) {
+        $codes = [];
+    }
+    return $cache = $codes ? skuMatchIndex($codes) : [];
+}
+
+/** ¿El código (de la hoja, de un producto o buscado) es uno condenado, escrito de cualquier forma? */
+function isCondemnedCode(string $code, array $index): bool
+{
+    if (!$index) return false;
+    $name = strtolower(rtrim(trim($code), '. '));
+    if ($name === '') return false;
+    if (isset($index[$name])) return true;
+    foreach (skuNameVariants($name) as $v) {
+        if (isset($index[$v])) return true;
+    }
+    return false;
+}
+
+/**
+ * ¿El archivo (o carpeta) es de un código condenado? Misma regla que matchFileToProduct: nombre = código,
+ * o código + separador + lo que sea ("M8325-1-A.jpg", "M8325-1 (2).jpg"). "M8325-10.jpg" no cuenta.
+ */
+function isCondemnedFile(string $filename, array $index): bool
+{
+    if (!$index) return false;
+    $name = rtrim(genericMediaStem($filename), '.-_ ');
+    for ($len = strlen($name); $len > 0; $len--) {
+        if (!isset($index[substr($name, 0, $len)])) continue;
+        if ($len === strlen($name) || !ctype_alnum($name[$len])) return true;
+    }
+    return false;
+}
+
+/**
+ * Borra del visor los productos con código condenado (decisión del dueño 2026-11-21: aquí sí se borra).
+ * La llaman el sync de la hoja (MasterSheet::upsert), DriveIndex::relink y Admin → Condenados.
+ * @return string[] códigos borrados
+ */
+function purgeCondemnedProducts(PDO $db): array
+{
+    $index = condemnedIndex($db);
+    if (!$index) return [];
+    $ids = [];
+    foreach ($db->query("SELECT id, sku FROM products")->fetchAll(PDO::FETCH_ASSOC) as $p) {
+        if (isCondemnedCode((string) $p['sku'], $index)) $ids[(int) $p['id']] = $p['sku'];
+    }
+    if (!$ids) return [];
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $keys = array_keys($ids);
+    try { $db->prepare("DELETE FROM downloads_log WHERE product_id IN ($ph)")->execute($keys); } catch (\PDOException $e) {}
+    $db->prepare("DELETE FROM products WHERE id IN ($ph)")->execute($keys);
+    recomputeParentSkus($db); // la familia del borrado se rehace sin él
+    return array_values($ids);
+}
+
 /**
  * Recalcula products.archived (= oculto en el portal) desde sus dos causas:
  * el interruptor del admin (is_active) y estar en la hoja maestra (in_sheet) o tener foto en Drive

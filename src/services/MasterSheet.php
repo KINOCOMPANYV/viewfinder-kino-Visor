@@ -199,7 +199,13 @@ class MasterSheet
      */
     public static function upsert(PDO $db, array $rows, bool $dryRun = false): array
     {
-        $stats = ['inserted' => 0, 'updated' => 0, 'unchanged' => 0];
+        $stats = ['inserted' => 0, 'updated' => 0, 'unchanged' => 0, 'condemned' => 0];
+        // Códigos condenados (Admin → 🚫 Condenados): la hoja no los crea ni los actualiza; si ya estaban, se borran
+        $condemned = condemnedIndex($db);
+        foreach ($rows as $sku => $row) {
+            if (isCondemnedCode((string) $sku, $condemned)) { unset($rows[$sku]); $stats['condemned']++; }
+        }
+        if (!$dryRun && $condemned) purgeCondemnedProducts($db);
         $existing = [];
         foreach (array_chunk(array_keys($rows), 500) as $chunk) {
             $stmt = $db->prepare("SELECT sku, sheet_hash, in_sheet FROM products WHERE sku IN (" . implode(',', array_fill(0, count($chunk), '?')) . ")");
