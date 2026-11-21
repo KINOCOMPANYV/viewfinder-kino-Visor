@@ -339,4 +339,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   con el código del producto (S-640). Todo lo demás de #98 probado en producción y bien.
 - Rama `claude/project-thread-7pcp5a` (2026-11-21): Admin → 🚫 Condenados (migración 034 `condemned_codes`, empieza con M:8325-1): la hoja, «Solo Drive», el enlace de fotos y la búsqueda de carpetas ignoran esos códigos y el producto se borra.
 - Rama `claude/project-thread-8eqa8h` (2026-11-21): CLAUDE.md con encabezado estándar, comandos locales, orden del sync y reglas de migraciones/`env()`.
-- Rama `claude/project-thread-9skz3c` (2026-11-21): plan del módulo «📦 Pedido de bodega» (`docs/PLAN_PEDIDO_BODEGA.md`: panel con checklist desde Lista Bodega/Remisión, «Chequeado por», PDF «Pedido finalizado» con nombre editable; etapas B1-B3). Espera aprobación del dueño.
+- Rama `claude/project-thread-9skz3c` (2026-11-21): plan del módulo «📦 Pedido de bodega» (`docs/PLAN_PEDIDO_BODEGA.md`: panel con checklist desde Lista Bodega/Remisión, «Chequeado por», cambiar producto/cantidad con total final recalculado, PDF «Pedido finalizado» con nombre editable; etapas B1-B3). Espera aprobación del dueño.

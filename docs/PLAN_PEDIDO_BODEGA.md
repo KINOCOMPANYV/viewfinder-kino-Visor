@@ -16,16 +16,22 @@ aliste el pedido, lo chequee ítem por ítem y al final genere un PDF nuevo de *
    - cantidad encontrada (viene igual a la pedida; se cambia si falta),
    - estado: Completo / Incompleto / No hay (sale solo según la cantidad, se puede cambiar),
    - nota corta opcional (ej. «cambiado por color negro»).
-5. Contador arriba: «18 de 25 chequeados», faltantes en rojo, filtro «ver solo pendientes».
-6. Campo obligatorio **«Chequeado por»** (nombre de quien revisa; se recuerda en el dispositivo).
-7. **«✅ Finalizar pedido»**: solo se activa con todos los ítems revisados y el nombre escrito. Abre el
+5. **Cambios al pedido** (pedido del dueño 2026-11-21), por ítem:
+   - **Cambiar el producto** por otro: se escribe el código y trae foto, nombre y precio del visor; queda marcado
+     «cambiado: A → B» (y se ve el original).
+   - **Bajar o subir la cantidad** (+ / −), también poner 0 (quitar). Se puede **agregar un ítem** que no estaba.
+   - Cada ítem muestra su **subtotal** (cantidad × precio) y arriba el **total final recalculado**, junto al total
+     original del pedido y la diferencia («original $X → final $Y»).
+6. Contador arriba: «18 de 25 chequeados», faltantes en rojo, filtro «ver solo pendientes».
+7. Campo obligatorio **«Chequeado por»** (nombre de quien revisa; se recuerda en el dispositivo).
+8. **«✅ Finalizar pedido»**: solo se activa con todos los ítems revisados y el nombre escrito. Abre el
    **Previo** del PDF nuevo con «📝 Nombre del archivo» editable (`KinoPdf.setName`), Descargar y Enviar.
-8. El avance se guarda solo en el dispositivo mientras se trabaja: si se cierra la página, no se pierde.
+9. El avance se guarda solo en el dispositivo mientras se trabaja: si se cierra la página, no se pierde.
 
 ## PDF «Pedido finalizado»
 - Encabezado: título «Pedido finalizado», n.º, cliente, fecha del pedido, **fecha y hora de cierre**, **chequeado por**.
-- Resumen: ítems completos / incompletos / no hay; unidades pedidas vs alistadas.
-- Tabla: N.º, foto (con enlace a Drive como hoy), código, nombre, precio, pedida, alistada, estado, nota.
+- Resumen: **total original vs total final** con la diferencia; ítems completos / incompletos / no hay; unidades pedidas vs alistadas.
+- Tabla: N.º, foto (con enlace a Drive como hoy), código, nombre, precio, pedida, alistada, subtotal, estado, nota; ítems cambiados («A → B»), agregados o quitados marcados.
 - Faltantes resaltados en rojo. Nombre sugerido: `Pedido_finalizado_{n.º}_{fecha}.pdf`, editable.
 - Se arma en el dispositivo con jsPDF y `pdf_shared.js`, igual que Lista Bodega.
 
@@ -49,7 +55,8 @@ aliste el pedido, lo chequee ítem por ítem y al final genere un PDF nuevo de *
 3. **¿El checklist sirve así** (alistado + cantidad encontrada + estado + nota) o quiere otros puntos, por ejemplo
    «empacado», «revisado calidad» o un checklist general del pedido (cajas, factura adjunta)?
 4. **¿Precio del pedido o del visor?** Propuesta: el del pedido; el del visor solo si falta.
-5. **¿Se puede finalizar con faltantes?** Propuesta: sí, quedan en rojo en el PDF.
+5. **¿El precio de un producto cambiado** sale del visor (propuesta) o se puede escribir a mano? ¿Se permite editar también el precio de un ítem?
+6. **¿Se puede finalizar con faltantes?** Propuesta: sí, quedan en rojo en el PDF.
 
 ## Fuera de este plan
 - Descontar stock o tocar la Hoja master / SYS al finalizar.
