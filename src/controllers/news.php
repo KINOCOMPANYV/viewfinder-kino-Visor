@@ -54,7 +54,10 @@ $fmtDay = function (string $d): string {
     <header class="header">
         <div class="container header-inner">
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
-            <a href="/mi-seleccion" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📌 Mi selección</a>
+            <div style="display:flex; gap:0.4rem; align-items:center;">
+                <?= pedidosHeaderBtn() ?>
+                <a href="/mi-seleccion" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📌 Mi selección</a>
+            </div>
         </div>
     </header>
 

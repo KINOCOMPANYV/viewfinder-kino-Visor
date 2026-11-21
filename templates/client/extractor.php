@@ -70,7 +70,7 @@
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
             <div style="display:flex; gap:0.4rem; align-items:center;">
                 <a href="/enviar-catalogo" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Enviar fotos con lista</a>
-                <a href="/pedidos-alistar" class="btn btn-sm btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📋 Pedidos a alistar</a>
+                <?= pedidosHeaderBtn() ?>
             </div>
         </div>
     </header>
