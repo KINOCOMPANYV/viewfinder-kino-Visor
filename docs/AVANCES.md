@@ -331,3 +331,6 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Misma rama y PR #98 (2026-11-21): búsqueda por nombre exacto de archivo en todas partes, con la foto exacta
   (`photosByFileName()`): Catálogo PDF, Enviar catálogo, Lista pedido, lista de códigos, ficha, Admin → Productos y
   «¿Por qué no sale la foto?». Gana el nombre idéntico sobre «nombre + sufijo».
+- Rama `claude/ficha-galeria-nombre-archivo` (2026-11-21, tras #98, probado en producción): la ficha abierta por nombre
+  de archivo (`/producto/S-640+S-647-3.jpg`) salía con la galería vacía (pedía `/api/media/S-640+S-647-3`); ahora la pide
+  con el código del producto (S-640). Todo lo demás de #98 probado en producción y bien.
