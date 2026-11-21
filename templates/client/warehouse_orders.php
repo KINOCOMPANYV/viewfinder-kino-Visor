@@ -1,7 +1,7 @@
 <?php
 /**
  * Pedidos a alistar (/pedidos-alistar): lista de los pedidos enviados desde Lista Bodega (tabla warehouse_orders).
- * Rojo = falta alistar (abre el checklist /pedido-bodega?id=N); verde = listo (abre para verificar y descargar el PDF).
+ * Rojo = falta alistar (abre el checklist /pedido-bodega?id=N); verde = listo (abre para copiar el listado de códigos y cantidades).
  * Datos por GET /pedidos-alistar/api. ?nuevo=N resalta el recién enviado.
  */
 ?>
@@ -45,7 +45,7 @@
     <main class="container" style="padding-top:2rem; padding-bottom:6rem; max-width:900px;">
         <?= breadcrumbs([['Extractor', '/extractor'], ['Pedidos a alistar', null]]) ?>
         <h1 style="font-size:1.5rem; margin-bottom:0.4rem;">📋 Pedidos a alistar</h1>
-        <p class="wo-sub" style="margin-bottom:1rem;">🔴 Falta alistar: tócalo para chequearlo. 🟢 Listo: tócalo para verificar y descargar el PDF.</p>
+        <p class="wo-sub" style="margin-bottom:1rem;">🔴 Falta alistar: tócalo para chequearlo. 🟢 Listo: tócalo para copiar el listado de códigos y cantidades.</p>
         <p id="woNote" style="color:#e6c76a; min-height:1rem; margin-bottom:0.6rem;"></p>
         <div class="wo-tabs" id="woTabs"></div>
         <div id="woList"><div class="wo-empty">Cargando…</div></div>

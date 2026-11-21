@@ -80,9 +80,10 @@
         b.hidden = !SID;
         b.className = 'pb-state ' + (isDone ? 'green' : 'red');
         b.innerHTML = isDone
-            ? '🟢 <b>Pedido listo</b>' + (srv && srv.who ? ' · chequeó ' + esc(srv.who) : '') + (srv && srv.finished ? ' · ' + esc(new Date(srv.finished * 1000).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })) : '').replace(/\.$/, '') + '. Verifica y descarga el PDF abajo.'
+            ? '🟢 <b>Pedido listo</b>' + (srv && srv.who ? ' · chequeó ' + esc(srv.who) : '') + (srv && srv.finished ? ' · ' + esc(new Date(srv.finished * 1000).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })) : '').replace(/\.$/, '') + '. Copia el listado abajo.'
             : '🔴 <b>Falta alistar.</b> El avance se guarda solo en el servidor: otro celular puede seguirlo.';
-        $('pbDone').textContent = isDone ? '📄 Ver PDF y descargar' : '✅ Finalizar pedido';
+        $('pbDone').textContent = isDone ? '📋 Ver listado para copiar' : '✅ Finalizar pedido';
+        drawCopy();
     }
     if (srv && Array.isArray(srv.lines) && srv.lines.length) {
         lines = srv.lines; who = srv.who || ''; uid = lines.reduce((m, l) => Math.max(m, l.id), 0);
@@ -162,11 +163,11 @@
     }
     function drawFin() {
         const pend = lines.filter((l) => !l.checked).length;
-        $('pbDone').disabled = pend > 0 || !who.trim();
+        $('pbDone').disabled = !isDone && (pend > 0 || !who.trim());
         $('pbDone').title = pend ? 'Faltan ' + pend + ' por chequear' : (!who.trim() ? 'Escribe quién chequea' : '');
-        if (!$('pbMsg').dataset.keep) msg(pend ? 'Faltan ' + pend + ' ítem(s) por chequear.' : !who.trim() ? 'Escribe el nombre de quien chequea.' : 'Listo para finalizar.');
+        if (!$('pbMsg').dataset.keep) msg(isDone ? 'Pedido listo.' : pend ? 'Faltan ' + pend + ' ítem(s) por chequear.' : !who.trim() ? 'Escribe el nombre de quien chequea.' : 'Listo para finalizar.');
     }
-    const refresh = () => { save(); drawProg(); drawList(); };
+    const refresh = () => { save(); drawProg(); drawList(); drawCopy(); };
 
     // ---- Datos del visor (foto, nombre, precio) ----
     async function lookup(codes) {
@@ -236,7 +237,29 @@
     $('pbWho').value = who;
     $('pbWho').addEventListener('input', () => { who = $('pbWho').value; delete $('pbMsg').dataset.keep; save(); drawFin(); });
 
-    // ---- PDF «Pedido finalizado» ----
+    // ---- Listado para copiar (pedido listo): código ‖ cantidad final, como el Extractor pero a la inversa ----
+    const copyText = () => lines.filter((l) => l.qty > 0 && l.code).map((l) => [l.code, '', l.qty, 'UNIDAD', ''].join('\t')).join('\n');
+    function drawCopy() {
+        const box = $('pbCopyBox');
+        if (!box) return;
+        box.hidden = !isDone;
+        if (!isDone) return;
+        const txt = copyText();
+        $('pbCopyText').value = txt;
+        $('pbCopyInfo').textContent = txt ? txt.split('\n').length + ' códigos · ' + lines.reduce((n, l) => n + (l.qty > 0 ? l.qty : 0), 0) + ' unidades' : 'Sin códigos con cantidad.';
+    }
+    $('pbCopyBtn').addEventListener('click', async () => {
+        const text = copyText();
+        let ok = false;
+        try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+            const ta = $('pbCopyText'); ta.select();
+            try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+        }
+        $('pbCopyMsg').textContent = ok ? '✅ ¡Copiado! Pégalo en Excel o Google Sheets.' : '⚠️ No se pudo copiar; selecciona el texto y cópialo a mano.';
+        setTimeout(() => { $('pbCopyMsg').textContent = ''; }, 3500);
+    });
+
+    // ---- PDF «Pedido finalizado» (opcional) ----
     const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     const nowText = () => new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
     const defName = () => 'Pedido_finalizado_' + ((KP.clean(order.number || order.client).replace(/[^\wÁÉÍÓÚÜÑáéíóúüñ -]+/g, '').trim().replace(/\s+/g, '_')) || today()) + '_' + today();
@@ -346,15 +369,14 @@
 
     $('pbDone').addEventListener('click', async () => {
         if (busy) return;
-        busy = true; $('pbDone').disabled = true; $('pbMsg').dataset.keep = '1';
-        try {
-            pdfFile = await build();
-            KP.setName([$('pbName')], pdfFile.name);
-            if (SID) { if (srv) { srv.who = who.trim(); if (!isDone) srv.finished = Math.floor(Date.now() / 1000); } await saveServer(true); }
-            msg('✅ Pedido finalizado' + (SID ? ' y marcado en verde en Pedidos a alistar' : '') + '. Revisa el previo, cambia el nombre si quieres y descarga.');
-            await showPreview();
-        } catch (e) { msg('⚠️ No se pudo armar el PDF (' + (e && e.message ? e.message : e) + ').'); }
-        busy = false; delete $('pbMsg').dataset.keep; $('pbDone').disabled = false;
+        if (!isDone) {
+            $('pbDone').disabled = true; $('pbMsg').dataset.keep = '1';
+            if (SID) { if (srv) { srv.who = who.trim(); srv.finished = Math.floor(Date.now() / 1000); } await saveServer(true); }
+            else setStatus('listo');
+            msg('✅ Pedido finalizado' + (SID ? ' y marcado en verde en Pedidos a alistar' : '') + '. Copia el listado.');
+            delete $('pbMsg').dataset.keep; drawFin();
+        }
+        drawCopy(); $('pbCopyBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 
     // ---- Arranque ----
