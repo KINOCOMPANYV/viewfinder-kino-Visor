@@ -97,6 +97,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 ## Funciones clave para el usuario
 - Admin → Dashboard: cada tarjeta (total, visibles, desactivados, con/sin portada, actualizados hoy, fuera de la Hoja master),
   cada categoría del top y cada género abre Admin → Productos con exactamente esos productos (mismo conteo).
+  Cada tarjeta tiene «⬇ Excel» y la lista «⬇ Descargar Excel»: toda la lista del filtro (no solo la página), con motivo.
 - Catálogo público en grilla densa (60 por página, **una tarjeta por referencia**; contador "N referencias").
 - Celular (2026-11-20): filtros plegados tras «⚙️ Filtros y orden» (los activos siguen como chips), barra de abajo con
   «⭐ Selección» y el número de fotos marcadas, ficha sin el botón repetido «Volver al catálogo», y carpetas grandes y
@@ -364,3 +365,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-lq8fs2` (2026-11-23): `docs/GUIA_VISOR.md`, guía simple del visor para personas no técnicas.
 - Rama `claude/project-thread-0h596l` (2026-11-23): **Admin → 🧾 Registro** (errores PHP/JS y búsquedas sin resultado, migración 036) + **respaldo diario de toda la base MySQL** a Drive (`DbBackup`, `cli_sync.php respaldobd`, botón en Admin → Pedidos) + `scripts/restore_backup.php` y `docs/RESPALDOS.md`.
 - Rama `claude/project-thread-w0pt9v` (2026-11-23): **Pedido de bodega** listo muestra «📝 Cambios en el alistado» vs. el pedido original (+ Copiar resumen para WhatsApp y «⬆ Volver al pedido»), calculado en el navegador con lo ya guardado; sin migración.
+- Rama `claude/project-thread-xxn4tz` (2026-11-23): **Dashboard admin**: cada tarjeta tiene «⬇ Excel» (y la lista de Productos «⬇ Descargar Excel») con toda la lista del filtro: código, nombre, marca, categoría, color, carpeta, precio, stock, estado, origen, portada, motivo. Los números de las tarjetas salen del mismo filtro que la lista y el Excel.

@@ -1,24 +1,25 @@
 <?php
 $db = getDB();
 
-// === Conteos principales (sincronizados con la BD real) ===
-$totalProducts = (int) $db->query("SELECT COUNT(*) FROM products")->fetchColumn();
-$activeProducts = (int) $db->query("SELECT COUNT(*) FROM products WHERE archived = 0")->fetchColumn();
-$archivedProducts = (int) $db->query("SELECT COUNT(*) FROM products WHERE is_active = 0")->fetchColumn();
-$discontinuedProducts = (int) $db->query("SELECT COUNT(*) FROM products WHERE in_sheet = 0")->fetchColumn();
-
-// Productos con portada vs sin portada
-$withCover = (int) $db->query("SELECT COUNT(*) FROM products WHERE cover_image_url IS NOT NULL AND cover_image_url != '' AND archived = 0")->fetchColumn();
-$withoutCover = $activeProducts - $withCover;
+// === Conteos de las tarjetas: el MISMO filtro (adminProductFilter) que la lista y el Excel a los que enlazan,
+// así el número de la tarjeta = filas de la lista = filas del Excel
+$countFor = function (string $estado) use ($db): int {
+    [$w, $p] = adminProductFilter(['estado' => $estado]);
+    try { $st = $db->prepare("SELECT COUNT(*) FROM products WHERE $w"); $st->execute($p); return (int) $st->fetchColumn(); }
+    catch (\PDOException $e) { return 0; } // columna aún sin migrar
+};
+$totalProducts = $countFor('');
+$activeProducts = $countFor('activos');
+$archivedProducts = $countFor('inactivos');
+$discontinuedProducts = $countFor('fuera');
+$withCover = $countFor('conportada');
+$withoutCover = $countFor('sinportada');
+$updatedToday = $countFor('hoy');
+$noPrice = $countFor('sinprecio');
+$manualPrice = $countFor('preciomanual');
 
 // Última actualización
 $recentImport = $db->query("SELECT MAX(updated_at) FROM products")->fetchColumn();
-
-// Productos actualizados hoy
-$updatedToday = (int) $db->query("SELECT COUNT(*) FROM products WHERE DATE(updated_at) = CURDATE()")->fetchColumn();
-$noPrice = (int) $db->query("SELECT COUNT(*) FROM products WHERE price_suggested IS NULL OR price_suggested <= 0")->fetchColumn();
-try { $manualPrice = (int) $db->query("SELECT COUNT(*) FROM products WHERE price_manual = 1")->fetchColumn(); }
-catch (\PDOException $e) { $manualPrice = 0; } // migración 030 pendiente
 
 // Top categorías (de productos activos)
 $topCategories = $db->query(
@@ -68,6 +69,12 @@ unset($_SESSION['cache_flash']);
             background: #0a0a0f;
             color: #e8e8f0
         }
+        /* Cada tarjeta abre su lista; «⬇ Excel» la descarga completa (mismo filtro que la lista) */
+        .stat-wrap { position: relative; display: flex; }
+        .stat-wrap > .stat-card { flex: 1; }
+        .stat-dl { position: absolute; top: 0.6rem; right: 0.6rem; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 6px;
+            border: 1px solid var(--color-border); color: var(--color-text-muted); text-decoration: none; background: var(--color-surface-2); }
+        .stat-dl:hover { color: var(--color-primary); border-color: var(--color-primary); }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -92,24 +99,33 @@ unset($_SESSION['cache_flash']);
 
         <!-- Stat Cards Row 1: Principales (cada tarjeta abre Productos filtrado) -->
         <div class="stats-grid">
-            <a href="/admin/products" class="stat-card stat-card--link" title="Ver estos productos">
-                <div class="stat-value">
-                    <?= number_format($totalProducts) ?>
-                </div>
-                <div class="stat-label">Productos Total</div>
-            </a>
-            <a href="/admin/products?estado=activos" class="stat-card stat-card--link" title="Ver estos productos">
-                <div class="stat-value" style="color:var(--color-success);">
-                    <?= number_format($activeProducts) ?>
-                </div>
-                <div class="stat-label">Visibles</div>
-            </a>
-            <a href="/admin/products?estado=inactivos" class="stat-card stat-card--link" title="Ver estos productos">
-                <div class="stat-value" style="color:var(--color-danger);">
-                    <?= number_format($archivedProducts) ?>
-                </div>
-                <div class="stat-label">Desactivados</div>
-            </a>
+            <div class="stat-wrap">
+                <a href="/admin/products" class="stat-card stat-card--link" title="Ver estos productos">
+                    <div class="stat-value">
+                        <?= number_format($totalProducts) ?>
+                    </div>
+                    <div class="stat-label">Productos Total</div>
+                </a>
+                <a href="/admin/products?descargar=xlsx" class="stat-dl" title="Descargar esta lista en Excel">⬇ Excel</a>
+            </div>
+            <div class="stat-wrap">
+                <a href="/admin/products?estado=activos" class="stat-card stat-card--link" title="Ver estos productos">
+                    <div class="stat-value" style="color:var(--color-success);">
+                        <?= number_format($activeProducts) ?>
+                    </div>
+                    <div class="stat-label">Visibles</div>
+                </a>
+                <a href="/admin/products?estado=activos&amp;descargar=xlsx" class="stat-dl" title="Descargar esta lista en Excel">⬇ Excel</a>
+            </div>
+            <div class="stat-wrap">
+                <a href="/admin/products?estado=inactivos" class="stat-card stat-card--link" title="Ver estos productos">
+                    <div class="stat-value" style="color:var(--color-danger);">
+                        <?= number_format($archivedProducts) ?>
+                    </div>
+                    <div class="stat-label">Desactivados</div>
+                </a>
+                <a href="/admin/products?estado=inactivos&amp;descargar=xlsx" class="stat-dl" title="Descargar esta lista en Excel">⬇ Excel</a>
+            </div>
             <div class="stat-card">
                 <div class="stat-value" style="font-size:1rem; color:var(--color-text-muted);">
                     <?= $recentImport ? date('d/m/Y H:i', strtotime($recentImport)) : 'N/A' ?>
@@ -120,42 +136,60 @@ unset($_SESSION['cache_flash']);
 
         <!-- Stat Cards Row 2: Detalles -->
         <div class="stats-grid" style="margin-top:1rem;">
-            <a href="/admin/products?estado=conportada" class="stat-card stat-card--link" title="Ver estos productos">
-                <div class="stat-value" style="color:#4ade80;">
-                    <?= number_format($withCover) ?>
-                </div>
-                <div class="stat-label">🖼️ Con Portada</div>
-            </a>
-            <a href="/admin/products?estado=sinportada" class="stat-card stat-card--link" title="Ver estos productos">
-                <div class="stat-value" style="color:#fbbf24;">
-                    <?= number_format($withoutCover) ?>
-                </div>
-                <div class="stat-label">📷 Sin Portada</div>
-            </a>
-            <a href="/admin/products?estado=hoy" class="stat-card stat-card--link" title="Ver estos productos">
-                <div class="stat-value" style="color:var(--color-accent, #4a9eff);">
-                    <?= number_format($updatedToday) ?>
-                </div>
-                <div class="stat-label">📅 Actualizados Hoy</div>
-            </a>
-            <a href="/admin/products?estado=fuera" class="stat-card stat-card--link" title="Ver estos productos">
-                <div class="stat-value" style="color:#f87171;">
-                    <?= number_format($discontinuedProducts) ?>
-                </div>
-                <div class="stat-label">⛔ Fuera de la Hoja master</div>
-            </a>
-            <a href="/admin/products?estado=sinprecio" class="stat-card stat-card--link" title="Ver y poner precio">
-                <div class="stat-value" style="color:#fbbf24;">
-                    <?= number_format($noPrice) ?>
-                </div>
-                <div class="stat-label">💲 Sin precio en tabla</div>
-            </a>
-            <a href="/admin/products?estado=preciomanual" class="stat-card stat-card--link" title="Ver precios cambiados en el admin">
-                <div class="stat-value" style="color:#60a5fa;">
-                    <?= number_format($manualPrice) ?>
-                </div>
-                <div class="stat-label">✏️ Precio editado en admin</div>
-            </a>
+            <div class="stat-wrap">
+                <a href="/admin/products?estado=conportada" class="stat-card stat-card--link" title="Ver estos productos">
+                    <div class="stat-value" style="color:#4ade80;">
+                        <?= number_format($withCover) ?>
+                    </div>
+                    <div class="stat-label">🖼️ Con Portada</div>
+                </a>
+                <a href="/admin/products?estado=conportada&amp;descargar=xlsx" class="stat-dl" title="Descargar esta lista en Excel">⬇ Excel</a>
+            </div>
+            <div class="stat-wrap">
+                <a href="/admin/products?estado=sinportada" class="stat-card stat-card--link" title="Ver estos productos">
+                    <div class="stat-value" style="color:#fbbf24;">
+                        <?= number_format($withoutCover) ?>
+                    </div>
+                    <div class="stat-label">📷 Sin Portada</div>
+                </a>
+                <a href="/admin/products?estado=sinportada&amp;descargar=xlsx" class="stat-dl" title="Descargar esta lista en Excel">⬇ Excel</a>
+            </div>
+            <div class="stat-wrap">
+                <a href="/admin/products?estado=hoy" class="stat-card stat-card--link" title="Ver estos productos">
+                    <div class="stat-value" style="color:var(--color-accent, #4a9eff);">
+                        <?= number_format($updatedToday) ?>
+                    </div>
+                    <div class="stat-label">📅 Actualizados Hoy</div>
+                </a>
+                <a href="/admin/products?estado=hoy&amp;descargar=xlsx" class="stat-dl" title="Descargar esta lista en Excel">⬇ Excel</a>
+            </div>
+            <div class="stat-wrap">
+                <a href="/admin/products?estado=fuera" class="stat-card stat-card--link" title="Ver estos productos">
+                    <div class="stat-value" style="color:#f87171;">
+                        <?= number_format($discontinuedProducts) ?>
+                    </div>
+                    <div class="stat-label">⛔ Fuera de la Hoja master</div>
+                </a>
+                <a href="/admin/products?estado=fuera&amp;descargar=xlsx" class="stat-dl" title="Descargar esta lista en Excel">⬇ Excel</a>
+            </div>
+            <div class="stat-wrap">
+                <a href="/admin/products?estado=sinprecio" class="stat-card stat-card--link" title="Ver y poner precio">
+                    <div class="stat-value" style="color:#fbbf24;">
+                        <?= number_format($noPrice) ?>
+                    </div>
+                    <div class="stat-label">💲 Sin precio en tabla</div>
+                </a>
+                <a href="/admin/products?estado=sinprecio&amp;descargar=xlsx" class="stat-dl" title="Descargar esta lista en Excel">⬇ Excel</a>
+            </div>
+            <div class="stat-wrap">
+                <a href="/admin/products?estado=preciomanual" class="stat-card stat-card--link" title="Ver precios cambiados en el admin">
+                    <div class="stat-value" style="color:#60a5fa;">
+                        <?= number_format($manualPrice) ?>
+                    </div>
+                    <div class="stat-label">✏️ Precio editado en admin</div>
+                </a>
+                <a href="/admin/products?estado=preciomanual&amp;descargar=xlsx" class="stat-dl" title="Descargar esta lista en Excel">⬇ Excel</a>
+            </div>
         </div>
 
         <!-- Desglose por Categoría y Género -->
