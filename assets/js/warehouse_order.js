@@ -31,8 +31,18 @@
     if (!data || !Array.isArray(data.items) || !data.items.length) { $('pbEmpty').hidden = false; return; }
     const order = data.order || {};
 
-    // «$12.500» o «$12.500,00» → 12500 (los puntos son miles; coma + 1-2 dígitos al final = decimales)
+    // Precio en pesos: «$130,000.00» (recibo) → 130000 · «$12.500» → 12500 · «$12.500,00» → 12500 · «130000» → 130000.
+    // El último separador seguido de 1-2 dígitos es decimal; los demás puntos/comas son miles.
     function parsePrice(t) {
+        let s = String(t || '').replace(/[^\d.,]/g, '');
+        if (!s) return null;
+        const m = s.match(/^(.*)[.,](\d{1,2})$/);
+        s = m ? m[1].replace(/[.,]/g, '') + '.' + m[2] : s.replace(/[.,]/g, '');
+        const n = parseFloat(s);
+        return isFinite(n) && n > 0 ? n : null;
+    }
+    // Lectura antigua (dejaba «$130,000.00» en 13000000): solo para reparar avances guardados con ese error
+    function parsePriceOld(t) {
         let s = String(t || '').replace(/[^\d.,]/g, '');
         if (!s) return null;
         if (/,\d{1,2}$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(/[.,]/g, '');
@@ -44,9 +54,19 @@
     // Líneas del pedido, en el orden del Extractor
     let uid = 0;
     const mk = (o) => Object.assign({ id: ++uid, code: '', name: '', price: null, orig: true, origQty: 1, qty: 1, checked: false, note: '', photo: undefined, base: null }, o);
+    // Precio unitario del pedido: si el recibo trae el total de la línea (order.priceIsLineTotal), se divide por la cantidad
+    // (pedidos guardados antes de ese dato: se deduce si la suma de precios cuadra con el Total del PDF sin multiplicar).
+    const lineTotal = order.priceIsLineTotal != null ? !!order.priceIsLineTotal : (() => {
+        const tot = parsePrice(order.totalText);
+        if (tot == null) return false;
+        let sp = 0, su = 0;
+        data.items.forEach((it) => { const p = parsePrice(it.priceText) || 0, q = it.qty == null ? 1 : Number(it.qty); sp += p; su += p * q; });
+        return Math.abs(sp - tot) < 1 && Math.abs(su - tot) >= 1;
+    })();
+    const unitPrice = (t, q, parse) => { const p = parse(t); return p == null ? null : (lineTotal && q > 0 ? Math.round(p / q) : p); };
     let lines = data.items.map((it) => {
         const q = it.qty == null ? 1 : Number(it.qty);
-        const l = mk({ code: String(it.code || ''), name: String(it.desc || ''), price: parsePrice(it.priceText), origQty: q, qty: q });
+        const l = mk({ code: String(it.code || ''), name: String(it.desc || ''), price: unitPrice(it.priceText, q, parsePrice), origQty: q, qty: q });
         l.base = { code: l.code, name: l.name, price: l.price, photo: null };
         return l;
     });
@@ -93,6 +113,19 @@
         if (s && s.key === KEY && Array.isArray(s.lines) && s.lines.length) { lines = s.lines; who = s.who || ''; uid = lines.reduce((m, l) => Math.max(m, l.id), 0); }
         else if (s && s.who) who = s.who; // el nombre de quien chequea se recuerda entre pedidos
     } catch (e) { /* sin guardado */ }
+
+    // Reparar avances guardados con la lectura antigua del precio (p. ej. 13000000 en vez de 130000):
+    // solo cambia el precio que coincide exactamente con el valor mal leído del PDF; uno escrito a mano se respeta.
+    let fixed = 0;
+    lines.forEach((l, i) => {
+        const it = data.items[i];
+        if (!l.orig || !l.base || !it || String(it.code || '') !== l.base.code) return;
+        const bad = parsePriceOld(it.priceText), good = unitPrice(it.priceText, l.origQty, parsePrice);
+        if (bad == null || good == null || bad === good) return;
+        if (l.base.price === bad) { l.base.price = good; fixed++; }
+        if (l.price === bad) l.price = good;
+    });
+    if (fixed) save();
 
     // ---- Estado de cada línea ----
     function status(l) {
