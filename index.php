@@ -283,7 +283,7 @@ if ($uri === '/pedido-bodega') {
     exit;
 }
 
-// Pedidos a alistar (warehouse_orders): lista roja/verde y su API JSON
+// Pedidos bodega (warehouse_orders): lista roja/verde y su API JSON
 if ($uri === '/pedidos-alistar') {
     include __DIR__ . '/templates/client/warehouse_orders.php';
     exit;

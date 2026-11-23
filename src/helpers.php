@@ -1529,8 +1529,8 @@ function loadMoreButton(int $total): string
 }
 
 
-/** Botón fijo «📋 Pedidos a alistar» del encabezado de todas las páginas públicas (enlace siempre /pedidos-alistar; visible también en celular). */
+/** Botón fijo «📋 Pedidos bodega» del encabezado de todas las páginas públicas (enlace siempre /pedidos-alistar; visible también en celular). */
 function pedidosHeaderBtn(): string
 {
-    return '<a href="/pedidos-alistar" class="btn btn-sm btn-primary hdr-pedidos" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Pedidos por alistar (rojo) y listos (verde)">📋 Pedidos a alistar</a>';
+    return '<a href="/pedidos-alistar" class="btn btn-sm btn-primary hdr-pedidos" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Pedidos por alistar (rojo) y listos (verde)">📋 Pedidos bodega</a>';
 }

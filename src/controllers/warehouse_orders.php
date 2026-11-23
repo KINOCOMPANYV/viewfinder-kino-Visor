@@ -1,6 +1,6 @@
 <?php
 /**
- * Pedidos a alistar (tabla warehouse_orders, migración 035). JSON, sin clave (igual que Lista Bodega), POST con X-CSRF-TOKEN.
+ * Pedidos bodega (tabla warehouse_orders, migración 035). JSON, sin clave (igual que Lista Bodega), POST con X-CSRF-TOKEN.
  * $woAction: 'list' (GET) | 'create' (POST {order}) | 'get' (GET, $woId) | 'save' (POST {lines, who, checked, total, done}, $woId).
  * El checklist y el PDF siguen en el dispositivo (assets/js/warehouse_order.js); aquí solo se guarda el pedido y su avance.
  */

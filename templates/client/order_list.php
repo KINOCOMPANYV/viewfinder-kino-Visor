@@ -129,7 +129,7 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
             <button type="button" class="btn ol-preview-btn" id="olMake" disabled>⏳ Buscando fotos…</button>
             <button type="button" class="btn cp-share" id="olShare" hidden>📲 Compartir</button>
             <button type="button" class="btn btn-secondary" id="olDown" hidden>⬇️ Descargar</button>
-            <button type="button" class="btn btn-secondary" id="olToWh">📦 Enviar a pedidos a alistar</button>
+            <button type="button" class="btn btn-secondary" id="olToWh">📦 Enviar a pedidos bodega</button>
         </div>
         <div class="cp-msg" id="olMsg" aria-live="polite"></div>
     </div>
@@ -153,13 +153,13 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
     <script src="/assets/js/pdf_shared.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="/assets/js/order_list.js?v=<?= $olJs ?>" defer></script>
     <script>
-        // «📦 Enviar a pedidos a alistar»: guarda el pedido (sessionStorage kinoPedido) en el servidor y abre la lista
+        // «📦 Enviar a pedidos bodega»: guarda el pedido (sessionStorage kinoPedido) en el servidor y abre la lista
         document.getElementById('olToWh').addEventListener('click', async (e) => {
             const b = e.currentTarget, m = document.getElementById('olMsg');
             let data = null;
             try { data = JSON.parse(sessionStorage.getItem('kinoPedido') || 'null'); } catch (x) { data = null; }
             if (!data || !Array.isArray(data.items) || !data.items.length) { m.textContent = '⚠️ No hay pedido para enviar. Ábrelo desde el Extractor.'; return; }
-            b.disabled = true; m.textContent = 'Enviando a Pedidos a alistar…';
+            b.disabled = true; m.textContent = 'Enviando a Pedidos bodega…';
             try {
                 const r = await fetch('/pedidos-alistar/api', { method: 'POST', credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.CS_CSRF || '', Accept: 'application/json' },

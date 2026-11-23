@@ -1,6 +1,6 @@
 <?php
 /**
- * Pedidos a alistar (/pedidos-alistar): lista de los pedidos enviados desde Lista Bodega (tabla warehouse_orders).
+ * Pedidos bodega (/pedidos-alistar): lista de los pedidos enviados desde Lista Bodega (tabla warehouse_orders).
  * Rojo = falta alistar (abre el checklist /pedido-bodega?id=N); verde = listo (abre para copiar el listado de códigos y cantidades).
  * Datos por GET /pedidos-alistar/api. ?nuevo=N resalta el recién enviado.
  */
@@ -12,7 +12,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Pedidos a alistar · Viewfinder</title>
+    <title>Pedidos bodega · Viewfinder</title>
     <style>body{background:#0a0a0f;color:#e8e8f0}</style>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
@@ -43,8 +43,8 @@
     </header>
 
     <main class="container" style="padding-top:2rem; padding-bottom:6rem; max-width:900px;">
-        <?= breadcrumbs([['Extractor', '/extractor'], ['Pedidos a alistar', null]]) ?>
-        <h1 style="font-size:1.5rem; margin-bottom:0.4rem;">📋 Pedidos a alistar</h1>
+        <?= breadcrumbs([['Extractor', '/extractor'], ['Pedidos bodega', null]]) ?>
+        <h1 style="font-size:1.5rem; margin-bottom:0.4rem;">📋 Pedidos bodega</h1>
         <p class="wo-sub" style="margin-bottom:1rem;">🔴 Falta alistar: tócalo para chequearlo. 🟢 Listo: tócalo para copiar el listado de códigos y cantidades.</p>
         <p id="woNote" style="color:#e6c76a; min-height:1rem; margin-bottom:0.6rem;"></p>
         <div class="wo-tabs" id="woTabs"></div>
@@ -74,7 +74,7 @@
                     '<span class="wo-dot">' + (ok ? '🟢' : '🔴') + '</span><span class="wo-main"><span class="wo-title">' + esc(title) + '</span><br><span class="wo-sub">' + sub + '</span></span>' +
                     '<span class="wo-act">' + (ok ? 'Verificar ›' : 'Alistar ›') + '</span></a>';
             }).join('') || '<div class="wo-empty">' + (tab === 'listo' ? 'Todavía no hay pedidos listos.' : tab === 'pendiente' ? '✅ No hay pedidos por alistar.' : 'No hay pedidos.') +
-                ' Para enviar uno: Extractor → Lista Bodega → «📦 Enviar a pedidos a alistar».</div>';
+                ' Para enviar uno: Extractor → Lista Bodega → «📦 Enviar a pedidos bodega».</div>';
         }
         $('woTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; draw(); } });
         fetch('/pedidos-alistar/api', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
