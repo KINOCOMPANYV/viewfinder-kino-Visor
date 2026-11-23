@@ -3,6 +3,7 @@
  * Pedidos bodega (/pedidos-alistar): lista de los pedidos enviados desde Lista Bodega (tabla warehouse_orders).
  * Rojo = falta alistar (abre el checklist /pedido-bodega?id=N); verde = listo (abre para copiar el listado de códigos y cantidades).
  * Datos por GET /pedidos-alistar/api. ?nuevo=N resalta el recién enviado.
+ * 🗑 Borrar: pide confirmación + contraseña; la valida el servidor (POST /pedidos-alistar/api/N/borrar).
  */
 ?>
 <!DOCTYPE html>
@@ -30,6 +31,17 @@
         .wo-sub { color:#a0a0b0; font-size:0.85rem; }
         .wo-act { font-weight:800; white-space:nowrap; }
         .wo-item.red .wo-act { color:#ff8a92; } .wo-item.green .wo-act { color:#6fdc84; }
+        .wo-row { display:flex; gap:0.5rem; align-items:stretch; margin-bottom:0.6rem; }
+        .wo-row .wo-item { flex:1; margin-bottom:0; min-width:0; }
+        .wo-del { flex:0 0 auto; width:48px; border-radius:12px; border:1px solid #444; background:#15151c; color:#ff8a92; font-size:1.2rem; cursor:pointer; }
+        .wo-del:hover { border-color:#e0505a; }
+        #woDlg { margin:auto; border:1px solid #2a2a35; border-radius:14px; background:#14141c; color:#e8e8f0; padding:1.2rem; width:min(92vw, 380px); }
+        #woDlg::backdrop { background:#000a; }
+        #woDlg input { width:100%; min-height:44px; margin:0.6rem 0; padding:0 0.8rem; border-radius:10px; border:1px solid #444; background:#0a0a0f; color:#e8e8f0; font-size:1.1rem; letter-spacing:0.2em; }
+        #woDlg .dlg-btns { display:flex; gap:0.5rem; justify-content:flex-end; }
+        #woDlg .dlg-btns button { min-height:42px; padding:0 1rem; border-radius:10px; font-weight:800; cursor:pointer; border:1px solid #444; background:#15151c; color:#e8e8f0; }
+        #woDlg .dlg-btns .danger { background:#e0505a; border-color:#e0505a; color:#fff; }
+        #woDlgErr { color:#ff8a92; min-height:1.1rem; font-size:0.9rem; }
         .wo-empty { background:#14141c; border:1px solid #2a2a35; border-radius:12px; padding:1.1rem; color:#c8c8d0; }
     </style>
 </head>
@@ -51,6 +63,21 @@
         <div id="woList"><div class="wo-empty">Cargando…</div></div>
     </main>
 
+    <dialog id="woDlg">
+        <form id="woDlgForm" method="dialog">
+            <strong style="font-size:1.1rem;">🗑 ¿Borrar este pedido?</strong>
+            <p id="woDlgTxt" class="wo-sub" style="margin:0.4rem 0 0;"></p>
+            <p class="wo-sub" style="margin:0.3rem 0 0;">No se puede deshacer. Escribe la contraseña para confirmar.</p>
+            <input id="woDlgPass" type="password" inputmode="numeric" autocomplete="off" placeholder="Contraseña" required>
+            <div id="woDlgErr"></div>
+            <div class="dlg-btns">
+                <button type="button" id="woDlgNo">Cancelar</button>
+                <button type="submit" class="danger" id="woDlgOk">Borrar</button>
+            </div>
+        </form>
+    </dialog>
+    <script>window.CS_CSRF = '<?= csrfToken() ?>';</script>
+
     <script>
     (function () {
         const $ = (id) => document.getElementById(id);
@@ -70,13 +97,35 @@
                 const sub = ok
                     ? '✅ Listo ' + esc(when(o.finished)) + (o.who ? ' · chequeó ' + esc(o.who) : '') + ' · ' + o.items + ' ítems' + (o.total != null ? ' · ' + money(o.total) : '')
                     : o.checked + ' de ' + o.items + ' chequeados' + (o.date ? ' · fecha ' + esc(o.date) : '') + ' · enviado ' + esc(when(o.created));
-                return '<a class="wo-item ' + (ok ? 'green' : 'red') + (o.id === isNew ? ' new' : '') + '" href="/pedido-bodega?id=' + o.id + '">' +
+                return '<div class="wo-row"><a class="wo-item ' + (ok ? 'green' : 'red') + (o.id === isNew ? ' new' : '') + '" href="/pedido-bodega?id=' + o.id + '">' +
                     '<span class="wo-dot">' + (ok ? '🟢' : '🔴') + '</span><span class="wo-main"><span class="wo-title">' + esc(title) + '</span><br><span class="wo-sub">' + sub + '</span></span>' +
-                    '<span class="wo-act">' + (ok ? 'Verificar ›' : 'Alistar ›') + '</span></a>';
+                    '<span class="wo-act">' + (ok ? 'Verificar ›' : 'Alistar ›') + '</span></a>' +
+                    '<button type="button" class="wo-del" data-del="' + o.id + '" title="Borrar pedido" aria-label="Borrar pedido">🗑</button></div>';
             }).join('') || '<div class="wo-empty">' + (tab === 'listo' ? 'Todavía no hay pedidos listos.' : tab === 'pendiente' ? '✅ No hay pedidos por alistar.' : 'No hay pedidos.') +
                 ' Para enviar uno: Extractor → Lista Bodega → «📦 Enviar a pedidos bodega».</div>';
         }
         $('woTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; draw(); } });
+        // Borrar: confirmación + contraseña (la valida el servidor)
+        const dlg = $('woDlg'); let delId = 0;
+        $('woList').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-del]'); if (!b) return;
+            const o = orders.find((x) => x.id === Number(b.dataset.del)); if (!o) return;
+            delId = o.id;
+            $('woDlgTxt').textContent = (o.number ? 'Pedido ' + o.number : 'Pedido sin número') + (o.client ? ' · ' + o.client : '') + ' · ' + o.items + ' ítems';
+            $('woDlgPass').value = ''; $('woDlgErr').textContent = ''; $('woDlgOk').disabled = false;
+            dlg.showModal(); $('woDlgPass').focus();
+        });
+        $('woDlgNo').addEventListener('click', () => dlg.close());
+        $('woDlgForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            $('woDlgOk').disabled = true; $('woDlgErr').textContent = '';
+            fetch('/pedidos-alistar/api/' + delId + '/borrar', { method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.CS_CSRF || '', Accept: 'application/json' },
+                body: JSON.stringify({ password: $('woDlgPass').value }) })
+                .then((r) => r.json().catch(() => ({})).then((j) => { if (!r.ok) throw new Error(j.error || 'Error ' + r.status); return j; }))
+                .then(() => { orders = orders.filter((x) => x.id !== delId); dlg.close(); draw(); $('woNote').textContent = '🗑 Pedido borrado.'; })
+                .catch((err) => { $('woDlgErr').textContent = '⚠️ ' + err.message; $('woDlgOk').disabled = false; $('woDlgPass').select(); });
+        });
         fetch('/pedidos-alistar/api', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
             .then((r) => r.json().then((j) => { if (!r.ok) throw new Error(j.error || 'error ' + r.status); return j; }))
             .then((j) => { orders = j.orders || [];
