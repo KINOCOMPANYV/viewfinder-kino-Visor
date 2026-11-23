@@ -29,6 +29,8 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
         .ol-order { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:0.5rem 1rem; font-size:0.95rem; }
         .ol-order > * > span { color:#a0a0b0; display:block; font-size:0.78rem; }
         .ol-miss { color:#ff9f43; }
+        .ol-edit { width:100%; box-sizing:border-box; padding:0.35rem 0.5rem; margin:0.15rem 0; background:#15151c; color:#f0f0f0; border:1px solid #c9a84c; border-radius:6px; font:inherit; }
+        .ol-note { display:block; color:#a0a0b0; font-size:0.75rem; }
         .ol-field { cursor:pointer; }
         .ol-type { display:flex; flex-wrap:wrap; align-items:center; gap:0.4rem 1.2rem; margin:0 0 1rem; padding:0.7rem 1rem; border-radius:10px;
             border:1px solid #c9a84c55; background:#c9a84c14; font-size:0.92rem; }
