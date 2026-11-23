@@ -695,6 +695,22 @@ class GoogleDriveService
     }
 
     /**
+     * Id del primer archivo (o carpeta, con $folder) llamado exactamente $name dentro de $parentId ('root' = Mi unidad).
+     * null = no existe. Lanza RuntimeException si Drive no respondió (para no crear duplicados por un error).
+     */
+    public function findChildByName(string $parentId, string $name, bool $folder = false): ?string
+    {
+        $esc = fn(string $v) => str_replace(['\\', "'"], ['\\\\', "\\'"], $v);
+        $q = "'" . $esc($parentId) . "' in parents and name = '" . $esc($name) . "' and trashed = false"
+            . ($folder ? " and mimeType = 'application/vnd.google-apps.folder'" : '');
+        $data = $this->getJsonWithRetry('https://www.googleapis.com/drive/v3/files?' . http_build_query(['q' => $q, 'fields' => 'files(id)', 'pageSize' => 1]));
+        if ($data === null) {
+            throw new RuntimeException('Drive no respondió: ' . ($this->lastRequestError ?: 'error desconocido'));
+        }
+        return $data['files'][0]['id'] ?? null;
+    }
+
+    /**
      * Crea una subcarpeta dentro de una carpeta.
      */
     public function createFolder(string $parentId, string $name): ?array

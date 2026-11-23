@@ -8,6 +8,8 @@
  *   php scripts/cli_sync.php indice     = índice de búsqueda (SearchIndex::rebuild); también lo rehacen relink y carpetas
  *   php scripts/cli_sync.php imagenes   = búsqueda por foto: huella de las portadas nuevas (solo con JINA_API_KEY;
  *                                         sync_loop.sh la corre en su propio ciclo cada 5 min)
+ *   php scripts/cli_sync.php pedidos    = copia de Pedidos bodega (Excel + JSON) en Google Drive, una vez al día desde
+ *                                         las PEDIDOS_BACKUP_HOUR (22) hora Colombia; `pedidos ya` = ahora mismo
  * Ejecuta el MISMO controlador que el botón del admin (con su seguro de "no ocultar medio catálogo").
  * Un proceso por paso: los controladores terminan con exit al responder.
  */
@@ -55,8 +57,24 @@ if ($step === 'imagenes') {
     }
     exit(0);
 }
+if ($step === 'pedidos') {
+    require_once __DIR__ . '/../src/services/OrdersBackup.php';
+    $now = (bool) (($argv[2] ?? '') === 'ya');
+    if (!$now && (int) OrdersBackup::now()->format('G') < (int) env('PEDIDOS_BACKUP_HOUR', '22')) {
+        exit(0); // aún no es de noche (hora Colombia)
+    }
+    $db = getDB();
+    if (!$now && !(int) $db->query('SELECT COUNT(*) FROM warehouse_orders')->fetchColumn()) {
+        exit(0); // sin pedidos no hay nada que copiar
+    }
+    $r = OrdersBackup::toDrive($db, $now);
+    if (empty($r['skipped'])) {
+        echo '[' . date('Y-m-d H:i:s') . '] Copia de pedidos: ' . $r['msg'] . "\n";
+    }
+    exit($r['ok'] ? 0 : 1);
+}
 if (!isset($controllers[$step])) {
-    fwrite(STDERR, "Uso: php scripts/cli_sync.php hoja|portadas|carpetas|indice|imagenes\n");
+    fwrite(STDERR, "Uso: php scripts/cli_sync.php hoja|portadas|carpetas|indice|imagenes|pedidos\n");
     exit(1);
 }
 

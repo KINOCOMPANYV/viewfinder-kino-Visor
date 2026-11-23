@@ -17,5 +17,6 @@ while true; do
     php scripts/cli_sync.php carpetas 2>&1 | cut -c1-2000
     php scripts/cli_sync.php hoja 2>&1 | cut -c1-2000
     php scripts/cli_sync.php portadas 2>&1 | cut -c1-2000
+    php scripts/cli_sync.php pedidos 2>&1 | cut -c1-500   # copia diaria de Pedidos bodega en Drive (de noche)
     sleep $(( ${SYNC_INTERVAL_MINUTES:-60} * 60 ))
 done

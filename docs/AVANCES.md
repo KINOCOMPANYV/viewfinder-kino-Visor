@@ -84,6 +84,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   productos»). «M:», «M», «M-» = mismo código. Primero: M:8325-1. Quitar de la lista = vuelve en el próximo sync.
 - **Precios del pedido** (2026-11-23): en Pedido de bodega el precio es **por unidad, en pesos colombianos** (sin decimales).
   «$130,000.00» = $130.000. Si el recibo trae el total de la línea, se divide por la cantidad.
+- **Respaldo de Pedidos bodega** (2026-11-23): siguen en MySQL de Railway (persistente, sobrevive a los deploys); **no Supabase**.
+  Además: Admin → 🗄 Pedidos baja Excel/JSON y cada noche (desde las 22 h Colombia) se sube sola una copia a Drive.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -351,3 +353,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-diucix` (2026-11-23): en «📦 Pedido de bodega», «🔄 Cambiar producto» y «➕ Agregar un producto» buscan **con fotos**: escribe código, nombre o carpeta y toca la foto (misma búsqueda del visor, `/api/search?limit=30`). Escribir el código y «Cambiar»/«Agregar» sigue funcionando.
 - Rama `claude/project-thread-ur7req` (2026-11-23): en el **Extractor**, al adjuntar el PDF el cuadro se pone **verde** con 📁 y «✅ nombre.pdf adjunto»; «🔄 Limpiar» aparece al adjuntar y lo devuelve a normal.
 - Rama `claude/project-thread-v3pzof` (2026-11-23): **Pedido de bodega** leía «$130,000.00» como 13.000.000 (tomaba «.00» como miles). Ahora el último «.xx»/«,xx» es decimal, el precio es por unidad (si el recibo trae total de línea se divide por la cantidad, deducido del Total del PDF) y los pedidos ya guardados se corrigen solos al abrirlos (solo si el precio es exactamente el mal leído; uno escrito a mano se respeta).
+- Rama `claude/project-thread-u5d8a5` (2026-11-23): **Admin → 🗄 Pedidos**: descarga de todos los Pedidos bodega en Excel (pestañas Pedidos y Líneas) o JSON, botón «☁️ Copiar a Drive ahora» y copia automática diaria en Drive (`cli_sync.php pedidos`, carpeta «Respaldos pedidos bodega (visor)» en Mi unidad o `PEDIDOS_BACKUP_FOLDER_ID`; hora `PEDIDOS_BACKUP_HOUR`, 22).

@@ -377,6 +377,12 @@ if ($uri === '/admin/sync') {
     exit;
 }
 
+if ($uri === '/admin/pedidos') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_orders_backup.php';
+    exit;
+}
+
 if ($uri === '/admin/condenados') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_condemned.php';
