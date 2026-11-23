@@ -44,7 +44,7 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-qty { display:inline-flex; align-items:center; gap:0.3rem; }
         .pb-qty button { width:40px; height:40px; font-size:1.3rem; border-radius:10px; border:1px solid #444; background:#1d1d27; color:#fff; cursor:pointer; }
         .pb-qty input { width:56px; height:40px; text-align:center; font-size:1.05rem; border-radius:8px; border:1px solid #444; background:#0f0f16; color:#fff; }
-        .pb-price { width:100px; height:36px; border-radius:8px; border:1px solid #444; background:#0f0f16; color:#fff; padding:0 0.4rem; }
+        .pb-price { color:#bbb; font-size:0.9rem; white-space:nowrap; }
         .pb-sub { margin-left:auto; font-weight:700; color:var(--color-primary-light, #c9a84c); }
         .pb-note, .pb-in { height:38px; border-radius:8px; border:1px solid #444; background:#0f0f16; color:#fff; padding:0 0.6rem; font-size:0.9rem; }
         .pb-note { flex:1; min-width:9rem; }
