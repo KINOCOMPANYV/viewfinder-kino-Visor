@@ -1,7 +1,8 @@
 <?php
 /**
  * Pedidos bodega (tabla warehouse_orders, migración 035). JSON, sin clave (igual que Lista Bodega), POST con X-CSRF-TOKEN.
- * $woAction: 'list' (GET) | 'create' (POST {order}) | 'get' (GET, $woId) | 'save' (POST {lines, who, checked, total, done}, $woId).
+ * $woAction: 'list' (GET) | 'create' (POST {order}) | 'get' (GET, $woId) | 'save' (POST {lines, who, checked, total, done}, $woId)
+ *   | 'delete' (POST {password}, $woId): borra el pedido si la clave coincide con env PEDIDOS_DELETE_PASSWORD (por defecto 3312).
  * El checklist y el PDF siguen en el dispositivo (assets/js/warehouse_order.js); aquí solo se guarda el pedido y su avance.
  */
 $db = getDB();
@@ -12,7 +13,7 @@ $woAction = $woAction ?? 'list';
 $woId = (int) ($woId ?? 0);
 const WO_MAX_JSON = 2000000; // ~2 MB por pedido
 
-if ($woAction === 'create' || $woAction === 'save') {
+if ($woAction === 'create' || $woAction === 'save' || $woAction === 'delete') {
     $csrf = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrf)) {
         jsonResponse(['error' => 'Token inválido. Recarga la página.'], 403);
@@ -88,6 +89,19 @@ if ($woAction === 'create') {
     $st->execute([$key, $cut($info['number'] ?? '', 100), $cut($info['client'] ?? '', 255), $cut($info['date'] ?? '', 100),
         count($order['items']), json_encode($order, JSON_UNESCAPED_UNICODE)]);
     jsonResponse(['id' => (int) $db->lastInsertId(), 'existing' => false]);
+}
+
+if ($woAction === 'delete') {
+    $pass = env('PEDIDOS_DELETE_PASSWORD', '3312');
+    if (!hash_equals($pass, (string) ($input['password'] ?? ''))) {
+        jsonResponse(['error' => 'Contraseña incorrecta.'], 403);
+    }
+    $st = $db->prepare('DELETE FROM warehouse_orders WHERE id = ?');
+    $st->execute([$woId]);
+    if ($st->rowCount() === 0) {
+        jsonResponse(['error' => 'Ese pedido no existe.'], 404);
+    }
+    jsonResponse(['ok' => true]);
 }
 
 if ($woAction === 'save') {
