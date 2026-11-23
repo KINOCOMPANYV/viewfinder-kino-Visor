@@ -13,7 +13,8 @@
 const MONEY = /^-?\s*\$?\s*\d[\d.,]*$/;
 const QTY = /^(\d{1,5})\s*[x×]$/i;
 const QTY_CODE = /^(\d{1,5})\s*[x×]\s*(\S+)(.*)$/i;
-const CODE = /^[A-Za-z0-9][A-Za-z0-9:.\-\/]*$/;
+// «+» une dos códigos en uno solo (estuche pareja «S-640+S-647»), como en la regla foto ↔ código (helpers isSkuBoundary)
+const CODE = /^[A-Za-z0-9][A-Za-z0-9:.\-\/]*(?:\+[A-Za-z0-9][A-Za-z0-9:.\-\/]*)*$/;
 
 /** ¿Parece código? Debe tener un dígito y (si no trae cantidad delante) una letra o guion: 810-C1, 312-1, A10. */
 export function looksLikeCode(tok, strict) {
