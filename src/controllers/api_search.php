@@ -93,4 +93,6 @@ if (!$unique) {
     }
 }
 
-jsonCachedResponse(array_slice($unique, 0, 10), 30);
+// ?limit=N (máx. 30): el buscador con fotos de Pedido de bodega pide más resultados que el autocompletar
+$max = max(1, min(30, (int) ($_GET['limit'] ?? 10)));
+jsonCachedResponse(array_slice($unique, 0, $max), 30);
