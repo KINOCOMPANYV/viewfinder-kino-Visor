@@ -110,7 +110,65 @@ if ($woAction === 'save') {
         jsonResponse(['error' => 'Datos inválidos.'], 400);
     }
     $done = !empty($input['done']);
-    $total = is_numeric($input['total'] ?? null) ? (float) $input['total'] : null;
+    // Precios bloqueados: el alistador no los cambia. Se conserva el precio ya guardado (o el original si
+    // deshace un cambio); un código nuevo toma el precio del visor. Solo se acepta la reparación del #112
+    // (precio viejo ÷ 100 y/o ÷ cantidad pedida).
+    $prevSt = $db->prepare('SELECT lines_json FROM warehouse_orders WHERE id = ?');
+    $prevSt->execute([$woId]);
+    $prevJson = $prevSt->fetchColumn();
+    $prev = [];
+    foreach (($prevJson ? (json_decode($prevJson, true) ?: []) : []) as $pl) {
+        if (is_array($pl) && isset($pl['id'])) {
+            $prev[(string) $pl['id']] = $pl;
+        }
+    }
+    $visorSt = $db->prepare('SELECT price_suggested FROM products WHERE sku = ? AND archived = 0 AND price_suggested > 0 LIMIT 1');
+    $visorPrice = function ($code) use ($visorSt) {
+        $visorSt->execute([(string) $code]);
+        $v = $visorSt->fetchColumn();
+        return $v === false ? null : (float) $v;
+    };
+    $num = fn($v) => is_numeric($v) ? (float) $v : null;
+    $total = 0.0;
+    foreach ($lines as $i => $l) {
+        if (!is_array($l)) {
+            jsonResponse(['error' => 'Datos inválidos.'], 400);
+        }
+        $code = (string) ($l['code'] ?? '');
+        $in = $num($l['price'] ?? null);
+        $p = $prev[(string) ($l['id'] ?? '')] ?? null;
+        if ($p === null) {
+            // Primera vez que se guarda: precios leídos del pedido. Después, un ítem nuevo = precio del visor.
+            $price = $prev ? $visorPrice($code) : $in;
+        } else {
+            $base = is_array($p['base'] ?? null) ? $p['base'] : null;
+            if ($code === (string) ($p['code'] ?? '')) {
+                $old = $num($p['price'] ?? null);
+                $q = max(1, (int) ($p['origQty'] ?? 1));
+                $fix = $old !== null && $in !== null && in_array(round($in), [round($old / 100), round($old / $q), round($old / 100 / $q)], false);
+                $price = $fix ? $in : ($old ?? $visorPrice($code));
+            } elseif ($base && $code === (string) ($base['code'] ?? '')) {
+                $price = $num($base['price'] ?? null) ?? $visorPrice($code);
+            } else {
+                $price = $visorPrice($code);
+            }
+            if ($base) {
+                $bOld = $num($base['price'] ?? null);
+                $bIn = is_array($l['base'] ?? null) ? $num($l['base']['price'] ?? null) : null;
+                $q = max(1, (int) ($p['origQty'] ?? 1));
+                if ($bOld !== null && $bIn !== null && in_array(round($bIn), [round($bOld / 100), round($bOld / $q), round($bOld / 100 / $q)], false)) {
+                    $base['price'] = $bIn;
+                }
+                $l['base'] = $base;
+            }
+        }
+        $l['price'] = $price;
+        $lines[$i] = $l;
+        $qty = max(0, (int) ($l['qty'] ?? 0));
+        if ($price !== null && $qty > 0) {
+            $total += $price * $qty;
+        }
+    }
     $st = $db->prepare("UPDATE warehouse_orders SET lines_json = ?, checked_by = ?, checked_count = ?, items_count = ?, total_final = ?,
         finished_at = IF(? = 1 AND status <> 'listo', NOW(), finished_at), status = IF(? = 1, 'listo', status) WHERE id = ?");
     $st->execute([json_encode($lines, JSON_UNESCAPED_UNICODE), $cut($input['who'] ?? '', 80), max(0, (int) ($input['checked'] ?? 0)),

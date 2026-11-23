@@ -175,7 +175,7 @@
             '<span class="pb-qty"><button type="button" data-act="minus" data-id="' + l.id + '" aria-label="Menos">−</button>' +
             '<input type="number" min="0" inputmode="numeric" value="' + l.qty + '" data-act="qty" data-id="' + l.id + '" aria-label="Cantidad final">' +
             '<button type="button" data-act="plus" data-id="' + l.id + '" aria-label="Más">+</button></span>' +
-            '<input class="pb-price" inputmode="numeric" placeholder="Precio" value="' + (l.price == null ? '' : Math.round(l.price)) + '" data-act="price" data-id="' + l.id + '" aria-label="Precio unitario">' +
+            '<span class="pb-price" title="Precio unitario (no se puede cambiar)">' + (l.price == null ? 'Sin precio' : money(l.price) + ' c/u') + '</span>' +
             '<span class="pb-sub">' + (s == null ? 'Sin precio' : money(s)) + '</span></div>' +
             '<div class="pb-ctl"><input class="pb-note" maxlength="120" placeholder="Nota (opcional)" value="' + esc(l.note) + '" data-act="note" data-id="' + l.id + '">' +
             '<button type="button" class="btn btn-sm btn-secondary" data-act="swap" data-id="' + l.id + '">🔄 Cambiar producto</button></div>' +
@@ -270,7 +270,6 @@
         const act = b.dataset.act;
         if (act === 'chk') l.checked = b.checked;
         else if (act === 'qty') l.qty = Math.max(0, Math.floor(Number(b.value) || 0));
-        else if (act === 'price') l.price = parsePrice(b.value);
         else if (act === 'note') { l.note = b.value.trim(); save(); return; }
         refresh();
     });
