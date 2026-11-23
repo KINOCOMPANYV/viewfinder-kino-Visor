@@ -6,7 +6,7 @@
  * las fotos ni se pone la fecha de hoy); si un dato no se pudo leer, se dice. Luego cada línea del pedido, en el mismo
  * orden: foto, código y cantidad del PDF (solo lectura). Cada línea guarda su código y su foto juntos desde el
  * principio, así no se cruzan referencias. El cliente se puede escribir a mano (si no se leyó o para corregirlo): se guarda
- * en kinoPedido, así lo usan los PDF y «Enviar a pedidos a alistar». Sin foto → «Foto no disponible» (la línea sale igual).
+ * en kinoPedido, así lo usan los PDF y «Enviar a pedidos bodega». Sin foto → «Foto no disponible» (la línea sale igual).
  * Piezas comunes (fotos, texto, compartir, descargar) en pdf_shared.js.
  */
 (function () {

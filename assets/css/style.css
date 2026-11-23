@@ -3354,7 +3354,7 @@ nav.crumbs .crumbs-sep { color: var(--color-primary); font-weight: 700; }
 .stock-tag.out { color: #ef4444; }
 .product-price .stock-tag { font-size: 0.95rem; }
 
-/* «📋 Pedidos a alistar»: fijo en el encabezado de las páginas públicas, también en celular (2026-11-21) */
+/* «📋 Pedidos bodega»: fijo en el encabezado de las páginas públicas, también en celular (2026-11-21) */
 .header .hdr-pedidos { white-space: nowrap; }
 @media (max-width: 420px) {
     .header .hdr-pedidos { font-size: 0.72rem !important; padding: 0.4rem 0.5rem !important; }

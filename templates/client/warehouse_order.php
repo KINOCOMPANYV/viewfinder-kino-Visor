@@ -2,7 +2,7 @@
 /**
  * Pedido de bodega (/pedido-bodega): panel para alistar y chequear un pedido. Lee sessionStorage kinoPedido (el mismo
  * pedido que arma Lista Bodega / Remisión), deja cambiar producto y cantidad, recalcula el total y genera el PDF
- * «Pedido finalizado». Con ?id=N el pedido viene de Pedidos a alistar y el avance se guarda en el servidor. PDF en el dispositivo (assets/js/warehouse_order.js + pdf_shared.js); plan: docs/PLAN_PEDIDO_BODEGA.md.
+ * «Pedido finalizado». Con ?id=N el pedido viene de Pedidos bodega y el avance se guarda en el servidor. PDF en el dispositivo (assets/js/warehouse_order.js + pdf_shared.js); plan: docs/PLAN_PEDIDO_BODEGA.md.
  */
 $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
 ?>
@@ -86,12 +86,12 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
     </header>
 
     <main class="container pb-main" style="padding-top:2rem; max-width:900px;">
-        <?= breadcrumbs([['Extractor', '/extractor'], ['Pedidos a alistar', '/pedidos-alistar'], ['Pedido de bodega', null]]) ?>
+        <?= breadcrumbs([['Extractor', '/extractor'], ['Pedidos bodega', '/pedidos-alistar'], ['Pedido de bodega', null]]) ?>
         <h1 style="font-size:1.5rem; margin-bottom:1rem;">📦 Pedido de bodega</h1>
 
         <div class="pb-card" id="pbEmpty" hidden>
             <p>No hay un pedido para alistar.</p>
-            <p class="pb-help">Abre los <a href="/pedidos-alistar">📋 Pedidos a alistar</a>, o en el <a href="/extractor">Extractor</a> procesa el PDF del pedido, toca «🧾 Lista Bodega» y luego «📦 Enviar a pedidos a alistar».</p>
+            <p class="pb-help">Abre los <a href="/pedidos-alistar">📋 Pedidos bodega</a>, o en el <a href="/extractor">Extractor</a> procesa el PDF del pedido, toca «🧾 Lista Bodega» y luego «📦 Enviar a pedidos bodega».</p>
         </div>
 
         <div id="pbBody" hidden>

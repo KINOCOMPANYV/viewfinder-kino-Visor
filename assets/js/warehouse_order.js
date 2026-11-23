@@ -3,7 +3,7 @@
  * Por producto: foto, código, nombre, precio, cantidad pedida y final (+/−), cambiar de producto, nota y casilla
  * «Alistado». Total final recalculado contra el original. «Chequeado por» + «Finalizar» arman el PDF «Pedido finalizado»
  * (jsPDF en el dispositivo, nombre editable; pdf_shared.js). El avance se guarda en localStorage (kinoBodega).
- * Con ?id=N (Pedidos a alistar, tabla warehouse_orders) el pedido y su avance se leen y guardan en el servidor
+ * Con ?id=N (Pedidos bodega, tabla warehouse_orders) el pedido y su avance se leen y guardan en el servidor
  * (GET/POST /pedidos-alistar/api/N); al finalizar queda «listo» (verde). Sin id: pedido de sessionStorage, solo local.
  * Nombre/precio/foto: POST /enviar-catalogo/extraer {codes}.
  */
@@ -22,7 +22,7 @@
             if (!r.ok) throw new Error(srv.error || 'error ' + r.status);
             data = srv.order;
         } catch (e) {
-            $('pbEmpty').innerHTML = '<p>⚠️ No se pudo abrir el pedido (' + esc(e && e.message ? e.message : e) + ').</p><p><a href="/pedidos-alistar">← Volver a Pedidos a alistar</a></p>';
+            $('pbEmpty').innerHTML = '<p>⚠️ No se pudo abrir el pedido (' + esc(e && e.message ? e.message : e) + ').</p><p><a href="/pedidos-alistar">← Volver a Pedidos bodega</a></p>';
             $('pbEmpty').hidden = false; return;
         }
     } else {
@@ -373,7 +373,7 @@
             $('pbDone').disabled = true; $('pbMsg').dataset.keep = '1';
             if (SID) { if (srv) { srv.who = who.trim(); srv.finished = Math.floor(Date.now() / 1000); } await saveServer(true); }
             else setStatus('listo');
-            msg('✅ Pedido finalizado' + (SID ? ' y marcado en verde en Pedidos a alistar' : '') + '. Copia el listado.');
+            msg('✅ Pedido finalizado' + (SID ? ' y marcado en verde en Pedidos bodega' : '') + '. Copia el listado.');
             delete $('pbMsg').dataset.keep; drawFin();
         }
         drawCopy(); $('pbCopyBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
