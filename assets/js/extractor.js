@@ -24,7 +24,10 @@ function setFile(f) {
     if (!f) return;
     if (!/pdf$/i.test(f.type) && !/\.pdf$/i.test(f.name)) { $('exStatus').textContent = '⚠️ Sube un PDF válido.'; return; }
     file = f;
-    $('exFileName').textContent = f.name;
+    $('exFileName').textContent = '✅ ' + f.name + ' adjunto';
+    $('exIcon').textContent = '📁';
+    $('exDrop').classList.add('ok');
+    $('exClear').hidden = false;
     $('exRun').disabled = false;
     $('exStatus').textContent = '';
 }
@@ -67,6 +70,8 @@ $('exClear').addEventListener('click', () => {
     file = null; result = null; rows = [];
     $('exFile').value = '';
     $('exFileName').textContent = 'Arrastra tu PDF aquí o toca para elegirlo';
+    $('exIcon').textContent = '📎';
+    $('exDrop').classList.remove('ok');
     $('exRun').disabled = true;
     $('exClear').hidden = true;
     $('exResult').hidden = true;

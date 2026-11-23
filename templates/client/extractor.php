@@ -27,6 +27,9 @@
         .ex-drop input { display:none; }
         .ex-drop b { font-size:0.95rem; }
         .ex-drop small { color:#a0a0b0; }
+        .ex-drop.ok { border-color:#2ecc71; background:rgba(46,204,113,0.10); }
+        .ex-drop.ok b { color:#2ecc71; }
+        .ex-drop.ok small { color:#7fd8a3; }
         .ex-actions { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.8rem; align-items:center; }
         .ex-review { border-radius:10px; padding:0.75rem 0.9rem; margin-bottom:1rem; font-size:0.9rem; }
         .ex-review.ok { background:rgba(37,211,102,0.1); border:1px solid rgba(37,211,102,0.45); }
@@ -87,9 +90,9 @@
                 <strong>en este dispositivo</strong>; no se sube a ningún lado.</p>
             <label class="ex-drop" id="exDrop">
                 <input type="file" id="exFile" accept="application/pdf,.pdf">
-                <span style="font-size:1.6rem">📎</span>
+                <span id="exIcon" style="font-size:1.6rem">📎</span>
                 <b id="exFileName">Arrastra tu PDF aquí o toca para elegirlo</b>
-                <small>Recibos de KINO («5x 674B-1 … $430,000.00») o cotizaciones en tabla (CODIGO · CANT · PRECIO · TOTAL); se detecta solo</small>
+                <small id="exHint">Recibos de KINO («5x 674B-1 … $430,000.00») o cotizaciones en tabla (CODIGO · CANT · PRECIO · TOTAL); se detecta solo</small>
             </label>
             <div class="ex-actions">
                 <button type="button" id="exRun" class="btn btn-primary" disabled>🚀 Procesar PDF</button>
