@@ -123,7 +123,7 @@
                     <button type="button" id="exToOrder" class="btn btn-secondary">🧾 Lista Bodega</button>
                 </div>
                 <p class="ex-help" style="margin:0.5rem 0 0">Arma un PDF con los datos del cliente, el total y cada referencia con su
-                    foto y su cantidad, tal como vienen en el PDF: «🧾 Lista Bodega» si es un recibo (pedido) o «🚚 Remisión» si
+                    foto y su cantidad, tal como vienen en el PDF: «🧾 Lista Bodega» si es un recibo (pedido) o «🚚 Cotización» si
                     es una factura en tabla.</p>
             </section>
 
