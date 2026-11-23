@@ -53,7 +53,8 @@ $('exRun').addEventListener('click', async () => {
         if (!lines.length) throw new Error('El PDF no tiene texto (¿es una foto escaneada?). Prueba con «📷 Leer lista de una foto» en Enviar fotos con lista.');
         result = core.parseOrder(lines);
         if (!result.items.length) throw new Error('No se hallaron códigos ni cantidades en el PDF.');
-        rows = result.items.slice();
+        rows = result.items.map((it) => ({ ...it }));
+        editing = false; edited = false;
         render();
         $('exClear').hidden = false;
         $('exResult').hidden = false;
@@ -67,7 +68,7 @@ $('exRun').addEventListener('click', async () => {
 });
 
 $('exClear').addEventListener('click', () => {
-    file = null; result = null; rows = [];
+    file = null; result = null; rows = []; editing = false; edited = false;
     $('exFile').value = '';
     $('exFileName').textContent = 'Arrastra tu PDF aquí o toca para elegirlo';
     $('exIcon').textContent = '📎';
@@ -97,7 +98,6 @@ function render() {
         rv.innerHTML = '<strong>Revisión</strong><ul>' + warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>';
     } else rv.hidden = true;
 
-    $('exTotal').textContent = result.items.length;
     $('exToOrder').textContent = order.format === 'tabla' ? '🚚 Cotización' : '🧾 Lista Bodega';
 
     // Datos del pedido
@@ -140,11 +140,90 @@ $('exOrder').addEventListener('keydown', (e) => { if (e.target && e.target.id ==
 const pct = () => { const n = Math.round(+$('exPct').value); return isNaN(n) ? 40 : Math.min(100, Math.max(0, n)); };
 const discText = (it) => it.price == null ? '' : core.formatPrice(it.price * (1 - pct() / 100), core.priceStyle(it.priceText));
 
+let editing = false; // «✏️ Editar lista»: código, cantidad y precio en casillas, ✕ por fila, ➕ Agregar línea
+let edited = false;  // la lista ya no es la leída del PDF
+const outRows = () => rows.filter((it) => it.code); // filas sin código (recién agregadas y vacías) no salen
+
 function renderRows() {
     $('exDiscHead').textContent = 'PRECIO -' + pct() + '%';
-    $('exRows').innerHTML = rows.map((it) => '<tr><td>' + esc(it.code) + '</td><td class="sep"></td><td class="num">' + (it.qty ?? '') +
-        '</td><td>UNIDAD</td><td class="sep"></td><td class="num c-price">' + esc(it.priceText) + '</td><td class="num c-disc">' + esc(discText(it)) + '</td></tr>').join('');
+    $('exTable').classList.toggle('ex-editing', editing);
+    $('exRows').innerHTML = rows.map((it, i) => editing
+        ? '<tr data-i="' + i + '"><td><input class="ex-cell" data-f="code" maxlength="60" value="' + esc(it.code) + '" placeholder="código"></td><td class="sep"></td>' +
+          '<td class="num"><input class="ex-cell num" data-f="qty" type="number" min="0" step="1" inputmode="numeric" value="' + (it.qty ?? '') + '"></td><td class="c-u">UNIDAD</td><td class="sep"></td>' +
+          '<td class="num c-price"><input class="ex-cell num" data-f="price" maxlength="30" value="' + esc(it.priceText) + '" placeholder="$0"></td><td class="num c-disc">' + esc(discText(it)) + '</td>' +
+          '<td class="c-x"><button type="button" class="ex-del" data-del="' + i + '" title="Quitar esta línea" aria-label="Quitar">✕</button></td></tr>'
+        : '<tr><td>' + esc(it.code) + '</td><td class="sep"></td><td class="num">' + (it.qty ?? '') +
+          '</td><td class="c-u">UNIDAD</td><td class="sep"></td><td class="num c-price">' + esc(it.priceText) + '</td><td class="num c-disc">' + esc(discText(it)) + '</td><td class="c-x"></td></tr>').join('');
+    $('exAddRow').hidden = !editing;
+    $('exEdit').textContent = editing ? '✅ Listo' : '✏️ Editar lista';
+    $('exReset').hidden = !edited;
+    renderSummary();
 }
+
+// Resumen de la lista tal como quedó (cuando se editó): referencias, unidades y suma de precios.
+function renderSummary() {
+    const out = outRows();
+    $('exTotal').textContent = out.length;
+    const box = $('exEditSum');
+    if (!edited) { box.hidden = true; return; }
+    const units = out.reduce((s, it) => s + (+it.qty || 0), 0);
+    const ref = result.order.totalText || (out.find((it) => it.priceText) || {}).priceText || '$0';
+    const unit = result.order.unitPrices; // el precio es por unidad (cotización en tabla): la suma es cantidad × precio
+    const sum = out.reduce((s, it) => s + (it.price == null ? 0 : it.price * (unit ? (+it.qty || 0) : 1)), 0);
+    box.hidden = false;
+    box.innerHTML = '✏️ <b>Lista editada a mano</b>: ' + out.length + ' referencia' + (out.length === 1 ? '' : 's') + ' · ' + units + ' unidades' +
+        (out.some((it) => it.price != null) ? ' · suma ' + esc(core.formatPrice(sum, core.priceStyle(ref))) : '') + '. Esto es lo que se copia y pasa a fotos / ' + esc($('exToOrder').textContent.replace(/^\S+\s/, '')) + '.';
+}
+
+$('exEdit').addEventListener('click', () => {
+    editing = !editing;
+    if (!editing) rows = outRows(); // quita las líneas sin código
+    renderRows();
+});
+$('exReset').addEventListener('click', () => {
+    if (!confirm('¿Volver a la lista tal como se leyó del PDF? Se pierden los cambios a mano.')) return;
+    rows = result.items.map((it) => ({ ...it }));
+    edited = false;
+    renderRows();
+});
+$('exAddRow').addEventListener('click', () => {
+    rows.push({ code: '', qty: 1, priceText: '', price: null, desc: '', n: rows.length + 1000, added: true });
+    edited = true;
+    renderRows();
+    const ins = $('exRows').querySelectorAll('input[data-f="code"]');
+    if (ins.length) ins[ins.length - 1].focus();
+});
+$('exRows').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-del]');
+    if (!b) return;
+    rows.splice(+b.dataset.del, 1);
+    edited = true;
+    renderRows();
+});
+// Al escribir se actualiza el dato (sin redibujar, para no perder el cursor); al salir de la casilla se limpia el texto.
+$('exRows').addEventListener('input', (e) => {
+    const inp = e.target, tr = inp.closest('tr[data-i]');
+    if (!tr || !inp.dataset.f) return;
+    const it = rows[+tr.dataset.i];
+    if (inp.dataset.f === 'code') { it.code = inp.value.replace(/\s+/g, '').toUpperCase(); it.desc = ''; }
+    else if (inp.dataset.f === 'qty') { const q = parseInt(inp.value, 10); it.qty = isNaN(q) ? null : Math.max(0, q); }
+    else { it.priceText = inp.value.trim(); it.price = core.readPrice(it.priceText); }
+    // Cotización en tabla: el total de la línea sigue a cantidad × precio
+    if (it.lineTotalText !== undefined || result.order.format === 'tabla') {
+        it.lineTotal = it.price != null && it.qty != null ? it.price * it.qty : null;
+        it.lineTotalText = it.lineTotal == null ? '' : core.formatPrice(it.lineTotal, core.priceStyle(it.priceText));
+    }
+    edited = true;
+    tr.querySelector('.c-disc').textContent = discText(it);
+    $('exReset').hidden = false;
+    renderSummary();
+});
+$('exRows').addEventListener('change', (e) => {
+    const inp = e.target, tr = inp.closest('tr[data-i]');
+    if (!tr || inp.dataset.f !== 'code') return;
+    inp.value = rows[+tr.dataset.i].code;
+});
+$('exRows').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('input.ex-cell')) { e.preventDefault(); e.target.blur(); } });
 
 $('exShowPrice').addEventListener('change', (e) => $('exTable').classList.toggle('ex-hide-price', !e.target.checked));
 $('exShowDisc').addEventListener('change', (e) => $('exTable').classList.toggle('ex-hide-disc', !e.target.checked));
@@ -158,7 +237,7 @@ $('exSort').addEventListener('click', () => {
 // Copia lo que se ve, en el orden mostrado, sin encabezados, separado por tabulaciones (las columnas vacías se mantienen).
 $('exCopy').addEventListener('click', async () => {
     const showP = $('exShowPrice').checked, showD = $('exShowDisc').checked;
-    const text = rows.map((it) => {
+    const text = outRows().map((it) => {
         const cols = [it.code, '', it.qty ?? '', 'UNIDAD', ''];
         if (showP) cols.push(it.priceText);
         if (showD) cols.push(discText(it));
@@ -178,7 +257,7 @@ $('exCopy').addEventListener('click', async () => {
 
 // Pasa los códigos (sin repetir, en el orden mostrado) a Enviar catálogo, que busca sus fotos.
 $('exToVisor').addEventListener('click', () => {
-    const codes = [...new Set(rows.map((it) => it.code))];
+    const codes = [...new Set(outRows().map((it) => it.code))];
     try { sessionStorage.setItem('kinoCsText', codes.join('\n')); } catch (e) { alert('No se pudo pasar la lista en este dispositivo.'); return; }
     location.href = '/enviar-catalogo?desde=extractor';
 });
@@ -196,8 +275,10 @@ $('exToOrder').addEventListener('click', () => {
             nit: o.nit || '', address: o.address || '', city: o.city || '', phone: o.phone || '', seller: o.seller || '' },
         // Tipo de documento: la cotización en tabla es una factura → Remisión; el recibo es un pedido → Lista Bodega
         docType: o.format === 'tabla' ? 'remision' : 'pedido',
-        items: rows.map((it) => ({ code: it.code, qty: it.qty ?? null, desc: it.desc || '', priceText: it.priceText || '', lineTotalText: it.lineTotalText || '' })),
-        warnings: result.warnings.slice(),
+        items: outRows().map((it) => ({ code: it.code, qty: it.qty ?? null, desc: it.desc || '', priceText: it.priceText || '', lineTotalText: it.lineTotalText || '' })),
+        // Lista corregida a mano: los avisos de lectura del PDF ya no aplican (no se llevan al recuadro «Revisar» del PDF)
+        warnings: edited ? [] : result.warnings.slice(),
+        edited,
     };
     try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (e) { alert('No se pudo pasar el pedido en este dispositivo.'); return; }
     location.href = '/lista-pedido';

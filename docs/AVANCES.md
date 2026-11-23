@@ -137,7 +137,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Decisión del dueño 2026-11-09: ofrecer las dos vías; ir foto por foto era lento y el lote de 30+ fallaba.
 - "🧾 Extractor" (`/extractor`, en el inicio del computador y en Enviar catálogo): subir un recibo o pedido PDF → código,
   cantidad y precio; «Revisión» (✓ si cuadra con Total, artículos y unidades del PDF, o la lista de lo que no cuadra), datos
-  del pedido, Mapa del PDF; mostrar precio y precio con descuento (40 % por defecto), Organizar, Copiar para Excel. «📷 Ver
+  del pedido, Mapa del PDF; mostrar precio y precio con descuento (40 % por defecto), Organizar, «✏️ Editar lista» (código, cantidad, precio, ✕ quitar, ➕ agregar; «↩ Volver a lo del PDF»), Copiar para Excel. «📷 Ver
   fotos en el visor» abre Enviar catálogo con esos códigos (encontrados/no encontrados, PDF, WhatsApp, Mi selección).
   «🧾 Lista pedido» (al lado) abre `/lista-pedido`: PDF del pedido con cliente, fecha, total de ítems, unidades y valor
   total tal como vienen en el PDF, y cada línea con foto, código y cantidad (no editables); sin foto → «Foto no disponible».
@@ -373,3 +373,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-uvz4h6` (2026-11-23): **Códigos con «+»** («S-640+S-647-1…7») enlazan a su propia foto y crean su producto «Solo Drive», ya no se pegan al padre S-640 (`isSkuBoundary()`); prueba `php tests/sku_match_test.php`.
 - Rama `claude/project-thread-noicpm` (2026-11-23): el documento **«Remisión» pasa a llamarse «Cotización»** en todo lo visible (PDF, total, archivo, botones, admin); rutas y tablas sin cambio.
 - Rama `claude/project-thread-9rpcuq` (2026-11-23): **Extractor** lee códigos con «+» (`S-640+S-647`, estuche pareja); antes esa línea se perdía y el total no cuadraba. Prueba `node tests/extractor_test.mjs` con el texto de la cotización 106776 (cliente anonimizado).
+- Rama `claude/project-thread-iu5rfh` (2026-11-23): **Extractor**: «✏️ Editar lista» en 📊 Resultado deja corregir código, cantidad y precio, quitar (✕) o agregar (➕) líneas; «↩ Volver a lo del PDF» deshace. Lo editado es lo que pasa a Copiar, Ver fotos, Lista Bodega / Cotización y Pedido de bodega (sin los avisos de lectura del PDF).
