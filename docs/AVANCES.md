@@ -19,6 +19,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 
 ## Decisiones vigentes (del dueño)
 - Stock público (2026-11-20): debajo de la foto, al lado del precio, «In Stock» en verde y «Out stock» en rojo (0 o negativo), sin la cantidad por ahora (decisión del dueño, mismo día), en tarjetas y ficha. Fuente: Stock SYS (📦 Inventario) y si no hay, STOCK de la Hoja master; producto Solo Drive sin dato SYS = no se muestra nada (`stockSql()`/`stockTag()` en helpers). Filtro «Stock: todos / Con stock / Sin stock» en todas las pantallas públicas, Catálogo PDF y Admin → Productos (sin dato de stock solo sale en «todos»).
+- **Medir antes de agregar** (2026-11-23, decisión del dueño tras la auditoría): registro propio de errores (PHP y JS) y de búsquedas sin resultado en MySQL, visible en Admin → 🧾 Registro (sin Sentry: gratis y simple). Respaldo nocturno de TODA la base en Drive (`.sql.gz`) con prueba de restauración documentada (`docs/RESPALDOS.md`). Metas: 0 fatales en 7 días, menos búsquedas sin resultado.
 - **Búsqueda por foto con IA de imágenes** (2026-11-10): se eligió comparar "huellas" (jina-clip-v2, servicio de pago por uso,
   centavos) sobre la huella gratis (solo reconoce la misma foto) y sobre describir la foto con IA (lenta y cara).
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
@@ -358,3 +359,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-u5d8a5` (2026-11-23): **Admin → 🗄 Pedidos**: descarga de todos los Pedidos bodega en Excel (pestañas Pedidos y Líneas) o JSON, botón «☁️ Copiar a Drive ahora» y copia automática diaria en Drive (`cli_sync.php pedidos`, carpeta «Respaldos pedidos bodega (visor)» en Mi unidad o `PEDIDOS_BACKUP_FOLDER_ID`; hora `PEDIDOS_BACKUP_HOUR`, 22).
 - Rama `claude/project-thread-3jhsv8` (2026-11-23): **Pedido de bodega**: el precio unitario ya no se puede editar (texto «$X c/u»); el servidor lo bloquea también y recalcula el total final.
 - Rama `claude/project-thread-lq8fs2` (2026-11-23): `docs/GUIA_VISOR.md`, guía simple del visor para personas no técnicas.
+- Rama `claude/project-thread-0h596l` (2026-11-23): **Admin → 🧾 Registro** (errores PHP/JS y búsquedas sin resultado, migración 036) + **respaldo diario de toda la base MySQL** a Drive (`DbBackup`, `cli_sync.php respaldobd`, botón en Admin → Pedidos) + `scripts/restore_backup.php` y `docs/RESPALDOS.md`.

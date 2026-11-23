@@ -10,6 +10,8 @@
  *                                         sync_loop.sh la corre en su propio ciclo cada 5 min)
  *   php scripts/cli_sync.php pedidos    = copia de Pedidos bodega (Excel + JSON) en Google Drive, una vez al día desde
  *                                         las PEDIDOS_BACKUP_HOUR (22) hora Colombia; `pedidos ya` = ahora mismo
+ *   php scripts/cli_sync.php respaldobd = copia completa de MySQL (.sql.gz) en Google Drive, una vez al día desde
+ *                                         las BACKUP_DB_HOUR (3) hora Colombia; `respaldobd ya` = ahora mismo
  * Ejecuta el MISMO controlador que el botón del admin (con su seguro de "no ocultar medio catálogo").
  * Un proceso por paso: los controladores terminan con exit al responder.
  */
@@ -20,6 +22,8 @@ if (PHP_SAPI !== 'cli') {
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../src/helpers.php';
+require_once __DIR__ . '/../src/services/ErrorLog.php';
+ErrorLog::install(); // avisos y fatales de los pasos del sync también van al registro
 
 $controllers = [
     'hoja' => __DIR__ . '/../src/controllers/admin_sync_sheets.php',
@@ -73,8 +77,23 @@ if ($step === 'pedidos') {
     }
     exit($r['ok'] ? 0 : 1);
 }
+if ($step === 'respaldobd') {
+    require_once __DIR__ . '/../src/services/DbBackup.php';
+    $now = (bool) (($argv[2] ?? '') === 'ya');
+    if (!$now && (int) DbBackup::now()->format('G') < (int) env('BACKUP_DB_HOUR', '3')) {
+        exit(0); // aún no es la hora (hora Colombia)
+    }
+    $r = DbBackup::toDrive(getDB(), $now);
+    if (empty($r['skipped'])) {
+        echo '[' . date('Y-m-d H:i:s') . '] ' . $r['msg'] . "\n";
+        if (!$r['ok']) {
+            ErrorLog::record('php', 'respaldo', $r['msg'], __FILE__, __LINE__); // un respaldo fallido se ve en Admin → 🧾 Registro
+        }
+    }
+    exit($r['ok'] ? 0 : 1);
+}
 if (!isset($controllers[$step])) {
-    fwrite(STDERR, "Uso: php scripts/cli_sync.php hoja|portadas|carpetas|indice|imagenes|pedidos\n");
+    fwrite(STDERR, "Uso: php scripts/cli_sync.php hoja|portadas|carpetas|indice|imagenes|pedidos|respaldobd\n");
     exit(1);
 }
 

@@ -18,5 +18,6 @@ while true; do
     php scripts/cli_sync.php hoja 2>&1 | cut -c1-2000
     php scripts/cli_sync.php portadas 2>&1 | cut -c1-2000
     php scripts/cli_sync.php pedidos 2>&1 | cut -c1-500   # copia diaria de Pedidos bodega en Drive (de noche)
+    php scripts/cli_sync.php respaldobd 2>&1 | cut -c1-500 # copia diaria de TODA la base MySQL (.sql.gz) en Drive (de madrugada)
     sleep $(( ${SYNC_INTERVAL_MINUTES:-60} * 60 ))
 done
