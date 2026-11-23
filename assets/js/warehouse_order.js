@@ -180,6 +180,34 @@
         if (!r.ok || !j.photos) throw new Error(j.error || 'error ' + r.status);
         return j.photos;
     }
+    // ---- Galería: buscar con fotos (misma búsqueda que el visor) y tocar la foto para elegir ----
+    const coverSrc = (c) => String(c || '').replace(/^\[VIDEO\]/, '');
+    function gallery(inp, grid, onPick) {
+        let timer = 0, seq = 0;
+        inp.addEventListener('input', () => {
+            clearTimeout(timer);
+            const q = inp.value.trim();
+            if (q.length < 2) { grid.innerHTML = ''; return; }
+            timer = setTimeout(async () => {
+                const my = ++seq;
+                try {
+                    const r = await fetch('/api/search?limit=30&q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+                    const data = await r.json();
+                    if (my !== seq) return;
+                    grid.innerHTML = Array.isArray(data) && data.length ? data.map((p) =>
+                        '<button type="button" data-sku="' + esc(p.sku) + '" title="' + esc(p.name || '') + '">' +
+                        '<img src="' + esc(coverSrc(p.cover_image_url)) + '" alt="" loading="lazy" decoding="async">' +
+                        '<b>' + esc(p.sku) + '</b><small>' + esc(p.name || '') + '</small></button>').join('')
+                        : '<span class="pb-help">Sin resultados con foto.</span>';
+                } catch (e) { if (my === seq) grid.innerHTML = '<span class="pb-help">⚠️ No se pudo buscar.</span>'; }
+            }, 250);
+        });
+        grid.addEventListener('click', (e) => {
+            const b = e.target.closest('button[data-sku]'); if (!b) return;
+            grid.innerHTML = '';
+            onPick(b.dataset.sku);
+        });
+    }
     const pick = (p, code) => p && Object.prototype.hasOwnProperty.call(p, code) ? p[code] : null;
 
     // ---- Acciones ----
@@ -194,9 +222,12 @@
         else if (act === 'swap') {
             const box = $('sw' + l.id); box.hidden = !box.hidden;
             if (!box.hidden) {
-                box.innerHTML = '<input class="pb-in" id="swc' + l.id + '" placeholder="Código nuevo" autocapitalize="characters" autocomplete="off">' +
-                    '<button type="button" class="btn btn-sm btn-primary" data-act="swapok" data-id="' + l.id + '">Cambiar</button><span class="pb-help" id="sws' + l.id + '"></span>';
-                $('swc' + l.id).focus();
+                box.innerHTML = '<input class="pb-in" id="swc' + l.id + '" placeholder="Busca por código, nombre o carpeta" autocapitalize="characters" autocomplete="off" aria-label="Buscar el producto nuevo">' +
+                    '<button type="button" class="btn btn-sm btn-primary" data-act="swapok" data-id="' + l.id + '">Cambiar</button><span class="pb-help" id="sws' + l.id + '">Escribe y toca la foto del producto nuevo.</span>' +
+                    '<div class="pb-pick" id="swp' + l.id + '"></div>';
+                const inp = $('swc' + l.id);
+                gallery(inp, $('swp' + l.id), (code) => { inp.value = code; swapTo(l); });
+                inp.focus();
             }
         } else if (act === 'swapok') swapTo(l);
     });
@@ -221,6 +252,7 @@
             refresh();
         } catch (e) { st.textContent = '⚠️ No se pudo buscar (' + (e && e.message ? e.message : e) + ').'; }
     }
+    gallery($('pbAddCode'), $('pbAddPick'), (code) => { $('pbAddCode').value = code; $('pbAddBtn').click(); });
     $('pbAddBtn').addEventListener('click', async () => {
         const code = $('pbAddCode').value.trim(), st = $('pbAddMsg');
         if (!code) return;

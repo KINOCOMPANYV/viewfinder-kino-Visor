@@ -49,6 +49,14 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-note, .pb-in { height:38px; border-radius:8px; border:1px solid #444; background:#0f0f16; color:#fff; padding:0 0.6rem; font-size:0.9rem; }
         .pb-note { flex:1; min-width:9rem; }
         .pb-sw { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center; }
+        .pb-sw .pb-in { flex:1; min-width:12rem; }
+        .pb-pick { flex-basis:100%; display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:0.5rem; max-height:360px; overflow-y:auto; }
+        .pb-pick:empty { display:none; }
+        .pb-pick button { display:flex; flex-direction:column; gap:0.2rem; padding:0.3rem; border:1px solid #333; border-radius:10px; background:#0f0f16; color:#fff; cursor:pointer; text-align:left; font-size:0.75rem; }
+        .pb-pick button:hover, .pb-pick button:focus { border-color:var(--color-primary-light, #c9a84c); }
+        .pb-pick img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; background:#1d1d27; }
+        .pb-pick b { font-size:0.8rem; word-break:break-all; }
+        .pb-pick small { color:#a0a0b0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
         .pb-total { font-size:1.05rem; display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:0.4rem 1rem; }
         .pb-total span { display:block; color:#a0a0b0; font-size:0.78rem; }
         .pb-total .big { font-size:1.35rem; font-weight:800; color:var(--color-primary-light, #c9a84c); }
@@ -105,9 +113,10 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
             <section class="pb-card">
                 <h2>➕ Agregar un producto</h2>
                 <div class="pb-sw">
-                    <input class="pb-in" id="pbAddCode" placeholder="Código" autocomplete="off" autocapitalize="characters" aria-label="Código del producto">
+                    <input class="pb-in" id="pbAddCode" placeholder="Código, nombre o carpeta" autocomplete="off" autocapitalize="characters" aria-label="Buscar producto por código, nombre o carpeta">
                     <button type="button" class="btn btn-secondary" id="pbAddBtn">Agregar</button>
                     <span class="pb-help" id="pbAddMsg"></span>
+                    <div class="pb-pick" id="pbAddPick"></div>
                 </div>
             </section>
             <section class="pb-card" id="pbCopyBox" hidden>
