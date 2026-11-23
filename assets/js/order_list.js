@@ -5,7 +5,8 @@
  * Encabezado con cliente, fecha, total de ítems, unidades y valor total TAL CUAL vienen del PDF (no se recalculan con
  * las fotos ni se pone la fecha de hoy); si un dato no se pudo leer, se dice. Luego cada línea del pedido, en el mismo
  * orden: foto, código y cantidad del PDF (solo lectura). Cada línea guarda su código y su foto juntos desde el
- * principio, así no se cruzan referencias. Sin foto → «Foto no disponible» (la línea sale igual).
+ * principio, así no se cruzan referencias. El cliente se puede escribir a mano (si no se leyó o para corregirlo): se guarda
+ * en kinoPedido, así lo usan los PDF y «Enviar a pedidos a alistar». Sin foto → «Foto no disponible» (la línea sale igual).
  * Piezas comunes (fotos, texto, compartir, descargar) en pdf_shared.js.
  */
 (function () {
@@ -66,7 +67,7 @@
     const T = () => TYPES[type];
     const allFields = [
         { key: 'number', label: 'N.º', v: order.number },
-        { key: 'client', label: 'Cliente', v: order.client },
+        { key: 'client', label: 'Cliente', v: order.client, edit: true }, // se puede escribir o corregir a mano
         { key: 'nit', label: 'NIT', v: order.nit, opt: true },
         { key: 'address', label: 'Dirección', v: order.address, opt: true },
         { key: 'city', label: 'Ciudad', v: order.city, opt: true },
@@ -126,15 +127,33 @@
     }
     drawType();
 
+    // Cliente escrito a mano: reemplaza al leído (o al que faltaba) en la pantalla, los PDF y el pedido guardado
+    const clientPdf = has(order.client) ? String(order.client) : '';
+    function setClient(val) {
+        const v = String(val || '').replace(/\s+/g, ' ').trim();
+        order.client = v || clientPdf || null;
+        allFields.find((f) => f.key === 'client').v = order.client;
+        data.order = order;
+        try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (e) { /* sin almacenamiento */ }
+    }
     function drawOrder() {
         $('olOrder').innerHTML = allFields.map((f) => {
             const v = valueOf(f);
+            if (f.edit) {
+                return '<div class="ol-field' + (show[f.key] ? '' : ' off') + '"><span><label><input type="checkbox" data-k="' + f.key + '"' + (show[f.key] ? ' checked' : '') + '> ' + esc(labelOf(f)) + '</label></span>' +
+                    '<input type="text" class="ol-edit" id="olClient" maxlength="120" value="' + esc(has(v) ? v : '') + '" placeholder="Escribe el cliente">' +
+                    (clientPdf ? (String(v) !== clientPdf ? '<small class="ol-note">Del PDF: ' + esc(clientPdf) + '</small>' : '')
+                        : (has(v) ? '<small class="ol-note">Escrito a mano</small>' : '<b class="ol-miss">⚠ ' + MISSING + '</b>')) + '</div>';
+            }
             return '<label class="ol-field' + (show[f.key] ? '' : ' off') + '"><span><input type="checkbox" data-k="' + f.key + '"' + (show[f.key] ? ' checked' : '') + '> ' + esc(labelOf(f)) + '</span>' +
                 (has(v) ? esc(v) : (f.key === 'number' ? '—' : '<b class="ol-miss">⚠ ' + MISSING + '</b>')) + '</label>';
         }).join('');
         $('olOpts').innerHTML = '<label><input type="checkbox" data-k="review"' + (show.review ? ' checked' : '') + '> Recuadro «Revisar» con avisos</label>' +
             '<div class="ol-cols"><b>Columnas de la tabla:</b> ' + allCols.map((c) => '<label><input type="checkbox" data-k="' + c.key + '"' + (show[c.key] ? ' checked' : '') + '> ' + esc(c.label) + '</label>').join('') + '</div>' +
             (canCount ? '<label><input type="checkbox" data-k="useCount"' + (show.useCount ? ' checked' : '') + '> Si el PDF no trae ítems o unidades, usar lo contado en sus líneas</label>' : '');
+        drawWarn();
+    }
+    function drawWarn() {
         const warnBox = $('olWarn');
         warnBox.hidden = !problems.length;
         warnBox.innerHTML = problems.length ? '<strong>Revisar</strong><ul>' + problems.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>' : '';
@@ -156,6 +175,14 @@
         savePrefs(); refresh(); drawOrder();
         resetPdf('Cambiaste lo que sale en el PDF: vuelve a generarlo.');
     });
+    // Escribir el cliente: se aplica al salir de la casilla (o con Enter) y se puede volver a corregir
+    $('olOrder').addEventListener('change', (e) => {
+        if (!e.target || e.target.id !== 'olClient') return;
+        setClient(e.target.value);
+        refresh(); drawOrder();
+        resetPdf('Cambiaste el cliente: vuelve a generar el PDF.');
+    });
+    $('olOrder').addEventListener('keydown', (e) => { if (e.target && e.target.id === 'olClient' && e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
     $('olBody').hidden = false;
     $('olBar').hidden = false;
 
