@@ -60,11 +60,19 @@
         .ex-table td.num, .ex-table th.num { text-align:right; }
         .ex-table .sep { width:1.2rem; padding:0; }
         .ex-hide-price .c-price, .ex-hide-disc .c-disc { display:none; }
+        .ex-table .c-x { display:none; width:2rem; padding:0 0.2rem; }
+        .ex-editing .c-x { display:table-cell; }
+        .ex-cell { width:100%; min-width:3.2rem; box-sizing:border-box; padding:0.25rem 0.4rem; background:#15151c; color:#f0f0f0; border:1px solid #c9a84c; border-radius:6px; font:inherit; }
+        .ex-cell.num { text-align:right; max-width:7rem; }
+        .ex-cell[data-f="code"] { min-width:7.5rem; }
+        .ex-cell[data-f="qty"] { max-width:4rem; }
+        .ex-del { background:none; border:1px solid #c0392b; color:#e74c3c; border-radius:6px; padding:0.15rem 0.45rem; cursor:pointer; }
         .ex-send { display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; }
         @media (max-width: 640px) {
             .ex-actions .btn, .ex-send .btn { flex:1 1 100%; }
             .ex-map li { grid-template-columns:1.8rem 1fr; }
             .ex-map li span:last-child { grid-column:1 / -1; }
+            .ex-editing .c-u, .ex-editing .sep { display:none; }
         }
     </style>
 </head>
@@ -136,18 +144,22 @@
                 </div>
                 <div class="ex-actions" style="margin:0 0 0.8rem">
                     <button type="button" id="exSort" class="btn btn-secondary btn-sm">🔤 Organizar listado</button>
+                    <button type="button" id="exEdit" class="btn btn-secondary btn-sm">✏️ Editar lista</button>
+                    <button type="button" id="exReset" class="btn btn-secondary btn-sm" hidden>↩ Volver a lo del PDF</button>
                     <button type="button" id="exCopy" class="btn btn-primary btn-sm">📋 Copiar resultado</button>
                     <span id="exCopyMsg" class="ex-help" style="margin:0" aria-live="polite"></span>
                 </div>
                 <div class="ex-table-wrap">
                     <table class="ex-table ex-hide-price ex-hide-disc" id="exTable">
                         <thead><tr>
-                            <th>codigo</th><th class="sep"></th><th class="num">cantidad</th><th>UNIDAD</th><th class="sep"></th>
-                            <th class="num c-price">PRECIO</th><th class="num c-disc" id="exDiscHead">PRECIO -40%</th>
+                            <th>codigo</th><th class="sep"></th><th class="num">cantidad</th><th class="c-u">UNIDAD</th><th class="sep"></th>
+                            <th class="num c-price">PRECIO</th><th class="num c-disc" id="exDiscHead">PRECIO -40%</th><th class="c-x"></th>
                         </tr></thead>
                         <tbody id="exRows"></tbody>
                     </table>
                 </div>
+                <button type="button" id="exAddRow" class="btn btn-secondary btn-sm" style="margin-top:0.6rem" hidden>➕ Agregar línea</button>
+                <p class="ex-review ok" id="exEditSum" style="margin-top:0.8rem" hidden></p>
             </section>
         </div>
     </main>
