@@ -191,6 +191,8 @@ $('exToOrder').addEventListener('click', () => {
         file: file ? file.name : '',
         order: { number: o.number || '', client: o.client || '', clientPdf: o.clientPdf ?? o.client ?? '', date: o.date || '', totalText: o.totalText || '',
             itemsPdf: o.itemsPdf ?? null, unitsPdf: o.unitsPdf ?? null, noQty: !!o.noQty,
+            // Recibo cuyo precio por línea es el total de la línea (cuadra con el Total sin multiplicar): Pedido de bodega lo divide por la cantidad
+            priceIsLineTotal: o.format !== 'tabla' && o.totalOk === true && !o.unitPrices,
             nit: o.nit || '', address: o.address || '', city: o.city || '', phone: o.phone || '', seller: o.seller || '' },
         // Tipo de documento: la cotización en tabla es una factura → Remisión; el recibo es un pedido → Lista Bodega
         docType: o.format === 'tabla' ? 'remision' : 'pedido',

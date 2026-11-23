@@ -82,6 +82,8 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - **Códigos condenados** (2026-11-21): Admin → 🚫 Condenados, lista manual. Un código condenado no se tiene en cuenta en la
   Hoja master, «Solo Drive», enlace de fotos ni búsqueda; si estaba en el visor **se borra** (única excepción a «no se borran
   productos»). «M:», «M», «M-» = mismo código. Primero: M:8325-1. Quitar de la lista = vuelve en el próximo sync.
+- **Precios del pedido** (2026-11-23): en Pedido de bodega el precio es **por unidad, en pesos colombianos** (sin decimales).
+  «$130,000.00» = $130.000. Si el recibo trae el total de la línea, se divide por la cantidad.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -348,3 +350,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-sj0lfb` (2026-11-23): en el **Extractor** («Datos del pedido») el **Cliente** también es una casilla editable (vacía = vuelve al del PDF; muestra «Del PDF: …»). El nombre corregido pasa a Lista Bodega/Remisión (y de ahí a los PDF y a Pedidos bodega); `kinoPedido.order.clientPdf` guarda lo leído para que allá siga saliendo «Del PDF».
 - Rama `claude/project-thread-diucix` (2026-11-23): en «📦 Pedido de bodega», «🔄 Cambiar producto» y «➕ Agregar un producto» buscan **con fotos**: escribe código, nombre o carpeta y toca la foto (misma búsqueda del visor, `/api/search?limit=30`). Escribir el código y «Cambiar»/«Agregar» sigue funcionando.
 - Rama `claude/project-thread-ur7req` (2026-11-23): en el **Extractor**, al adjuntar el PDF el cuadro se pone **verde** con 📁 y «✅ nombre.pdf adjunto»; «🔄 Limpiar» aparece al adjuntar y lo devuelve a normal.
+- Rama `claude/project-thread-v3pzof` (2026-11-23): **Pedido de bodega** leía «$130,000.00» como 13.000.000 (tomaba «.00» como miles). Ahora el último «.xx»/«,xx» es decimal, el precio es por unidad (si el recibo trae total de línea se divide por la cantidad, deducido del Total del PDF) y los pedidos ya guardados se corrigen solos al abrirlos (solo si el precio es exactamente el mal leído; uno escrito a mano se respeta).
