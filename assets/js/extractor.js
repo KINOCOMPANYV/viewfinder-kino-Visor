@@ -98,7 +98,7 @@ function render() {
     } else rv.hidden = true;
 
     $('exTotal').textContent = result.items.length;
-    $('exToOrder').textContent = order.format === 'tabla' ? '🚚 Remisión' : '🧾 Lista Bodega';
+    $('exToOrder').textContent = order.format === 'tabla' ? '🚚 Cotización' : '🧾 Lista Bodega';
 
     // Datos del pedido
     const mark = (ok) => ok == null ? '' : ok ? ' <span class="ex-ok">✓</span>' : ' <span class="ex-bad">✗</span>';

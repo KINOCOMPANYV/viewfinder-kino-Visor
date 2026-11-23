@@ -93,6 +93,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   «⬆ Volver al pedido». Sin cambios → «✅ Se alistó igual al pedido».
 - **Respaldo de Pedidos bodega** (2026-11-23): siguen en MySQL de Railway (persistente, sobrevive a los deploys); **no Supabase**.
   Además: Admin → 🗄 Pedidos baja Excel/JSON y cada noche (desde las 22 h Colombia) se sube sola una copia a Drive.
+- **«Remisión» ahora se llama «Cotización»** (2026-11-23): título del PDF, «TOTAL COTIZACIÓN», archivo `Cotizacion_N.pdf`,
+  botones, selector Tipo y Admin → 🚚 Cotización. Rutas (`/admin/remision`), tabla `doc_templates` y código interno `remision` siguen igual.
+  Un título guardado «Remisión» en la plantilla se muestra como «Cotización».
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -368,3 +371,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-w0pt9v` (2026-11-23): **Pedido de bodega** listo muestra «📝 Cambios en el alistado» vs. el pedido original (+ Copiar resumen para WhatsApp y «⬆ Volver al pedido»), calculado en el navegador con lo ya guardado; sin migración.
 - Rama `claude/project-thread-xxn4tz` (2026-11-23): **Dashboard admin**: cada tarjeta tiene «⬇ Excel» (y la lista de Productos «⬇ Descargar Excel») con toda la lista del filtro: código, nombre, marca, categoría, color, carpeta, precio, stock, estado, origen, portada, motivo. Los números de las tarjetas salen del mismo filtro que la lista y el Excel.
 - Rama `claude/project-thread-uvz4h6` (2026-11-23): **Códigos con «+»** («S-640+S-647-1…7») enlazan a su propia foto y crean su producto «Solo Drive», ya no se pegan al padre S-640 (`isSkuBoundary()`); prueba `php tests/sku_match_test.php`.
+- Rama `claude/project-thread-noicpm` (2026-11-23): el documento **«Remisión» pasa a llamarse «Cotización»** en todo lo visible (PDF, total, archivo, botones, admin); rutas y tablas sin cambio.

@@ -33,7 +33,7 @@ Dirección: **viewfinder-k.up.railway.app** (en el computador o en el celular).
 - **🧾 Extractor**: se sube el PDF de un recibo o cotización y saca código, cantidad y precio, y revisa que el total cuadre.
   El cliente se puede corregir a mano.
 - Desde ahí salen dos documentos:
-  - **Remisión** (factura en tabla, azul): con NIT, dirección, precio y total.
+  - **Cotización** (factura en tabla, azul): con NIT, dirección, precio y total.
   - **Lista Bodega** (recibo, negro y dorado): foto, código y cantidad de cada línea, para alistar.
   - «👁 Previo» muestra el PDF antes de descargarlo o enviarlo.
 - **📋 Pedidos bodega**: la Lista Bodega se envía aquí y queda guardada. El **alistador** abre cada pedido, marca
@@ -53,7 +53,7 @@ Dirección: **viewfinder-k.up.railway.app** (en el computador o en el celular).
   en la Hoja master.
 - **📦 Inventario**: subir el Excel de **SYS** (INVENTARIO GENERAL) → stock y precio SYS. También se escribe en la Hoja master.
 - **🚫 Condenados**: códigos que no deben salir nunca. Se ignoran en todo y el producto se borra. Quitarlo de la lista = vuelve.
-- **🚚 Remisión**: cambiar logos, colores y pie del PDF de Remisión.
+- **🚚 Cotización**: cambiar logos, colores y pie del PDF de Cotización.
 - **🗄 Pedidos**: bajar todos los Pedidos bodega en Excel o JSON. Cada noche se guarda sola una copia en Drive.
 
 ## Preguntas rápidas
