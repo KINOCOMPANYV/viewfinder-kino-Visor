@@ -15,7 +15,7 @@ class RemisionTemplate
     public static function defaults(): array
     {
         return [
-            'title' => 'Remisión',
+            'title' => 'Cotización',
             'numPrefix' => 'Nº',
             'headerColor' => '#0e0e0e',
             'accentColor' => '#d3232d',
@@ -48,6 +48,8 @@ class RemisionTemplate
         if ($row) {
             $saved = json_decode((string) $row['data'], true);
             if (is_array($saved)) $t = self::clean($saved);
+            // 2026-11-23: el documento pasó a llamarse «Cotización»; un título viejo guardado como «Remisión» se muestra con el nombre nuevo.
+            if (preg_match('/^remisi[oó]n$/iu', trim((string) $t['title']))) $t['title'] = self::defaults()['title'];
             $t['updatedAt'] = $row['updated_at'];
         }
         return $t;

@@ -24,9 +24,10 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   centavos) sobre la huella gratis (solo reconoce la misma foto) y sobre describir la foto con IA (lenta y cara).
 - **Foto ↔ producto**: el nombre del archivo es el código (o código + separador + lo que sea). "M:", "M" y "M-" son el mismo
   código. El nombre de la carpeta no cuenta. Lo que no coincide se lista para renombrar (Admin → Media, CSV).
-- **Fotos con dos códigos en el nombre** (2026-11-21, decisión del dueño, caso «S-640+S-647-3.jpg»): la foto sigue siendo
-  solo del primer código (S-640); no se reparte entre los dos. Lo que faltaba era el buscador: pegando el nombre completo
-  de la foto sale su producto con esa foto. Buscar solo «S-647» no la trae.
+- **Códigos combinados con «+»** (2026-11-23, decisión del dueño; reemplaza la del 2026-11-21): «S-640+S-647-3.jpg» es
+  de su **propio código** «S-640+S-647-3», no del padre S-640. Un «+» seguido de otro código es parte del código
+  (`isSkuBoundary()`); si no está en la hoja sale como «Solo Drive», familia «S-640+S-647» (-1 = padre).
+  «X6071+caja.jpg» (texto, no código) sigue siendo de X6071. Pegar el nombre completo de la foto sigue funcionando.
 - **Búsqueda por nombre exacto de archivo en todas partes** (2026-11-21, decisión del dueño): además de las búsquedas
   de siempre, cualquier buscador o lista acepta el nombre exacto de una foto. Sobre todo para **crear PDF**: hace falta
   la imagen exacta del producto, así que va esa foto y no la portada. Gana el nombre idéntico («1971-1.jpg», no «1971-1-2.jpg»).
@@ -92,6 +93,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   «⬆ Volver al pedido». Sin cambios → «✅ Se alistó igual al pedido».
 - **Respaldo de Pedidos bodega** (2026-11-23): siguen en MySQL de Railway (persistente, sobrevive a los deploys); **no Supabase**.
   Además: Admin → 🗄 Pedidos baja Excel/JSON y cada noche (desde las 22 h Colombia) se sube sola una copia a Drive.
+- **«Remisión» ahora se llama «Cotización»** (2026-11-23): título del PDF, «TOTAL COTIZACIÓN», archivo `Cotizacion_N.pdf`,
+  botones, selector Tipo y Admin → 🚚 Cotización. Rutas (`/admin/remision`), tabla `doc_templates` y código interno `remision` siguen igual.
+  Un título guardado «Remisión» en la plantilla se muestra como «Cotización».
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
 
 ## Funciones clave para el usuario
@@ -366,4 +370,6 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-0h596l` (2026-11-23): **Admin → 🧾 Registro** (errores PHP/JS y búsquedas sin resultado, migración 036) + **respaldo diario de toda la base MySQL** a Drive (`DbBackup`, `cli_sync.php respaldobd`, botón en Admin → Pedidos) + `scripts/restore_backup.php` y `docs/RESPALDOS.md`.
 - Rama `claude/project-thread-w0pt9v` (2026-11-23): **Pedido de bodega** listo muestra «📝 Cambios en el alistado» vs. el pedido original (+ Copiar resumen para WhatsApp y «⬆ Volver al pedido»), calculado en el navegador con lo ya guardado; sin migración.
 - Rama `claude/project-thread-xxn4tz` (2026-11-23): **Dashboard admin**: cada tarjeta tiene «⬇ Excel» (y la lista de Productos «⬇ Descargar Excel») con toda la lista del filtro: código, nombre, marca, categoría, color, carpeta, precio, stock, estado, origen, portada, motivo. Los números de las tarjetas salen del mismo filtro que la lista y el Excel.
+- Rama `claude/project-thread-uvz4h6` (2026-11-23): **Códigos con «+»** («S-640+S-647-1…7») enlazan a su propia foto y crean su producto «Solo Drive», ya no se pegan al padre S-640 (`isSkuBoundary()`); prueba `php tests/sku_match_test.php`.
+- Rama `claude/project-thread-noicpm` (2026-11-23): el documento **«Remisión» pasa a llamarse «Cotización»** en todo lo visible (PDF, total, archivo, botones, admin); rutas y tablas sin cambio.
 - Rama `claude/project-thread-9rpcuq` (2026-11-23): **Extractor** lee códigos con «+» (`S-640+S-647`, estuche pareja); antes esa línea se perdía y el total no cuadraba. Prueba `node tests/extractor_test.mjs` con el texto de la cotización 106776 (cliente anonimizado).

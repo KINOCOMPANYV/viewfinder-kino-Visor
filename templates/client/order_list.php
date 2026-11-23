@@ -98,7 +98,7 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
         <?= breadcrumbs([['Extractor', '/extractor'], ['Lista Bodega', null]]) ?>
         <h1 id="olTitle" style="font-size:1.5rem; margin-bottom:1rem;">🧾 Lista Bodega</h1>
         <?php if (isAdminLoggedIn()): ?>
-            <p class="ol-help ol-tpl-link"><a href="/admin/remision">✏️ Editar plantilla de la Remisión (logos, pie, colores)</a></p>
+            <p class="ol-help ol-tpl-link"><a href="/admin/remision">✏️ Editar plantilla de la Cotización (logos, pie, colores)</a></p>
         <?php endif; ?>
 
         <div class="ol-card" id="olEmpty" hidden>

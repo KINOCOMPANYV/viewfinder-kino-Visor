@@ -58,7 +58,7 @@
             numLabel: 'N.º de pedido', c1: [28, 28, 30], c2: [201, 168, 76],
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: false, address: false, city: false, phone: false, seller: false,
                 review: true, useCount: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: false, cTotal: false } },
-        remision: { name: 'Remisión', title: (REM.title || 'Remisión'), file: 'Remision_', icon: '🚚', pref: 'kinoOlFieldsRemision',
+        remision: { name: 'Cotización', title: (REM.title || 'Cotización'), file: 'Cotizacion_', icon: '🚚', pref: 'kinoOlFieldsRemision',
             numLabel: 'N.º de cotización', c1: rgb(REM.headerColor, [14, 14, 14]), c2: rgb(REM.accentColor, [211, 35, 45]),
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: true, address: true, city: true, phone: false, seller: false,
                 review: true, useCount: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: true, cTotal: true } },
@@ -123,7 +123,7 @@
         if (crumb) crumb.textContent = T().name;
         $('olType').innerHTML = '<b>Tipo:</b> ' + Object.keys(TYPES).map((k) => '<label><input type="radio" name="olType" value="' + k + '"' +
             (k === type ? ' checked' : '') + '> ' + TYPES[k].icon + ' ' + esc(TYPES[k].name) + '</label>').join('') +
-            '<small>' + (data.docType === 'remision' ? 'El PDF es una factura en tabla → Remisión.' : 'El PDF es un recibo (pedido) → Lista Bodega.') + '</small>';
+            '<small>' + (data.docType === 'remision' ? 'El PDF es una factura en tabla → Cotización.' : 'El PDF es un recibo (pedido) → Lista Bodega.') + '</small>';
     }
     drawType();
 
@@ -414,7 +414,7 @@
                 const bw = 95, bx = W - M - bw;
                 doc.setFillColor(...C1); doc.roundedRect(bx, ty, bw, 12, 1.5, 1.5, 'F');
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...C2);
-                doc.text('TOTAL REMISIÓN', bx + 4, ty + 7.6);
+                doc.text('TOTAL COTIZACIÓN', bx + 4, ty + 7.6);
                 doc.setFontSize(13); doc.setTextColor(255, 255, 255);
                 doc.text(clean(order.totalText), bx + bw - 4, ty + 8, { align: 'right' });
             }

@@ -7,7 +7,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plantilla Remisión · Viewfinder Admin</title>
+    <title>Plantilla Cotización · Viewfinder Admin</title>
     <style>body{background:#0a0a0f;color:#e8e8f0}</style>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
@@ -52,8 +52,8 @@
 
     <main class="container pb-main">
         <?php $adminNav = 'remision'; include __DIR__ . '/partials/nav.php'; ?>
-        <h1 class="pb-title">🚚 Plantilla de la Remisión</h1>
-        <p class="pb-help">Lo que pongas aquí sale en todas las Remisiones (Extractor → 🚚 Remisión). Cliente, NIT, productos y valores
+        <h1 class="pb-title">🚚 Plantilla de la Cotización</h1>
+        <p class="pb-help">Lo que pongas aquí sale en todas las Cotizaciones (Extractor → 🚚 Cotización). Cliente, NIT, productos y valores
             siguen saliendo del PDF de la cotización. Revisa el previo y toca <b>Guardar</b>.</p>
 
         <section class="re-card">

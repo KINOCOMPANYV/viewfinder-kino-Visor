@@ -579,21 +579,32 @@ function skuNameVariants(string $sku): array
     return array_values(array_unique(array_filter($variants, 'strlen')));
 }
 
+/**
+ * ¿El código termina en la posición $len del nombre (en minúsculas)? Sí si ahí acaba el nombre o sigue
+ * un separador ("X6071-A", "X6071 (2)"). Un "+" seguido de otro código NO separa: "S-640+S-647-1" es un
+ * código combinado propio, no una foto de "S-640" (decisión del dueño 2026-11-23). "X6071+caja" sí separa.
+ */
+function isSkuBoundary(string $name, int $len): bool
+{
+    if ($len >= strlen($name)) return true;
+    if (ctype_alnum($name[$len])) return false;
+    return !($name[$len] === '+' && preg_match('/^\+[a-z]{0,4}[:\-. _]?\d/', substr($name, $len)));
+}
+
 function fileNameStartsWithSku(string $filename, string $sku): bool
 {
     $name = strtolower(pathinfo($filename, PATHINFO_FILENAME));
     $skuLower = strtolower($sku);
     if (!str_starts_with($name, $skuLower)) return false;
-    $len = strlen($skuLower);
-    return strlen($name) === $len || !ctype_alnum($name[$len]);
+    return isSkuBoundary($name, strlen($skuLower));
 }
 
 /**
  * BÚSQUEDA POR NOMBRE EXACTO DE ARCHIVO. Para pegar en cualquier buscador o lista el nombre de un
  * archivo de Drive ("S-640+S-647-3.jpg"): devuelve el código al que está enlazado **y esa foto**,
  * así se puede mostrar, mandar o imprimir la foto exacta y no la portada del producto.
- * Hace falta porque esos nombres no son un código: el "+" une dos códigos y el archivo queda
- * enlazado solo al primero (S-640), así que ninguna búsqueda por código los encuentra.
+ * (Desde 2026-11-23 "S-640+S-647-3" es un código combinado propio, ver isSkuBoundary(); esto sigue
+ * sirviendo para nombres con sufijos o extensión pegados.)
  * Misma regla que las fotos de un producto (fileNameStartsWithSku): el nombre sin extensión es
  * igual a lo buscado o sigue con un separador ("S-640+S-647" encuentra "S-640+S-647-3.jpg").
  * Una foto por código (la primera por nombre). No mira si el producto es público: eso lo decide
@@ -832,7 +843,7 @@ function skuMatchIndex(array $skus): array
 
 /**
  * REGLA ÚNICA foto ↔ código: el nombre del archivo es el código ("X6071.jpg") o el código
- * + separador + lo que sea ("X6071-A.jpg", "X6071 (2).jpg"). Gana el código más largo:
+ * + separador + lo que sea ("X6071-A.jpg", "X6071 (2).jpg"); ver isSkuBoundary(). Gana el código más largo:
  * "839-5-A.jpg" es de "839-5" aunque exista "839". "993-3V1.mp4" no es de nadie.
  * @param array<string,string> $index de skuMatchIndex()
  * @return array{0:string,1:int}|null [SKU, calidad] (3 = nombre igual al código, 2 = código + sufijo)
@@ -844,14 +855,15 @@ function matchFileToProduct(string $filename, array $index): ?array
         $prefix = substr($name, 0, $len);
         if (!isset($index[$prefix])) continue;
         if ($len === strlen($name)) return [$index[$prefix], 3];
-        if (!ctype_alnum($name[$len])) return [$index[$prefix], 2];
+        if (isSkuBoundary($name, $len)) return [$index[$prefix], 2];
     }
     return null;
 }
 
 /**
  * Código de producto que propone un nombre de archivo para los productos "solo Drive", o null.
- * "C9081BL-2.png" → "C9081BL-2"; "X-1 (2).jpg" → "X-1"; "503B-77-V1.mp4" → "503B-77".
+ * "C9081BL-2.png" → "C9081BL-2"; "X-1 (2).jpg" → "X-1"; "503B-77-V1.mp4" → "503B-77";
+ * combinados con "+": "S-640+S-647-1.jpg" → "S-640+S-647-1".
  * No valen: sin números, nombres de cámara/WhatsApp ("IMG_1234"), fechas, números de 1-2 cifras.
  */
 function driveCodeFromName(string $filename): ?string
@@ -859,7 +871,7 @@ function driveCodeFromName(string $filename): ?string
     $stem = genericMediaStem($filename);
     $stem = rtrim($stem, '.-_ '); // "M8324-4..jpg" (punto de más al final) = "M8324-4"
     $stem = preg_replace('/[-_ ][vf]\d{1,2}$/', '', $stem); // "-V1" video, "-F2" foto
-    if (!preg_match('/^[a-z0-9][a-z0-9:.\-_]{2,39}$/', $stem) || !preg_match('/\d/', $stem)) return null;
+    if (!preg_match('/^[a-z0-9][a-z0-9:.\-_+]{2,39}$/', $stem) || !preg_match('/\d/', $stem)) return null;
     if (preg_match('/^(img|dsc|dscn|vid|pxl|mvimg|screenshot|captura|photo|image|imagen|foto|video|copia|copy|whatsapp|wa\d)/', $stem)) return null;
     if (preg_match('/^\d{4}[-_.]?\d{2}[-_.]?\d{2}/', $stem) || preg_match('/^\d{1,2}$/', $stem)) return null;
     return strtoupper($stem);
@@ -948,7 +960,7 @@ function isCondemnedFile(string $filename, array $index): bool
     $name = rtrim(genericMediaStem($filename), '.-_ ');
     for ($len = strlen($name); $len > 0; $len--) {
         if (!isset($index[substr($name, 0, $len)])) continue;
-        if ($len === strlen($name) || !ctype_alnum($name[$len])) return true;
+        if (isSkuBoundary($name, $len)) return true;
     }
     return false;
 }
