@@ -100,7 +100,7 @@
         b.hidden = !SID;
         b.className = 'pb-state ' + (isDone ? 'green' : 'red');
         b.innerHTML = isDone
-            ? '🟢 <b>Pedido listo</b>' + (srv && srv.who ? ' · chequeó ' + esc(srv.who) : '') + (srv && srv.finished ? ' · ' + esc(new Date(srv.finished * 1000).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })) : '').replace(/\.$/, '') + '. Copia el listado abajo.'
+            ? '🟢 <b>Pedido listo</b>' + (srv && srv.who ? ' · chequeó ' + esc(srv.who) : '') + (srv && srv.finished ? ' · ' + esc(new Date(srv.finished * 1000).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })) : '').replace(/\.$/, '') + '. Revisa los cambios y copia el listado abajo.'
             : '🔴 <b>Falta alistar.</b> El avance se guarda solo en el servidor: otro celular puede seguirlo.';
         $('pbDone').textContent = isDone ? '📋 Ver listado para copiar' : '✅ Finalizar pedido';
         drawCopy();
@@ -301,9 +301,57 @@
     $('pbWho').value = who;
     $('pbWho').addEventListener('input', () => { who = $('pbWho').value; delete $('pbMsg').dataset.keep; save(); drawFin(); });
 
+    // ---- Resumen de cambios vs. el pedido original (pedido listo) ----
+    function changes() {
+        const g = { rm: [], sw: [], less: [], more: [], add: [], note: [] };
+        lines.forEach((l) => {
+            if (!l.orig) { if (l.qty > 0) g.add.push(l); }
+            else if (l.qty === 0) g.rm.push(l);
+            else if (l.base && l.code !== l.base.code) g.sw.push(l);
+            else if (l.qty < l.origQty) g.less.push(l);
+            else if (l.qty > l.origQty) g.more.push(l);
+            else if (l.note) g.note.push(l);
+        });
+        return g;
+    }
+    const nm = (l) => l.name ? ' ' + l.name : '';
+    const qTxt = (l, k) => k === 'sw' ? (l.qty === l.origQty ? 'cant. ' + l.qty : 'cant. ' + l.origQty + ' → ' + l.qty)
+        : k === 'add' ? '0 → ' + l.qty : k === 'note' ? 'cant. ' + l.qty : 'pedía ' + l.origQty + ' → ' + l.qty;
+    const GROUPS = [['rm', '❌ Quitados'], ['sw', '🔄 Cambiados por otro'], ['less', '➖ Menos cantidad'], ['more', '➕ Más cantidad'], ['add', '🆕 Agregados'], ['note', '📝 Solo con nota']];
+    function drawChanges() {
+        const box = $('pbChgBox');
+        if (!box) return;
+        box.hidden = !isDone;
+        if (!isDone) return;
+        const g = changes(), n = GROUPS.reduce((m, [k]) => m + (k === 'note' ? 0 : g[k].length), 0);
+        const uo = lines.reduce((m, l) => m + (l.orig ? l.origQty : 0), 0), uf = lines.reduce((m, l) => m + l.qty, 0);
+        const t = totals(), d = t.fin - t.orig;
+        $('pbChgInfo').textContent = n ? n + ' cambio(s) de ' + lines.filter((l) => l.orig).length + ' productos del pedido original.' : '✅ Se alistó igual al pedido.';
+        $('pbChg').innerHTML = GROUPS.filter(([k]) => g[k].length).map(([k, t]) => '<h3>' + t + ' (' + g[k].length + ')</h3><ul>' + g[k].map((l) =>
+            '<li' + (k === 'rm' ? ' class="rm"' : '') + '>' + (k === 'sw' ? '<b>' + esc(l.base.code) + '</b> <span class="arrow">→</span> ' : '') +
+            '<b>' + esc(l.code) + '</b>' + esc(nm(l)) + '<span class="q">' + qTxt(l, k) + '</span>' + (l.note ? '<span class="n">📝 ' + esc(l.note) + '</span>' : '') + '</li>').join('') + '</ul>').join('') +
+            '<div class="sum"><div><span>Unidades</span> ' + uo + ' → ' + uf + '</div><div><span>Total original</span> ' + money(t.orig) + '</div>' +
+            '<div><span>Total final</span> <b>' + money(t.fin) + '</b></div><div><span>Diferencia</span> <b class="' + (d > 0 ? 'up' : d < 0 ? 'down' : '') + '">' +
+            (d > 0 ? '+' : d < 0 ? '−' : '') + money(Math.abs(d)) + '</b></div></div>';
+    }
+    function changesText() {
+        const g = changes(), t = totals(), d = t.fin - t.orig;
+        const head = 'Pedido' + (order.number ? ' N.º ' + order.number : '') + (order.client ? ' · ' + order.client : '') + ' — cambios en el alistado' + (who.trim() ? ' (chequeó ' + who.trim() + ')' : '');
+        const body = GROUPS.filter(([k]) => g[k].length).map(([k, tt]) => tt + ':\n' + g[k].map((l) => '• ' + (k === 'sw' ? l.base.code + ' → ' : '') + l.code + nm(l) + ' (' + qTxt(l, k) + ')' + (l.note ? ' — ' + l.note : '')).join('\n')).join('\n\n');
+        return head + '\n\n' + (body || '✅ Se alistó igual al pedido.') + '\n\nTotal original ' + money(t.orig) + ' · Total final ' + money(t.fin) + ' · Diferencia ' + (d > 0 ? '+' : d < 0 ? '−' : '') + money(Math.abs(d));
+    }
+    $('pbChgCopy').addEventListener('click', async () => {
+        let ok = false;
+        try { await navigator.clipboard.writeText(changesText()); ok = true; } catch (e) { ok = false; }
+        $('pbChgMsg').textContent = ok ? '✅ ¡Copiado! Pégalo en WhatsApp.' : '⚠️ No se pudo copiar.';
+        setTimeout(() => { $('pbChgMsg').textContent = ''; }, 3500);
+    });
+    $('pbChgBack').addEventListener('click', () => { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
     // ---- Listado para copiar (pedido listo): código ‖ cantidad final, como el Extractor pero a la inversa ----
     const copyText = () => lines.filter((l) => l.qty > 0 && l.code).map((l) => [l.code, '', l.qty, 'UNIDAD', ''].join('\t')).join('\n');
     function drawCopy() {
+        drawChanges();
         const box = $('pbCopyBox');
         if (!box) return;
         box.hidden = !isDone;
@@ -437,10 +485,10 @@
             $('pbDone').disabled = true; $('pbMsg').dataset.keep = '1';
             if (SID) { if (srv) { srv.who = who.trim(); srv.finished = Math.floor(Date.now() / 1000); } await saveServer(true); }
             else setStatus('listo');
-            msg('✅ Pedido finalizado' + (SID ? ' y marcado en verde en Pedidos bodega' : '') + '. Copia el listado.');
+            msg('✅ Pedido finalizado' + (SID ? ' y marcado en verde en Pedidos bodega' : '') + '. Revisa los cambios y copia el listado.');
             delete $('pbMsg').dataset.keep; drawFin();
         }
-        drawCopy(); $('pbCopyBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        drawCopy(); $('pbChgBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 
     // ---- Arranque ----
