@@ -37,6 +37,8 @@
         .ex-count b { font-size:1.3rem; color:var(--color-primary-light, #c9a84c); margin-left:0.3rem; }
         .ex-order { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:0.4rem 1rem; font-size:0.88rem; }
         .ex-order div span { color:#a0a0b0; display:block; font-size:0.78rem; }
+        .ex-edit { width:100%; box-sizing:border-box; padding:0.3rem 0.5rem; margin:0.1rem 0; background:#15151c; color:#f0f0f0; border:1px solid #c9a84c; border-radius:6px; font:inherit; }
+        .ex-note { display:block; color:#a0a0b0; font-size:0.75rem; }
         .ex-ok { color:#25d366; } .ex-bad { color:#ff6b6b; }
         .ex-map { margin-top:0.8rem; font-size:0.82rem; }
         .ex-map summary { cursor:pointer; color:var(--color-primary-light, #c9a84c); }
@@ -101,7 +103,7 @@
 
             <section class="ex-card">
                 <div class="ex-count">✅ Códigos encontrados <b id="exTotal">0</b></div>
-                <h2>Datos del pedido <small class="ex-help">(solo para verificar; no se copian)</small></h2>
+                <h2>Datos del pedido <small class="ex-help">(solo para verificar; el cliente se puede corregir)</small></h2>
                 <div class="ex-order" id="exOrder"></div>
                 <details class="ex-map">
                     <summary>🗺 Mapa del PDF (qué se entendió de cada línea)</summary>
@@ -147,7 +149,7 @@
         </div>
     </main>
 
-    <script type="module" src="/assets/js/extractor.js?v=<?= APP_VERSION ?>"></script>
+    <script type="module" src="/assets/js/extractor.js?v=<?= APP_VERSION . filemtime(BASE_DIR . '/assets/js/extractor.js') ?>"></script>
     <?php $mnavActive = 'enviar'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 

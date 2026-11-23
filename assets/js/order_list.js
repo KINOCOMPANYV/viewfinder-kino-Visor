@@ -128,7 +128,8 @@
     drawType();
 
     // Cliente escrito a mano: reemplaza al leído (o al que faltaba) en la pantalla, los PDF y el pedido guardado
-    const clientPdf = has(order.client) ? String(order.client) : '';
+    // Lo leído del PDF (el Extractor lo pasa aparte si ya se corrigió allá)
+    const clientPdf = has(order.clientPdf) ? String(order.clientPdf) : order.clientPdf === undefined && has(order.client) ? String(order.client) : '';
     function setClient(val) {
         const v = String(val || '').replace(/\s+/g, ' ').trim();
         order.client = v || clientPdf || null;
