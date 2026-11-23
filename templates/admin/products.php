@@ -153,6 +153,14 @@
             <?php if ($baseFilters): ?><a href="/admin/products" class="btn btn-sm btn-secondary">Limpiar</a><?php endif; ?>
         </form>
 
+        <?php if ($total > 0): ?>
+            <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+                <strong><?= number_format($total) ?> productos<?= isset($tabs[$filters['estado']]) && $filters['estado'] !== '' ? ' · ' . e($tabs[$filters['estado']][0]) : '' ?></strong>
+                <a class="btn btn-sm btn-primary" href="/admin/products?<?= e(http_build_query($baseFilters + ['descargar' => 'xlsx'])) ?>"
+                   title="Toda la lista de este filtro, no solo esta página">⬇ Descargar Excel</a>
+            </div>
+        <?php endif; ?>
+
         <?php if (empty($products)): ?>
             <div class="empty-state">
                 <div class="empty-icon">📦</div>
