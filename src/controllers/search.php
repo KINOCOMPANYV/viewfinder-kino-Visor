@@ -184,6 +184,9 @@ if (empty($allMatches) && !$isMultiCode && $q !== '') {
     }
 }
 
+// Búsqueda sin resultados (ni productos ni carpetas, sin filtros): se anota para Admin → 🧾 Registro
+$logMissAfterFolders = empty($allMatches) && !$isMultiCode && $q !== '' && !$hasFilters;
+
 // Sin resultados por un código mal escrito: "¿Quisiste decir…?" (los más parecidos, sin filtros)
 $suggestions = (empty($allMatches) && !$isMultiCode && $q !== '' && !$hasFilters) ? searchSuggestions($db, $q) : [];
 
@@ -216,6 +219,9 @@ if (!$isMultiCode && $q !== '') {
             $matchedFolders[] = $f;
         }
     } catch (\PDOException $e) { /* drive_index aún no existe */ }
+}
+if (!empty($logMissAfterFolders) && empty($matchedFolders)) {
+    ErrorLog::searchMiss($db, $q);
 }
 
 // Orden elegido en los filtros (precio y luego código, combinables); si no, el de la consulta

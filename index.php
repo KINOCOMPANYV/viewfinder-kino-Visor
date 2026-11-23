@@ -22,6 +22,8 @@ session_start();
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/src/helpers.php';
+require_once __DIR__ . '/src/services/ErrorLog.php';
+ErrorLog::install(); // errores de PHP → tabla app_errors (Admin → 🧾 Registro)
 
 // ============================================================
 // CORS — permitir llamadas desde orígenes configurados
@@ -110,6 +112,9 @@ function checkRateLimit(int $maxPerMinute = 60): void
 // Obtener la ruta antes de auto-migrar
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
+if ($method === 'GET' && !preg_match('#^/(api|health|og)(/|$)#', (string) $uri)) {
+    ErrorLog::startPageCapture(); // mete el captador de errores de JS en el <head> de las páginas HTML
+}
 
 // Health debug — funciona SIN conexión a DB
 // Solo accesible en desarrollo, o en producción con ?token=CRON_SECRET
@@ -199,6 +204,18 @@ if ($uri === '/buscar-foto' && $method === 'POST') {
     checkRateLimit(20);
     session_write_close();
     include __DIR__ . '/src/controllers/image_search.php';
+    exit;
+}
+
+if ($uri === '/api/error-js' && $method === 'POST') {
+    // Errores de JavaScript del navegador (ErrorLog::jsCatcher). Sin sesión ni respuesta: solo se guarda.
+    checkRateLimit(30);
+    session_write_close();
+    $in = json_decode((string) file_get_contents('php://input', false, null, 0, 20000), true);
+    if (is_array($in)) {
+        ErrorLog::recordJs($in);
+    }
+    http_response_code(204);
     exit;
 }
 
@@ -374,6 +391,12 @@ if ($uri === '/admin/problemas') {
 if ($uri === '/admin/sync') {
     requireAdmin();
     include __DIR__ . '/templates/admin/sync.php';
+    exit;
+}
+
+if ($uri === '/admin/registro') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_log.php';
     exit;
 }
 

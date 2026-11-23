@@ -22,6 +22,17 @@ if ($dl === 'xlsx' || $dl === 'json') {
 
 $msg = $err = null;
 $folder = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'db') {
+    if (!verifyCsrf()) {
+        $err = 'Token CSRF inválido. Recarga la página.';
+    } else {
+        require_once __DIR__ . '/../services/DbBackup.php';
+        set_time_limit(600);
+        $r = DbBackup::toDrive($db, true);
+        $r['ok'] ? $msg = '☁️ ' . $r['msg'] : $err = $r['msg'];
+        $folder = $r['folder'] ?? null;
+    }
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'drive') {
     if (!verifyCsrf()) {
         $err = 'Token CSRF inválido. Recarga la página.';
@@ -101,6 +112,19 @@ $hour = (int) env('PEDIDOS_BACKUP_HOUR', '22');
                 <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
                 <input type="hidden" name="action" value="drive">
                 <button class="btn btn-secondary" type="submit">☁️ Copiar a Drive ahora</button>
+            </form>
+        </section>
+        <section class="ob-card">
+            <p>
+                <b>Respaldo de toda la base de datos (MySQL):</b> cada madrugada (desde las <?= (int) env('BACKUP_DB_HOUR', '3') ?>:00, hora Colombia)
+                el visor sube «visor-mysql-AAAA-MM-DD.sql.gz» a la misma carpeta de Drive y deja los últimos <?= max(3, (int) env('BACKUP_KEEP', '14')) ?>.
+                Trae todas las tablas (productos, precios editados, pedidos, huellas de fotos…) menos las claves de Google (se reconecta en Admin → Media) y cachés.
+                Cómo probar la restauración: <code>docs/RESPALDOS.md</code>. Un respaldo que falla aparece en Admin → 🧾 Registro.
+            </p>
+            <form method="post" action="/admin/pedidos" class="ob-row" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Copiando… (puede tardar 1 minuto)'">
+                <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                <input type="hidden" name="action" value="db">
+                <button class="btn btn-secondary" type="submit">🗄 Respaldar toda la base ahora</button>
             </form>
         </section>
     </main>
