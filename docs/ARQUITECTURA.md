@@ -200,6 +200,8 @@ Desde 600 px se agrega `-rj` (JPEG): si el original es PNG, lh3 lo da en PNG (5-
 ## Coincidencia SKU ↔ archivo (regla única, decidida por el dueño)
 - **La foto se llama como el código**: `X6071.jpg`, o el código + separador + lo que sea (`X6071-A.jpg`, `X6071 (2).jpg`).
   Nada de coincidencias flojas (sin prefijo de marca, raíz, "Copia de", `V1` pegado). Gana el código más largo.
+  El separador lo decide `isSkuBoundary()`: un «+» seguido de otro código NO separa («S-640+S-647-1» es su propio código).
+  Prueba sin BD: `php tests/sku_match_test.php`.
 - Misma regla en todos lados: `fileNameStartsWithSku()` (galería, `DriveIndex::findByPrefix`) y `matchFileToProduct()` (sync-covers).
   `skuNameVariants()`: el separador entre el prefijo de letras y el número es libre ("M:8464-2" = "M8464-2" = "M-8464-2").
   Se usa en el sync, en la galería y en `/producto/{sku}` ("/producto/M-8464-2" abre "M:8464-2").
