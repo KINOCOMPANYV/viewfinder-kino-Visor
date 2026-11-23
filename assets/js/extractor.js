@@ -76,6 +76,7 @@ $('exClear').addEventListener('click', () => {
 
 function render() {
     const { order, warnings, map } = result;
+    if (order.clientPdf === undefined) order.clientPdf = order.client || ''; // lo leído del PDF, para volver a él
     // Revisión
     const rv = $('exReview');
     if (order.canCheck) {
@@ -101,7 +102,9 @@ function render() {
     $('exOrder').innerHTML = [
         cell('Formato', order.format === 'tabla' ? 'Cotización en tabla' : 'Recibo'),
         cell('N.º de pedido', esc(order.number)),
-        cell('Cliente', esc(order.client)),
+        cell('Cliente', '<input type="text" class="ex-edit" id="exClient" maxlength="120" value="' + esc(order.client) + '" placeholder="Escribe el cliente">' +
+            (order.clientPdf && order.client !== order.clientPdf ? '<small class="ex-note">Del PDF: ' + esc(order.clientPdf) + '</small>'
+                : !order.clientPdf && order.client ? '<small class="ex-note">Escrito a mano</small>' : '')),
         cell('Fecha', esc(order.date)),
         cell('Total del PDF', esc(order.totalText)),
         cell('Suma de PRECIO' + (order.unitPrices ? ' (cantidad × precio)' : ''), order.noQty ? '' : esc(core.formatPrice(order.sumPrice || 0, st)) + mark(order.total != null ? order.totalOk : null)),
@@ -119,6 +122,15 @@ function render() {
 
     renderRows();
 }
+
+// Cliente escrito a mano: reemplaza al leído (casilla vacía = vuelve al del PDF). Pasa igual a Lista Bodega / Remisión.
+$('exOrder').addEventListener('change', (e) => {
+    if (!e.target || e.target.id !== 'exClient' || !result) return;
+    const o = result.order;
+    o.client = String(e.target.value || '').replace(/\s+/g, ' ').trim() || o.clientPdf || '';
+    render();
+});
+$('exOrder').addEventListener('keydown', (e) => { if (e.target && e.target.id === 'exClient' && e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
 
 const pct = () => { const n = Math.round(+$('exPct').value); return isNaN(n) ? 40 : Math.min(100, Math.max(0, n)); };
 const discText = (it) => it.price == null ? '' : core.formatPrice(it.price * (1 - pct() / 100), core.priceStyle(it.priceText));
@@ -172,7 +184,7 @@ $('exToOrder').addEventListener('click', () => {
     const o = result.order;
     const data = {
         file: file ? file.name : '',
-        order: { number: o.number || '', client: o.client || '', date: o.date || '', totalText: o.totalText || '',
+        order: { number: o.number || '', client: o.client || '', clientPdf: o.clientPdf ?? o.client ?? '', date: o.date || '', totalText: o.totalText || '',
             itemsPdf: o.itemsPdf ?? null, unitsPdf: o.unitsPdf ?? null, noQty: !!o.noQty,
             nit: o.nit || '', address: o.address || '', city: o.city || '', phone: o.phone || '', seller: o.seller || '' },
         // Tipo de documento: la cotización en tabla es una factura → Remisión; el recibo es un pedido → Lista Bodega
