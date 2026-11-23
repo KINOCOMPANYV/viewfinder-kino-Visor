@@ -87,6 +87,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   «$130,000.00» = $130.000. Si el recibo trae el total de la línea, se divide por la cantidad.
   **El alistador no cambia precios** (2026-11-23): se ven como texto «$X c/u»; el servidor ignora cualquier precio distinto
   (conserva el guardado; código cambiado/agregado = precio del visor; «Deshacer» = precio original del pedido).
+- **Resumen de cambios al alistar** (2026-11-23): al quedar listo (verde), Pedido de bodega muestra «📝 Cambios en el alistado»
+  (quitados, cambiados código viejo → nuevo, menos/más cantidad, agregados, notas, unidades y totales), «📋 Copiar resumen» y
+  «⬆ Volver al pedido». Sin cambios → «✅ Se alistó igual al pedido».
 - **Respaldo de Pedidos bodega** (2026-11-23): siguen en MySQL de Railway (persistente, sobrevive a los deploys); **no Supabase**.
   Además: Admin → 🗄 Pedidos baja Excel/JSON y cada noche (desde las 22 h Colombia) se sube sola una copia a Drive.
 - **Envío automático a un número** por WhatsApp no es posible desde la web: requeriría la API oficial de Meta (de pago).
@@ -360,3 +363,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-3jhsv8` (2026-11-23): **Pedido de bodega**: el precio unitario ya no se puede editar (texto «$X c/u»); el servidor lo bloquea también y recalcula el total final.
 - Rama `claude/project-thread-lq8fs2` (2026-11-23): `docs/GUIA_VISOR.md`, guía simple del visor para personas no técnicas.
 - Rama `claude/project-thread-0h596l` (2026-11-23): **Admin → 🧾 Registro** (errores PHP/JS y búsquedas sin resultado, migración 036) + **respaldo diario de toda la base MySQL** a Drive (`DbBackup`, `cli_sync.php respaldobd`, botón en Admin → Pedidos) + `scripts/restore_backup.php` y `docs/RESPALDOS.md`.
+- Rama `claude/project-thread-w0pt9v` (2026-11-23): **Pedido de bodega** listo muestra «📝 Cambios en el alistado» vs. el pedido original (+ Copiar resumen para WhatsApp y «⬆ Volver al pedido»), calculado en el navegador con lo ya guardado; sin migración.

@@ -73,6 +73,16 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-pv-head strong { flex:1; min-width:9rem; }
         .pb-pv-pages { flex:1; overflow:auto; padding:1rem; display:flex; flex-direction:column; align-items:center; gap:1rem; }
         .pb-pv-pages canvas { width:100%; max-width:820px; height:auto; background:#fff; border-radius:2px; }
+        .pb-chg { border-color:#c9a84c66; }
+        .pb-chg h3 { font-size:0.9rem; margin:0.9rem 0 0.35rem; }
+        .pb-chg ul { list-style:none; margin:0; padding:0; }
+        .pb-chg li { display:flex; flex-wrap:wrap; gap:0.2rem 0.6rem; align-items:baseline; padding:0.45rem 0.6rem; border-radius:8px; background:#0f0f16; margin-bottom:0.3rem; font-size:0.9rem; }
+        .pb-chg li .q { margin-left:auto; color:#c8c8d0; white-space:nowrap; }
+        .pb-chg li .n { flex-basis:100%; color:#a0a0b0; font-size:0.8rem; }
+        .pb-chg .arrow { color:#e6c76a; }
+        .pb-chg .rm b { text-decoration:line-through; color:#ff8a92; }
+        .pb-chg .sum { margin-top:0.8rem; padding-top:0.6rem; border-top:1px solid #2a2a35; display:flex; flex-wrap:wrap; gap:0.3rem 1.2rem; font-size:0.9rem; }
+        .pb-chg .sum span { color:#a0a0b0; } .pb-chg .up { color:#ff9f43; } .pb-chg .down { color:#6fdc84; }
         .pb-state { border-radius:12px; padding:0.8rem 1rem; margin-bottom:1rem; border:1px solid; border-left-width:6px; }
         .pb-state.red { border-color:#e0505a88; border-left-color:#e0505a; background:#e0505a14; }
         .pb-state.green { border-color:#3fb95088; border-left-color:#3fb950; background:#3fb95012; }
@@ -117,6 +127,16 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
                     <button type="button" class="btn btn-secondary" id="pbAddBtn">Agregar</button>
                     <span class="pb-help" id="pbAddMsg"></span>
                     <div class="pb-pick" id="pbAddPick"></div>
+                </div>
+            </section>
+            <section class="pb-card pb-chg" id="pbChgBox" hidden>
+                <h2>📝 Cambios en el alistado</h2>
+                <p class="pb-help" id="pbChgInfo" style="margin:0">Lo que quedó distinto al pedido original del cliente.</p>
+                <div id="pbChg"></div>
+                <div class="pb-sw" style="margin-top:0.8rem;">
+                    <button type="button" class="btn btn-secondary" id="pbChgCopy">📋 Copiar resumen</button>
+                    <button type="button" class="btn btn-secondary" id="pbChgBack">⬆ Volver al pedido</button>
+                    <span class="pb-help" id="pbChgMsg" aria-live="polite"></span>
                 </div>
             </section>
             <section class="pb-card" id="pbCopyBox" hidden>
