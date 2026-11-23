@@ -49,4 +49,4 @@ Cada paso de `cli_sync.php` ejecuta el mismo controller que el botón de Admin �
 
 ## Verificar
 - Sintaxis: `find . -name '*.php' -not -path './vendor/*' -exec php -l {} \; | grep -v 'No syntax errors'`
-- No hay tests automáticos ni CI. Probar en Railway tras el merge (deploy automático desde `main`).
+- Prueba del Extractor con una cotización real: `node tests/extractor_test.mjs`. No hay CI. Probar en Railway tras el merge (deploy automático desde `main`).
