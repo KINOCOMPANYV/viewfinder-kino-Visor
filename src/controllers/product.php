@@ -335,6 +335,8 @@ unset($v);
                         <?= e($product['name']) ?>
                     </h1>
                     <?= priceTag($product['price_suggested'] ?? null, 'product-price', $product['sys_stock'] ?? (!empty($product['in_sheet']) ? $product['stock'] : null)) ?>
+                    <?php $whole = (float) ($product['sys_price'] ?? 0) ?: (float) ($product['price_wholesale'] ?? 0); ?>
+                    <?php if (showWholesalePublic() && $whole > 0): ?><div class="product-wholesale" style="color:#9a9aa8;font-size:0.9rem;margin:-0.4rem 0 0.75rem">Mayorista: <?= e(priceText($whole)) ?></div><?php endif; ?>
 
                     <?php include __DIR__ . '/../../templates/partials/share_whatsapp.php'; ?>
 

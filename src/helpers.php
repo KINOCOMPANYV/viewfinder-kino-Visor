@@ -186,6 +186,53 @@ function verifyCsrf(): bool
     return hash_equals($_SESSION['csrf_token'] ?? '', $token);
 }
 
+/** Ajuste del admin (tabla app_settings, migración 038). Sin tabla o sin valor → $default. */
+function appSetting(string $name, string $default = ''): string
+{
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        try { foreach (getDB()->query("SELECT name, value FROM app_settings")->fetchAll() as $r) $cache[$r['name']] = $r['value']; }
+        catch (\Throwable $e) { /* migración 038 pendiente */ }
+    }
+    return $cache[$name] ?? $default;
+}
+
+function setAppSetting(PDO $db, string $name, string $value): void
+{
+    $db->prepare("INSERT INTO app_settings (name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)")->execute([$name, $value]);
+}
+
+/** Precio público = precio SYS × este número (decisión del dueño 2026-11-24; por defecto 2, configurable en Admin → Precios). */
+function priceMultiplier(): float
+{
+    $m = (float) str_replace(',', '.', appSetting('price_multiplier', '2'));
+    return $m > 0 && $m <= 20 ? $m : 2.0;
+}
+
+/** ¿Se muestra el precio mayorista (SYS) al público? Apagado por defecto; lo enciende el admin. */
+function showWholesalePublic(): bool
+{
+    return appSetting('show_wholesale', '0') === '1';
+}
+
+/**
+ * Precio que ve el público = precio mayorista (Precio SYS; si falta, la columna PRICE de la Hoja master) × multiplicador.
+ * No toca los precios editados a mano en el admin (price_manual = 1). Sin precio mayorista → 0 («Sin precio en tabla»).
+ * @return int productos cuyo precio cambió
+ */
+function recomputePublicPrices(PDO $db, ?float $mult = null): int
+{
+    $mult = $mult ?? priceMultiplier();
+    $w = "COALESCE(NULLIF(sys_price, 0), NULLIF(price_wholesale, 0))";
+    $st = $db->prepare(
+        "UPDATE products SET price_suggested = COALESCE(ROUND({$w} * ?), 0), price_sheet = COALESCE(ROUND({$w} * ?), 0)
+         WHERE price_manual = 0 AND (NOT (price_suggested <=> COALESCE(ROUND({$w} * ?), 0)) OR NOT (price_sheet <=> COALESCE(ROUND({$w} * ?), 0)))"
+    );
+    $st->execute([$mult, $mult, $mult, $mult]);
+    return $st->rowCount();
+}
+
 /**
  * Formatea un precio.
  */

@@ -99,6 +99,8 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
                     <label><input type="radio" name="cpPer" value="6"> 6</label>
                     <label><input type="radio" name="cpPer" value="9"> 9</label>
                 </div>
+                <label class="cp-check"><input type="checkbox" id="cpPrice"> Poner el precio del visor en cada foto
+                    <small>(sale solo; si escribes un texto en una foto, ese texto va en lugar del precio)</small></label>
                 <label class="cp-check"><input type="checkbox" id="cpOpen"> Botón «Abrir foto» debajo de cada foto
                     <small>(al tocarlo abre la foto en Google Drive; el enlace no se ve en el PDF)</small></label>
                 <small class="cp-tip">Para separar por secciones (p. ej. «Dama», «Caballero»), toca «＋ Subtítulo» en la foto donde empieza cada una.</small>

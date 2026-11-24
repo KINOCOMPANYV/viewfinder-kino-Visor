@@ -254,6 +254,21 @@ if ($uri === '/mi-seleccion') {
     exit;
 }
 
+// Precio público de una lista de códigos (para rellenar el Catálogo PDF): /api/precios?codes=A,B,C → {"A":"$100.000"}
+if ($uri === '/api/precios') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    $codes = array_slice(array_values(array_unique(array_filter(array_map('trim', explode(',', (string) ($_GET['codes'] ?? ''))), 'strlen'))), 0, 400);
+    $out = [];
+    if ($codes) {
+        $st = getDB()->prepare("SELECT sku, price_suggested FROM products WHERE archived = 0 AND price_suggested > 0 AND sku IN (" . implode(',', array_fill(0, count($codes), '?')) . ")");
+        $st->execute($codes);
+        foreach ($st->fetchAll() as $r) $out[$r['sku']] = priceText($r['price_suggested']);
+    }
+    echo json_encode((object) $out, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // Lista de fotos para un catálogo PDF filtrado (mismo texto y filtros que /buscar), en JSON
 if ($uri === '/catalogo-pdf/lista') {
     header('Content-Type: application/json; charset=utf-8');

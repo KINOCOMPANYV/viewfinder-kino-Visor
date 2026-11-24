@@ -98,10 +98,10 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
         <?php $adminNav = 'inventario'; include __DIR__ . '/../../templates/admin/partials/nav.php'; ?>
         <h1 class="pb-title">📦 Importar inventario SYS</h1>
         <p class="pb-help">Sube el Excel de existencias de <b>SYS</b> (por ejemplo «INVENTARIO GENERAL.xlsx»: Artículo, Exist. unidades, Precio).
-            <b>Al subirlo, el visor guarda al momento el Precio SYS y las existencias</b> de cada código (el Precio SYS no se muestra al público).
-            y <b>escribe en la Hoja master</b> las columnas <b>STOCK</b> y <b>PRICE</b> (= Precio SYS), solo las celdas que cambian
+            <b>Al subirlo, el visor guarda al momento el Precio SYS y las existencias</b> de cada código (el Precio SYS es el mayorista: el público ve ese precio × multiplicador, ver 💲 Precios).
+            Además <b>escribe en la Hoja master</b> las columnas <b>STOCK</b> y <b>PRICE</b> (= Precio SYS), solo las celdas que cambian
             (la cuenta de Google conectada debe poder editar la hoja). También te da esas columnas para pegarlas a mano, en el mismo orden de filas
-            (cruce por código: exacto primero; «M:», «M» y «M-» cuentan igual). El precio que ve el público es el de KYTE (💲 Precios).</p>
+            (cruce por código: exacto primero; «M:», «M» y «M-» cuentan igual). El precio que ve el público = Precio SYS × multiplicador (💲 Precios).</p>
 
         <form method="post" enctype="multipart/form-data" class="pb-bar" style="flex-wrap:wrap;gap:10px">
             <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
