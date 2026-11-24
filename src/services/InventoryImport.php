@@ -109,6 +109,7 @@ class InventoryImport
             $db->rollBack();
             throw $e;
         }
+        recomputePublicPrices($db); // precio público = Precio SYS × multiplicador
         return $n;
     }
 

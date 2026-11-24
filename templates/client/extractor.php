@@ -138,7 +138,7 @@
             <section class="ex-card">
                 <h2>📊 Resultado</h2>
                 <div class="ex-opts">
-                    <label><input type="checkbox" id="exShowPrice"> Mostrar precio</label>
+                    <label><input type="checkbox" id="exShowPrice" checked> Mostrar precio</label>
                     <label><input type="checkbox" id="exShowDisc"> Mostrar precio con descuento</label>
                     <label>Descuento <input type="number" id="exPct" min="0" max="100" step="1" value="40"> %</label>
                 </div>
@@ -150,7 +150,7 @@
                     <span id="exCopyMsg" class="ex-help" style="margin:0" aria-live="polite"></span>
                 </div>
                 <div class="ex-table-wrap">
-                    <table class="ex-table ex-hide-price ex-hide-disc" id="exTable">
+                    <table class="ex-table ex-hide-disc" id="exTable">
                         <thead><tr>
                             <th>codigo</th><th class="sep"></th><th class="num">cantidad</th><th class="c-u">UNIDAD</th><th class="sep"></th>
                             <th class="num c-price">PRECIO</th><th class="num c-disc" id="exDiscHead">PRECIO -40%</th><th class="c-x"></th>

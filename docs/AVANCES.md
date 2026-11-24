@@ -61,7 +61,15 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   PRICE_SUGGESTED de la Hoja master; sin precio sale «Sin precio en tabla». En Admin → Productos el precio se edita en la fila;
   el cambio vale solo en el visor (la Hoja master no se toca) y el sync ya no lo pisa («✏️ Editado», «↩ Hoja» lo devuelve).
   Dashboard: tarjetas «Sin precio en tabla» y «Precio editado en admin».
-- **Precios: SYS y KYTE** (decisión del dueño 2026-11-20, reemplaza «PRECIO KYTE» del 2026-11-14):
+- **Precio público = Precio SYS × 2** (decisión del dueño 2026-11-24, reemplaza lo de KYTE de abajo): SYS es la **única fuente**.
+  El Precio SYS (Admin → 📦 Inventario, columna PRICE de la Hoja master) es el **mayorista** y no se muestra, salvo que el admin
+  active «Mostrar el precio mayorista» (solo en la ficha). El público ve `sys_price` (o PRICE de la hoja) × multiplicador
+  (por defecto 2, configurable en Admin → 💲 Precios) en tarjetas, búsqueda, ficha y filtros (`recomputePublicPrices()` escribe
+  `price_suggested`; corre al subir SYS, guardar el ajuste y en cada sync de la hoja). **KYTE ya no pone precio**: su archivo
+  solo da un reporte. PRICE_SUGGESTED de la hoja se ignora. El precio editado a mano en el admin sigue mandando.
+  Sin Precio SYS = «Sin precio en tabla» (se acabó el precio de la familia). Extractor: «Mostrar precio» sale marcado; Catálogo PDF:
+  «Poner el precio del visor en cada foto» marcado por defecto (un texto escrito a mano en la foto lo reemplaza). Ajustes en tabla `app_settings` (migración 038).
+- **Precios: SYS y KYTE (histórico, vale lo de arriba)** (decisión del dueño 2026-11-20, reemplaza «PRECIO KYTE» del 2026-11-14):
   - **KYTE** → columna **PRICE_SUGGESTED** de la Hoja master = precio que ve el público. Admin → 💲 Precios: al subir el
     Excel **se aplica solo en el visor** (precio editado; el sync suelta la marca cuando la Hoja master trae ese precio) y da
     la columna PRICE_SUGGESTED para pegar. No se cambian precios repetidos distintos, cambios de más del doble/menos de la
@@ -180,6 +188,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
+- 2026-11-24: precio público = Precio SYS × multiplicador (configurable); KYTE solo reporte; precio por defecto en Extractor y Catálogo PDF; mayorista opcional en ficha.
 - #1–#7 (oct 2026): carpetas como en Drive (todos los niveles), códigos con prefijo M:/M/M-, búsqueda tolerante,
   hoja maestra como única fuente + activación solo en admin, familias bajo el código -1, visor responsive.
 - #8: migración única que activa todos los productos; contador referencias/familias.

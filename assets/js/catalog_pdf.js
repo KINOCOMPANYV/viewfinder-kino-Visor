@@ -91,7 +91,7 @@
     const saved = asMap(readJson(ls, 'kinoPdfOpts', {}));
     // Antes había un campo "Contacto" (arriba); ahora es el pie de catálogo
     if (saved.footer == null && saved.contact) saved.footer = saved.contact;
-    const opts = Object.assign({ title: '', subtitle: '', footer: '', per: 6, c1: '#1c1c1e', c2: '#c9a84c', open: true }, saved);
+    const opts = Object.assign({ title: '', subtitle: '', footer: '', per: 6, c1: '#1c1c1e', c2: '#c9a84c', open: true, price: true }, saved);
     delete opts.contact;
     if (![1, 2, 4, 6, 9].includes(+opts.per)) opts.per = 6;
     const HEX = /^#[0-9a-f]{6}$/i;
@@ -156,7 +156,20 @@
     $('cpC2').value = opts.c2;
     document.querySelectorAll('input[name="cpPer"]').forEach((r) => { r.checked = +r.value === +opts.per; });
     $('cpOpen').checked = opts.open !== false;
+    $('cpPrice').checked = opts.price !== false;
     if (src.cut) warn(`El PDF admite hasta ${MAX_ITEMS} fotos: se dejaron las primeras ${MAX_ITEMS} (sobran ${src.cut}).`);
+
+    // Precio público de cada código (decisión del dueño 2026-11-24: sale por defecto, con casilla para quitarlo)
+    const autoPrice = {};
+    const txt = (code) => clean(texts[code]) || (opts.price !== false ? (autoPrice[code] || '') : '');
+    function autoFill() {
+        list.querySelectorAll('textarea').forEach((ta) => { ta.placeholder = opts.price !== false && autoPrice[ta.dataset.code] ? 'Precio: ' + autoPrice[ta.dataset.code] + ' (automático)' : 'Precio u otra información (opcional)'; });
+    }
+    try {
+        const codes = [...new Set(items.map((it) => it.code))].slice(0, 400);
+        fetch('/api/precios?codes=' + encodeURIComponent(codes.join(',')), { headers: { Accept: 'application/json' } })
+            .then((r) => r.json()).then((d) => { Object.assign(autoPrice, d || {}); autoFill(); }).catch(() => {});
+    } catch (e) { /* sin precios automáticos */ }
 
     function warn(t) { const w = $('cpWarn'); w.textContent = t || ''; w.hidden = !t; }
     function msg(t) { $('cpMsg').textContent = t || ''; }
@@ -233,6 +246,7 @@
         saveOpts(); stale();
     });
     document.querySelectorAll('input[name="cpPer"]').forEach((r) => r.addEventListener('change', () => { opts.per = +r.value; saveOpts(); stale(); }));
+    $('cpPrice').addEventListener('change', (e) => { opts.price = e.target.checked; saveOpts(); autoFill(); stale(); });
     $('cpOpen').addEventListener('change', (e) => { opts.open = e.target.checked; saveOpts(); stale(); });
 
     function bulk(mode) {
@@ -383,13 +397,13 @@
             const ch = (bottom - top - (Object.keys(headsUse).length ? HEAD_H : 0) - (rowsPerPage - 1) * GAP) / rowsPerPage;
             const codePt = cols === 1 ? 16 : cols === 2 ? 12 : 10, textPt = cols === 1 ? 12 : cols === 2 ? 10 : 8.5;
             const lh = (pt) => pt * 0.3528 * 1.25;
-            const anyText = rows.some((r) => clean(texts[r.it.code]));
+            const anyText = rows.some((r) => txt(r.it.code));
             // Botón «Abrir foto» (activado por defecto): enlace a la foto en Drive, sin mostrar la dirección
             const openBtn = opts.open !== false, BTN_H = cols <= 2 ? 6.5 : 5.5, btnPt = cols <= 2 ? 9 : 7.5;
             const textH = lh(codePt) + 3 + (anyText ? 3 * lh(textPt) : 0) + 3 + (openBtn ? BTN_H + 2 : 0);
             const c1 = rgb(opts.c1), c2 = rgb(opts.c2), on1 = rgb(onColor(opts.c1)), sub1 = rgb(subOnBand()), ink1 = rgb(onWhite(opts.c1));
             const { boxes, pages } = layout(rows, { M, top, bottom, cw, ch, cols, gap: GAP, headH: HEAD_H }, headsUse);
-            const emojis = rows.some((r) => lostChars(texts[r.it.code]) || lostChars(heads[r.it.id])) || lostChars(opts.title) || lostChars(opts.subtitle) || lostChars(opts.footer);
+            const emojis = rows.some((r) => lostChars(txt(r.it.code)) || lostChars(heads[r.it.id])) || lostChars(opts.title) || lostChars(opts.subtitle) || lostChars(opts.footer);
 
             const lines = (t, width) => {
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(textPt);
@@ -475,7 +489,7 @@
                 ty += 2.2;
                 doc.setDrawColor(...c2); doc.setLineWidth(0.6);
                 doc.line(cx + cw / 2 - 5, ty, cx + cw / 2 + 5, ty);
-                const t = clean(texts[r.it.code]);
+                const t = txt(r.it.code);
                 if (t) {
                     const ls2 = lines(t, bw);
                     if (ls2.length === 3 && ls2[2].endsWith('…') && !t.endsWith('…')) cutText = true;

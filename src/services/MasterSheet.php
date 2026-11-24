@@ -230,7 +230,8 @@ class MasterSheet
             }
             $changed[] = $row + ['_hash' => $hash];
         }
-        if ($dryRun || !$changed) return $stats;
+        if ($dryRun) return $stats;
+        if (!$changed) { recomputePublicPrices($db); return $stats; }
 
         $cols = array_merge(['sku'], self::FIELDS, ['sheet_row', 'sheet_hash']);
         // Un precio editado en el admin (price_manual = 1) no se pisa; price_sheet siempre guarda el de la Hoja master.
@@ -263,6 +264,7 @@ class MasterSheet
             $db->rollBack();
             throw $e;
         }
+        recomputePublicPrices($db);
         return $stats;
     }
 
@@ -284,7 +286,8 @@ class MasterSheet
             'category' => mb_substr($raw['category'] ?? '', 0, 100),
             'gender' => self::normalizeGender($raw['gender'] ?? ''),
             'movement' => mb_substr($raw['movement'] ?? '', 0, 100),
-            'price_suggested' => self::parseNumber($raw['price_suggested'] ?? ''),
+            // Decisión del dueño 2026-11-24: el precio público sale de SYS × multiplicador (recomputePublicPrices), no de PRICE_SUGGESTED
+            'price_suggested' => 0.0,
             'price_wholesale' => self::parseNumber($raw['price_wholesale'] ?? ''),
             'stock' => (int) self::parseNumber($raw['stock'] ?? ''),
             'description' => $raw['description'] ?? '',

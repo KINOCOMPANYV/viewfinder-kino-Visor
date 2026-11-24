@@ -15,7 +15,20 @@ $file = $dir . '/ultimo.json';
 $error = $flash = null;
 $result = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
 
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['accion'] ?? '') === 'config') {
+    // Ajustes del precio público (decisión del dueño 2026-11-24): multiplicador sobre el precio SYS y mostrar mayorista
+    try {
+        if (!verifyCsrf()) throw new RuntimeException('La sesión expiró: recarga la página.');
+        $m = (float) str_replace(',', '.', (string) ($_POST['multiplicador'] ?? ''));
+        if ($m <= 0 || $m > 20) throw new RuntimeException('El multiplicador debe estar entre 0,1 y 20.');
+        setAppSetting(getDB(), 'price_multiplier', rtrim(rtrim(number_format($m, 3, '.', ''), '0'), '.'));
+        setAppSetting(getDB(), 'show_wholesale', !empty($_POST['mayorista']) ? '1' : '0');
+        $n = recomputePublicPrices(getDB(), $m);
+        redirect('/admin/precios?cfg=' . $n);
+    } catch (\Throwable $e) {
+        $error = $e->getMessage();
+    }
+} elseif (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     try {
         if (!verifyCsrf()) throw new RuntimeException('La sesión expiró: recarga la página.');
         $up = $_FILES['archivo'] ?? null;
@@ -28,22 +41,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if (!$sheet['rows']) throw new RuntimeException('No hay filas de la Hoja master para comparar.');
         $result = PriceImport::compare($parsed['items'], $sheet['rows']);
         $result['meta'] = ['archivo' => $up['name'], 'origen' => $parsed['source'], 'fecha' => date('Y-m-d H:i'), 'fuente_hoja' => $sheet['source'], 'columna' => 'PRICE_SUGGESTED'];
-        // Al subir el archivo se aplica solo en el visor (decisión del dueño 2026-11-20: subir = sincronizar)
-        $applied = PriceImport::applyToVisor(getDB(), $result['changes'] ?? [], $result['outside'] ?? []);
-        $result['meta']['aplicado'] = date('Y-m-d H:i') . " ({$applied} productos)";
-        // Y en la Hoja master (decisión del dueño 2026-11-20): solo los precios que cambian, columna PRICE_SUGGESTED
-        if (!empty($_POST['hoja'])) {
-            $chg = $result['changes'] ?? [];
-            $result['meta']['hoja'] = sheetWriteNote(fn() => SheetWriter::writeColumns(getDB(), ['PRICE_SUGGESTED' => $chg]));
-        }
+        // Decisión del dueño 2026-11-24: KYTE ya NO pone precio. Solo se compara (reporte); el precio público sale de SYS × multiplicador.
         if (!is_dir($dir)) @mkdir($dir, 0775, true);
         if (@file_put_contents($file, json_encode($result, JSON_UNESCAPED_UNICODE)) === false) throw new RuntimeException('No se pudo guardar el resultado en storage/precios.');
-        redirect('/admin/precios?ok=' . $applied);
+        redirect('/admin/precios?ok=1');
     } catch (\Throwable $e) {
         $error = $e->getMessage();
     }
 }
-if (isset($_GET['ok'])) $flash = '✅ Precios KYTE aplicados en el visor: ' . (int) $_GET['ok'] . ' productos.';
+if (isset($_GET['ok'])) $flash = '✅ Archivo KYTE comparado (solo reporte: no cambia precios).';
+if (isset($_GET['cfg'])) $flash = '✅ Guardado. Precios públicos recalculados: ' . (int) $_GET['cfg'] . ' productos cambiaron.';
 
 $dl = $_GET['descargar'] ?? null;
 if ($dl && $result) {
@@ -88,19 +95,24 @@ $src = $result['meta']['origen'] ?? 'archivo';
 
     <main class="container pb-main">
         <?php $adminNav = 'precios'; include __DIR__ . '/../../templates/admin/partials/nav.php'; ?>
-        <h1 class="pb-title">💲 Precios KYTE (precio del visor)</h1>
-        <p class="pb-help">Sube el Excel de productos de <b>KYTE</b> (Nombre*, Código, Precio*). Su precio es el que ve el público:
-            <b>al subirlo se aplica en el visor al momento y se escribe en la columna PRICE_SUGGESTED de la Hoja master</b> (solo los precios que cambian;
-            la cuenta de Google conectada debe poder editar la hoja). También puedes bajar la columna para pegarla a mano.
-            Cruce por código (exacto primero; «M:», «M» y «M-» cuentan igual; si el Código está vacío se usa la primera palabra del Nombre).
-            No se cambian precios repetidos distintos, cambios de más del doble o menos de la mitad, ni precio 0.
-            El archivo de <b>SYS</b> va en <a href="/admin/inventario">📦 Inventario</a> (su precio va a PRICE y no se muestra).</p>
+        <h1 class="pb-title">💲 Precio público</h1>
+        <p class="pb-help">El precio que ve el público es el <b>Precio SYS × multiplicador</b> (50.000 con ×2 → 100.000). El Precio SYS se sube en
+            <a href="/admin/inventario">📦 Inventario</a> y es el valor <b>mayorista</b>: va a la columna PRICE de la Hoja master y no se muestra al público
+            salvo que lo actives aquí. Un precio editado a mano en Admin → Productos (✏️) sigue mandando. Sin Precio SYS sale «Sin precio en tabla».</p>
+        <form method="post" class="pb-bar" style="flex-wrap:wrap;gap:10px">
+            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+            <input type="hidden" name="accion" value="config">
+            <label>Multiplicador × <input type="number" name="multiplicador" step="0.01" min="0.1" max="20" value="<?= e((string) priceMultiplier()) ?>" style="width:80px"></label>
+            <label><input type="checkbox" name="mayorista" value="1" <?= showWholesalePublic() ? 'checked' : '' ?>> Mostrar el precio mayorista al público (en la ficha)</label>
+            <button type="submit" class="btn btn-sm btn-primary">Guardar y recalcular</button>
+        </form>
 
+        <h2 class="pb-title" style="font-size:1.05rem;margin-top:1.4rem">Comparar un archivo de KYTE (solo reporte)</h2>
+        <p class="pb-help">KYTE <b>ya no pone precio</b>: este archivo solo se compara con la Hoja master y da un reporte; no cambia nada en el visor ni en la hoja.</p>
         <form method="post" enctype="multipart/form-data" class="pb-bar" style="flex-wrap:wrap;gap:10px">
             <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
             <input type="file" name="archivo" accept=".xlsx,.csv,.txt" required>
-            <label><input type="checkbox" name="hoja" value="1" checked> También escribir en la Hoja master</label>
-            <button type="submit" class="btn btn-sm btn-primary">Subir y aplicar</button>
+            <button type="submit" class="btn btn-sm btn-secondary">Subir y comparar</button>
         </form>
         <?php if ($error): ?><p class="pb-empty" style="color:#ff8080">⚠️ <?= e($error) ?></p><?php endif; ?>
         <?php if ($flash): ?><p class="pb-help" style="color:#7ee2a8"><?= e($flash) ?></p><?php endif; ?>
@@ -120,9 +132,6 @@ $src = $result['meta']['origen'] ?? 'archivo';
                 <?php if (!empty($result['meta']['aplicado'])): ?><span class="pb-help">Aplicado en el visor: <?= e($result['meta']['aplicado']) ?></span><?php endif; ?>
             </div>
             <?php if (!empty($result['meta']['hoja'])): ?><p class="pb-help" style="color:<?= str_starts_with($result['meta']['hoja'], '✅') ? '#7ee2a8' : '#ffb366' ?>"><?= e($result['meta']['hoja']) ?></p><?php endif; ?>
-            <p class="pb-help"><b>Si no se escribió en la Hoja master:</b> descarga la columna PRICE_SUGGESTED, copia «nuevo» desde la fila 2
-                y pégalo en la columna PRICE_SUGGESTED de la Hoja master desde la fila 2. Los precios ya aplicados quedan como «editado en el admin»
-                y, cuando la Hoja master trae ese mismo precio, el visor vuelve a seguir la Hoja master solo.</p>
 
             <nav class="pb-tabs">
                 <?php foreach ($labels as $k => $label): if (empty($counts[$k])) continue; ?>
