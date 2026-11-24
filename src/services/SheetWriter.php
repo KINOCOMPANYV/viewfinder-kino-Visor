@@ -81,7 +81,7 @@ class SheetWriter
     /**
      * Agrega al final de la Hoja master filas nuevas [{code, desc, stock, price}] (SKU, NAME, STOCK, PRICE).
      * Solo se llama desde el botón «Crear» de Admin → Inventario. Omite códigos que ya existen (clave normalizada).
-     * @return array{creados:int, existentes:int}
+     * @return array{creados:int, existentes:int, con_familia:int, sin_familia:string[]}
      */
     public static function appendProducts(PDO $db, array $rows): array
     {
@@ -103,14 +103,25 @@ class SheetWriter
         $idx = ['SKU' => array_search('SKU', $head, true), 'NAME' => array_search('NAME', $head, true),
             'PRICE' => array_search('PRICE', $head, true), 'STOCK' => array_search('STOCK', $head, true)];
         if ($idx['SKU'] === false) throw new RuntimeException('la Hoja master no tiene columna SKU');
-        $have = [];
+        // Columnas que se copian de un código hermano (misma familia) de la Hoja master
+        $copy = [];
+        foreach (['CATEGORY', 'BRAND', 'GENDER', 'MOVEMENT', 'MATERIAL DE CAJA', 'MATERIAL PULSERA'] as $h) {
+            $c = array_search($h, $head, true);
+            if ($c !== false) $copy[$h] = $c;
+        }
+        $have = $fam = [];
         foreach (array_slice($vals, 1) as $r) {
             $k = trim((string) ($r[$idx['SKU']] ?? ''));
-            if ($k !== '') $have[InventoryImport::looseKey($k)] = 1;
+            if ($k === '') continue;
+            $have[InventoryImport::looseKey($k)] = 1;
+            $fk = InventoryImport::familyKey($k);
+            // el hermano que sirve de modelo: el primero de la familia que tenga categoría
+            if ($fk !== '' && (!isset($fam[$fk]) || (($copy['CATEGORY'] ?? false) !== false && ($fam[$fk][$copy['CATEGORY']] ?? '') === '' && ($r[$copy['CATEGORY']] ?? '') !== ''))) $fam[$fk] = $r;
         }
         $width = count($head);
         $new = [];
-        $exist = 0;
+        $exist = $conFam = 0;
+        $sinFam = [];
         foreach ($rows as $r) {
             if (isset($have[InventoryImport::looseKey($r['code'])])) { $exist++; continue; }
             $line = array_fill(0, $width, '');
@@ -118,12 +129,19 @@ class SheetWriter
             if ($idx['NAME'] !== false) $line[$idx['NAME']] = $r['desc'];
             if ($idx['STOCK'] !== false) $line[$idx['STOCK']] = (int) $r['stock'];
             if ($idx['PRICE'] !== false && ($r['price'] ?? 0) > 0) $line[$idx['PRICE']] = $r['price'] + 0;
+            $fk = InventoryImport::familyKey($r['code']);
+            if ($fk !== '' && isset($fam[$fk])) {
+                foreach ($copy as $c) $line[$c] = $fam[$fk][$c] ?? '';
+                $conFam++;
+            } else {
+                $sinFam[] = $r['code'];
+            }
             $new[] = $line;
         }
         foreach (array_chunk($new, 1000) as $chunk) {
             self::call('POST', self::API . rawurlencode($sheetId) . '/values/' . rawurlencode($tab . '!A1') . ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', $token, ['values' => $chunk]);
         }
-        return ['creados' => count($new), 'existentes' => $exist];
+        return ['creados' => count($new), 'existentes' => $exist, 'con_familia' => $conFam, 'sin_familia' => $sinFam];
     }
 
     private static function colLetter(int $i): string

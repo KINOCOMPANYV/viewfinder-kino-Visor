@@ -278,6 +278,14 @@ class InventoryImport
         return ['items' => $items, 'columns' => $columns];
     }
 
+    /** Clave de familia de un código: raíz sin el último segmento tras guion (992-1 → 992); '' si no tiene familia (raíz de 1-2 dígitos o sin guion) */
+    public static function familyKey(string $code): string
+    {
+        $root = extractCandidateRootSku(trim($code));
+        if ($root === trim($code) || preg_match('/^\d{1,2}$/', $root)) return '';
+        return self::looseKey($root);
+    }
+
     /** Clave exacta: sin espacios, mayúsculas */
     public static function exactKey(string $code): string
     {
@@ -345,6 +353,8 @@ class InventoryImport
             $exact[self::exactKey($s['sku'])] ??= $i;
             $loose[self::looseKey($s['sku'])][] = $i;
         }
+        $famIdx = [];
+        foreach ($sheet as $i => $sr) { $fk = self::familyKey($sr['sku']); if ($fk !== '') $famIdx[$fk][] = $sr['sku']; }
         $report = [];
         $add = function (string $type, string $inv, string $sku, string $desc, ?int $si, ?int $ss, ?float $pi, ?float $ps, string $note) use (&$report) {
             $report[] = ['tipo' => $type, 'codigo_inventario' => $inv, 'codigo_hoja' => $sku, 'descripcion' => $desc,
@@ -386,7 +396,7 @@ class InventoryImport
                 $ek = self::exactKey($it['code']);
                 if ($it['stock'] > 0 && !($cond && isCondemnedCode($it['code'], $cond))) {
                     if (isset($crear[$ek])) $crear[$ek]['stock'] += $it['stock'];
-                    else $crear[$ek] = ['code' => $it['code'], 'desc' => $it['desc'], 'stock' => $it['stock'], 'price' => $it['price']];
+                    else { $fk = self::familyKey($it['code']); $crear[$ek] = ['code' => $it['code'], 'desc' => $it['desc'], 'stock' => $it['stock'], 'price' => $it['price'], 'familia' => $fk !== '' ? ($famIdx[$fk][0] ?? '') : ''];  }
                 }
                 $add('solo_inventario', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, 'No está en la Hoja master' . ($it['stock'] < 0 ? ' (stock negativo)' : ''));
             }

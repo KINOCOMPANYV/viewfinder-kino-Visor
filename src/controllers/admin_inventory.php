@@ -25,7 +25,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['accion'] ?? '')
         if (empty($last['crear'])) throw new RuntimeException('No hay códigos pendientes por crear.');
         $r = SheetWriter::appendProducts(getDB(), $last['crear']);
         $last['crear'] = [];
-        $last['meta']['crear_nota'] = "✅ Creados en la Hoja master: {$r['creados']} códigos con su stock y precio SYS" . ($r['existentes'] ? " ({$r['existentes']} ya estaban)" : '') . '. Ahora corre Admin → Sincronizar → hoja para verlos en el visor.';
+        $last['meta']['crear_nota'] = "✅ Creados en la Hoja master: {$r['creados']} códigos con su stock y precio SYS" . ($r['existentes'] ? " ({$r['existentes']} ya estaban)" : '')
+            . ". {$r['con_familia']} copiaron categoría, marca, género y movimiento de su familia; " . count($r['sin_familia']) . ' quedaron sin familia (categoría vacía, complétala en la hoja)'
+            . ($r['sin_familia'] ? ': ' . implode(', ', array_slice($r['sin_familia'], 0, 15)) . (count($r['sin_familia']) > 15 ? '…' : '') : '') . '. Ahora corre Admin → Sincronizar → hoja para verlos en el visor.';
         file_put_contents($file, json_encode($last, JSON_UNESCAPED_UNICODE));
         redirect('/admin/inventario');
     } catch (\Throwable $e) {
@@ -141,10 +143,11 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
             <?php if (isset($result['meta']['aplicado'])): ?><p class="pb-help" style="color:#7ee2a8">✅ Guardado en el visor: Precio SYS y existencias de <?= $n($result['meta']['aplicado']) ?> productos.</p><?php endif; ?>
             <?php if (!empty($result['meta']['hoja'])): ?><p class="pb-help" style="color:<?= str_starts_with($result['meta']['hoja'], '✅') ? '#7ee2a8' : '#ffb366' ?>"><?= e($result['meta']['hoja']) ?></p><?php endif; ?>
             <?php if (!empty($result['meta']['crear_nota'])): ?><p class="pb-help" style="color:#7ee2a8"><?= e($result['meta']['crear_nota']) ?></p><?php endif; ?>
-            <?php if (!empty($result['crear'])): $cr = $result['crear']; ?>
+            <?php if (!empty($result['crear'])): $cr = $result['crear']; $cf = count(array_filter($cr, fn($c) => !empty($c['familia']))); ?>
                 <div class="pb-help" style="border:1px solid #c9a24a;border-radius:8px;padding:10px">
                     <b><?= $n(count($cr)) ?> códigos de SYS tienen existencias y no están en la Hoja master.</b>
                     ¿Crearlos? Se agregan al final de la Hoja master con código, nombre (descripción SYS), STOCK y PRICE (Precio SYS).
+                    <b><?= $n($cf) ?></b> tienen familia en la Hoja master (copian categoría, marca, género y movimiento del hermano); <b><?= $n(count($cr) - $cf) ?></b> no tienen familia y quedan sin categoría.
                     Ejemplos: <?= e(implode(', ', array_map(fn($c) => $c['code'] . ' (' . $c['stock'] . ')', array_slice($cr, 0, 8)))) ?>…
                     <form method="post" style="margin-top:8px" onsubmit="return confirm('¿Agregar <?= count($cr) ?> filas nuevas a la Hoja master?')">
                         <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
