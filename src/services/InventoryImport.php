@@ -88,18 +88,21 @@ class InventoryImport
      */
     public static function applyToVisor(PDO $db, array $items, bool $negativeToZero = true): int
     {
-        $by = [];
+        // Clave exacta primero (NO610-1 y NO:610-1 son productos distintos si ambos existen en SYS); si no, la normalizada (suma)
+        $byExact = $by = [];
         foreach ($items as $it) {
-            $k = self::looseKey($it['code']);
-            $by[$k]['stock'] = ($by[$k]['stock'] ?? 0) + $it['stock'];
-            if (!isset($by[$k]['price']) && $it['price'] !== null && $it['price'] > 0) $by[$k]['price'] = $it['price'];
+            foreach ([[&$byExact, self::exactKey($it['code'])], [&$by, self::looseKey($it['code'])]] as [&$map, $k]) {
+                $map[$k]['stock'] = ($map[$k]['stock'] ?? 0) + $it['stock'];
+                if (!isset($map[$k]['price']) && $it['price'] !== null && $it['price'] > 0) $map[$k]['price'] = $it['price'];
+            }
+            unset($map);
         }
         $st = $db->prepare("UPDATE products SET sys_stock = ?, sys_price = ?, sys_at = NOW() WHERE id = ?");
         $n = 0;
         $db->beginTransaction();
         try {
             foreach ($db->query("SELECT id, sku FROM products")->fetchAll() as $p) {
-                $d = $by[self::looseKey((string) $p['sku'])] ?? null;
+                $d = $byExact[self::exactKey((string) $p['sku'])] ?? $by[self::looseKey((string) $p['sku'])] ?? null;
                 if (!$d) continue;
                 $st->execute([$negativeToZero ? max(0, $d['stock']) : $d['stock'], $d['price'] ?? null, $p['id']]);
                 $n++;
@@ -372,12 +375,19 @@ class InventoryImport
         // Cada artículo → fila de la hoja (exacto, luego normalizado)
         $assign = [];
         $onlyInv = $onlyInvStock = 0;
+        $crear = [];
+        try { $cond = function_exists('condemnedIndex') ? condemnedIndex(getDB()) : []; } catch (\Throwable $e) { $cond = []; }
         foreach ($items as $it) {
             $i = $exact[self::exactKey($it['code'])] ?? ($loose[self::looseKey($it['code'])][0] ?? null);
             if ($i !== null) { $assign[$i][] = $it; continue; }
             $onlyInv++;
             if ($it['stock'] != 0) {
                 $onlyInvStock++;
+                $ek = self::exactKey($it['code']);
+                if ($it['stock'] > 0 && !($cond && isCondemnedCode($it['code'], $cond))) {
+                    if (isset($crear[$ek])) $crear[$ek]['stock'] += $it['stock'];
+                    else $crear[$ek] = ['code' => $it['code'], 'desc' => $it['desc'], 'stock' => $it['stock'], 'price' => $it['price']];
+                }
                 $add('solo_inventario', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, 'No está en la Hoja master' . ($it['stock'] < 0 ? ' (stock negativo)' : ''));
             }
         }
@@ -425,6 +435,7 @@ class InventoryImport
             ],
             'report' => $report,
             'paste' => $paste,
+            'crear' => array_values($crear), // códigos SYS con stock > 0 que faltan en la Hoja master (botón «Crear»)
         ];
     }
 }

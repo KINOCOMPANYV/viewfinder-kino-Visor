@@ -17,7 +17,21 @@ $dir = BASE_DIR . '/storage/inventario';
 $file = $dir . '/ultimo.json';
 $error = null;
 
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['accion'] ?? '') === 'crear') {
+    // Botón «Crear en la Hoja master»: agrega los códigos SYS con stock que faltan (acción explícita del admin)
+    try {
+        if (!verifyCsrf()) throw new RuntimeException('La sesión expiró: recarga la página.');
+        $last = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+        if (empty($last['crear'])) throw new RuntimeException('No hay códigos pendientes por crear.');
+        $r = SheetWriter::appendProducts(getDB(), $last['crear']);
+        $last['crear'] = [];
+        $last['meta']['crear_nota'] = "✅ Creados en la Hoja master: {$r['creados']} códigos con su stock y precio SYS" . ($r['existentes'] ? " ({$r['existentes']} ya estaban)" : '') . '. Ahora corre Admin → Sincronizar → hoja para verlos en el visor.';
+        file_put_contents($file, json_encode($last, JSON_UNESCAPED_UNICODE));
+        redirect('/admin/inventario');
+    } catch (\Throwable $e) {
+        $error = '⚠️ No se pudo crear en la Hoja master: ' . $e->getMessage();
+    }
+} elseif (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     try {
         if (!verifyCsrf()) throw new RuntimeException('La sesión expiró: recarga la página.');
         $up = $_FILES['archivo'] ?? null;
@@ -126,6 +140,19 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
             </p>
             <?php if (isset($result['meta']['aplicado'])): ?><p class="pb-help" style="color:#7ee2a8">✅ Guardado en el visor: Precio SYS y existencias de <?= $n($result['meta']['aplicado']) ?> productos.</p><?php endif; ?>
             <?php if (!empty($result['meta']['hoja'])): ?><p class="pb-help" style="color:<?= str_starts_with($result['meta']['hoja'], '✅') ? '#7ee2a8' : '#ffb366' ?>"><?= e($result['meta']['hoja']) ?></p><?php endif; ?>
+            <?php if (!empty($result['meta']['crear_nota'])): ?><p class="pb-help" style="color:#7ee2a8"><?= e($result['meta']['crear_nota']) ?></p><?php endif; ?>
+            <?php if (!empty($result['crear'])): $cr = $result['crear']; ?>
+                <div class="pb-help" style="border:1px solid #c9a24a;border-radius:8px;padding:10px">
+                    <b><?= $n(count($cr)) ?> códigos de SYS tienen existencias y no están en la Hoja master.</b>
+                    ¿Crearlos? Se agregan al final de la Hoja master con código, nombre (descripción SYS), STOCK y PRICE (Precio SYS).
+                    Ejemplos: <?= e(implode(', ', array_map(fn($c) => $c['code'] . ' (' . $c['stock'] . ')', array_slice($cr, 0, 8)))) ?>…
+                    <form method="post" style="margin-top:8px" onsubmit="return confirm('¿Agregar <?= count($cr) ?> filas nuevas a la Hoja master?')">
+                        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                        <input type="hidden" name="accion" value="crear">
+                        <button type="submit" class="btn btn-sm btn-primary">➕ Crear <?= $n(count($cr)) ?> en la Hoja master</button>
+                    </form>
+                </div>
+            <?php endif; ?>
             <div class="pb-bar">
                 <a class="btn btn-sm btn-primary" href="/admin/inventario?descargar=stock">📥 Columna STOCK para pegar (Excel)</a>
                 <?php if (isset($result['paste'][0]) && array_key_exists('PRICE_nuevo', $result['paste'][0])): ?>
