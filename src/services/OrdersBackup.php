@@ -38,14 +38,14 @@ class OrdersBackup
     {
         $num = fn($v) => $v === null || $v === '' || !is_numeric($v) ? '' : $v + 0;
         $orders = [['ID', 'N.º pedido', 'Cliente', 'Fecha pedido', 'Estado', 'Productos', 'Alistados', 'Chequeado por',
-            'Total pedido (PDF)', 'Total final', 'Creado', 'Actualizado', 'Finalizado']];
+            'Total pedido (PDF)', 'Total final', 'Creado', 'Actualizado', 'Finalizado', 'Facturado']];
         $lines = [['ID pedido', 'N.º pedido', 'Cliente', 'Estado', 'Código', 'Nombre', 'Cant. pedida', 'Cant. final',
             'Precio unidad', 'Subtotal final', 'Alistado', 'Nota', 'Agregado / cambiado']];
         foreach ($rows as $r) {
             $info = is_array($r['order']['order'] ?? null) ? $r['order']['order'] : [];
             $orders[] = [(int) $r['id'], $r['number'], $r['client'], $r['order_date'], $r['status'], (int) $r['items_count'],
                 (int) $r['checked_count'], $r['checked_by'], (string) ($info['totalText'] ?? ''), $num($r['total_final']),
-                $r['created_at'], $r['updated_at'], $r['finished_at'] ?? ''];
+                $r['created_at'], $r['updated_at'], $r['finished_at'] ?? '', $r['invoiced_at'] ?? ''];
             $base = [(int) $r['id'], $r['number'], $r['client'], $r['status']];
             if (is_array($r['lines'])) {
                 foreach ($r['lines'] as $l) {
@@ -66,7 +66,7 @@ class OrdersBackup
             }
         }
         return XlsxWriter::build([
-            'Pedidos' => ['rows' => $orders, 'widths' => [6, 14, 30, 14, 10, 10, 10, 18, 16, 14, 19, 19, 19]],
+            'Pedidos' => ['rows' => $orders, 'widths' => [6, 14, 30, 14, 10, 10, 10, 18, 16, 14, 19, 19, 19, 19]],
             'Líneas' => ['rows' => $lines, 'widths' => [9, 14, 26, 10, 14, 34, 11, 11, 13, 14, 9, 30, 22]],
         ]);
     }

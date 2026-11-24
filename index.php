@@ -320,6 +320,12 @@ if (preg_match('#^/pedidos-alistar/api/(\d+)/borrar$#', $uri, $matches) && $meth
     $woId = (int) $matches[1];
     include __DIR__ . '/src/controllers/warehouse_orders.php';
 }
+if (preg_match('#^/pedidos-alistar/api/(\d+)/facturado$#', $uri, $matches) && $method === 'POST') {
+    checkRateLimit(60);
+    $woAction = 'invoice';
+    $woId = (int) $matches[1];
+    include __DIR__ . '/src/controllers/warehouse_orders.php';
+}
 if (preg_match('#^/pedidos-alistar/api/(\d+)$#', $uri, $matches)) {
     if ($method === 'POST') {
         checkRateLimit(120); // el panel guarda el avance cada vez que se marca algo

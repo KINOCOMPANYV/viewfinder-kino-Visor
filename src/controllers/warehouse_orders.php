@@ -3,6 +3,7 @@
  * Pedidos bodega (tabla warehouse_orders, migración 035). JSON, sin clave (igual que Lista Bodega), POST con X-CSRF-TOKEN.
  * $woAction: 'list' (GET) | 'create' (POST {order}) | 'get' (GET, $woId) | 'save' (POST {lines, who, checked, total, done}, $woId)
  *   | 'delete' (POST {password}, $woId): borra el pedido si la clave coincide con env PEDIDOS_DELETE_PASSWORD (por defecto 3312).
+ *   | 'invoice' (POST {on}, $woId): marca (on=true) o quita la marca «Facturado» (invoiced_at) de un pedido listo.
  * El checklist y el PDF siguen en el dispositivo (assets/js/warehouse_order.js); aquí solo se guarda el pedido y su avance.
  */
 $db = getDB();
@@ -13,7 +14,7 @@ $woAction = $woAction ?? 'list';
 $woId = (int) ($woId ?? 0);
 const WO_MAX_JSON = 2000000; // ~2 MB por pedido
 
-if ($woAction === 'create' || $woAction === 'save' || $woAction === 'delete') {
+if (in_array($woAction, ['create', 'save', 'delete', 'invoice'], true)) {
     $csrf = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (!hash_equals($_SESSION['csrf_token'] ?? '', $csrf)) {
         jsonResponse(['error' => 'Token inválido. Recarga la página.'], 403);
@@ -35,6 +36,7 @@ $woRow = function (array $r, bool $full = false): array {
         'created' => (int) $r['created_ts'],
         'updated' => (int) $r['updated_ts'],
         'finished' => $r['finished_ts'] === null ? null : (int) $r['finished_ts'],
+        'invoiced' => $r['invoiced_ts'] === null ? null : (int) $r['invoiced_ts'],
     ];
     if ($full) {
         $out['order'] = json_decode($r['order_json'], true);
@@ -43,7 +45,7 @@ $woRow = function (array $r, bool $full = false): array {
     return $out;
 };
 $cols = 'id, number, client, order_date, items_count, checked_count, status, checked_by, total_final,
-         UNIX_TIMESTAMP(created_at) AS created_ts, UNIX_TIMESTAMP(updated_at) AS updated_ts, UNIX_TIMESTAMP(finished_at) AS finished_ts';
+         UNIX_TIMESTAMP(created_at) AS created_ts, UNIX_TIMESTAMP(updated_at) AS updated_ts, UNIX_TIMESTAMP(finished_at) AS finished_ts, UNIX_TIMESTAMP(invoiced_at) AS invoiced_ts';
 
 if ($woAction === 'list') {
     $rows = $db->query("SELECT $cols FROM warehouse_orders
@@ -102,6 +104,23 @@ if ($woAction === 'delete') {
         jsonResponse(['error' => 'Ese pedido no existe.'], 404);
     }
     jsonResponse(['ok' => true]);
+}
+
+if ($woAction === 'invoice') {
+    // Solo un pedido listo (verde) se puede marcar; quitar la marca lo devuelve a verde.
+    $on = !empty($input['on']);
+    $st = $db->prepare("UPDATE warehouse_orders SET invoiced_at = IF(? = 1, COALESCE(invoiced_at, NOW()), NULL) WHERE id = ? AND status = 'listo'");
+    $st->execute([$on ? 1 : 0, $woId]);
+    $st = $db->prepare("SELECT $cols FROM warehouse_orders WHERE id = ?");
+    $st->execute([$woId]);
+    $r = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$r) {
+        jsonResponse(['error' => 'Ese pedido no existe.'], 404);
+    }
+    if ($r['status'] !== 'listo') {
+        jsonResponse(['error' => 'Solo se puede marcar como facturado un pedido listo.'], 409);
+    }
+    jsonResponse(['ok' => true, 'order' => $woRow($r)]);
 }
 
 if ($woAction === 'save') {

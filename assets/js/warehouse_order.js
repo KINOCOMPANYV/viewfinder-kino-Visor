@@ -98,9 +98,10 @@
         const b = $('pbState');
         if (!b) return;
         b.hidden = !SID;
-        b.className = 'pb-state ' + (isDone ? 'green' : 'red');
+        const fac = isDone && srv && srv.invoiced; // marcado a mano en Pedidos bodega (🧾 Facturado)
+        b.className = 'pb-state ' + (fac ? 'orange' : isDone ? 'green' : 'red');
         b.innerHTML = isDone
-            ? '🟢 <b>Pedido listo</b>' + (srv && srv.who ? ' · chequeó ' + esc(srv.who) : '') + (srv && srv.finished ? ' · ' + esc(new Date(srv.finished * 1000).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })) : '').replace(/\.$/, '') + '. Revisa los cambios y copia el listado abajo.'
+            ? (fac ? '🟠 <b>Facturado</b> ' + esc(new Date(srv.invoiced * 1000).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })) + ' · Pedido listo' : '🟢 <b>Pedido listo</b>') + (srv && srv.who ? ' · chequeó ' + esc(srv.who) : '') + (srv && srv.finished ? ' · ' + esc(new Date(srv.finished * 1000).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })) : '').replace(/\.$/, '') + '. Revisa los cambios y copia el listado abajo.'
             : '🔴 <b>Falta alistar.</b> El avance se guarda solo en el servidor: otro celular puede seguirlo.';
         $('pbDone').textContent = isDone ? '📋 Ver listado para copiar' : '✅ Finalizar pedido';
         drawCopy();
