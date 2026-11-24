@@ -26,7 +26,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['accion'] ?? '')
         $r = SheetWriter::appendProducts(getDB(), $last['crear']);
         $last['crear'] = [];
         $last['meta']['crear_nota'] = "✅ Creados en la Hoja master: {$r['creados']} códigos con su stock y precio SYS" . ($r['existentes'] ? " ({$r['existentes']} ya estaban)" : '')
-            . ". {$r['con_familia']} copiaron categoría, marca, género y movimiento de su familia; " . count($r['sin_familia']) . ' quedaron sin familia (categoría vacía, complétala en la hoja)'
+            . ". {$r['con_familia']} copiaron categoría, marca, género y movimiento de su familia; {$r['por_carpeta']} tomaron categoría y género de la carpeta de Drive de su foto (ej. 2.CURREN/DAMA); " . count($r['sin_familia']) . ' quedaron sin familia ni carpeta (categoría vacía, complétala en la hoja)'
             . ($r['sin_familia'] ? ': ' . implode(', ', array_slice($r['sin_familia'], 0, 15)) . (count($r['sin_familia']) > 15 ? '…' : '') : '') . '. Ahora corre Admin → Sincronizar → hoja para verlos en el visor.';
         file_put_contents($file, json_encode($last, JSON_UNESCAPED_UNICODE));
         redirect('/admin/inventario');
@@ -147,7 +147,7 @@ $n = fn($v) => $v === null || $v === '' ? '—' : number_format((float) $v, 0, '
                 <div class="pb-help" style="border:1px solid #c9a24a;border-radius:8px;padding:10px">
                     <b><?= $n(count($cr)) ?> códigos de SYS tienen existencias y no están en la Hoja master.</b>
                     ¿Crearlos? Se agregan al final de la Hoja master con código, nombre (descripción SYS), STOCK y PRICE (Precio SYS).
-                    <b><?= $n($cf) ?></b> tienen familia en la Hoja master (copian categoría, marca, género y movimiento del hermano); <b><?= $n(count($cr) - $cf) ?></b> no tienen familia y quedan sin categoría.
+                    <b><?= $n($cf) ?></b> tienen familia en la Hoja master (copian categoría, marca, género y movimiento del hermano); <b><?= $n(count($cr) - $cf) ?></b> no tienen familia: toman categoría y género de la carpeta de Drive de su foto si tienen (ej. 2.CURREN/DAMA); si no, quedan vacíos.
                     Ejemplos: <?= e(implode(', ', array_map(fn($c) => $c['code'] . ' (' . $c['stock'] . ')', array_slice($cr, 0, 8)))) ?>…
                     <form method="post" style="margin-top:8px" onsubmit="return confirm('¿Agregar <?= count($cr) ?> filas nuevas a la Hoja master?')">
                         <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">

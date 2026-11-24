@@ -118,9 +118,18 @@ class SheetWriter
             // el hermano que sirve de modelo: el primero de la familia que tenga categoría
             if ($fk !== '' && (!isset($fam[$fk]) || (($copy['CATEGORY'] ?? false) !== false && ($fam[$fk][$copy['CATEGORY']] ?? '') === '' && ($r[$copy['CATEGORY']] ?? '') !== ''))) $fam[$fk] = $r;
         }
+        $brandOf = [];
+        if (isset($copy['CATEGORY'], $copy['BRAND'])) {
+            foreach (array_slice($vals, 1) as $r) {
+                $c = mb_strtoupper(trim((string) ($r[$copy['CATEGORY']] ?? ''))); $b = trim((string) ($r[$copy['BRAND']] ?? ''));
+                if ($c !== '' && $b !== '') $brandOf[$c][$b] = ($brandOf[$c][$b] ?? 0) + 1;
+            }
+        }
+        $drive = [];
+        try { $drive = self::fromDrivePath($db, array_column($rows, 'code')); } catch (\Throwable $e) { /* sin índice de Drive: queda vacío */ }
         $width = count($head);
         $new = [];
-        $exist = $conFam = 0;
+        $exist = $conFam = $porCarpeta = 0;
         $sinFam = [];
         foreach ($rows as $r) {
             if (isset($have[InventoryImport::looseKey($r['code'])])) { $exist++; continue; }
@@ -134,14 +143,51 @@ class SheetWriter
                 foreach ($copy as $c) $line[$c] = $fam[$fk][$c] ?? '';
                 $conFam++;
             } else {
-                $sinFam[] = $r['code'];
+                $d = $drive[InventoryImport::exactKey($r['code'])] ?? null;
+                if ($d && ($d['cat'] !== '' || $d['gender'] !== '')) {
+                    // sin hermano en la hoja: categoría y género según la carpeta de Drive de su foto
+                    if (isset($copy['CATEGORY'])) $line[$copy['CATEGORY']] = $d['cat'];
+                    if (isset($copy['GENDER'])) $line[$copy['GENDER']] = $d['gender'];
+                    if (isset($copy['BRAND']) && $d['cat'] !== '' && !empty($brandOf[$d['cat']])) { arsort($brandOf[$d['cat']]); $line[$copy['BRAND']] = array_key_first($brandOf[$d['cat']]); }
+                    $porCarpeta++;
+                } else {
+                    $sinFam[] = $r['code'];
+                }
             }
             $new[] = $line;
         }
         foreach (array_chunk($new, 1000) as $chunk) {
             self::call('POST', self::API . rawurlencode($sheetId) . '/values/' . rawurlencode($tab . '!A1') . ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', $token, ['values' => $chunk]);
         }
-        return ['creados' => count($new), 'existentes' => $exist, 'con_familia' => $conFam, 'sin_familia' => $sinFam];
+        return ['creados' => count($new), 'existentes' => $exist, 'con_familia' => $conFam, 'por_carpeta' => $porCarpeta, 'sin_familia' => $sinFam];
+    }
+
+    /**
+     * Para códigos sin familia: categoría y género según la carpeta de Drive donde está su foto
+     * (ej. 2.CURREN/DAMA/C9095L-1.jpg → CATEGORY «CURREN», GENDER «DAMA»). @return array<exactKey, array{cat:string, gender:string}>
+     */
+    private static function fromDrivePath(PDO $db, array $codes): array
+    {
+        $out = [];
+        if (!$codes) return $out;
+        $gmap = ['DAMA' => 'DAMA', 'DAMAS' => 'DAMA', 'MUJER' => 'DAMA', 'HOMBRE' => 'HOMBRE', 'HOMBRES' => 'HOMBRE', 'CABALLERO' => 'HOMBRE', 'CABALLEROS' => 'HOMBRE',
+            'UNISEX' => 'UNISEX', 'INFANTIL' => 'INFANTIL', 'NINOS' => 'INFANTIL', 'NIÑOS' => 'INFANTIL', 'NINAS' => 'INFANTIL', 'NIÑAS' => 'INFANTIL'];
+        $folders = [];
+        foreach ($db->query("SELECT file_id, name, parent_id FROM drive_index WHERE is_folder = 1")->fetchAll() as $f) $folders[$f['file_id']] = $f;
+        $want = array_flip(array_map([InventoryImport::class, 'exactKey'], $codes));
+        $st = $db->query("SELECT name_stem, parent_id, album_id FROM drive_index WHERE is_folder = 0");
+        while ($r = $st->fetch()) {
+            $k = InventoryImport::exactKey((string) $r['name_stem']);
+            if (!isset($want[$k]) || isset($out[$k])) continue;
+            $gender = '';
+            for ($id = $r['parent_id'], $n = 0; $id && isset($folders[$id]) && $n < 12; $id = $folders[$id]['parent_id'], $n++) {
+                $g = $gmap[mb_strtoupper(trim(preg_replace('/^\d+\s*\.\s*/', '', $folders[$id]['name'])))] ?? '';
+                if ($g !== '') { $gender = $g; break; }
+            }
+            $cat = isset($folders[$r['album_id']]) ? mb_strtoupper(trim(preg_replace('/^\d+\s*\.\s*/', '', $folders[$r['album_id']]['name']))) : '';
+            $out[$k] = ['cat' => $cat, 'gender' => $gender];
+        }
+        return $out;
     }
 
     private static function colLetter(int $i): string
