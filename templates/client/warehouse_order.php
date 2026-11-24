@@ -86,6 +86,7 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-state { border-radius:12px; padding:0.8rem 1rem; margin-bottom:1rem; border:1px solid; border-left-width:6px; }
         .pb-state.red { border-color:#e0505a88; border-left-color:#e0505a; background:#e0505a14; }
         .pb-state.green { border-color:#3fb95088; border-left-color:#3fb950; background:#3fb95012; }
+        .pb-state.orange { border-color:#f0883e88; border-left-color:#f0883e; background:#f0883e14; }
         .pb-state[hidden] { display:none; }
         @media (max-width:640px) { body:has(.mnav) .pb-fin { bottom:calc(68px + env(safe-area-inset-bottom, 0px)); padding-bottom:0.6rem; } }
         main.pb-main { padding-bottom:11rem !important; }

@@ -93,6 +93,9 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   «⬆ Volver al pedido». Sin cambios → «✅ Se alistó igual al pedido».
 - **Respaldo de Pedidos bodega** (2026-11-23): siguen en MySQL de Railway (persistente, sobrevive a los deploys); **no Supabase**.
   Además: Admin → 🗄 Pedidos baja Excel/JSON y cada noche (desde las 22 h Colombia) se sube sola una copia a Drive.
+- **Pedidos bodega: «Facturado»** (2026-11-24): un pedido listo (verde) tiene «🧾 Marcar facturado»; el usuario lo toca a mano
+  cuando ya facturó en la otra aplicación y pasa a naranja 🟠 (pestaña «🟠 Facturados»). «↩ Quitar facturado» lo devuelve a verde.
+  Se guarda en MySQL (`warehouse_orders.invoiced_at`, migración 037); sale también en el Excel de respaldo.
 - **«Remisión» ahora se llama «Cotización»** (2026-11-23): título del PDF, «TOTAL COTIZACIÓN», archivo `Cotizacion_N.pdf`,
   botones, selector Tipo y Admin → 🚚 Cotización. Rutas (`/admin/remision`), tabla `doc_templates` y código interno `remision` siguen igual.
   Un título guardado «Remisión» en la plantilla se muestra como «Cotización».
@@ -374,3 +377,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-noicpm` (2026-11-23): el documento **«Remisión» pasa a llamarse «Cotización»** en todo lo visible (PDF, total, archivo, botones, admin); rutas y tablas sin cambio.
 - Rama `claude/project-thread-9rpcuq` (2026-11-23): **Extractor** lee códigos con «+» (`S-640+S-647`, estuche pareja); antes esa línea se perdía y el total no cuadraba. Prueba `node tests/extractor_test.mjs` con el texto de la cotización 106776 (cliente anonimizado).
 - Rama `claude/project-thread-iu5rfh` (2026-11-23): **Extractor**: «✏️ Editar lista» en 📊 Resultado deja corregir código, cantidad y precio, quitar (✕) o agregar (➕) líneas; «↩ Volver a lo del PDF» deshace. Lo editado es lo que pasa a Copiar, Ver fotos, Lista Bodega / Cotización y Pedido de bodega (sin los avisos de lectura del PDF).
+- Rama `claude/project-thread-ikuw7k` (2026-11-24): **Pedidos bodega → «🧾 Marcar facturado»** en los verdes: pasan a naranja 🟠 (pestaña Facturados, deshacer con «↩ Quitar facturado»); migración 037 `invoiced_at`; el panel del pedido también lo muestra.

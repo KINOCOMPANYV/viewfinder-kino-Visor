@@ -1,7 +1,8 @@
 <?php
 /**
  * Pedidos bodega (/pedidos-alistar): lista de los pedidos enviados desde Lista Bodega (tabla warehouse_orders).
- * Rojo = falta alistar (abre el checklist /pedido-bodega?id=N); verde = listo (abre para copiar el listado de códigos y cantidades).
+ * Rojo = falta alistar (abre el checklist /pedido-bodega?id=N); verde = listo (abre para copiar el listado de códigos y cantidades);
+ * naranja = facturado: el usuario lo marca a mano en un pedido verde («🧾 Facturado», POST /pedidos-alistar/api/N/facturado {on}); «↩» lo quita.
  * Datos por GET /pedidos-alistar/api. ?nuevo=N resalta el recién enviado.
  * 🗑 Borrar: pide confirmación + contraseña; la valida el servidor (POST /pedidos-alistar/api/N/borrar).
  */
@@ -24,6 +25,18 @@
             border:1px solid; border-left-width:6px; }
         .wo-item.red { border-color:#e0505a88; border-left-color:#e0505a; background:#e0505a14; }
         .wo-item.green { border-color:#3fb95088; border-left-color:#3fb950; background:#3fb95012; }
+        .wo-item.orange { border-color:#f0883e88; border-left-color:#f0883e; background:#f0883e14; }
+        .wo-item.orange .wo-act { color:#ffa657; }
+        .wo-inv { flex:0 0 auto; width:76px; border-radius:12px; border:1px solid #f0883e; background:#f0883e22; color:#ffa657; font-size:0.75rem; font-weight:800; line-height:1.2; cursor:pointer; padding:0.2rem; }
+        .wo-inv.undo { border-color:#444; background:#15151c; color:#c8c8d0; }
+        .wo-inv:disabled { opacity:0.5; cursor:wait; }
+        @media (max-width:600px) { /* celular: el pedido a lo ancho y debajo «Facturado/Quitar» + 🗑, para no apretar el texto */
+            .wo-row.has-inv { flex-wrap:wrap; }
+            .wo-row.has-inv .wo-item { flex:1 1 100%; }
+            .wo-row.has-inv .wo-inv { flex:1; width:auto; min-height:44px; font-size:0.9rem; }
+            .wo-row.has-inv .wo-inv br { display:none; }
+            .wo-row.has-inv .wo-del { min-height:44px; }
+        }
         .wo-item.new { box-shadow:0 0 0 2px #c9a84c; }
         .wo-dot { font-size:1.4rem; }
         .wo-main { flex:1; min-width:0; }
@@ -57,7 +70,7 @@
     <main class="container" style="padding-top:2rem; padding-bottom:6rem; max-width:900px;">
         <?= breadcrumbs([['Extractor', '/extractor'], ['Pedidos bodega', null]]) ?>
         <h1 style="font-size:1.5rem; margin-bottom:0.4rem;">📋 Pedidos bodega</h1>
-        <p class="wo-sub" style="margin-bottom:1rem;">🔴 Falta alistar: tócalo para chequearlo. 🟢 Listo: tócalo para copiar el listado de códigos y cantidades.</p>
+        <p class="wo-sub" style="margin-bottom:1rem;">🔴 Falta alistar: tócalo para chequearlo. 🟢 Listo: tócalo para copiar el listado de códigos y cantidades. Cuando ya lo factures en la otra aplicación, toca «🧾 Marcar facturado» y pasa a 🟠.</p>
         <p id="woNote" style="color:#e6c76a; min-height:1rem; margin-bottom:0.6rem;"></p>
         <div class="wo-tabs" id="woTabs"></div>
         <div id="woList"><div class="wo-empty">Cargando…</div></div>
@@ -87,24 +100,42 @@
         const qs = new URLSearchParams(location.search), isNew = Number(qs.get('nuevo')) || 0;
         let orders = [], tab = 'pendiente';
         function draw() {
-            const pend = orders.filter((o) => o.status !== 'listo'), done = orders.filter((o) => o.status === 'listo');
-            $('woTabs').innerHTML = [['pendiente', '🔴 Por alistar (' + pend.length + ')'], ['listo', '🟢 Listos (' + done.length + ')'], ['todos', 'Todos (' + orders.length + ')']]
+            const pend = orders.filter((o) => o.status !== 'listo'), done = orders.filter((o) => o.status === 'listo' && !o.invoiced),
+                inv = orders.filter((o) => o.status === 'listo' && o.invoiced).sort((a, b) => b.invoiced - a.invoiced);
+            $('woTabs').innerHTML = [['pendiente', '🔴 Por alistar (' + pend.length + ')'], ['listo', '🟢 Listos (' + done.length + ')'], ['facturado', '🟠 Facturados (' + inv.length + ')'], ['todos', 'Todos (' + orders.length + ')']]
                 .map((t) => '<button type="button" data-t="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>').join('');
-            const shown = tab === 'todos' ? orders : tab === 'listo' ? done : pend;
+            const shown = tab === 'todos' ? orders : tab === 'listo' ? done : tab === 'facturado' ? inv : pend;
             $('woList').innerHTML = shown.map((o) => {
-                const ok = o.status === 'listo';
+                const ok = o.status === 'listo', fac = ok && !!o.invoiced;
                 const title = (o.number ? 'Pedido ' + o.number : 'Pedido sin número') + (o.client ? ' · ' + o.client : '');
-                const sub = ok
+                const sub = fac
+                    ? '🧾 Facturado ' + esc(when(o.invoiced)) + ' · listo ' + esc(when(o.finished)) + (o.who ? ' · chequeó ' + esc(o.who) : '') + ' · ' + o.items + ' ítems' + (o.total != null ? ' · ' + money(o.total) : '')
+                    : ok
                     ? '✅ Listo ' + esc(when(o.finished)) + (o.who ? ' · chequeó ' + esc(o.who) : '') + ' · ' + o.items + ' ítems' + (o.total != null ? ' · ' + money(o.total) : '')
                     : o.checked + ' de ' + o.items + ' chequeados' + (o.date ? ' · fecha ' + esc(o.date) : '') + ' · enviado ' + esc(when(o.created));
-                return '<div class="wo-row"><a class="wo-item ' + (ok ? 'green' : 'red') + (o.id === isNew ? ' new' : '') + '" href="/pedido-bodega?id=' + o.id + '">' +
-                    '<span class="wo-dot">' + (ok ? '🟢' : '🔴') + '</span><span class="wo-main"><span class="wo-title">' + esc(title) + '</span><br><span class="wo-sub">' + sub + '</span></span>' +
-                    '<span class="wo-act">' + (ok ? 'Verificar ›' : 'Alistar ›') + '</span></a>' +
+                return '<div class="wo-row' + (ok ? ' has-inv' : '') + '"><a class="wo-item ' + (fac ? 'orange' : ok ? 'green' : 'red') + (o.id === isNew ? ' new' : '') + '" href="/pedido-bodega?id=' + o.id + '">' +
+                    '<span class="wo-dot">' + (fac ? '🟠' : ok ? '🟢' : '🔴') + '</span><span class="wo-main"><span class="wo-title">' + esc(title) + '</span><br><span class="wo-sub">' + sub + '</span></span>' +
+                    '<span class="wo-act">' + (fac ? 'Ver ›' : ok ? 'Verificar ›' : 'Alistar ›') + '</span></a>' +
+                    (fac ? '<button type="button" class="wo-inv undo" data-inv="' + o.id + '" data-on="0" title="Quitar la marca de facturado (vuelve a verde)">↩<br> Quitar facturado</button>'
+                        : ok ? '<button type="button" class="wo-inv" data-inv="' + o.id + '" data-on="1" title="Marcar como facturado (pasa a naranja)">🧾<br> Marcar facturado</button>' : '') +
                     '<button type="button" class="wo-del" data-del="' + o.id + '" title="Borrar pedido" aria-label="Borrar pedido">🗑</button></div>';
-            }).join('') || '<div class="wo-empty">' + (tab === 'listo' ? 'Todavía no hay pedidos listos.' : tab === 'pendiente' ? '✅ No hay pedidos por alistar.' : 'No hay pedidos.') +
+            }).join('') || '<div class="wo-empty">' + (tab === 'listo' ? 'No hay pedidos listos por facturar.' : tab === 'facturado' ? 'Todavía no hay pedidos facturados.' : tab === 'pendiente' ? '✅ No hay pedidos por alistar.' : 'No hay pedidos.') +
                 ' Para enviar uno: Extractor → Lista Bodega → «📦 Enviar a pedidos bodega».</div>';
         }
         $('woTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; draw(); } });
+        // Facturado: lo marca el usuario a mano cuando ya facturó en la otra aplicación (verde → naranja; ↩ lo devuelve)
+        $('woList').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-inv]'); if (!b) return;
+            const id = Number(b.dataset.inv), on = b.dataset.on === '1';
+            b.disabled = true;
+            fetch('/pedidos-alistar/api/' + id + '/facturado', { method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.CS_CSRF || '', Accept: 'application/json' },
+                body: JSON.stringify({ on }) })
+                .then((r) => r.json().catch(() => ({})).then((j) => { if (!r.ok) throw new Error(j.error || 'Error ' + r.status); return j; }))
+                .then((j) => { orders = orders.map((x) => x.id === id ? j.order : x); draw();
+                    $('woNote').textContent = on ? '🟠 Pedido marcado como facturado (está en «Facturados»).' : '🟢 Se quitó la marca de facturado.'; })
+                .catch((err) => { b.disabled = false; $('woNote').textContent = '⚠️ ' + err.message; });
+        });
         // Borrar: confirmación + contraseña (la valida el servidor)
         const dlg = $('woDlg'); let delId = 0;
         $('woList').addEventListener('click', (e) => {
@@ -129,7 +160,7 @@
         fetch('/pedidos-alistar/api', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
             .then((r) => r.json().then((j) => { if (!r.ok) throw new Error(j.error || 'error ' + r.status); return j; }))
             .then((j) => { orders = j.orders || [];
-                const n = orders.find((o) => o.id === isNew); if (n && n.status === 'listo') tab = 'listo';
+                const n = orders.find((o) => o.id === isNew); if (n && n.status === 'listo') tab = n.invoiced ? 'facturado' : 'listo';
                 draw();
                 if (isNew) $('woNote').textContent = qs.get('ya') ? 'ℹ️ Ese pedido ya estaba en la lista (resaltado); no se duplicó.' : '✅ Pedido enviado. Queda en rojo hasta que lo alisten.'; })
             .catch((e) => { $('woList').innerHTML = '<div class="wo-empty">⚠️ No se pudo cargar la lista (' + esc(e.message) + '). Recarga la página.</div>'; });
