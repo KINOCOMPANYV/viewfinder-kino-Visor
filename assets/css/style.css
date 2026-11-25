@@ -38,6 +38,12 @@
     --radius-lg: 12px;
     --shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
     --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.35);
+    --color-on-primary: #1b1405; /* texto sobre fondos dorados */
+    --color-orange: #ff9f0a; --color-orange-soft: rgba(255, 159, 10, 0.14); --color-orange-line: rgba(255, 159, 10, 0.6); /* acento secundario intenso */
+    --ic-blue: #4da3ff; --ic-purple: #c77dff; --ic-pink: #ff6b8b; --ic-green: #3ddc6b; --ic-teal: #4fd1e0; /* iconos de línea, uno por función */
+    --color-warning-soft: rgba(255, 214, 10, 0.14); --color-success-soft: rgba(48, 209, 88, 0.15);
+    --color-wa-btn: #128040; --color-wa-btn-hover: #0f6b35;
+    --color-sel-bg: rgba(255, 159, 10, 0.1);
     --rgb-bg: 22 22 24; --rgb-surface: 28 28 30; --rgb-fg: 255 255 255; /* canales para transparencias; cambian en modo claro */
     color-scheme: dark;
     --radius-control: 8px; /* botones, chips y migas: esquinas suaves, no pastilla */
@@ -3457,17 +3463,23 @@ h1 { font-weight: 700; }
     --color-text: #1d1d1f;
     --color-text-muted: #515154;
     --color-text-dim: #6e6e73;
-    --color-primary: #9a7632;
-    --color-primary-hover: #86662a;
-    --color-primary-light: #86662a;
-    --color-primary-glow: rgba(154, 118, 50, 0.18);
+    --color-primary: #80612a; /* ≥5:1 sobre blanco, tanto como texto como fondo de botón con texto blanco */
+    --color-primary-hover: #6b5122;
+    --color-primary-light: #6b5122;
+    --color-primary-glow: rgba(128, 97, 42, 0.2);
     --color-accent: #0066cc;
-    --color-success: #248a3d;
-    --color-success-strong: #248a3d;
+    --color-success: #1d7a37;
+    --color-success-strong: #1d7a37;
     --color-warning: #b25000;
-    --color-danger: #d70015;
-    --color-danger-strong: #d70015;
+    --color-danger: #c4001a;
+    --color-danger-strong: #c4001a;
     --color-black: #fff;
+    --color-on-primary: #fff;
+    --color-orange: #b34700; --color-orange-soft: rgba(179, 71, 0, 0.1); --color-orange-line: rgba(179, 71, 0, 0.5);
+    --ic-blue: #0a60c8; --ic-purple: #8944ab; --ic-pink: #c2183f; --ic-green: #1d7a37; --ic-teal: #0b7a8a;
+    --color-warning-soft: rgba(178, 80, 0, 0.1); --color-success-soft: rgba(29, 122, 55, 0.09);
+    --color-wa-btn: #128040; --color-wa-btn-hover: #0f6b35;
+    --color-sel-bg: rgba(179, 71, 0, 0.07);
     --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.12);
     --rgb-bg: 251 251 253; --rgb-surface: 255 255 255; --rgb-fg: 0 0 0;
@@ -3495,3 +3507,87 @@ h1 { font-weight: 700; }
     .header .hdr-pedidos.btn-sm { font-size: 0 !important; padding: 0 !important; width: 40px; height: 40px; min-height: 40px; justify-content: center; gap: 0; }
     .header .hdr-pedidos .ico { width: 1.25rem; height: 1.25rem; margin: 0; }
 }
+
+/* ========================================================================
+   Contraste y resaltados (2026-11-25, 2.ª pasada)
+   Regla: ningún texto sobre un fondo de su mismo tono; lo importante se ve
+   a simple vista en oscuro y en claro. Todo con variables, sin hex sueltos.
+   ======================================================================== */
+.logo-icon { color: var(--color-on-primary); font-weight: 800; }
+.btn-primary, .btn-primary:hover { color: var(--color-on-primary); }
+.search-box .search-btn { color: var(--color-on-primary); }
+:root[data-theme="light"] .btn-primary,
+:root[data-theme="light"] .search-box .search-btn { color: #fff; }
+.btn-primary { box-shadow: 0 1px 0 rgb(var(--rgb-fg) / 0.12) inset, 0 2px 10px var(--color-primary-glow); }
+.btn-primary:disabled, .btn-primary[disabled] { opacity: 0.55; box-shadow: none; }
+
+/* WhatsApp: verde más hondo para que el texto blanco se lea (antes 2:1) */
+.btn-whatsapp, .media-btn-wa, .cp-share, .main-image-wa { background: var(--color-wa-btn); color: #fff; }
+.btn-whatsapp:hover { background: var(--color-wa-btn-hover); }
+.btn-whatsapp.share-link-btn:hover { color: #fff; }
+.search-check-icon { color: transparent; }
+.search-check-footer input:checked ~ .search-check-icon { background: var(--color-wa-btn); border-color: var(--color-wa-btn); color: #fff; }
+.search-check-footer input:checked ~ .search-check-icon + .search-check-text { color: var(--color-wa-btn); }
+:root:not([data-theme="light"]) .search-check-footer input:checked ~ .search-check-icon + .search-check-text { color: var(--color-wa); }
+
+/* Lo importante, más fuerte */
+.parent-card .card-price, .product-price {
+    color: var(--color-success); font-weight: 800;
+}
+.parent-card .card-price { display: inline-block; padding: 0.05rem 0.45rem; border-radius: 6px; background: var(--color-success-soft); font-size: 0.95rem; }
+.product-price:not(.no-price) { display: inline-flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.stock-tag { padding: 0.05rem 0.45rem; border-radius: 6px; font-weight: 800; }
+.stock-tag.in { color: var(--color-success); background: var(--color-success-soft); }
+.stock-tag.out { color: var(--color-danger); background: rgb(255 69 58 / 0.1); }
+:root[data-theme="light"] .stock-tag.out { background: rgb(196 0 26 / 0.07); }
+.parent-card .card-price + .stock-tag, .parent-card .stock-tag { font-size: 0.72rem; }
+.parent-card .card-sku, .card-sku { color: var(--color-primary); font-weight: 700; }
+.parent-card.exact-hit { outline: 2px solid var(--color-orange); box-shadow: 0 0 0 4px var(--color-orange-soft), var(--shadow); background: var(--color-sel-bg); }
+.exact-hit-label { color: var(--color-orange); font-weight: 800; font-size: 0.74rem; }
+.search-selectable-card:has(.search-card-check:checked),
+.search-selectable-card:has(.gallery-check:checked) {
+    border-color: var(--color-orange-line) !important; background: var(--color-sel-bg);
+    box-shadow: 0 0 0 2px var(--color-orange-line), 0 6px 22px var(--color-orange-soft);
+}
+.mnav-badge { background: var(--color-orange); color: #fff; }
+:root:not([data-theme="light"]) .mnav-badge { color: #1b1405; }
+.crumbs-sep, .folder-breadcrumb { color: var(--color-text-dim); }
+a.active, .filter-field.on, summary.filter-field.on { background: var(--color-surface-3); color: var(--color-primary); font-weight: 700; }
+.filter-field.filter-go { background: var(--color-primary); color: var(--color-on-primary); }
+:root[data-theme="light"] .filter-field.filter-go { color: #fff; }
+
+/* Iconos de línea con su propio color (solo fuera de botones dorados/verdes) */
+.ico-home { color: var(--ic-blue); }
+.ico-search { color: var(--color-orange); }
+.ico-folder { color: var(--ic-blue); }
+.ico-star { color: var(--color-orange); }
+.ico-send { color: var(--ic-blue); }
+.ico-clipboard { color: var(--ic-purple); }
+.ico-receipt { color: var(--ic-pink); }
+.ico-download { color: var(--ic-green); }
+.ico-copy { color: var(--ic-purple); }
+.ico-sliders { color: var(--color-orange); }
+.ico-image { color: var(--ic-pink); }
+.btn-primary .ico, .search-btn .ico, .btn-whatsapp .ico, .media-btn-wa .ico, .mnav-item:not(.active) .ico { color: inherit; }
+.mnav-item .ico-home, .mnav-item .ico-search, .mnav-item .ico-folder, .mnav-item .ico-star, .mnav-item .ico-send { color: inherit; }
+.mnav-item.active .ico { color: var(--color-primary); }
+.cover-placeholder .ico, .variant-noimg .ico { color: var(--color-text-dim); }
+.mnav-item[data-mnav="inicio"] .ico { color: var(--ic-blue); }
+.mnav-item[data-mnav="buscar"] .ico { color: var(--color-orange); }
+.mnav-item[data-mnav="carpetas"] .ico { color: var(--ic-teal); }
+.mnav-item[data-mnav="seleccion"] .ico { color: var(--color-orange); }
+.mnav-item[data-mnav="enviar"] .ico { color: var(--ic-purple); }
+.mnav-item.active .ico, .mnav-item.active[data-mnav] .ico { color: var(--color-primary); }
+
+/* Panel admin y otros: valores que eran hex fijos */
+.stat-value { text-shadow: none; }
+.hm-table .empty { color: var(--color-danger); }
+:root { --color-gold: var(--color-primary); }
+.stock-tag.in { background: rgb(var(--rgb-fg) / 0.04); box-shadow: inset 0 0 0 1px var(--color-success-soft); }
+.stock-tag.out { background: rgb(var(--rgb-fg) / 0.04); box-shadow: inset 0 0 0 1px rgb(255 69 58 / 0.3); }
+:root[data-theme="light"] .stock-tag.out { background: rgb(var(--rgb-fg) / 0.04); }
+.search-clear { color: var(--color-text-muted) !important; }
+.stock-tag.in, .stock-tag.out, :root[data-theme="light"] .stock-tag.out { background: none; box-shadow: none; padding: 0; }
+.stock-tag.in::before, .stock-tag.out::before { content: ""; display: inline-block; width: 0.5em; height: 0.5em; border-radius: 50%; background: currentColor; margin-right: 0.35em; vertical-align: 0.05em; }
+.search-clear { color: #3a3a3c !important; }
+.parent-card .card-price .stock-tag, .product-price .stock-tag { margin-left: 0.5rem; }

@@ -37,17 +37,17 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-code { font-weight:700; word-break:break-all; }
         .pb-name { color:var(--color-text-muted,#c8c8d0); font-size:0.85rem; }
         .pb-tag { display:inline-block; font-size:0.7rem; padding:0.05rem 0.45rem; border-radius:99px; margin-left:0.3rem; background:#c4a46b33; color:#e6c76a; }
-        .pb-tag.red { background:#e0505a33; color:#ff8a92; }
-        .pb-tag.green { background:#3fb95033; color:#6fdc84; }
+        .pb-tag.red { background:#e0505a33; color:var(--color-danger); }
+        .pb-tag.green { background:#3fb95033; color:var(--color-success); }
         .pb-ctl { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:0.5rem 0.8rem; align-items:center; }
         .pb-chk { display:flex; align-items:center; gap:0.4rem; font-weight:700; cursor:pointer; min-height:44px; }
         .pb-chk input { width:26px; height:26px; accent-color:#3fb950; }
         .pb-qty { display:inline-flex; align-items:center; gap:0.3rem; }
-        .pb-qty button { width:40px; height:40px; font-size:1.3rem; border-radius:10px; border:1px solid #444; background:var(--color-surface-2,#242426); color:#fff; cursor:pointer; }
-        .pb-qty input { width:56px; height:40px; text-align:center; font-size:1.05rem; border-radius:8px; border:1px solid #444; background:var(--color-bg,#161618); color:#fff; }
+        .pb-qty button { width:40px; height:40px; font-size:1.3rem; border-radius:10px; border:1px solid #444; background:var(--color-surface-2,#242426); color:var(--color-text); cursor:pointer; }
+        .pb-qty input { width:56px; height:40px; text-align:center; font-size:1.05rem; border-radius:8px; border:1px solid #444; background:var(--color-bg,#161618); color:var(--color-text); }
         .pb-price { color:#bbb; font-size:0.9rem; white-space:nowrap; }
         .pb-sub { margin-left:auto; font-weight:700; color:var(--color-primary-light, #c4a46b); }
-        .pb-note, .pb-in { height:38px; border-radius:8px; border:1px solid #444; background:var(--color-bg,#161618); color:#fff; padding:0 0.6rem; font-size:0.9rem; }
+        .pb-note, .pb-in { height:38px; border-radius:8px; border:1px solid #444; background:var(--color-bg,#161618); color:var(--color-text); padding:0 0.6rem; font-size:0.9rem; }
         .pb-note { flex:1; min-width:9rem; }
         .pb-sw { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center; }
         .pb-sw .pb-in { flex:1; min-width:12rem; }
@@ -61,10 +61,10 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-total { font-size:1.05rem; display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:0.4rem 1rem; }
         .pb-total span { display:block; color:var(--color-text-muted,#a0a0b0); font-size:0.78rem; }
         .pb-total .big { font-size:1.35rem; font-weight:800; color:var(--color-primary-light, #c4a46b); }
-        .pb-total .up { color:#ff9f43; } .pb-total .down { color:#6fdc84; }
+        .pb-total .up { color:#ff9f43; } .pb-total .down { color:var(--color-success); }
         .pb-fin { position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--color-surface,#1c1c1e); border-top:1px solid var(--color-surface-3,#2c2c2e); padding:0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom)); }
         .pb-fin-row { display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; max-width:900px; margin:0 auto; }
-        .pb-fin input[type=text] { flex:1; min-width:10rem; height:44px; border-radius:10px; border:1px solid #555; background:var(--color-bg,#161618); color:#fff; padding:0 0.7rem; font-size:1rem; }
+        .pb-fin input[type=text] { flex:1; min-width:10rem; height:44px; border-radius:10px; border:1px solid #555; background:var(--color-bg,#161618); color:var(--color-text); padding:0 0.7rem; font-size:1rem; }
         .pb-fin .btn { min-height:44px; font-weight:800; }
         .pb-fin .btn:disabled { opacity:.45; }
         .pb-msg { max-width:900px; margin:0.3rem auto 0; font-size:0.82rem; color:var(--color-text-muted,#c8c8d0); min-height:1rem; }
@@ -81,9 +81,9 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-chg li .q { margin-left:auto; color:var(--color-text-muted,#c8c8d0); white-space:nowrap; }
         .pb-chg li .n { flex-basis:100%; color:var(--color-text-muted,#a0a0b0); font-size:0.8rem; }
         .pb-chg .arrow { color:#e6c76a; }
-        .pb-chg .rm b { text-decoration:line-through; color:#ff8a92; }
+        .pb-chg .rm b { text-decoration:line-through; color:var(--color-danger); }
         .pb-chg .sum { margin-top:0.8rem; padding-top:0.6rem; border-top:1px solid var(--color-surface-3,#2c2c2e); display:flex; flex-wrap:wrap; gap:0.3rem 1.2rem; font-size:0.9rem; }
-        .pb-chg .sum span { color:var(--color-text-muted,#a0a0b0); } .pb-chg .up { color:#ff9f43; } .pb-chg .down { color:#6fdc84; }
+        .pb-chg .sum span { color:var(--color-text-muted,#a0a0b0); } .pb-chg .up { color:#ff9f43; } .pb-chg .down { color:var(--color-success); }
         .pb-state { border-radius:12px; padding:0.8rem 1rem; margin-bottom:1rem; border:1px solid; border-left-width:6px; }
         .pb-state.red { border-color:#e0505a88; border-left-color:#e0505a; background:#e0505a14; }
         .pb-state.green { border-color:#3fb95088; border-left-color:#3fb950; background:#3fb95012; }
@@ -144,7 +144,7 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
             <section class="pb-card" id="pbCopyBox" hidden>
                 <h2>📋 Listado para copiar</h2>
                 <p class="pb-help">Código, cantidad final y UNIDAD, separados por tabulación (como el que pega el Extractor). Los datos del pedido están arriba.</p>
-                <textarea id="pbCopyText" readonly rows="10" style="width:100%; font-family:monospace; font-size:0.85rem; background:var(--color-bg,#161618); color:#fff; border:1px solid #444; border-radius:8px; padding:0.6rem; white-space:pre;" aria-label="Listado de códigos y cantidades"></textarea>
+                <textarea id="pbCopyText" readonly rows="10" style="width:100%; font-family:monospace; font-size:0.85rem; background:var(--color-bg,#161618); color:var(--color-text); border:1px solid #444; border-radius:8px; padding:0.6rem; white-space:pre;" aria-label="Listado de códigos y cantidades"></textarea>
                 <div class="pb-sw" style="margin-top:0.6rem;">
                     <button type="button" class="btn btn-primary" id="pbCopyBtn">📋 Copiar</button>
                     <span class="pb-help" id="pbCopyInfo"></span> <span class="pb-help" id="pbCopyMsg" aria-live="polite"></span>

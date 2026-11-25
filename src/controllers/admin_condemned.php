@@ -96,11 +96,11 @@ if ($list) {
         .cd-form input[name=note] { flex:1; min-width:180px; }
         .cd-msg { padding:0.75rem 1rem; border-radius:var(--radius-sm); margin-bottom:1rem; font-size:0.9rem; }
         .cd-msg.ok { background:rgba(52,168,83,0.12); border:1px solid rgba(52,168,83,0.4); }
-        .cd-msg.err { background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.4); color:#f87171; }
+        .cd-msg.err { background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.4); color:var(--color-danger); }
         .cd-table { width:100%; border-collapse:collapse; font-size:0.88rem; }
         .cd-table th, .cd-table td { padding:0.55rem 0.6rem; border-bottom:1px solid var(--color-border); text-align:left; vertical-align:middle; }
         .cd-table th { color:var(--color-text-muted); font-weight:600; font-size:0.78rem; }
-        .cd-table td.code { font-weight:700; color:#f87171; white-space:nowrap; }
+        .cd-table td.code { font-weight:700; color:var(--color-danger); white-space:nowrap; }
         .cd-table td.muted { color:var(--color-text-muted); white-space:nowrap; }
     </style>
 </head>
@@ -136,7 +136,7 @@ if ($list) {
                     <button class="btn btn-primary" type="submit" onclick="return confirm('¿Condenar este código? Si está en el visor se borra.')">🚫 Condenar</button>
                 </form>
             <?php else: ?>
-                <p style="color:#f87171;">La tabla aún no existe: falta aplicar la migración 034 (se aplica sola al desplegar).</p>
+                <p style="color:var(--color-danger);">La tabla aún no existe: falta aplicar la migración 034 (se aplica sola al desplegar).</p>
             <?php endif; ?>
         </section>
 

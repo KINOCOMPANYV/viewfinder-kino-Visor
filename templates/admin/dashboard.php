@@ -134,7 +134,7 @@ unset($_SESSION['cache_flash']);
         <div class="stats-grid" style="margin-top:1rem;">
             <div class="stat-wrap">
                 <a href="/admin/products?estado=conportada" class="stat-card stat-card--link" title="Ver estos productos">
-                    <div class="stat-value" style="color:#4ade80;">
+                    <div class="stat-value" style="color:var(--color-success);">
                         <?= number_format($withCover) ?>
                     </div>
                     <div class="stat-label">🖼️ Con Portada</div>
@@ -143,7 +143,7 @@ unset($_SESSION['cache_flash']);
             </div>
             <div class="stat-wrap">
                 <a href="/admin/products?estado=sinportada" class="stat-card stat-card--link" title="Ver estos productos">
-                    <div class="stat-value" style="color:#fbbf24;">
+                    <div class="stat-value" style="color:var(--color-warning);">
                         <?= number_format($withoutCover) ?>
                     </div>
                     <div class="stat-label">📷 Sin Portada</div>
@@ -161,7 +161,7 @@ unset($_SESSION['cache_flash']);
             </div>
             <div class="stat-wrap">
                 <a href="/admin/products?estado=fuera" class="stat-card stat-card--link" title="Ver estos productos">
-                    <div class="stat-value" style="color:#f87171;">
+                    <div class="stat-value" style="color:var(--color-danger);">
                         <?= number_format($discontinuedProducts) ?>
                     </div>
                     <div class="stat-label">⛔ Fuera de la Hoja master</div>
@@ -170,7 +170,7 @@ unset($_SESSION['cache_flash']);
             </div>
             <div class="stat-wrap">
                 <a href="/admin/products?estado=sinprecio" class="stat-card stat-card--link" title="Ver y poner precio">
-                    <div class="stat-value" style="color:#fbbf24;">
+                    <div class="stat-value" style="color:var(--color-warning);">
                         <?= number_format($noPrice) ?>
                     </div>
                     <div class="stat-label">💲 Sin precio en tabla</div>
@@ -179,7 +179,7 @@ unset($_SESSION['cache_flash']);
             </div>
             <div class="stat-wrap">
                 <a href="/admin/products?estado=preciomanual" class="stat-card stat-card--link" title="Ver precios cambiados en el admin">
-                    <div class="stat-value" style="color:#60a5fa;">
+                    <div class="stat-value" style="color:var(--color-accent);">
                         <?= number_format($manualPrice) ?>
                     </div>
                     <div class="stat-label">✏️ Precio editado en admin</div>
@@ -215,7 +215,7 @@ unset($_SESSION['cache_flash']);
                         (activos)</h3>
                     <?php
                     $genderLabels = ['hombre' => '♂️ Hombre', 'mujer' => '♀️ Mujer', 'unisex' => '⚧️ Unisex'];
-                    $genderColors = ['hombre' => '#60a5fa', 'mujer' => '#f472b6', 'unisex' => '#a78bfa'];
+                    $genderColors = ['hombre' => 'var(--color-accent)', 'mujer' => 'var(--ic-pink)', 'unisex' => 'var(--ic-purple)'];
                     foreach ($genderStats as $gs):
                         $label = $genderLabels[$gs['gender']] ?? ucfirst($gs['gender']);
                         $color = $genderColors[$gs['gender']] ?? 'var(--color-text)';

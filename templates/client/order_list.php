@@ -40,7 +40,7 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
         .ol-type small { flex-basis:100%; color:var(--color-text-muted,#a0a0b0); }
         body.ol-remision .ol-type { border-color:#e0505a66; background:#e0505a14; }
         body.ol-remision .ol-type input, body.ol-remision .ol-field input, body.ol-remision .ol-opts input { accent-color:#e0505a; }
-        body.ol-remision #olTitle { color:#ff8a92; }
+        body.ol-remision #olTitle { color:var(--color-danger); }
         .ol-tpl-link { display:none; }
         body.ol-remision .ol-tpl-link { display:block; margin-top:-0.6rem; }
         /* Botón «Previo»: llamativo, es el paso antes de descargar o enviar */

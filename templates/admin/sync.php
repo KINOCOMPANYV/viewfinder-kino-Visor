@@ -30,7 +30,7 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
     $html = 'Última sincronización con éxito: <strong>' . $fmtDate($st['last_ok_at'] ?? null) . '</strong>';
     if (!empty($st['last_ok_message'])) $html .= '<br><small>' . e($st['last_ok_message']) . '</small>';
     if (!empty($st['last_error_at']) && $st['last_error_at'] > ($st['last_ok_at'] ?? '')) {
-        $html .= '<br><strong style="color:#f87171;">Último intento falló (' . $fmtDate($st['last_error_at']) . '): '
+        $html .= '<br><strong style="color:var(--color-danger);">Último intento falló (' . $fmtDate($st['last_error_at']) . '): '
             . e($st['last_error']) . '</strong> <button class="btn btn-sm btn-secondary" onclick="' . $retryJs . '">🔁 Reintentar</button>';
     }
     return $html;
@@ -54,10 +54,10 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
         .sync-result { margin-top:1rem; font-size:0.85rem; display:none; padding:0.9rem; border-radius:var(--radius-sm); background:var(--color-surface-2); }
         .sync-result.ok { border:1px solid rgba(52,168,83,0.35); }
         .sync-result.warn { border:1px solid rgba(251,191,36,0.4); }
-        .sync-result.error { border:1px solid rgba(220,53,69,0.4); color:#f87171; }
+        .sync-result.error { border:1px solid rgba(220,53,69,0.4); color:var(--color-danger); }
         .sync-loaded { display:grid; gap:0.35rem; font-size:0.85rem; margin-bottom:1rem; padding:0.75rem 0.9rem; background:var(--color-surface-2); border-radius:var(--radius-sm); }
         .sync-loaded small { color:var(--color-text-muted); }
-        .sync-loaded .warn { color:#fbbf24; }
+        .sync-loaded .warn { color:var(--color-warning); }
         .sync-result .skus { max-height:120px; overflow-y:auto; margin-top:0.5rem; padding:0.5rem; background:rgba(0,0,0,0.25); border-radius:4px; font-family:monospace; font-size:0.78rem; }
     </style>
 </head>
@@ -83,7 +83,7 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
                 <?php if ($sheetId): ?>
                     · <a href="https://docs.google.com/spreadsheets/d/<?= e($sheetId) ?>/edit" target="_blank" rel="noopener" style="color:var(--color-primary);">Abrir la hoja ↗</a>
                 <?php else: ?>
-                    <br><strong style="color:#f87171;">Falta la variable GOOGLE_SHEET_ID en Railway.</strong>
+                    <br><strong style="color:var(--color-danger);">Falta la variable GOOGLE_SHEET_ID en Railway.</strong>
                 <?php endif; ?>
                 <br><?= $statusBlock('hoja', 'syncSheet(false, this)') ?>
             </p>
@@ -244,9 +244,9 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
                     html += '<ul style="margin:0.6rem 0 0; padding-left:1.1rem;">' + data.files.map(f =>
                         `<li style="margin-bottom:0.35rem;">${f.image ? '🖼️' : '🎥'} <a href="https://drive.google.com/file/d/${esc(f.id)}/view" target="_blank" rel="noopener" style="color:var(--color-primary);">${esc(f.name)}</a>`
                         + `<div style="font-size:0.8rem; color:var(--color-text-muted);">${esc(f.path || '(raíz)')}</div>`
-                        + (f.problem ? `<div style="font-size:0.85rem; color:#fbbf24;">🚫 ${esc(f.problem)}`
+                        + (f.problem ? `<div style="font-size:0.85rem; color:var(--color-warning);">🚫 ${esc(f.problem)}`
                             + (f.switch_folder_id ? ` · <a href="/admin/folders?id=${encodeURIComponent(f.switch_folder_id)}" style="color:var(--color-primary);">ir a la carpeta</a>` : '') + '</div>'
-                          : '<div style="font-size:0.85rem; color:#4ade80;">✅ Se muestra</div>')
+                          : '<div style="font-size:0.85rem; color:var(--color-success);">✅ Se muestra</div>')
                         + '</li>').join('') + '</ul>';
                 }
                 if (data.last_drive_sync) html += `<div style="margin-top:0.5rem; font-size:0.8rem; color:var(--color-text-muted);">Copia de Drive: ${esc(data.last_drive_sync)}</div>`;

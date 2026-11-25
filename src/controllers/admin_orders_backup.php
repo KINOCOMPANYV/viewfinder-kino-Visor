@@ -65,7 +65,7 @@ $hour = (int) env('PEDIDOS_BACKUP_HOUR', '22');
         .ob-stats b { font-size:1.3rem; display:block; }
         .ob-msg { padding:0.75rem 1rem; border-radius:var(--radius-sm); margin-bottom:1rem; font-size:0.9rem; }
         .ob-msg.ok { background:rgba(52,168,83,0.12); border:1px solid rgba(52,168,83,0.4); }
-        .ob-msg.err { background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.4); color:#f87171; }
+        .ob-msg.err { background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.4); color:var(--color-danger); }
     </style>
 </head>
 
