@@ -54,7 +54,7 @@ $ignored = array_filter($data['headers'], fn($h) => $h['field'] === null && $h['
         .hm-map { display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.75rem; font-size:0.8rem; }
         .hm-map span { padding:0.25rem 0.55rem; border-radius:999px; background:var(--color-surface-2); border:1px solid var(--color-border); }
         .hm-map .on { border-color:rgba(52,168,83,0.5); }
-        .hm-map .key { border-color:#fbbf24; color:#fbbf24; }
+        .hm-map .key { border-color:var(--color-warning); color:var(--color-warning); }
         .hm-map .off { opacity:0.6; text-decoration:line-through; }
         .hm-form { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; }
         .hm-form input, .hm-form select { padding:0.5rem 0.7rem; border-radius:var(--radius-sm); border:1px solid var(--color-border); background:var(--color-surface-2); color:inherit; }
@@ -67,9 +67,9 @@ $ignored = array_filter($data['headers'], fn($h) => $h['field'] === null && $h['
         .hm-table th.off small { color:var(--color-text-muted); }
         .hm-table th.off, .hm-table td.off { opacity:0.55; }
         .hm-table .key { background:rgba(251,191,36,0.10); }
-        .hm-table th.key small { color:#fbbf24; }
+        .hm-table th.key small { color:var(--color-warning); }
         .hm-table .line { color:var(--color-text-muted); }
-        .hm-table .empty { color:#f87171; font-style:italic; }
+        .hm-table .empty { color:var(--color-danger); font-style:italic; }
         .hm-table .visor { background:rgba(99,102,241,0.10); }
     </style>
 </head>
@@ -89,7 +89,7 @@ $ignored = array_filter($data['headers'], fn($h) => $h['field'] === null && $h['
         <section class="hm-card">
             <p>
                 Así llega la Hoja master al visor, fila por fila y con todas sus columnas. Debajo de cada encabezado dice qué campo
-                del visor llena. <b style="color:#fbbf24;">NAME</b> es el nombre del producto: si está vacía, el visor usa el código.
+                del visor llena. <b style="color:var(--color-warning);">NAME</b> es el nombre del producto: si está vacía, el visor usa el código.
                 Los productos «Solo Drive» (foto sin fila en la hoja) también muestran el código como nombre.
                 <?php if ($sheetId): ?>
                     · <a href="https://docs.google.com/spreadsheets/d/<?= e($sheetId) ?>/edit" target="_blank" rel="noopener" style="color:var(--color-primary);">Abrir la hoja ↗</a>
@@ -119,7 +119,7 @@ $ignored = array_filter($data['headers'], fn($h) => $h['field'] === null && $h['
         </form>
 
         <?php if ($error): ?>
-            <div class="hm-card" style="color:#f87171;">No se pudo leer la hoja: <?= e($error) ?></div>
+            <div class="hm-card" style="color:var(--color-danger);">No se pudo leer la hoja: <?= e($error) ?></div>
         <?php else: ?>
             <p style="font-size:0.85rem; color:var(--color-text-muted); margin-bottom:0.5rem;">
                 <?php if ($q !== ''): ?>

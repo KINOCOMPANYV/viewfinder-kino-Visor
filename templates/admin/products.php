@@ -23,7 +23,7 @@
         .prod-price-f { width:130px; }
         tr.is-off td { opacity:0.55; }
         tr.is-off td:first-child, tr.is-off td:last-child { opacity:1; }
-        .tag-out { font-size:0.7rem; color:#fbbf24; }
+        .tag-out { font-size:0.7rem; color:var(--color-warning); }
         .cell-muted { color:var(--color-text-muted); font-size:0.8rem; }
         .prod-table th, .prod-table td { padding:0.5rem 0.6rem; vertical-align:middle; }
         .only-mobile { display:none; }
@@ -31,7 +31,7 @@
         .price-input.saving { opacity:0.5; }
         .price-input.saved { border-color:#22c55e; }
         .price-note { font-size:0.7rem; margin-top:0.15rem; display:flex; gap:0.4rem; align-items:center; }
-        .tag-manual { color:#60a5fa; }
+        .tag-manual { color:var(--color-accent); }
         .link-reset { background:none; border:none; color:var(--color-primary); cursor:pointer; text-decoration:underline; font-size:0.7rem; padding:0; }
         /* Móvil: cada fila es una tarjeta (casilla · foto · código/nombre · interruptor) */
         @media (max-width: 900px) {

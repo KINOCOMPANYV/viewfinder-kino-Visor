@@ -61,7 +61,7 @@ $fatal = count(array_filter($errors, fn($r) => in_array($r['level'], ['fatal', '
         .lg-table th, .lg-table td { text-align:left; padding:0.4rem 0.5rem; border-bottom:1px solid var(--color-border); vertical-align:top; }
         .lg-msg { font-family:monospace; white-space:pre-wrap; word-break:break-word; max-width:520px; }
         .lg-lvl { padding:1px 6px; border-radius:4px; font-size:0.75rem; background:rgb(var(--rgb-fg,255 255 255) / 0.1); }
-        .lg-lvl.fatal, .lg-lvl.parse { background:rgba(248,113,113,0.25); color:#f87171; }
+        .lg-lvl.fatal, .lg-lvl.parse { background:rgba(248,113,113,0.25); color:var(--color-danger); }
         .lg-lvl.js, .lg-lvl.promise { background:rgba(96,165,250,0.2); }
         .lg-row { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-bottom:0.75rem; }
     </style>

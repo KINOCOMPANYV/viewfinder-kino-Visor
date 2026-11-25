@@ -1609,7 +1609,7 @@ function icon(string $name, string $class = ''): string
     if (!isset($paths[$name])) {
         return '';
     }
-    return '<svg class="ico' . ($class !== '' ? ' ' . $class : '') . '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' . $paths[$name] . '</svg>';
+    return '<svg class="ico ico-' . $name . ($class !== '' ? ' ' . $class : '') . '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' . $paths[$name] . '</svg>';
 }
 
 /** Botón fijo «Pedidos bodega» del encabezado de todas las páginas públicas (enlace siempre /pedidos-alistar; visible también en celular). */

@@ -337,7 +337,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
                         if (!$found) $sinResultado[] = $code;
                     }
                     if (!empty($sinResultado)): ?>
-                    <br><span style="color:var(--color-warning, #fbbf24); font-size:0.85rem;">Sin resultados para: <?= e(implode(', ', $sinResultado)) ?></span>
+                    <br><span style="color:var(--color-warning); font-size:0.85rem;">Sin resultados para: <?= e(implode(', ', $sinResultado)) ?></span>
                 <?php endif; ?>
             <?php elseif ($q): ?>
                 <?= $totalParents ?> resultado<?= $totalParents !== 1 ? 's' : '' ?> para "<strong style="color:var(--color-text)">

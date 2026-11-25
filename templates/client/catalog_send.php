@@ -26,7 +26,7 @@
         .cs-options label { display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer; }
         .cs-actions { display:flex; flex-wrap:wrap; gap:0.6rem; align-items:center; }
         .cs-summary { font-size:0.9rem; margin-bottom:0.75rem; }
-        .cs-warn { font-size:0.82rem; color:#fbbf24; margin-top:0.5rem; word-break:break-word; }
+        .cs-warn { font-size:0.82rem; color:var(--color-warning); margin-top:0.5rem; word-break:break-word; }
         .cs-bulk { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem; }
         /* Galería: tocar una foto la marca o desmarca */
         .cs-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:0.5rem; }
@@ -40,7 +40,7 @@
         .cs-tile .one { position:absolute; top:4px; right:4px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(0,0,0,0.6); font-size:17px; cursor:pointer; }
         .cs-tile .lbl { position:absolute; left:0; right:0; bottom:0; padding:0.25rem 0.4rem; background:linear-gradient(transparent, rgba(0,0,0,0.85)); font-size:0.72rem; font-family:monospace; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .cs-tile.sent .lbl::before { content:'✅ '; }
-        .cs-nophoto { font-size:0.8rem; color:#fbbf24; margin-top:0.6rem; }
+        .cs-nophoto { font-size:0.8rem; color:var(--color-warning); margin-top:0.6rem; }
         .cs-bar { position:sticky; bottom:0; z-index:5; background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:0.8rem; margin-top:1rem; box-shadow:0 -6px 20px rgba(0,0,0,0.35); }
         .cs-bar .cs-actions .btn { flex:1 1 220px; }
         .cs-big { font-size:1rem; padding:0.75rem 1.1rem; }

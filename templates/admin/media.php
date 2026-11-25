@@ -163,7 +163,7 @@
         }
 
         .btn-google {
-            background: #4285f4;
+            background: #1a5fd0;
             color: white;
             border: none;
             padding: 0.7rem 1.5rem;
@@ -177,7 +177,7 @@
         }
 
         .btn-google:hover {
-            background: #3367d6;
+            background: #1450b5;
         }
 
         .btn-set-cover {
