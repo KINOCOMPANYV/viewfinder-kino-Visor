@@ -66,8 +66,8 @@ unset($_SESSION['cache_flash']);
     <title>Dashboard · Viewfinder Admin</title>
     <style>
         body {
-            background: #0a0a0f;
-            color: #e8e8f0
+            background: #161618;
+            color: #f5f5f7
         }
         /* Cada tarjeta abre su lista; «⬇ Excel» la descarga completa (mismo filtro que la lista) */
         .stat-wrap { position: relative; display: flex; }

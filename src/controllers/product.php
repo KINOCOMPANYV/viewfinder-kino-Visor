@@ -256,7 +256,7 @@ unset($v);
         'image_id' => $serverCoverId ?? driveIdFromUrl($product['cover_image_url'] ?? ''),
     ]);
     ?>
-    <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
+    <style>body{background:#161618;color:#f5f5f7}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">

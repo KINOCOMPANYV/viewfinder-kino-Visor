@@ -15,10 +15,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Extractor de pedidos PDF · Viewfinder</title>
-    <style>body{background:#0a0a0f;color:#e8e8f0}</style>
+    <style>body{background:#161618;color:#f5f5f7}</style>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
-        .ex-card { background:var(--color-surface, #14141c); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.1rem; margin-bottom:1rem; }
+        .ex-card { background:var(--color-surface, #1c1c1e); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.1rem; margin-bottom:1rem; }
         .ex-card h2 { font-size:1.05rem; margin:0 0 0.6rem; }
         .ex-help { color:#a0a0b0; font-size:0.88rem; margin:0 0 0.8rem; }
         .ex-drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem; min-height:120px;
@@ -40,7 +40,7 @@
         .ex-count b { font-size:1.3rem; color:var(--color-primary-light, #c9a84c); margin-left:0.3rem; }
         .ex-order { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:0.4rem 1rem; font-size:0.88rem; }
         .ex-order div span { color:#a0a0b0; display:block; font-size:0.78rem; }
-        .ex-edit { width:100%; box-sizing:border-box; padding:0.3rem 0.5rem; margin:0.1rem 0; background:#15151c; color:#f0f0f0; border:1px solid #c9a84c; border-radius:6px; font:inherit; }
+        .ex-edit { width:100%; box-sizing:border-box; padding:0.3rem 0.5rem; margin:0.1rem 0; background:#1c1c1e; color:#f0f0f0; border:1px solid #c9a84c; border-radius:6px; font:inherit; }
         .ex-note { display:block; color:#a0a0b0; font-size:0.75rem; }
         .ex-ok { color:#25d366; } .ex-bad { color:#ff6b6b; }
         .ex-map { margin-top:0.8rem; font-size:0.82rem; }
@@ -52,7 +52,7 @@
         .ex-map li i { font-style:normal; color:#a0a0b0; }
         .ex-opts { display:flex; flex-wrap:wrap; gap:0.5rem 1.2rem; align-items:center; font-size:0.9rem; margin-bottom:0.7rem; }
         .ex-opts label { display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer; }
-        .ex-opts input[type=number] { width:4.2rem; padding:0.25rem 0.4rem; background:#0f0f16; color:inherit; border:1px solid rgba(255,255,255,0.15); border-radius:6px; }
+        .ex-opts input[type=number] { width:4.2rem; padding:0.25rem 0.4rem; background:#161618; color:inherit; border:1px solid rgba(255,255,255,0.15); border-radius:6px; }
         .ex-table-wrap { overflow:auto; max-height:70vh; border:1px solid rgba(255,255,255,0.08); border-radius:10px; }
         .ex-table { width:100%; border-collapse:collapse; font-size:0.88rem; }
         .ex-table th, .ex-table td { padding:0.4rem 0.6rem; text-align:left; white-space:nowrap; border-bottom:1px solid rgba(255,255,255,0.05); }
@@ -62,7 +62,7 @@
         .ex-hide-price .c-price, .ex-hide-disc .c-disc { display:none; }
         .ex-table .c-x { display:none; width:2rem; padding:0 0.2rem; }
         .ex-editing .c-x { display:table-cell; }
-        .ex-cell { width:100%; min-width:3.2rem; box-sizing:border-box; padding:0.25rem 0.4rem; background:#15151c; color:#f0f0f0; border:1px solid #c9a84c; border-radius:6px; font:inherit; }
+        .ex-cell { width:100%; min-width:3.2rem; box-sizing:border-box; padding:0.25rem 0.4rem; background:#1c1c1e; color:#f0f0f0; border:1px solid #c9a84c; border-radius:6px; font:inherit; }
         .ex-cell.num { text-align:right; max-width:7rem; }
         .ex-cell[data-f="code"] { min-width:7.5rem; }
         .ex-cell[data-f="qty"] { max-width:4rem; }

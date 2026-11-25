@@ -49,7 +49,7 @@ $fatal = count(array_filter($errors, fn($r) => in_array($r['level'], ['fatal', '
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro · Viewfinder Admin</title>
-    <style>body{background:#0a0a0f;color:#e8e8f0}</style>
+    <style>body{background:#161618;color:#f5f5f7}</style>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .lg-card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:1.25rem; margin-bottom:1.25rem; overflow-x:auto; }

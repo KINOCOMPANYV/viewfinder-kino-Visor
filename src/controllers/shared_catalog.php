@@ -119,7 +119,7 @@ $title = $cat && $cat['is_active'] ? $cat['name'] : 'Catálogo no disponible';
         <?= shareMetaTags(['title' => $cat['name'], 'description' => count($photos) . ' referencias · Catálogo Kino',
             'url' => publicBaseUrl() . '/c/' . $cat['code'], 'image_id' => $photos[0]['id']]) ?>
     <?php endif; ?>
-    <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
+    <style>body{background:#161618;color:#f5f5f7}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>

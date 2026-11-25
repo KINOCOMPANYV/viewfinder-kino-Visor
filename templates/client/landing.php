@@ -14,8 +14,8 @@
     ]) ?>
     <style>
         body {
-            background: #0a0a0f;
-            color: #e8e8f0
+            background: #161618;
+            color: #f5f5f7
         }
 
         img {

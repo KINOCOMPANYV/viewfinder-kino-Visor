@@ -45,7 +45,7 @@ $fmtDay = function (string $d): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Novedades · Viewfinder</title>
-    <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
+    <style>body{background:#161618;color:#f5f5f7}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
