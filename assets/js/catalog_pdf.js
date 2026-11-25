@@ -154,7 +154,8 @@
             <div class="cp-headrow"${heads[it.id] ? '' : ' hidden'}><input type="text" maxlength="50" data-head="${esc(it.id)}" value="${esc(heads[it.id] || '')}" placeholder="Subtítulo de sección (ej.: Relojes de dama)"><button type="button" data-a="nohead" title="Quitar subtítulo">✕</button></div>
             <span class="ms-n">${i + 1}</span>
             <img src="https://lh3.googleusercontent.com/d/${encodeURIComponent(it.id)}=s400" alt="" loading="lazy">
-            <span class="cp-info"><span class="cp-info-top"><strong>${esc(it.code)}</strong><button type="button" class="cp-addhead" data-a="head"${heads[it.id] ? ' hidden' : ''}>＋ Subtítulo</button></span>
+            <span class="cp-info"><span class="cp-pname" data-nm="${esc(it.code)}"></span>
+                <span class="cp-info-top"><strong>${esc(it.code)}</strong><button type="button" class="cp-addhead" data-a="head"${heads[it.id] ? ' hidden' : ''}>＋ Subtítulo</button></span>
                 <span class="cp-price-row"><span>Precio</span><input type="text" class="cp-price" inputmode="numeric" maxlength="16" data-pcode="${esc(it.code)}" value="${prices[it.code] != null ? esc(money(prices[it.code])) : ''}" placeholder="Sin precio" aria-label="Precio de ${esc(it.code)}"><button type="button" data-a="preset" title="Volver al precio del visor" hidden>↩</button><em></em></span>
                 <textarea rows="2" maxlength="120" data-code="${esc(it.code)}" placeholder="Otra información (opcional)">${esc(texts[it.code] || '')}</textarea>
             </span></li>`).join('');
@@ -166,6 +167,7 @@
     $('cpC2').value = opts.c2;
     document.querySelectorAll('input[name="cpPer"]').forEach((r) => { r.checked = +r.value === +opts.per; });
     $('cpOpen').checked = opts.open !== false;
+    $('cpNames').checked = opts.names !== false;
     $('cpPrice').checked = opts.price !== false;
     $('cpVisor').checked = opts.visor !== false;
     $('cpTotalPdf').checked = opts.total !== false;
@@ -177,6 +179,17 @@
     const useVisor = () => opts.visor !== false; // «Usar precio del visor»: apagado, solo sale el que escribas
     const priceOf = (code) => (prices[code] != null ? prices[code] : (useVisor() ? (autoPrice[code] || 0) : 0));
     const codesInList = [...new Set(items.map((it) => it.code))];
+    const names = {}; // código → nombre del producto (va encima del código)
+    const nameOf = (code) => (opts.names !== false ? clean(names[code] || '') : '');
+    function drawNames() {
+        list.classList.toggle('no-names', opts.names === false);
+        $('cpPrev').classList.toggle('no-names', opts.names === false);
+        list.querySelectorAll('.cp-pname').forEach((e) => { e.textContent = names[e.dataset.nm] || ''; });
+    }
+    try {
+        fetch('/api/nombres?codes=' + encodeURIComponent(codesInList.slice(0, 400).join(',')), { headers: { Accept: 'application/json' } })
+            .then((r) => r.json()).then((d) => { Object.keys(d || {}).forEach((k) => { names[k] = String(d[k]); }); drawNames(); }).catch(() => {});
+    } catch (e) { /* sin nombres */ }
     const txt = (code) => {
         const p = opts.price !== false ? priceOf(code) : 0;
         const t = clean(texts[code]);
@@ -329,6 +342,7 @@
         mine.forEach((c) => delete prices[c]);
         msg(''); savePrices(); drawPrices(); stale();
     });
+    $('cpNames').addEventListener('change', (e) => { opts.names = e.target.checked; saveOpts(); drawNames(); stale(); });
     $('cpOpen').addEventListener('change', (e) => { opts.open = e.target.checked; saveOpts(); stale(); });
 
     function bulk(mode) {
@@ -480,9 +494,13 @@
             const codePt = cols === 1 ? 16 : cols === 2 ? 12 : 10, textPt = cols === 1 ? 12 : cols === 2 ? 10 : 8.5;
             const lh = (pt) => pt * 0.3528 * 1.25;
             const anyText = rows.some((r) => txt(r.it.code));
+            // Nombre del producto (hasta 2 líneas) encima del código: se reserva su altura para no encimarse con la foto
+            const namePt = cols === 1 ? 11 : cols === 2 ? 9 : 7.5;
+            const anyName = rows.some((r) => nameOf(r.it.code));
+            const nameH = anyName ? 2 * lh(namePt) + 1 : 0;
             // Botón «Abrir foto» (activado por defecto): enlace a la foto en Drive, sin mostrar la dirección
             const openBtn = opts.open !== false, BTN_H = cols <= 2 ? 6.5 : 5.5, btnPt = cols <= 2 ? 9 : 7.5;
-            const textH = lh(codePt) + 3 + (anyText ? 3 * lh(textPt) : 0) + 3 + (openBtn ? BTN_H + 2 : 0);
+            const textH = nameH + lh(codePt) + 3 + (anyText ? 3 * lh(textPt) : 0) + 3 + (openBtn ? BTN_H + 2 : 0);
             const c1 = rgb(opts.c1), c2 = rgb(opts.c2), on1 = rgb(onColor(opts.c1)), sub1 = rgb(subOnBand()), ink1 = rgb(onWhite(opts.c1));
             const { boxes, pages } = layout(rows, { M, top, bottom, cw, ch, cols, gap: GAP, headH: HEAD_H }, headsUse);
             let totalLine = '';
@@ -491,7 +509,7 @@
                 const sum = cs.reduce((a, c) => a + priceOf(c), 0), withP = cs.filter((c) => priceOf(c)).length;
                 if (sum) totalLine = `Total ${withP} referencia${withP === 1 ? '' : 's'}: ${money(sum)}` + (withP < cs.length ? ` (${cs.length - withP} sin precio)` : '');
             }
-            const emojis = rows.some((r) => lostChars(txt(r.it.code)) || lostChars(heads[r.it.id])) || lostChars(opts.title) || lostChars(opts.subtitle) || lostChars(opts.footer);
+            const emojis = rows.some((r) => lostChars(txt(r.it.code)) || lostChars(heads[r.it.id]) || lostChars(nameOf(r.it.code))) || lostChars(opts.title) || lostChars(opts.subtitle) || lostChars(opts.footer);
 
             const lines = (t, width) => {
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(textPt);
@@ -576,7 +594,22 @@
                 const iw = r.img.w * s, ih = r.img.h * s;
                 doc.addImage(r.img.data, 'JPEG', cx + 3 + (bw - iw) / 2, cy + 3 + (bh - ih) / 2, iw, ih, undefined, 'FAST');
                 // Código (primario), raya corta (secundario) y texto del cliente
-                let ty = cy + 3 + bh + 2 + lh(codePt) * 0.8;
+                let ty = cy + 3 + bh + 2;
+                const nm = nameOf(r.it.code);
+                if (nm) {
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(namePt); doc.setTextColor(40, 40, 40);
+                    let nl = doc.splitTextToSize(nm, bw);
+                    if (nl.length > 2) {
+                        nl = nl.slice(0, 2);
+                        let last = nl[1];
+                        while (last.length && doc.getTextWidth(last + '…') > bw) last = last.slice(0, -1);
+                        nl[1] = last.replace(/\s+$/, '') + '…';
+                    }
+                    // Una sola línea queda pegada al código (abajo del bloque de 2 líneas)
+                    let ny = ty + lh(namePt) * 0.8 + (nl.length === 1 ? lh(namePt) : 0);
+                    nl.forEach((ln) => { doc.text(ln, cx + cw / 2, ny, { align: 'center' }); ny += lh(namePt); });
+                }
+                ty += nameH + lh(codePt) * 0.8;
                 doc.setTextColor(...ink1); doc.setFont('helvetica', 'bold'); doc.setFontSize(codePt);
                 doc.text(fit(clean(r.it.code), bw), cx + cw / 2, ty, { align: 'center' });
                 ty += 2.2;
