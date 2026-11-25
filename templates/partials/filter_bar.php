@@ -82,7 +82,7 @@ $fbFold = !$fbExtra;
 <?php if ($fbFold): ?>
     <button type="button" class="filter-toggle<?= $fbOn ? ' on' : '' ?>" aria-expanded="false" aria-controls="filterForm"
             onclick="var f=document.getElementById('filterForm'),o=f.classList.toggle('fb-open');this.setAttribute('aria-expanded',o)">
-        <span>⚙️ Filtros y orden<?= $fbOn ? ' (' . $fbOn . ')' : '' ?></span><span class="filter-toggle-arrow" aria-hidden="true">▾</span>
+        <span><?= icon('sliders') ?> Filtros y orden<?= $fbOn ? ' (' . $fbOn . ')' : '' ?></span><span class="filter-toggle-arrow" aria-hidden="true"><?= icon('chevron') ?></span>
     </button>
 <?php endif; ?>
 <form class="filter-bar<?= $fbFold ? ' fb-fold' : '' ?>" id="filterForm" action="<?= e($fbTarget) ?>" method="GET" data-target="<?= e($fbTarget) ?>">

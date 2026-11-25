@@ -328,10 +328,10 @@ img {
 
 .hero h1 {
     font-size: clamp(1.75rem, 5vw, 3rem);
-    font-weight: 800;
-    letter-spacing: -1px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
     margin-bottom: 0.75rem;
-    background: linear-gradient(135deg, var(--color-text) 0%, var(--color-primary) 100%);
+    background: linear-gradient(180deg, var(--color-text) 30%, var(--color-primary-light) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -362,7 +362,7 @@ img {
     width: 100%;
     padding: 1rem 1.25rem 1rem 3rem;
     background: var(--color-white);
-    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: var(--radius);
     color: var(--color-text-on-light);
     font-size: 1.05rem;
@@ -1068,7 +1068,7 @@ img {
     width: 100%;
     padding: 0.75rem 1rem;
     background: var(--color-surface-2);
-    border: 1.5px solid var(--color-border);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     color: var(--color-text);
     font-family: var(--font);
@@ -1626,7 +1626,7 @@ a.dash-row-link:hover span:first-child {
     height: 18px;
     border-radius: 50%;
     background: var(--color-surface-3);
-    border: 1.5px solid var(--color-border);
+    border: 1px solid var(--color-border);
     font-size: 0.65rem;
     color: transparent;
     transition: all 0.2s;
@@ -1813,7 +1813,7 @@ a.dash-row-link:hover span:first-child {
     aspect-ratio: 1;
     border-radius: var(--radius-sm);
     overflow: hidden;
-    border: 2px solid transparent;
+    border: 1px solid transparent;
     transition: all var(--transition);
 }
 
@@ -1847,7 +1847,7 @@ a.dash-row-link:hover span:first-child {
     height: 22px;
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.5);
-    border: 2px solid rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2259,7 +2259,7 @@ a.dash-row-link:hover span:first-child {
 .filter-field {
     padding: 0.4rem 0.7rem;
     border-radius: var(--radius-control);
-    border: 1.5px solid var(--color-border);
+    border: 1px solid var(--color-border);
     background: var(--color-surface-2);
     color: var(--color-text);
     font: 600 0.8rem var(--font);
@@ -2291,7 +2291,7 @@ a.dash-row-link:hover span:first-child {
 .filter-go { cursor: pointer; }
 .filter-contains { width: 11rem; }
 .filter-sort { cursor: pointer; }
-.filter-pdf { padding: 0.3rem 0.75rem; border-radius: var(--radius-control); border: 1.5px solid var(--color-primary); color: var(--color-primary);
+.filter-pdf { padding: 0.3rem 0.75rem; border-radius: var(--radius-control); border: 1px solid var(--color-primary); color: var(--color-primary);
     font-size: 0.78rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .filter-pdf:hover { background: var(--color-primary); color: var(--color-bg); }
 .filter-wrap { margin-top: 1.25rem; }
@@ -2339,7 +2339,7 @@ a.dash-row-link:hover span:first-child {
     padding: 0.3rem 0.8rem 0.3rem 0.3rem;
     min-height: 40px;
     border-radius: var(--radius-control);
-    border: 1.5px solid var(--color-border);
+    border: 1px solid var(--color-border);
     background: var(--color-surface-2);
     color: var(--color-text) !important;
     text-decoration: none;
@@ -2918,7 +2918,7 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .search-selectable-card > .search-check-footer .search-check-text { display: none; }
     .search-selectable-card > .search-check-footer .search-check-icon {
         width: 26px; height: 26px; font-size: 0.85rem;
-        background: rgba(0, 0, 0, 0.35); border: 2px solid var(--color-white); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        background: rgba(0, 0, 0, 0.35); border: 1px solid var(--color-white); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     }
     .search-selectable-card .media-actions { margin-bottom: 0.55rem; }
 }
@@ -3285,7 +3285,7 @@ body:has(.parent-grid) .container { max-width: 1680px; }
     .filter-toggle {
         display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%;
         min-height: 44px; padding: 0.5rem 0.9rem; margin: 0 0 0.6rem;
-        border-radius: 12px; border: 1.5px solid var(--color-border); background: var(--color-surface-2);
+        border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-surface-2);
         color: var(--color-text); font: 600 0.9rem var(--font); cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
     .filter-toggle.on { border-color: var(--color-primary); color: var(--color-primary); }
@@ -3323,7 +3323,7 @@ nav.crumbs, .breadcrumb-bar .breadcrumb-path, .folder-breadcrumb {
 }
 nav.crumbs a, .breadcrumb-bar .breadcrumb-path a, .folder-breadcrumb a {
     display: inline-flex; align-items: center; gap: 0.3rem; min-height: 34px; padding: 0.3rem 0.8rem !important;
-    border-radius: var(--radius-control); border: 1.5px solid var(--color-primary); background: var(--color-primary-glow);
+    border-radius: var(--radius-control); border: 1px solid var(--color-primary); background: var(--color-primary-glow);
     color: var(--color-primary-light) !important; font-size: 0.85rem; font-weight: 700; text-decoration: none;
     -webkit-tap-highlight-color: transparent; transition: background 0.15s, color 0.15s;
 }
@@ -3332,7 +3332,10 @@ nav.crumbs a:active, .breadcrumb-bar .breadcrumb-path a:active, .folder-breadcru
     background: var(--color-primary); color: var(--color-bg) !important; text-decoration: none;
 }
 nav.crumbs > a:first-child::before, .breadcrumb-bar .breadcrumb-path > a:first-child::before, .folder-breadcrumb > a:first-child::before {
-    content: '🏠';
+    content: ''; display: inline-block; width: 1.05em; height: 1.05em; margin-right: 0.3em; vertical-align: -0.15em;
+    background: currentColor; /* icono de casa de línea (máscara SVG), hereda el color */
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8'/%3E%3Cpath d='M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8'/%3E%3Cpath d='M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 nav.crumbs [aria-current], .breadcrumb-bar .breadcrumb-path > span, .folder-breadcrumb > span {
     color: var(--color-text) !important; font-size: 0.9rem; font-weight: 700; padding: 0.3rem 0.2rem;
@@ -3346,7 +3349,7 @@ nav.crumbs .crumbs-sep { color: var(--color-primary); font-weight: 700; }
     /* Botón ← del encabezado con texto «Atrás», dorado como las migas de pan */
     .hdr-back {
         width: auto; padding: 0 0.85rem 0 0.65rem; gap: 0.3rem; border-radius: var(--radius-control);
-        border: 1.5px solid var(--color-primary); background: var(--color-primary-glow); color: var(--color-primary-light);
+        border: 1px solid var(--color-primary); background: var(--color-primary-glow); color: var(--color-primary-light);
         font-size: 0.92rem;
     }
     .hdr-back-arrow { font-size: 1.15rem; line-height: 1; }
@@ -3404,4 +3407,28 @@ textarea:focus-visible {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* ========================================================================
+   Tipografía e iconos «Mac» (2026-11-25): fuente del sistema más fina, títulos
+   compactos, bordes de 1 px e iconos de línea (SVG, heredan el color del texto).
+   ======================================================================== */
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; font-feature-settings: 'cv11' 1; }
+h1, h2, h3 { letter-spacing: -0.02em; font-weight: 650; }
+h1 { font-weight: 700; }
+.btn, .filter-field, .filter-chip { font-weight: 500; letter-spacing: -0.005em; }
+.btn-primary { font-weight: 600; }
+.ico { width: 1.15em; height: 1.15em; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.2em; }
+.btn .ico { width: 1.05em; height: 1.05em; vertical-align: -0.17em; margin-right: 0.15rem; }
+.search-box .search-icon { display: flex; align-items: center; justify-content: center; }
+.search-box .search-icon .ico { width: 1.15rem; height: 1.15rem; }
+.cover-placeholder .ico { width: 2rem; height: 2rem; stroke-width: 1.3; opacity: 0.55; }
+.variant-noimg .ico { width: 1.2rem; height: 1.2rem; stroke-width: 1.4; opacity: 0.55; }
+.filter-toggle-arrow .ico { width: 1rem; height: 1rem; }
+.hdr-back-arrow .ico { width: 1.15rem; height: 1.15rem; stroke-width: 2; }
+.media-btn .ico { width: 1rem; height: 1rem; }
+@media (max-width: 640px) {
+    .mnav-icon { filter: none; }
+    .mnav-icon .ico { width: 1.45rem; height: 1.45rem; stroke-width: 1.6; }
+    .mnav-item.active .mnav-icon .ico { stroke-width: 2; }
 }

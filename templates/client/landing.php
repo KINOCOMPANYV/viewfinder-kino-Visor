@@ -39,8 +39,8 @@
             </a>
             <div style="display:flex; gap:0.5rem; align-items:center;">
                 <?= pedidosHeaderBtn() ?>
-                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar fotos con lista</a>
-                <a href="/extractor" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Leer un recibo o pedido en PDF">🧾 Extractor</a>
+                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;"><?= icon('send') ?> Enviar fotos con lista</a>
+                <a href="/extractor" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Leer un recibo o pedido en PDF"><?= icon('receipt') ?> Extractor</a>
                 <a href="/admin/login" class="btn btn-sm btn-secondary"
                     style="font-size:0.75rem; padding:0.4rem 0.8rem; opacity:0.4;">Admin</a>
             </div>
@@ -86,7 +86,7 @@
 
                 <!-- Search Box -->
                 <div class="search-box" style="max-width: 600px; margin: 0 auto;">
-                    <span class="search-icon">🔍</span>
+                    <span class="search-icon"><?= icon('search') ?></span>
                     <form action="/buscar" method="GET" id="searchForm" style="width:100%;">
                         <span class="search-field">
                             <textarea name="q" id="searchInput" rows="1"
@@ -119,7 +119,7 @@
             <?php if (!empty($albums)): ?>
             <div id="carpetas" style="margin-bottom: 3rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                    <h2 style="font-size: 1.5rem; margin:0;">📂 Carpetas</h2>
+                    <h2 style="font-size: 1.5rem; margin:0;"><?= icon('folder') ?> Carpetas</h2>
                     <span style="color:var(--color-text-muted); font-size:0.9rem;"><?= $totalAlbums ?> carpetas</span>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;" id="horizontalAlbums">
@@ -247,7 +247,7 @@
                                             onload="this.classList.add('loaded')"
                                             onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
                                     <?php else: ?>
-                                        <div class="cover-placeholder">📷</div>
+                                        <div class="cover-placeholder"><?= icon('image') ?></div>
                                     <?php endif; ?>
                                 </div>
                             </a>
