@@ -7,10 +7,11 @@
     <title>Admin Login · Viewfinder</title>
     <style>
         body {
-            background: #161618;
-            color: #f5f5f7
+            background: var(--color-bg,#161618);
+            color: var(--color-text,#f5f5f7)
         }
     </style>
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 

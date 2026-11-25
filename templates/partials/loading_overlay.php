@@ -36,7 +36,7 @@
 }
 .loading-text {
     margin-top: 1rem;
-    color: #f5f5f7;
+    color: var(--color-text,#f5f5f7);
     font-size: 0.95rem;
     font-weight: 500;
     letter-spacing: 0.5px;

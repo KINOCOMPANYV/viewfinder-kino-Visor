@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Productos · Viewfinder Admin</title>
-    <style>body{background:#161618;color:#f5f5f7}</style>
+    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .prod-filters { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; }

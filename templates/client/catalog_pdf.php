@@ -22,6 +22,7 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
     <title>Catálogo en PDF · Viewfinder</title>
     <style>body{background:#161618;color:#f5f5f7}</style>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 

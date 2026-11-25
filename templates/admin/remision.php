@@ -8,21 +8,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plantilla Cotización · Viewfinder Admin</title>
-    <style>body{background:#161618;color:#f5f5f7}</style>
+    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
-        .re-card { background:#1c1c1e; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:1rem 1.1rem; margin-bottom:1rem; }
+        .re-card { background:var(--color-surface,#1c1c1e); border:1px solid rgb(var(--rgb-fg,255 255 255) / .08); border-radius:12px; padding:1rem 1.1rem; margin-bottom:1rem; }
         .re-card h2 { font-size:1.05rem; margin:0 0 .7rem; }
         .re-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.7rem 1rem; }
-        .re-grid label, .re-foot label { display:block; font-size:.82rem; color:#a0a0b0; }
-        .re-grid input[type=text], .re-foot input { width:100%; margin-top:.25rem; padding:.5rem .6rem; border-radius:8px; border:1px solid #333; background:#161618; color:#fff; font-size:.95rem; }
+        .re-grid label, .re-foot label { display:block; font-size:.82rem; color:var(--color-text-muted,#a0a0b0); }
+        .re-grid input[type=text], .re-foot input { width:100%; margin-top:.25rem; padding:.5rem .6rem; border-radius:8px; border:1px solid #333; background:var(--color-bg,#161618); color:#fff; font-size:.95rem; }
         .re-grid input[type=color] { display:block; margin-top:.25rem; width:64px; height:36px; border:0; background:none; padding:0; }
         .re-foot label { margin-bottom:.6rem; }
         .re-logos { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:.8rem; }
         .re-logo { border:1px solid #2a2a36; border-radius:10px; padding:.6rem; display:flex; flex-direction:column; gap:.45rem; }
         .re-logo .pic { height:64px; border-radius:6px; display:flex; align-items:center; justify-content:center; padding:6px; }
         .re-logo .pic img { max-height:100%; max-width:100%; }
-        .re-logo input[type=text] { padding:.35rem .5rem; border-radius:6px; border:1px solid #333; background:#161618; color:#fff; }
+        .re-logo input[type=text] { padding:.35rem .5rem; border-radius:6px; border:1px solid #333; background:var(--color-bg,#161618); color:#fff; }
         .re-logo .row { display:flex; flex-wrap:wrap; gap:.35rem; align-items:center; font-size:.85rem; }
         .re-logo .row .btn { padding:.3rem .55rem; font-size:.8rem; }
         .re-pv { background:#fff; color:#222; border-radius:6px; overflow:hidden; max-width:820px; font-family:Helvetica,Arial,sans-serif; }

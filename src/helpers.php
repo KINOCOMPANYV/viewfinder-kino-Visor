@@ -1615,5 +1615,5 @@ function icon(string $name, string $class = ''): string
 /** Botón fijo «Pedidos bodega» del encabezado de todas las páginas públicas (enlace siempre /pedidos-alistar; visible también en celular). */
 function pedidosHeaderBtn(): string
 {
-    return '<a href="/pedidos-alistar" class="btn btn-sm btn-primary hdr-pedidos" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Pedidos por alistar (rojo) y listos (verde)">' . icon('clipboard') . ' Pedidos bodega</a>';
+    return '<a href="/pedidos-alistar" class="btn btn-sm btn-primary hdr-pedidos" aria-label="Pedidos bodega" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Pedidos por alistar (rojo) y listos (verde)">' . icon('clipboard') . ' Pedidos bodega</a>';
 }

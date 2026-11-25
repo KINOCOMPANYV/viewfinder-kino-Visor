@@ -14,8 +14,8 @@
     ]) ?>
     <style>
         body {
-            background: #161618;
-            color: #f5f5f7
+            background: var(--color-bg,#161618);
+            color: var(--color-text,#f5f5f7)
         }
 
         img {
@@ -24,6 +24,7 @@
         }
     </style>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23c9a84c'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='18' fill='black' font-weight='bold'>K</text></svg>">

@@ -43,7 +43,8 @@ $statusBlock = function (string $name, string $retryJs) use ($syncStatus, $fmtDa
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sincronizar · Viewfinder Admin</title>
-    <style>body{background:#161618;color:#f5f5f7}</style>
+    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .sync-card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:1.5rem; margin-bottom:1.5rem; }

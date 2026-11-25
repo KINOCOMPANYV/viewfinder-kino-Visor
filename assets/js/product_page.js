@@ -76,7 +76,7 @@ function loadMainCover(files) {
                 : '';
             const thumbImg = thumbUrl
                 ? `<img src="${thumbUrl}" alt="${esc(vid.name)}" style="width:100%;height:100%;object-fit:cover;">`
-                : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#242426,#161618);display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
+                : `<div style="width:100%;height:100%;background:linear-gradient(135deg,var(--color-surface-2,#242426),var(--color-bg,#161618));display:flex;align-items:center;justify-content:center;"><span style='font-size:4rem;opacity:0.3'>🎬</span></div>`;
             main.innerHTML = `
                 <div class="video-thumb-wrap" style="width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
                     ${thumbImg}
@@ -205,7 +205,7 @@ function showInMain(idx) {
             : '';
         const thumbImg = videoThumb
             ? `<img src="${videoThumb}" alt="${esc(f.name)}" style="width:100%;height:100%;object-fit:contain;">`
-            : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#242426,#161618);display:flex;align-items:center;justify-content:center;"><span style="font-size:4rem;opacity:0.3">🎬</span></div>`;
+            : `<div style="width:100%;height:100%;background:linear-gradient(135deg,var(--color-surface-2,#242426),var(--color-bg,#161618));display:flex;align-items:center;justify-content:center;"><span style="font-size:4rem;opacity:0.3">🎬</span></div>`;
         main.innerHTML = `
             <div style="position:relative;width:100%;height:100%;cursor:pointer;" onclick="openVideoModal(${idx})">
                 ${thumbImg}
@@ -389,7 +389,7 @@ function renderGallery(files) {
                 : '';
             const thumbContent = videoThumb
                 ? `<img src="${videoThumb}" alt="${esc(f.name)}" loading="lazy">`
-                : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#242426,#161618);display:flex;align-items:center;justify-content:center;"><span style='font-size:2.5rem;opacity:0.3'>🎬</span></div>`;
+                : `<div style="width:100%;height:100%;background:linear-gradient(135deg,var(--color-surface-2,#242426),var(--color-bg,#161618));display:flex;align-items:center;justify-content:center;"><span style='font-size:2.5rem;opacity:0.3'>🎬</span></div>`;
             mediaHtml = `<div class="video-thumb-wrap" onclick="openVideoModal(${idx})">
                 ${thumbContent}
                 <div class="video-play-overlay">

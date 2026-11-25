@@ -49,7 +49,8 @@ $fatal = count(array_filter($errors, fn($r) => in_array($r['level'], ['fatal', '
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro · Viewfinder Admin</title>
-    <style>body{background:#161618;color:#f5f5f7}</style>
+    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .lg-card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:1.25rem; margin-bottom:1.25rem; overflow-x:auto; }
@@ -59,7 +60,7 @@ $fatal = count(array_filter($errors, fn($r) => in_array($r['level'], ['fatal', '
         .lg-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
         .lg-table th, .lg-table td { text-align:left; padding:0.4rem 0.5rem; border-bottom:1px solid var(--color-border); vertical-align:top; }
         .lg-msg { font-family:monospace; white-space:pre-wrap; word-break:break-word; max-width:520px; }
-        .lg-lvl { padding:1px 6px; border-radius:4px; font-size:0.75rem; background:rgba(255,255,255,0.1); }
+        .lg-lvl { padding:1px 6px; border-radius:4px; font-size:0.75rem; background:rgb(var(--rgb-fg,255 255 255) / 0.1); }
         .lg-lvl.fatal, .lg-lvl.parse { background:rgba(248,113,113,0.25); color:#f87171; }
         .lg-lvl.js, .lg-lvl.promise { background:rgba(96,165,250,0.2); }
         .lg-row { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-bottom:0.75rem; }

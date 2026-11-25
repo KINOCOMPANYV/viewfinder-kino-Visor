@@ -66,8 +66,8 @@ unset($_SESSION['cache_flash']);
     <title>Dashboard · Viewfinder Admin</title>
     <style>
         body {
-            background: #161618;
-            color: #f5f5f7
+            background: var(--color-bg,#161618);
+            color: var(--color-text,#f5f5f7)
         }
         /* Cada tarjeta abre su lista; «⬇ Excel» la descarga completa (mismo filtro que la lista) */
         .stat-wrap { position: relative; display: flex; }
@@ -76,6 +76,7 @@ unset($_SESSION['cache_flash']);
             border: 1px solid var(--color-border); color: var(--color-text-muted); text-decoration: none; background: var(--color-surface-2); }
         .stat-dl:hover { color: var(--color-primary); border-color: var(--color-primary); }
     </style>
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 

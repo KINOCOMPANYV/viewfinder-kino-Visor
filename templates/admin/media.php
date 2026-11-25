@@ -7,10 +7,11 @@
     <title>Media · Viewfinder Admin</title>
     <style>
         body {
-            background: #161618;
-            color: #f5f5f7
+            background: var(--color-bg,#161618);
+            color: var(--color-text,#f5f5f7)
         }
     </style>
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .drive-status {
@@ -226,7 +227,7 @@
         }
 
         .bc-item:hover:not(.active) {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgb(var(--rgb-fg,255 255 255) / 0.1);
             color: var(--color-gold);
         }
 
@@ -1072,7 +1073,7 @@
                                 · <a href="/admin/media/sin-codigo.csv?tipo=productos" style="color:var(--color-gold);">productos sin foto</a>
                             </div>
                             ${data.errors && data.errors.length > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ ' + data.errors.length + ' error(es): ' + data.errors.slice(0, 3).join(', ') + '</div>' : ''}
-                            ${data.unmapped_files && data.unmapped_files.length > 0 ? '<div style="margin-top:1rem; font-size:0.8rem; color:var(--color-text-muted); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.8rem;"><strong style="color:var(--color-gold);">⚠️ Archivos cuyo nombre no es el código de ningún producto (' + data.unmapped_files.length + '):</strong><br><div style="max-height:150px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:0.3rem; word-break: break-all;">' + data.unmapped_files.join('<br>') + '</div></div>' : ''}
+                            ${data.unmapped_files && data.unmapped_files.length > 0 ? '<div style="margin-top:1rem; font-size:0.8rem; color:var(--color-text-muted); border-top: 1px solid rgb(var(--rgb-fg,255 255 255) / 0.1); padding-top: 0.8rem;"><strong style="color:var(--color-gold);">⚠️ Archivos cuyo nombre no es el código de ningún producto (' + data.unmapped_files.length + '):</strong><br><div style="max-height:150px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:0.3rem; word-break: break-all;">' + data.unmapped_files.join('<br>') + '</div></div>' : ''}
                         </div>`;
 
                     statusText.textContent = data.assigned > 0 ? '¡Portadas asignadas!' : 'Proceso completado';

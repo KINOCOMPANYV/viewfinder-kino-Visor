@@ -15,11 +15,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Pedidos bodega · Viewfinder</title>
-    <style>body{background:#161618;color:#f5f5f7}</style>
+    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .wo-tabs { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
-        .wo-tabs button { min-height:40px; padding:0 1rem; border-radius:99px; border:1px solid #444; background:#1c1c1e; color:#f5f5f7; font-weight:700; cursor:pointer; }
+        .wo-tabs button { min-height:40px; padding:0 1rem; border-radius:99px; border:1px solid #444; background:var(--color-surface,#1c1c1e); color:var(--color-text,#f5f5f7); font-weight:700; cursor:pointer; }
         .wo-tabs button.on { background:#c4a46b; color:#111; border-color:#c4a46b; }
         .wo-item { display:flex; align-items:center; gap:0.8rem; padding:0.9rem 1rem; margin-bottom:0.6rem; border-radius:12px; text-decoration:none; color:inherit;
             border:1px solid; border-left-width:6px; }
@@ -28,7 +29,7 @@
         .wo-item.orange { border-color:#f0883e88; border-left-color:#f0883e; background:#f0883e14; }
         .wo-item.orange .wo-act { color:#ffa657; }
         .wo-inv { flex:0 0 auto; width:76px; border-radius:12px; border:1px solid #f0883e; background:#f0883e22; color:#ffa657; font-size:0.75rem; font-weight:800; line-height:1.2; cursor:pointer; padding:0.2rem; }
-        .wo-inv.undo { border-color:#444; background:#1c1c1e; color:#c8c8d0; }
+        .wo-inv.undo { border-color:#444; background:var(--color-surface,#1c1c1e); color:var(--color-text-muted,#c8c8d0); }
         .wo-inv:disabled { opacity:0.5; cursor:wait; }
         @media (max-width:600px) { /* celular: el pedido a lo ancho y debajo «Facturado/Quitar» + 🗑, para no apretar el texto */
             .wo-row.has-inv { flex-wrap:wrap; }
@@ -41,21 +42,21 @@
         .wo-dot { font-size:1.4rem; }
         .wo-main { flex:1; min-width:0; }
         .wo-title { font-weight:800; word-break:break-word; }
-        .wo-sub { color:#a0a0b0; font-size:0.85rem; }
+        .wo-sub { color:var(--color-text-muted,#a0a0b0); font-size:0.85rem; }
         .wo-act { font-weight:800; white-space:nowrap; }
         .wo-item.red .wo-act { color:#ff8a92; } .wo-item.green .wo-act { color:#6fdc84; }
         .wo-row { display:flex; gap:0.5rem; align-items:stretch; margin-bottom:0.6rem; }
         .wo-row .wo-item { flex:1; margin-bottom:0; min-width:0; }
-        .wo-del { flex:0 0 auto; width:48px; border-radius:12px; border:1px solid #444; background:#1c1c1e; color:#ff8a92; font-size:1.2rem; cursor:pointer; }
+        .wo-del { flex:0 0 auto; width:48px; border-radius:12px; border:1px solid #444; background:var(--color-surface,#1c1c1e); color:#ff8a92; font-size:1.2rem; cursor:pointer; }
         .wo-del:hover { border-color:#e0505a; }
-        #woDlg { margin:auto; border:1px solid #2c2c2e; border-radius:14px; background:#1c1c1e; color:#f5f5f7; padding:1.2rem; width:min(92vw, 380px); }
+        #woDlg { margin:auto; border:1px solid var(--color-surface-3,#2c2c2e); border-radius:14px; background:var(--color-surface,#1c1c1e); color:var(--color-text,#f5f5f7); padding:1.2rem; width:min(92vw, 380px); }
         #woDlg::backdrop { background:#000a; }
-        #woDlg input { width:100%; min-height:44px; margin:0.6rem 0; padding:0 0.8rem; border-radius:10px; border:1px solid #444; background:#161618; color:#f5f5f7; font-size:1.1rem; letter-spacing:0.2em; }
+        #woDlg input { width:100%; min-height:44px; margin:0.6rem 0; padding:0 0.8rem; border-radius:10px; border:1px solid #444; background:var(--color-bg,#161618); color:var(--color-text,#f5f5f7); font-size:1.1rem; letter-spacing:0.2em; }
         #woDlg .dlg-btns { display:flex; gap:0.5rem; justify-content:flex-end; }
-        #woDlg .dlg-btns button { min-height:42px; padding:0 1rem; border-radius:10px; font-weight:800; cursor:pointer; border:1px solid #444; background:#1c1c1e; color:#f5f5f7; }
+        #woDlg .dlg-btns button { min-height:42px; padding:0 1rem; border-radius:10px; font-weight:800; cursor:pointer; border:1px solid #444; background:var(--color-surface,#1c1c1e); color:var(--color-text,#f5f5f7); }
         #woDlg .dlg-btns .danger { background:#e0505a; border-color:#e0505a; color:#fff; }
         #woDlgErr { color:#ff8a92; min-height:1.1rem; font-size:0.9rem; }
-        .wo-empty { background:#1c1c1e; border:1px solid #2c2c2e; border-radius:12px; padding:1.1rem; color:#c8c8d0; }
+        .wo-empty { background:var(--color-surface,#1c1c1e); border:1px solid var(--color-surface-3,#2c2c2e); border-radius:12px; padding:1.1rem; color:var(--color-text-muted,#c8c8d0); }
     </style>
 </head>
 
