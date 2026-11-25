@@ -110,6 +110,8 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
                 <label class="cp-check"><input type="checkbox" id="cpPrice"> Con precio
                     <small>(quítala para un catálogo sin precios; los precios que cambies se recuerdan)</small></label>
                 <div class="cp-money-on" id="cpMoneyOn">
+                    <label class="cp-check"><input type="checkbox" id="cpVisor"> Usar el precio del visor
+                        <small>(el que se ve en el catálogo; quítala y solo sale el que escribas en cada foto)</small></label>
                     <p class="cp-total" id="cpTotal" aria-live="polite"></p>
                     <p class="cp-noprice" id="cpNoPrice" hidden></p>
                     <label class="cp-check"><input type="checkbox" id="cpTotalPdf"> Poner el total al final del PDF</label>
