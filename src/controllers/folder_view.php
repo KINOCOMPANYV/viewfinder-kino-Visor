@@ -115,10 +115,7 @@ $shareDesc = implode(' · ', array_filter([
     <title><?= e(folderDisplayName($folderName)) ?> — Viewfinder</title>
     <?= shareMetaTags(['title' => $shareTitle, 'description' => $shareDesc, 'url' => $shareUrl, 'image_id' => $shareImageId]) ?>
     <style>body{background:#161618;color:#f5f5f7}img{max-width:100%;height:auto}</style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 

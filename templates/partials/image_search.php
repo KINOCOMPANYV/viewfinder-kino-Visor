@@ -33,7 +33,7 @@ if ($imgSearchPart === 'button'): ?>
 .imgs-card span { color:var(--color-text-muted, #999); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .imgs-msg { text-align:center; padding:2rem 1rem; color:var(--color-text-muted, #999); }
 .imgs-actions { display:flex; justify-content:center; margin-top:1rem; }
-.imgs-again { padding:.7rem 1.5rem; background:var(--color-primary, #c9a84c); color:#000; font-weight:600; border:none; border-radius:var(--radius-sm, 8px); cursor:pointer; font-size:.95rem; }
+.imgs-again { padding:.7rem 1.5rem; background:var(--color-primary, #c4a46b); color:#000; font-weight:600; border:none; border-radius:var(--radius-sm, 8px); cursor:pointer; font-size:.95rem; }
 @media (max-width: 600px) { .imgs-grid { grid-template-columns:repeat(3, 1fr); gap:.4rem; } .imgs-card div { font-size:.7rem; } .imgs-modal { padding:.5rem; } }
 </style>
 <input type="file" id="imgsFile" accept="image/*" hidden>

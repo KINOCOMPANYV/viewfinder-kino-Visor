@@ -35,7 +35,7 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-ph.none { background:#242426; color:#a0a0b0; font-size:0.62rem; text-align:center; padding:0.2rem; }
         .pb-code { font-weight:700; word-break:break-all; }
         .pb-name { color:#c8c8d0; font-size:0.85rem; }
-        .pb-tag { display:inline-block; font-size:0.7rem; padding:0.05rem 0.45rem; border-radius:99px; margin-left:0.3rem; background:#c9a84c33; color:#e6c76a; }
+        .pb-tag { display:inline-block; font-size:0.7rem; padding:0.05rem 0.45rem; border-radius:99px; margin-left:0.3rem; background:#c4a46b33; color:#e6c76a; }
         .pb-tag.red { background:#e0505a33; color:#ff8a92; }
         .pb-tag.green { background:#3fb95033; color:#6fdc84; }
         .pb-ctl { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:0.5rem 0.8rem; align-items:center; }
@@ -45,7 +45,7 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-qty button { width:40px; height:40px; font-size:1.3rem; border-radius:10px; border:1px solid #444; background:#242426; color:#fff; cursor:pointer; }
         .pb-qty input { width:56px; height:40px; text-align:center; font-size:1.05rem; border-radius:8px; border:1px solid #444; background:#161618; color:#fff; }
         .pb-price { color:#bbb; font-size:0.9rem; white-space:nowrap; }
-        .pb-sub { margin-left:auto; font-weight:700; color:var(--color-primary-light, #c9a84c); }
+        .pb-sub { margin-left:auto; font-weight:700; color:var(--color-primary-light, #c4a46b); }
         .pb-note, .pb-in { height:38px; border-radius:8px; border:1px solid #444; background:#161618; color:#fff; padding:0 0.6rem; font-size:0.9rem; }
         .pb-note { flex:1; min-width:9rem; }
         .pb-sw { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center; }
@@ -53,13 +53,13 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-pick { flex-basis:100%; display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:0.5rem; max-height:360px; overflow-y:auto; }
         .pb-pick:empty { display:none; }
         .pb-pick button { display:flex; flex-direction:column; gap:0.2rem; padding:0.3rem; border:1px solid #333; border-radius:10px; background:#161618; color:#fff; cursor:pointer; text-align:left; font-size:0.75rem; }
-        .pb-pick button:hover, .pb-pick button:focus { border-color:var(--color-primary-light, #c9a84c); }
+        .pb-pick button:hover, .pb-pick button:focus { border-color:var(--color-primary-light, #c4a46b); }
         .pb-pick img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; background:#242426; }
         .pb-pick b { font-size:0.8rem; word-break:break-all; }
         .pb-pick small { color:#a0a0b0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
         .pb-total { font-size:1.05rem; display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:0.4rem 1rem; }
         .pb-total span { display:block; color:#a0a0b0; font-size:0.78rem; }
-        .pb-total .big { font-size:1.35rem; font-weight:800; color:var(--color-primary-light, #c9a84c); }
+        .pb-total .big { font-size:1.35rem; font-weight:800; color:var(--color-primary-light, #c4a46b); }
         .pb-total .up { color:#ff9f43; } .pb-total .down { color:#6fdc84; }
         .pb-fin { position:fixed; left:0; right:0; bottom:0; z-index:20; background:#1c1c1e; border-top:1px solid #2c2c2e; padding:0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom)); }
         .pb-fin-row { display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; max-width:900px; margin:0 auto; }
@@ -73,7 +73,7 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-pv-head strong { flex:1; min-width:9rem; }
         .pb-pv-pages { flex:1; overflow:auto; padding:1rem; display:flex; flex-direction:column; align-items:center; gap:1rem; }
         .pb-pv-pages canvas { width:100%; max-width:820px; height:auto; background:#fff; border-radius:2px; }
-        .pb-chg { border-color:#c9a84c66; }
+        .pb-chg { border-color:#c4a46b66; }
         .pb-chg h3 { font-size:0.9rem; margin:0.9rem 0 0.35rem; }
         .pb-chg ul { list-style:none; margin:0; padding:0; }
         .pb-chg li { display:flex; flex-wrap:wrap; gap:0.2rem 0.6rem; align-items:baseline; padding:0.45rem 0.6rem; border-radius:8px; background:#161618; margin-bottom:0.3rem; font-size:0.9rem; }

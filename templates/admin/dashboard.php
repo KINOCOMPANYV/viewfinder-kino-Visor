@@ -76,11 +76,6 @@ unset($_SESSION['cache_flash']);
             border: 1px solid var(--color-border); color: var(--color-text-muted); text-decoration: none; background: var(--color-surface-2); }
         .stat-dl:hover { color: var(--color-primary); border-color: var(--color-primary); }
     </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print"
-        onload="this.media='all'">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 
@@ -204,7 +199,7 @@ unset($_SESSION['cache_flash']);
                             style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--color-border);">
                             <span style="font-size:0.85rem; color:var(--color-text);"><?= e($cat['category']) ?></span>
                             <span
-                                style="font-size:0.8rem; font-weight:700; color:var(--color-primary); background:rgba(201,168,76,0.1); padding:0.15rem 0.5rem; border-radius:4px;">
+                                style="font-size:0.8rem; font-weight:700; color:var(--color-primary); background:rgba(196, 164, 107,0.1); padding:0.15rem 0.5rem; border-radius:4px;">
                                 <?= number_format($cat['cnt']) ?>
                             </span>
                         </a>

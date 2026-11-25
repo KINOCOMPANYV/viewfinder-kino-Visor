@@ -20,7 +20,7 @@
     <style>
         .wo-tabs { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
         .wo-tabs button { min-height:40px; padding:0 1rem; border-radius:99px; border:1px solid #444; background:#1c1c1e; color:#f5f5f7; font-weight:700; cursor:pointer; }
-        .wo-tabs button.on { background:#c9a84c; color:#111; border-color:#c9a84c; }
+        .wo-tabs button.on { background:#c4a46b; color:#111; border-color:#c4a46b; }
         .wo-item { display:flex; align-items:center; gap:0.8rem; padding:0.9rem 1rem; margin-bottom:0.6rem; border-radius:12px; text-decoration:none; color:inherit;
             border:1px solid; border-left-width:6px; }
         .wo-item.red { border-color:#e0505a88; border-left-color:#e0505a; background:#e0505a14; }
@@ -37,7 +37,7 @@
             .wo-row.has-inv .wo-inv br { display:none; }
             .wo-row.has-inv .wo-del { min-height:44px; }
         }
-        .wo-item.new { box-shadow:0 0 0 2px #c9a84c; }
+        .wo-item.new { box-shadow:0 0 0 2px #c4a46b; }
         .wo-dot { font-size:1.4rem; }
         .wo-main { flex:1; min-width:0; }
         .wo-title { font-weight:800; word-break:break-word; }
