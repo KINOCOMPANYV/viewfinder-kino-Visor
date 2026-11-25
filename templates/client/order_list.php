@@ -74,6 +74,7 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
         .ol-list .ph.none { background:var(--color-surface-2,#242426); color:var(--color-text-muted,#a0a0b0); font-size:0.62rem; text-align:center; line-height:1.15; padding:0.2rem; }
         .ol-list .cd { font-weight:600; word-break:break-all; }
         .ol-list .cd small { display:block; font-weight:400; color:var(--color-text-muted,#a0a0b0); font-size:0.75rem; }
+        .ol-list .cd small.nm { font-size:0.78rem; word-break:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
         .ol-list .q { font-size:1.05rem; font-weight:700; color:var(--color-primary-light, #c4a46b); white-space:nowrap; }
         .ol-bar [hidden], #olBody[hidden], #olEmpty[hidden] { display:none !important; }
         @media (max-width: 640px) {
