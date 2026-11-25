@@ -40,8 +40,8 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
     <main class="container cp-main">
         <?= breadcrumbs([['Mi selección', '/mi-seleccion'], ['Catálogo en PDF', null]], 'cpCrumbs') ?>
         <h1 class="ms-title">📄 Catálogo en PDF <span id="cpCount"></span></h1>
-        <p class="ms-help">Elige colores y textos, y debajo de cada código escribe el precio u otra información:
-            si lo dejas vacío, no sale nada. Todo se arma <strong>en este dispositivo</strong> y lo que escribes se
+        <p class="ms-help">Elige colores y textos, revisa el precio de cada código (o quítalos) y, si quieres, escribe otra
+            información debajo: si la dejas vacía, no sale nada. Todo se arma <strong>en este dispositivo</strong> y lo que escribes se
             recuerda aquí para la próxima vez.</p>
 
         <?php if ($db): ?>
@@ -100,17 +100,33 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
                     <label><input type="radio" name="cpPer" value="6"> 6</label>
                     <label><input type="radio" name="cpPer" value="9"> 9</label>
                 </div>
-                <label class="cp-check"><input type="checkbox" id="cpPrice"> Poner el precio del visor en cada foto
-                    <small>(sale solo; si escribes un texto en una foto, ese texto va en lugar del precio)</small></label>
                 <label class="cp-check"><input type="checkbox" id="cpOpen"> Botón «Abrir foto» debajo de cada foto
                     <small>(al tocarlo abre la foto en Google Drive; el enlace no se ve en el PDF)</small></label>
                 <small class="cp-tip">Para separar por secciones (p. ej. «Dama», «Caballero»), toca «＋ Subtítulo» en la foto donde empieza cada una.</small>
             </section>
 
+            <section class="ms-look cp-money" id="cpMoney">
+                <h2>🧮 Precios y total</h2>
+                <label class="cp-check"><input type="checkbox" id="cpPrice"> Con precio
+                    <small>(quítala para un catálogo sin precios; los precios que cambies se recuerdan)</small></label>
+                <div class="cp-money-on" id="cpMoneyOn">
+                    <p class="cp-total" id="cpTotal" aria-live="polite"></p>
+                    <p class="cp-noprice" id="cpNoPrice" hidden></p>
+                    <label class="cp-check"><input type="checkbox" id="cpTotalPdf"> Poner el total al final del PDF</label>
+                    <div class="cp-adjust">
+                        <span>Ajustar todos los precios</span>
+                        <span class="cp-pct"><input type="number" id="cpPct" step="1" min="-90" max="500" placeholder="10" aria-label="Porcentaje"> %</span>
+                        <button type="button" class="btn btn-sm btn-secondary" id="cpPctApply">Aplicar</button>
+                        <button type="button" class="btn btn-sm btn-secondary" id="cpPriceReset">↩ Volver a precios del visor</button>
+                    </div>
+                    <small class="cp-tip">Cambia el precio en la casilla de cada foto (ej.: 120000 o 120.000). Usa −10 para bajar 10 %. El precio de un código vale para todas sus fotos.</small>
+                </div>
+            </section>
+
             <section class="ms-look cp-bulk">
                 <h2>✏️ Texto rápido</h2>
                 <div class="cp-bulk-row">
-                    <input type="text" id="cpBulkText" maxlength="120" placeholder="Ej.: Precio: $120.000">
+                    <input type="text" id="cpBulkText" maxlength="120" placeholder="Ej.: Disponible en 3 colores">
                     <button type="button" class="btn btn-sm btn-secondary" id="cpBulkAll">Poner en todas</button>
                     <button type="button" class="btn btn-sm btn-secondary" id="cpBulkEmpty">Solo en las vacías</button>
                     <button type="button" class="btn btn-sm btn-secondary" id="cpBulkClear">Borrar textos</button>
