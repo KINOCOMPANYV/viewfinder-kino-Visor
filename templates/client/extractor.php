@@ -69,8 +69,11 @@
         .ex-editing .c-x { display:table-cell; }
         .ex-cell { width:100%; min-width:3.2rem; box-sizing:border-box; padding:0.25rem 0.4rem; background:var(--color-surface,#1c1c1e); color:var(--color-text,#f0f0f0); border:1px solid #c4a46b; border-radius:6px; font:inherit; }
         .ex-cell.num { text-align:right; max-width:7rem; }
+        .ex-vp-bar { display:inline-flex; gap:0.4rem; flex-wrap:wrap; }
         .ex-cell[data-f="code"] { min-width:7.5rem; }
         .ex-cell[data-f="qty"] { max-width:4rem; }
+        .ex-vp { margin-left:0.3rem; background:none; border:1px solid rgb(var(--rgb-fg,255 255 255) / 0.25); border-radius:6px; padding:0.15rem 0.4rem; cursor:pointer; opacity:0.6; }
+        .ex-vp.on { opacity:1; border-color:#c4a46b; background:rgb(196 164 107 / 0.2); }
         .ex-del { background:none; border:1px solid #c0392b; color:#e74c3c; border-radius:6px; padding:0.15rem 0.45rem; cursor:pointer; }
         .ex-send { display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; }
         @media (max-width: 640px) {
@@ -163,8 +166,13 @@
                 <div class="ex-actions" style="margin:0 0 0.8rem">
                     <button type="button" id="exSort" class="btn btn-secondary btn-sm">🔤 Organizar listado</button>
                     <button type="button" id="exEdit" class="btn btn-secondary btn-sm">✏️ Editar lista</button>
+                    <span id="exVpBar" class="ex-vp-bar" hidden>
+                        <button type="button" id="exVisorAll" class="btn btn-secondary btn-sm" title="Pone en cada línea el precio público del visor">💲 Precio del visor en toda la lista</button>
+                        <button type="button" id="exPdfAll" class="btn btn-secondary btn-sm">↩ Precios anteriores</button>
+                    </span>
                     <button type="button" id="exReset" class="btn btn-secondary btn-sm" hidden>↩ Volver a lo del PDF</button>
                     <button type="button" id="exCopy" class="btn btn-primary btn-sm">📋 Copiar resultado</button>
+                    <span id="exVpMsg" class="ex-help" style="margin:0" aria-live="polite"></span>
                     <span id="exCopyMsg" class="ex-help" style="margin:0" aria-live="polite"></span>
                 </div>
                 <div class="ex-table-wrap">

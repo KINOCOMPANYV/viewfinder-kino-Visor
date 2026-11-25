@@ -92,22 +92,46 @@ $('exPasteRun').addEventListener('click', async () => {
     $('exResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
-// Precio del visor (público = SYS × multiplicador) para las líneas pegadas sin precio. Sin precio en el visor queda vacío.
-async function fillVisorPrices() {
-    const need = rows.filter((it) => it.price == null);
-    if (!need.length) return;
+// Precio del visor (público = SYS × multiplicador). Sin precio en el visor queda como estaba.
+async function visorPrices(codes) {
     const r = await fetch('/enviar-catalogo/extraer', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.CS_CSRF || '', 'Accept': 'application/json' },
-        body: JSON.stringify({ codes: [...new Set(need.map((it) => it.code))] }),
+        body: JSON.stringify({ codes: [...new Set(codes)] }),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.photos) throw new Error('error ' + r.status);
-    const st = core.priceStyle('$0');
-    need.forEach((it) => {
-        const p = Object.prototype.hasOwnProperty.call(j.photos, it.code) ? j.photos[it.code] : null;
-        if (p && p.price) { it.price = p.price; it.priceText = core.formatPrice(p.price, st); it.fromVisor = true; }
-    });
+    return j.photos;
+}
+// Pone el precio del visor en la línea (guarda el del PDF/escrito para poder volver). Devuelve true si había precio.
+function setVisorPrice(it, photos) {
+    const p = Object.prototype.hasOwnProperty.call(photos, it.code) ? photos[it.code] : null;
+    if (!(p && p.price)) return false;
+    if (!it.fromVisor) it.prev = { price: it.price, priceText: it.priceText, lineTotal: it.lineTotal, lineTotalText: it.lineTotalText };
+    const st = core.priceStyle(it.prev && it.prev.priceText ? it.prev.priceText : ((rows.find((r) => r.priceText) || {}).priceText || '$0'));
+    it.price = p.price; it.priceText = core.formatPrice(p.price, st); it.fromVisor = true;
+    refreshLineTotal(it);
+    return true;
+}
+function restorePrice(it) {
+    if (!it.fromVisor) return;
+    const b = it.prev || { price: null, priceText: '' };
+    it.price = b.price; it.priceText = b.priceText || '';
+    if (b.lineTotalText !== undefined) { it.lineTotal = b.lineTotal; it.lineTotalText = b.lineTotalText; } else refreshLineTotal(it);
+    it.fromVisor = false; it.prev = null;
+}
+function refreshLineTotal(it) {
+    if (it.lineTotalText !== undefined || (result && result.order.format === 'tabla')) {
+        it.lineTotal = it.price != null && it.qty != null ? it.price * it.qty : null;
+        it.lineTotalText = it.lineTotal == null ? '' : core.formatPrice(it.lineTotal, core.priceStyle(it.priceText));
+    }
+}
+// Listado pegado: las líneas sin precio toman el del visor
+async function fillVisorPrices() {
+    const need = rows.filter((it) => it.price == null);
+    if (!need.length) return;
+    const photos = await visorPrices(need.map((it) => it.code));
+    need.forEach((it) => setVisorPrice(it, photos));
 }
 
 $('exClear').addEventListener('click', () => {
@@ -193,11 +217,12 @@ function renderRows() {
     $('exRows').innerHTML = rows.map((it, i) => editing
         ? '<tr data-i="' + i + '"><td><input class="ex-cell" data-f="code" maxlength="60" value="' + esc(it.code) + '" placeholder="código"></td><td class="sep"></td>' +
           '<td class="num"><input class="ex-cell num" data-f="qty" type="number" min="0" step="1" inputmode="numeric" value="' + (it.qty ?? '') + '"></td><td class="c-u">UNIDAD</td><td class="sep"></td>' +
-          '<td class="num c-price"><input class="ex-cell num" data-f="price" maxlength="30" value="' + esc(it.priceText) + '" placeholder="$0"></td><td class="num c-disc">' + esc(discText(it)) + '</td>' +
+          '<td class="num c-price"><input class="ex-cell num" data-f="price" maxlength="30" value="' + esc(it.priceText) + '" placeholder="$0"><button type="button" class="ex-vp' + (it.fromVisor ? ' on' : '') + '" data-vp="' + i + '" title="' + (it.fromVisor ? 'Precio del visor (toca para volver al anterior)' : 'Usar el precio del visor') + '" aria-pressed="' + (it.fromVisor ? 'true' : 'false') + '">💲</button></td><td class="num c-disc">' + esc(discText(it)) + '</td>' +
           '<td class="c-x"><button type="button" class="ex-del" data-del="' + i + '" title="Quitar esta línea" aria-label="Quitar">✕</button></td></tr>'
         : '<tr><td>' + esc(it.code) + '</td><td class="sep"></td><td class="num">' + (it.qty ?? '') +
           '</td><td class="c-u">UNIDAD</td><td class="sep"></td><td class="num c-price">' + esc(it.priceText) + '</td><td class="num c-disc">' + esc(discText(it)) + '</td><td class="c-x"></td></tr>').join('');
     $('exAddRow').hidden = !editing;
+    $('exVpBar').hidden = !editing;
     $('exEdit').textContent = editing ? '✅ Listo' : '✏️ Editar lista';
     $('exReset').hidden = !edited;
     renderSummary();
@@ -243,6 +268,34 @@ $('exRows').addEventListener('click', (e) => {
     edited = true;
     renderRows();
 });
+// 💲 por línea y para toda la lista: usar el precio del visor o volver al del PDF / escrito a mano
+function vpMsg(t) { const m = $('exVpMsg'); m.textContent = t; if (t) setTimeout(() => { if (m.textContent === t) m.textContent = ''; }, 5000); }
+$('exRows').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-vp]');
+    if (!b) return;
+    const it = rows[+b.dataset.vp];
+    if (it.fromVisor) restorePrice(it);
+    else {
+        if (!it.code) return;
+        try { if (!setVisorPrice(it, await visorPrices([it.code]))) { vpMsg('«' + it.code + '» no tiene precio en el visor.'); return; } }
+        catch (err) { vpMsg('⚠️ No se pudo traer el precio del visor.'); return; }
+    }
+    edited = true; renderRows();
+});
+$('exVisorAll').addEventListener('click', async () => {
+    const out = outRows(); if (!out.length) return;
+    vpMsg('Trayendo precios del visor…');
+    try {
+        const photos = await visorPrices(out.map((it) => it.code));
+        const none = out.filter((it) => !setVisorPrice(it, photos)).map((it) => it.code);
+        edited = true; renderRows();
+        vpMsg(none.length ? '✅ Listo. Sin precio en el visor (se dejó el que tenían): ' + none.slice(0, 10).join(', ') + (none.length > 10 ? '…' : '') : '✅ Todas las líneas con precio del visor.');
+    } catch (err) { vpMsg('⚠️ No se pudo traer el precio del visor.'); }
+});
+$('exPdfAll').addEventListener('click', () => {
+    if (!rows.some((it) => it.fromVisor)) { vpMsg('Ninguna línea usa el precio del visor.'); return; }
+    rows.forEach(restorePrice); edited = true; renderRows(); vpMsg('Precios anteriores restaurados.');
+});
 // Al escribir se actualiza el dato (sin redibujar, para no perder el cursor); al salir de la casilla se limpia el texto.
 $('exRows').addEventListener('input', (e) => {
     const inp = e.target, tr = inp.closest('tr[data-i]');
@@ -250,7 +303,7 @@ $('exRows').addEventListener('input', (e) => {
     const it = rows[+tr.dataset.i];
     if (inp.dataset.f === 'code') { it.code = inp.value.replace(/\s+/g, '').toUpperCase(); it.desc = ''; }
     else if (inp.dataset.f === 'qty') { const q = parseInt(inp.value, 10); it.qty = isNaN(q) ? null : Math.max(0, q); }
-    else { it.priceText = inp.value.trim(); it.price = core.readPrice(it.priceText); }
+    else { it.priceText = inp.value.trim(); it.price = core.readPrice(it.priceText); it.fromVisor = false; it.prev = null; const b = tr.querySelector('.ex-vp'); if (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); } }
     // Cotización en tabla: el total de la línea sigue a cantidad × precio
     if (it.lineTotalText !== undefined || result.order.format === 'tabla') {
         it.lineTotal = it.price != null && it.qty != null ? it.price * it.qty : null;

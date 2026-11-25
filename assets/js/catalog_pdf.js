@@ -167,13 +167,15 @@
     document.querySelectorAll('input[name="cpPer"]').forEach((r) => { r.checked = +r.value === +opts.per; });
     $('cpOpen').checked = opts.open !== false;
     $('cpPrice').checked = opts.price !== false;
+    $('cpVisor').checked = opts.visor !== false;
     $('cpTotalPdf').checked = opts.total !== false;
     if (src.cut) warn(`El PDF admite hasta ${MAX_ITEMS} fotos: se dejaron las primeras ${MAX_ITEMS} (sobran ${src.cut}).`);
 
     // Precio de cada código (decisión del dueño 2026-11-24: sale por defecto, con casilla para quitarlo;
     // 2026-11-25: se puede cambiar por código antes de generar y se muestra el total)
     const autoPrice = {}; // código → pesos (del visor)
-    const priceOf = (code) => (prices[code] != null ? prices[code] : (autoPrice[code] || 0));
+    const useVisor = () => opts.visor !== false; // «Usar precio del visor»: apagado, solo sale el que escribas
+    const priceOf = (code) => (prices[code] != null ? prices[code] : (useVisor() ? (autoPrice[code] || 0) : 0));
     const codesInList = [...new Set(items.map((it) => it.code))];
     const txt = (code) => {
         const p = opts.price !== false ? priceOf(code) : 0;
@@ -191,7 +193,7 @@
         list.classList.toggle('no-price', !on);
         $('cpPrev').classList.toggle('no-price', !on);
         list.querySelectorAll('.cp-price').forEach((inp) => {
-            const c = inp.dataset.pcode, a = autoPrice[c];
+            const c = inp.dataset.pcode, a = useVisor() ? autoPrice[c] : 0;
             inp.placeholder = a ? money(a) : 'Sin precio';
             if (document.activeElement !== inp) inp.value = prices[c] != null ? money(prices[c]) : '';
             const edited = prices[c] != null && prices[c] !== (a || 0);
@@ -214,7 +216,7 @@
             .then((r) => r.json()).then((d) => {
                 Object.keys(d || {}).forEach((k) => { const n = toNum(d[k]); if (n) autoPrice[k] = n; });
                 // Un precio guardado igual al del visor ya no cuenta como cambiado
-                Object.keys(prices).forEach((k) => { if (autoPrice[k] && prices[k] === autoPrice[k]) delete prices[k]; });
+                Object.keys(prices).forEach((k) => { if (autoPrice[k] && prices[k] === autoPrice[k] && useVisor()) delete prices[k]; });
                 savePrices(); drawPrices();
             }).catch(() => {});
     } catch (e) { /* sin precios automáticos */ }
@@ -308,6 +310,7 @@
         saveOpts(); stale();
     });
     document.querySelectorAll('input[name="cpPer"]').forEach((r) => r.addEventListener('change', () => { opts.per = +r.value; saveOpts(); stale(); }));
+    $('cpVisor').addEventListener('change', (e) => { opts.visor = e.target.checked; saveOpts(); drawPrices(); stale(); });
     $('cpPrice').addEventListener('change', (e) => { opts.price = e.target.checked; saveOpts(); drawPrices(); stale(); });
     $('cpTotalPdf').addEventListener('change', (e) => { opts.total = e.target.checked; saveOpts(); stale(); });
     $('cpPctApply').addEventListener('click', () => {
