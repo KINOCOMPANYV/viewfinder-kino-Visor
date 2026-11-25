@@ -70,6 +70,39 @@ export function formatPrice(n, style) {
     return (n < 0 ? '-' : '') + (st.symbol ? '$' : '') + int + (frac ? st.dec + frac : '');
 }
 
+/**
+ * Listado pegado a mano (en vez de subir el PDF): una línea por referencia «código cantidad precio», separados por
+ * espacios, tabulación (pegado de Excel), «;» o «,». Cantidad y precio opcionales (sin cantidad = 1; sin precio lo pone
+ * el visor). También sirve «5x CÓDIGO», «CÓDIGO x5» y el mismo texto de «📋 Copiar resultado» (con «UNIDAD»).
+ * Un entero de hasta 3 cifras (o con «x») es la cantidad si aún no hay una; lo demás con cifras («45000», «$45.000») es precio.
+ * @return {{items: Array, bad: string[]}} bad = líneas que no empiezan con un código
+ */
+export function parsePastedList(text) {
+    const items = [], bad = [];
+    String(text || '').split(/\r?\n/).forEach((raw) => {
+        const line = raw.trim();
+        if (!line) return;
+        let toks = line.split(/\t|;|\s+|,(?=\s)|,$/).map((t) => t.trim().replace(/,$/, '')).filter(Boolean)
+            .filter((t) => !/^(unidad|unidades|und|uds?|cant\.?|x)$/i.test(t));
+        let qty = null, priceText = '';
+        const m = /^(\d{1,5})\s*[x×]$/i.exec(toks[0] || '');
+        if (m && toks.length > 1) { qty = +m[1]; toks.shift(); }
+        const code = (toks.shift() || '').toUpperCase();
+        if (!looksLikeCode(code, false) && !(/^\d{3,}$/.test(code))) { bad.push(line); return; }
+        const desc = [];
+        for (const t of toks) {
+            // «5x»/«x5» siempre es cantidad; un entero solo, si tiene hasta 3 cifras (45000 sin «x» es precio)
+            const q = /^[x×](\d{1,5})$|^(\d{1,5})[x×]$|^(\d{1,3})$/i.exec(t);
+            if (q && qty === null) { qty = +(q[1] || q[2] || q[3]); continue; }
+            if (!priceText && MONEY.test(t) && readPrice(t) != null) { priceText = t; continue; }
+            desc.push(t);
+        }
+        const price = priceText ? readPrice(priceText) : null;
+        items.push({ code, qty: qty ?? 1, priceText, price, desc: desc.join(' '), n: items.length + 1 });
+    });
+    return { items, bad };
+}
+
 /** Orden natural: A2 antes que A10. */
 export function naturalCompare(a, b) {
     return String(a).localeCompare(String(b), 'es', { numeric: true, sensitivity: 'base' });
