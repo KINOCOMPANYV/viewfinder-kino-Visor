@@ -16,6 +16,7 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Extractor de pedidos PDF · Viewfinder</title>
     <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
+    <script>window.CS_CSRF = '<?= csrfToken() ?>';</script>
     <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
@@ -31,6 +32,9 @@
         .ex-drop.ok { border-color:#2ecc71; background:rgba(46,204,113,0.10); }
         .ex-drop.ok b { color:#2ecc71; }
         .ex-drop.ok small { color:#7fd8a3; }
+        .ex-card [hidden], .ex-actions [hidden] { display:none !important; }
+        .ex-or { text-align:center; color:var(--color-text-muted,#a0a0b0); font-size:0.85rem; margin:0.9rem 0; }
+        .ex-paste { width:100%; box-sizing:border-box; min-height:130px; padding:0.6rem 0.7rem; background:var(--color-bg,#161618); color:var(--color-text,#f0f0f0); border:1px solid rgb(var(--rgb-fg,255 255 255) / 0.18); border-radius:10px; font:0.9rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; resize:vertical; }
         .ex-actions { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.8rem; align-items:center; }
         .ex-review { border-radius:10px; padding:0.75rem 0.9rem; margin-bottom:1rem; font-size:0.9rem; }
         .ex-review.ok { background:rgba(37,211,102,0.1); border:1px solid rgba(37,211,102,0.45); }
@@ -94,7 +98,7 @@
         <h1 style="font-size:1.5rem; margin-bottom:1.25rem;">🧾 Extractor de pedidos PDF</h1>
 
         <section class="ex-card">
-            <p class="ex-help">Sube un recibo o pedido en PDF: saca <strong>código, cantidad y precio</strong>, revisa que cuadre con
+            <p class="ex-help">Sube un recibo o pedido en PDF (o pega un listado más abajo): saca <strong>código, cantidad y precio</strong>, revisa que cuadre con
                 el Total del PDF y lo deja listo para pegar en Excel o para ver las fotos en el visor. El PDF se lee
                 <strong>en este dispositivo</strong>; no se sube a ningún lado.</p>
             <label class="ex-drop" id="exDrop">
@@ -107,6 +111,19 @@
                 <button type="button" id="exRun" class="btn btn-primary" disabled>🚀 Procesar PDF</button>
                 <button type="button" id="exClear" class="btn btn-secondary btn-sm" hidden>🔄 Limpiar</button>
                 <span id="exStatus" class="ex-help" style="margin:0" aria-live="polite"></span>
+            </div>
+            <div class="ex-or">— o —</div>
+            <h2>📝 Pega un listado</h2>
+            <p class="ex-help">Una línea por referencia: <strong>código, cantidad y precio</strong> (el precio es opcional; sin precio se usa el del visor).
+                Sirve pegar desde Excel o escribir «5x CÓDIGO». Sin cantidad cuenta 1.</p>
+            <textarea id="exPaste" class="ex-paste" spellcheck="false" placeholder="M8291-1  3  45000&#10;5x 674B-1&#10;S-640+S-647  10  22000"></textarea>
+            <div class="ex-opts" style="margin:0.6rem 0 0">
+                <label><input type="radio" name="exPasteType" value="pedido" checked> 🧾 Lista Bodega</label>
+                <label><input type="radio" name="exPasteType" value="remision"> 🚚 Cotización / Remisión</label>
+            </div>
+            <div class="ex-actions">
+                <button type="button" id="exPasteRun" class="btn btn-primary" disabled>🚀 Procesar listado</button>
+                <span id="exPasteStatus" class="ex-help" style="margin:0" aria-live="polite"></span>
             </div>
         </section>
 

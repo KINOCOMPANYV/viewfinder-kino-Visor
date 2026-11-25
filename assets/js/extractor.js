@@ -11,6 +11,7 @@ let file = null;
 let result = null; // {items, order, warnings, map}
 let rows = [];     // items en el orden mostrado
 let pdfjs = null;
+let fromPaste = false; // la lista viene de un listado pegado, no de un PDF
 
 async function loadPdfjs() {
     if (!pdfjs) {
@@ -54,7 +55,7 @@ $('exRun').addEventListener('click', async () => {
         result = core.parseOrder(lines);
         if (!result.items.length) throw new Error('No se hallaron códigos ni cantidades en el PDF.');
         rows = result.items.map((it) => ({ ...it }));
-        editing = false; edited = false;
+        editing = false; edited = false; fromPaste = false;
         render();
         $('exClear').hidden = false;
         $('exResult').hidden = false;
@@ -67,9 +68,51 @@ $('exRun').addEventListener('click', async () => {
     }
 });
 
+// Listado pegado: arma el mismo resultado que un PDF (sin revisión contra el Total) y los precios que faltan salen del visor.
+$('exPaste').addEventListener('input', () => { $('exPasteRun').disabled = !$('exPaste').value.trim(); $('exClear').hidden = false; });
+$('exPasteRun').addEventListener('click', async () => {
+    const { items, bad } = core.parsePastedList($('exPaste').value);
+    const st = $('exPasteStatus');
+    if (!items.length) { st.textContent = '⚠️ No se encontró ningún código. Escribe uno por línea, por ejemplo «M8291-1 3 45000».'; return; }
+    const tabla = document.querySelector('input[name=exPasteType]:checked').value === 'remision';
+    file = null; fromPaste = true; editing = false; edited = false;
+    result = { items, warnings: [], map: items.map((it, i) => ({ page: 1, tag: '✓ pegado', text: it.code + ' × ' + it.qty + (it.priceText ? ' ' + it.priceText : '') })),
+        order: { format: tabla ? 'tabla' : 'recibo', number: '', client: '', clientPdf: '', date: '', totalText: '', total: null, canCheck: false,
+            unitPrices: true, noQty: false, itemsPdf: null, unitsPdf: null, itemsFound: items.length,
+            unitsFound: items.reduce((s, it) => s + (it.qty || 0), 0), sumPrice: 0 } };
+    rows = items.map((it) => ({ ...it }));
+    st.textContent = bad.length ? '⚠️ Se saltaron ' + bad.length + ' línea(s) sin código: ' + bad.slice(0, 3).join(' | ') + (bad.length > 3 ? '…' : '') : '';
+    const btn = $('exPasteRun'); btn.disabled = true; btn.textContent = '⏳ Buscando precios…';
+    try { await fillVisorPrices(); } catch (e) { st.textContent += ' (No se pudieron traer los precios del visor.)'; }
+    btn.disabled = false; btn.textContent = '🚀 Procesar listado';
+    result.items = rows.map((it) => ({ ...it })); // «Volver a lo pegado» conserva los precios del visor
+    render();
+    $('exClear').hidden = false;
+    $('exResult').hidden = false;
+    $('exResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+// Precio del visor (público = SYS × multiplicador) para las líneas pegadas sin precio. Sin precio en el visor queda vacío.
+async function fillVisorPrices() {
+    const need = rows.filter((it) => it.price == null);
+    if (!need.length) return;
+    const r = await fetch('/enviar-catalogo/extraer', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.CS_CSRF || '', 'Accept': 'application/json' },
+        body: JSON.stringify({ codes: [...new Set(need.map((it) => it.code))] }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.photos) throw new Error('error ' + r.status);
+    const st = core.priceStyle('$0');
+    need.forEach((it) => {
+        const p = Object.prototype.hasOwnProperty.call(j.photos, it.code) ? j.photos[it.code] : null;
+        if (p && p.price) { it.price = p.price; it.priceText = core.formatPrice(p.price, st); it.fromVisor = true; }
+    });
+}
+
 $('exClear').addEventListener('click', () => {
-    file = null; result = null; rows = []; editing = false; edited = false;
-    $('exFile').value = '';
+    file = null; result = null; rows = []; editing = false; edited = false; fromPaste = false;
+    $('exFile').value = ''; $('exPaste').value = ''; $('exPasteRun').disabled = true; $('exPasteStatus').textContent = '';
     $('exFileName').textContent = 'Arrastra tu PDF aquí o toca para elegirlo';
     $('exIcon').textContent = '📎';
     $('exDrop').classList.remove('ok');
@@ -105,7 +148,7 @@ function render() {
     const st = core.priceStyle(order.totalText || (result.items.find((i) => i.priceText) || {}).priceText || '$0');
     const cell = (label, val) => '<div><span>' + esc(label) + '</span>' + (val === '' || val == null ? '—' : val) + '</div>';
     $('exOrder').innerHTML = [
-        cell('Formato', order.format === 'tabla' ? 'Cotización en tabla' : 'Recibo'),
+        cell('Formato', fromPaste ? 'Listado pegado' : order.format === 'tabla' ? 'Cotización en tabla' : 'Recibo'),
         cell('N.º de pedido', esc(order.number)),
         cell('Cliente', '<input type="text" class="ex-edit" id="exClient" maxlength="120" value="' + esc(order.client) + '" placeholder="Escribe el cliente">' +
             (order.clientPdf && order.client !== order.clientPdf ? '<small class="ex-note">Del PDF: ' + esc(order.clientPdf) + '</small>'
@@ -266,8 +309,19 @@ $('exToVisor').addEventListener('click', () => {
 // orden mostrado) a /lista-pedido, que busca la foto de cada código y arma el PDF.
 $('exToOrder').addEventListener('click', () => {
     const o = result.order;
+    if (fromPaste && o.format === 'tabla') rows.forEach((it) => { // cotización: total de cada línea = cantidad × precio
+        it.lineTotal = it.price != null && it.qty != null ? it.price * it.qty : null;
+        it.lineTotalText = it.lineTotal == null ? '' : core.formatPrice(it.lineTotal, core.priceStyle(it.priceText));
+    });
+    if (fromPaste) { // listado pegado: no hay Total ni fecha del PDF; se arman con lo que hay para que el documento salga completo
+        const out = outRows(), withP = out.filter((it) => it.price != null);
+        o.itemsPdf = out.length; o.unitsPdf = out.reduce((s, it) => s + (+it.qty || 0), 0);
+        o.date = new Date().toLocaleDateString('es-CO');
+        o.totalText = withP.length ? core.formatPrice(withP.reduce((s, it) => s + it.price * (+it.qty || 0), 0), core.priceStyle(withP[0].priceText)) : '';
+    }
+    const showP = $('exShowPrice').checked; // «Mostrar precio» apagado: el documento sale sin precios
     const data = {
-        file: file ? file.name : '',
+        file: file ? file.name : (fromPaste ? 'listado pegado' : ''),
         order: { number: o.number || '', client: o.client || '', clientPdf: o.clientPdf ?? o.client ?? '', date: o.date || '', totalText: o.totalText || '',
             itemsPdf: o.itemsPdf ?? null, unitsPdf: o.unitsPdf ?? null, noQty: !!o.noQty,
             // Recibo cuyo precio por línea es el total de la línea (cuadra con el Total sin multiplicar): Pedido de bodega lo divide por la cantidad
@@ -275,7 +329,7 @@ $('exToOrder').addEventListener('click', () => {
             nit: o.nit || '', address: o.address || '', city: o.city || '', phone: o.phone || '', seller: o.seller || '' },
         // Tipo de documento: la cotización en tabla es una factura → Remisión; el recibo es un pedido → Lista Bodega
         docType: o.format === 'tabla' ? 'remision' : 'pedido',
-        items: outRows().map((it) => ({ code: it.code, qty: it.qty ?? null, desc: it.desc || '', priceText: it.priceText || '', lineTotalText: it.lineTotalText || '' })),
+        items: outRows().map((it) => ({ code: it.code, qty: it.qty ?? null, desc: it.desc || '', priceText: showP ? (it.priceText || '') : '', lineTotalText: showP ? (it.lineTotalText || '') : '' })),
         // Lista corregida a mano: los avisos de lectura del PDF ya no aplican (no se llevan al recuadro «Revisar» del PDF)
         warnings: edited ? [] : result.warnings.slice(),
         edited,
