@@ -3432,3 +3432,10 @@ h1 { font-weight: 700; }
     .mnav-icon .ico { width: 1.45rem; height: 1.45rem; stroke-width: 1.6; }
     .mnav-item.active .mnav-icon .ico { stroke-width: 2; }
 }
+
+/* Toque «apple.com» (2026-11-25): encabezado fino y translúcido, títulos grandes y apretados, mucho aire. */
+.header { background: rgba(22, 22, 24, 0.72); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); padding: 0.7rem 0; }
+.hero h1 { font-weight: 600; letter-spacing: -0.045em; line-height: 1.05; }
+.hero p { font-weight: 400; letter-spacing: -0.01em; }
+.section-title, .section-header h2, .products-section h2 { font-weight: 600; letter-spacing: -0.03em; }
+@media (min-width: 900px) { .hero { padding-top: 4.5rem; padding-bottom: 2rem; } }
