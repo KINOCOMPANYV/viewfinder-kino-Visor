@@ -91,6 +91,9 @@ function classify(line) {
     if (m && rest.length === 1) return { kind: 'qty', qty: +m[1], price: money[0] || null };
     m = first.match(QTY_CODE);
     if (m && looksLikeCode(m[2], false)) return { kind: 'full', qty: +m[1], code: m[2], desc: (m[3] || '').trim(), price: money[0] || null };
+    // «1x TA/NEGRO TIPO INVICTA…»: la descripción se partió en dos líneas y la cantidad quedó en la segunda.
+    // Es una cantidad (con resto de descripción), no el código «1x»: se une al código de la línea de arriba.
+    if (m) return { kind: 'qty', qty: +m[1], price: money[0] || null };
     // Tabla: «código || cantidad || $subtotal»
     if (rest.length >= 2 && looksLikeCode(rest[0].split(/\s+/)[0], false) && /^\d{1,5}$/.test(rest[1]))
         return { kind: 'full', qty: +rest[1], code: rest[0].split(/\s+/)[0], desc: rest[0].split(/\s+/).slice(1).join(' '), price: money[0] || null };
