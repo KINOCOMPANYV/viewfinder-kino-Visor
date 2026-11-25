@@ -1,7 +1,7 @@
 // Prueba del Extractor con una cotización real (texto del PDF 106776, datos del cliente cambiados).
 // Uso: node tests/extractor_test.mjs
 import { readFileSync } from 'node:fs';
-import { looksLikeCode, parseTable, parseOrder } from '../assets/js/extractor_core.js';
+import { looksLikeCode, parseTable, parseOrder, parsePastedList } from '../assets/js/extractor_core.js';
 
 let fail = 0;
 const ok = (cond, msg) => { console.log((cond ? 'OK   ' : 'FALLA') + ' ' + msg); if (!cond) fail++; };
@@ -38,5 +38,14 @@ const rb = Object.fromEntries(rec.items.map((it) => [it.code, it]));
 ok(rb['1967G-4'] && rb['1967G-4'].qty === 1 && rb['1967G-4'].price === 130000, '1967G-4 × 1 a 130,000 (cantidad en la 2.ª línea)');
 ok(rec.items.length === 3 && !rb['1x'], '3 artículos, sin código falso «1x»');
 ok(rec.order.totalOk === true && rec.warnings.length === 0, 'recibo cuadra sin avisos (' + (rec.warnings.join(' | ') || 'ninguno') + ')');
+// Listado pegado (sin PDF): «código cantidad precio», Excel con tabulaciones, «5x CÓDIGO», sin precio, líneas que no son código
+const pl = parsePastedList('codigo cantidad precio\nM8291-1 3 45000\nM:8291-2\t\t2\tUNIDAD\t\t$45,000.00\n5x 674B-1\nS-640+S-647, 10, 22000\n\nM8324-4');
+const pb = Object.fromEntries(pl.items.map((it) => [it.code, it]));
+ok(pl.items.length === 5 && pl.bad.length === 1, 'listado pegado: 5 líneas leídas, 1 encabezado saltado');
+ok(pb['M8291-1'].qty === 3 && pb['M8291-1'].price === 45000, 'M8291-1 × 3 a 45000');
+ok(pb['M:8291-2'].qty === 2 && pb['M:8291-2'].price === 45000, 'texto de «Copiar resultado» (con UNIDAD) se vuelve a leer');
+ok(pb['674B-1'].qty === 5 && pb['674B-1'].price === null, '«5x 674B-1» sin precio');
+ok(pb['S-640+S-647'].qty === 10 && pb['S-640+S-647'].price === 22000, 'separado por comas');
+ok(pb['M8324-4'].qty === 1, 'sin cantidad = 1');
 console.log(r.items.length + ' artículos, ' + r.order.unitsFound + ' unidades. Avisos: ' + (r.warnings.join(' | ') || 'ninguno'));
 process.exit(fail ? 1 : 0);
