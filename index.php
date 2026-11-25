@@ -269,7 +269,7 @@ if ($uri === '/api/precios') {
     exit;
 }
 
-// Nombre de producto de una lista de códigos (Catálogo PDF: va encima del código): /api/nombres?codes=A,B → {"A":"Reloj …"}
+// Nombre y marca de una lista de códigos (Catálogo PDF: nombre encima del código y resumen por marcas): /api/nombres?codes=A,B → {"A":{"n":"Reloj …","m":"MARCA"}}
 // Solo productos públicos; se omite el nombre que es igual al código (productos «Solo Drive»).
 if ($uri === '/api/nombres') {
     header('Content-Type: application/json; charset=utf-8');
@@ -277,11 +277,13 @@ if ($uri === '/api/nombres') {
     $codes = array_slice(array_values(array_unique(array_filter(array_map('trim', explode(',', (string) ($_GET['codes'] ?? ''))), 'strlen'))), 0, 400);
     $out = [];
     if ($codes) {
-        $st = getDB()->prepare("SELECT sku, name FROM products WHERE archived = 0 AND name > '' AND sku IN (" . implode(',', array_fill(0, count($codes), '?')) . ")");
+        $st = getDB()->prepare("SELECT sku, name, brand FROM products WHERE archived = 0 AND sku IN (" . implode(',', array_fill(0, count($codes), '?')) . ")");
         $st->execute($codes);
         foreach ($st->fetchAll() as $r) {
             $n = trim(preg_replace('/\s+/u', ' ', (string) $r['name']));
-            if ($n !== '' && mb_strtolower($n, 'UTF-8') !== mb_strtolower($r['sku'], 'UTF-8')) $out[$r['sku']] = mb_substr($n, 0, 160, 'UTF-8');
+            if ($n !== '' && mb_strtolower($n, 'UTF-8') === mb_strtolower($r['sku'], 'UTF-8')) $n = '';
+            $m = trim((string) $r['brand']);
+            if ($n !== '' || $m !== '') $out[$r['sku']] = ['n' => mb_substr($n, 0, 160, 'UTF-8'), 'm' => mb_substr($m, 0, 60, 'UTF-8')];
         }
     }
     echo json_encode((object) $out, JSON_UNESCAPED_UNICODE);

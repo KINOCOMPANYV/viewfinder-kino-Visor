@@ -116,7 +116,7 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
                         <small>(el que se ve en el catálogo; quítala y solo sale el que escribas en cada foto)</small></label>
                     <p class="cp-total" id="cpTotal" aria-live="polite"></p>
                     <p class="cp-noprice" id="cpNoPrice" hidden></p>
-                    <label class="cp-check"><input type="checkbox" id="cpTotalPdf"> Poner el total al final del PDF</label>
+                    <label class="cp-check"><input type="checkbox" id="cpTotalPdf"> Página final con total, cantidades y resumen por marcas</label>
                     <div class="cp-adjust">
                         <span>Ajustar todos los precios</span>
                         <span class="cp-pct"><input type="number" id="cpPct" step="1" min="-90" max="500" placeholder="10" aria-label="Porcentaje"> %</span>

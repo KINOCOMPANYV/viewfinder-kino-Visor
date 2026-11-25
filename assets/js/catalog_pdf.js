@@ -179,7 +179,7 @@
     const useVisor = () => opts.visor !== false; // «Usar precio del visor»: apagado, solo sale el que escribas
     const priceOf = (code) => (prices[code] != null ? prices[code] : (useVisor() ? (autoPrice[code] || 0) : 0));
     const codesInList = [...new Set(items.map((it) => it.code))];
-    const names = {}; // código → nombre del producto (va encima del código)
+    const names = {}, brands = {}; // código → nombre del producto (va encima del código) / marca (resumen final)
     const nameOf = (code) => (opts.names !== false ? clean(names[code] || '') : '');
     function drawNames() {
         list.classList.toggle('no-names', opts.names === false);
@@ -188,7 +188,7 @@
     }
     try {
         fetch('/api/nombres?codes=' + encodeURIComponent(codesInList.slice(0, 400).join(',')), { headers: { Accept: 'application/json' } })
-            .then((r) => r.json()).then((d) => { Object.keys(d || {}).forEach((k) => { names[k] = String(d[k]); }); drawNames(); }).catch(() => {});
+            .then((r) => r.json()).then((d) => { Object.keys(d || {}).forEach((k) => { names[k] = String((d[k] && d[k].n) || ''); brands[k] = String((d[k] && d[k].m) || ''); }); drawNames(); }).catch(() => {});
     } catch (e) { /* sin nombres */ }
     const txt = (code) => {
         const p = opts.price !== false ? priceOf(code) : 0;
@@ -503,12 +503,18 @@
             const textH = nameH + lh(codePt) + 3 + (anyText ? 3 * lh(textPt) : 0) + 3 + (openBtn ? BTN_H + 2 : 0);
             const c1 = rgb(opts.c1), c2 = rgb(opts.c2), on1 = rgb(onColor(opts.c1)), sub1 = rgb(subOnBand()), ink1 = rgb(onWhite(opts.c1));
             const { boxes, pages } = layout(rows, { M, top, bottom, cw, ch, cols, gap: GAP, headH: HEAD_H }, headsUse);
-            let totalLine = '';
+            // Página final de resumen (con «Poner el total»): total grande, cantidades y resumen por marcas
+            let sumData = null;
             if (opts.price !== false && opts.total !== false) {
                 const cs = [...new Set(rows.map((r) => r.it.code))];
                 const sum = cs.reduce((a, c) => a + priceOf(c), 0), withP = cs.filter((c) => priceOf(c)).length;
-                if (sum) totalLine = `Total ${withP} referencia${withP === 1 ? '' : 's'}: ${money(sum)}` + (withP < cs.length ? ` (${cs.length - withP} sin precio)` : '');
+                if (sum) {
+                    const by = {};
+                    cs.forEach((c) => { const m = clean(brands[c] || '') || 'Sin marca'; const o = by[m] || (by[m] = { m, n: 0, sum: 0 }); o.n++; o.sum += priceOf(c); });
+                    sumData = { sum, withP, n: cs.length, fotos: rows.length, brands: Object.values(by).sort((a, b) => b.sum - a.sum || b.n - a.n) };
+                }
             }
+            const totalPages = pages + (sumData ? 1 : 0);
             const emojis = rows.some((r) => lostChars(txt(r.it.code)) || lostChars(heads[r.it.id]) || lostChars(nameOf(r.it.code))) || lostChars(opts.title) || lostChars(opts.subtitle) || lostChars(opts.footer);
 
             const lines = (t, width) => {
@@ -556,12 +562,7 @@
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(85, 85, 85);
                 footLines.forEach((ln, i) => doc.text(ln, M, fy + 5 + i * 4));
                 doc.setFont('helvetica', 'bold'); doc.setTextColor(...ink1);
-                doc.text(`${p + 1} / ${pages}`, W - M, fy + 5, { align: 'right' });
-                // Total (última página, encima de la línea del pie): suma de un precio por código de lo que salió
-                if (p === pages - 1 && totalLine) {
-                    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...ink1);
-                    doc.text(totalLine, W - M, fy - 1.8, { align: 'right' });
-                }
+                doc.text(`${p + 1} / ${totalPages}`, W - M, fy + 5, { align: 'right' });
             }
 
             // 3) Páginas
@@ -570,8 +571,8 @@
                 if (b.page !== cur) {
                     if (cur >= 0) doc.addPage();
                     cur = b.page;
-                    btn.textContent = `⏳ Página ${cur + 1}/${pages}`;
-                    msg(`Armando página ${cur + 1} de ${pages}…`);
+                    btn.textContent = `⏳ Página ${cur + 1}/${totalPages}`;
+                    msg(`Armando página ${cur + 1} de ${totalPages}…`);
                     await new Promise((ok) => setTimeout(ok, 0)); // deja respirar la pantalla
                     drawFrame(cur);
                 }
@@ -634,6 +635,48 @@
                 }
             }
 
+            if (sumData) {
+                doc.addPage(); drawFrame(pages);
+                let y = top + 4;
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...ink1);
+                doc.text('Resumen', M, y + 5);
+                doc.setDrawColor(...c2); doc.setLineWidth(0.6); doc.line(M, y + 8, M + 22, y + 8);
+                y += 22;
+                // Total grande (un precio por código)
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(34); doc.setTextColor(...ink1);
+                doc.text(money(sumData.sum), M, y + 8);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(60, 60, 60);
+                y += 17;
+                doc.text(`${sumData.n} referencia${sumData.n === 1 ? '' : 's'} · ${sumData.fotos} foto${sumData.fotos === 1 ? '' : 's'}`, M, y);
+                if (sumData.withP < sumData.n) { y += 7; doc.setFontSize(11); doc.text(`${sumData.n - sumData.withP} sin precio (no suman)`, M, y); }
+                y += 14;
+                // Resumen por marcas
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...ink1);
+                doc.text('Resumen por marcas', M, y);
+                y += 4;
+                const rh = 9.5, x2 = W - M - 55, x3 = W - M;
+                doc.setFillColor(...c1); doc.rect(M, y, W - 2 * M, rh, 'F');
+                doc.setFontSize(11); doc.setTextColor(...on1);
+                doc.text('Marca', M + 3, y + 6.3); doc.text('Cantidad', x2, y + 6.3, { align: 'right' }); doc.text('Subtotal', x3 - 3, y + 6.3, { align: 'right' });
+                y += rh;
+                const maxRows = Math.floor((bottom - y - rh - 2) / rh);
+                const list2 = sumData.brands.length > maxRows ? sumData.brands.slice(0, maxRows - 1) : sumData.brands;
+                const rest = sumData.brands.slice(list2.length);
+                if (rest.length) list2.push({ m: `Otras (${rest.length})`, n: rest.reduce((a, o) => a + o.n, 0), sum: rest.reduce((a, o) => a + o.sum, 0) });
+                list2.forEach((o, i) => {
+                    if (i % 2) { doc.setFillColor(244, 244, 244); doc.rect(M, y, W - 2 * M, rh, 'F'); }
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...ink1);
+                    doc.text(fit(o.m, x2 - M - 30), M + 3, y + 6.4);
+                    doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 40, 40);
+                    doc.text(String(o.n), x2, y + 6.4, { align: 'right' });
+                    doc.text(money(o.sum), x3 - 3, y + 6.4, { align: 'right' });
+                    y += rh;
+                });
+                doc.setDrawColor(...c2); doc.setLineWidth(0.5); doc.line(M, y, W - M, y);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5); doc.setTextColor(...ink1);
+                doc.text('Total', M + 3, y + 7); doc.text(String(sumData.n), x2, y + 7, { align: 'right' }); doc.text(money(sumData.sum), x3 - 3, y + 7, { align: 'right' });
+            }
+
             const blob = doc.output('blob');
             pdfFile = new File([blob], fileName(), { type: 'application/pdf' });
             const notes = [];
@@ -641,7 +684,7 @@
             if (cutText) notes.push('Algún texto era muy largo y se cortó a 3 líneas.');
             if (emojis) notes.push('Los emojis no salen en el PDF.');
             warn(notes.join(' '));
-            msg(`✅ PDF listo: ${rows.length} foto${rows.length === 1 ? '' : 's'}, ${pages} página${pages === 1 ? '' : 's'} · ${mb(blob.size)}.`
+            msg(`✅ PDF listo: ${rows.length} foto${rows.length === 1 ? '' : 's'}, ${totalPages} página${totalPages === 1 ? '' : 's'} · ${mb(blob.size)}.`
                 + (canShareFiles ? '' : ' Descárgalo y adjúntalo en WhatsApp Web (📎 → Documento).'));
             $('cpShare').hidden = !canShareFiles;
             $('cpDown').hidden = false;
