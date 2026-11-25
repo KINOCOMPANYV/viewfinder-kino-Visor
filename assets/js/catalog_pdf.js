@@ -91,7 +91,16 @@
     const saved = asMap(readJson(ls, 'kinoPdfOpts', {}));
     // Antes había un campo "Contacto" (arriba); ahora es el pie de catálogo
     if (saved.footer == null && saved.contact) saved.footer = saved.contact;
-    const opts = Object.assign({ title: '', subtitle: '', footer: '', per: 6, c1: '#1c1c1e', c2: '#c9a84c', open: true, price: true }, saved);
+    const opts = Object.assign({ title: '', subtitle: '', footer: '', per: 6, c1: '#1c1c1e', c2: '#c9a84c', open: true, price: true, total: true }, saved);
+    // Precio cambiado a mano por código (pesos, entero); lo que no está aquí usa el precio del visor
+    const prices = asMap(readJson(ls, 'kinoPdfPrices', {}));
+    const toNum = (v) => { const d = String(v == null ? '' : v).replace(/[^\d]/g, ''); return d ? Math.min(+d, 999999999999) : 0; };
+    const money = (n) => '$' + String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    // Antes el precio se escribía en el texto libre: si el texto de un código es solo un precio, pasa a su casilla
+    Object.keys(texts).forEach((k) => {
+        const m = /^\s*(?:precio\s*:?)?\s*\$?\s*([\d][\d.,]*)\s*$/i.exec(String(texts[k] || ''));
+        if (m && toNum(m[1]) >= 100 && prices[k] == null) { prices[k] = toNum(m[1]); texts[k] = ''; }
+    });
     delete opts.contact;
     if (![1, 2, 4, 6, 9].includes(+opts.per)) opts.per = 6;
     const HEX = /^#[0-9a-f]{6}$/i;
@@ -146,7 +155,8 @@
             <span class="ms-n">${i + 1}</span>
             <img src="https://lh3.googleusercontent.com/d/${encodeURIComponent(it.id)}=s400" alt="" loading="lazy">
             <span class="cp-info"><span class="cp-info-top"><strong>${esc(it.code)}</strong><button type="button" class="cp-addhead" data-a="head"${heads[it.id] ? ' hidden' : ''}>＋ Subtítulo</button></span>
-                <textarea rows="2" maxlength="120" data-code="${esc(it.code)}" placeholder="Precio u otra información (opcional)">${esc(texts[it.code] || '')}</textarea>
+                <span class="cp-price-row"><span>Precio</span><input type="text" class="cp-price" inputmode="numeric" maxlength="16" data-pcode="${esc(it.code)}" value="${prices[it.code] != null ? esc(money(prices[it.code])) : ''}" placeholder="Sin precio" aria-label="Precio de ${esc(it.code)}"><button type="button" data-a="preset" title="Volver al precio del visor" hidden>↩</button><em></em></span>
+                <textarea rows="2" maxlength="120" data-code="${esc(it.code)}" placeholder="Otra información (opcional)">${esc(texts[it.code] || '')}</textarea>
             </span></li>`).join('');
 
     $('cpTitle').value = opts.title;
@@ -157,18 +167,56 @@
     document.querySelectorAll('input[name="cpPer"]').forEach((r) => { r.checked = +r.value === +opts.per; });
     $('cpOpen').checked = opts.open !== false;
     $('cpPrice').checked = opts.price !== false;
+    $('cpTotalPdf').checked = opts.total !== false;
     if (src.cut) warn(`El PDF admite hasta ${MAX_ITEMS} fotos: se dejaron las primeras ${MAX_ITEMS} (sobran ${src.cut}).`);
 
-    // Precio público de cada código (decisión del dueño 2026-11-24: sale por defecto, con casilla para quitarlo)
-    const autoPrice = {};
-    const txt = (code) => clean(texts[code]) || (opts.price !== false ? (autoPrice[code] || '') : '');
-    function autoFill() {
-        list.querySelectorAll('textarea').forEach((ta) => { ta.placeholder = opts.price !== false && autoPrice[ta.dataset.code] ? 'Precio: ' + autoPrice[ta.dataset.code] + ' (automático)' : 'Precio u otra información (opcional)'; });
+    // Precio de cada código (decisión del dueño 2026-11-24: sale por defecto, con casilla para quitarlo;
+    // 2026-11-25: se puede cambiar por código antes de generar y se muestra el total)
+    const autoPrice = {}; // código → pesos (del visor)
+    const priceOf = (code) => (prices[code] != null ? prices[code] : (autoPrice[code] || 0));
+    const codesInList = [...new Set(items.map((it) => it.code))];
+    const txt = (code) => {
+        const p = opts.price !== false ? priceOf(code) : 0;
+        const t = clean(texts[code]);
+        return [p ? money(p) : '', t].filter(Boolean).join('\n');
+    };
+    function totals() {
+        let sum = 0; const none = [];
+        codesInList.forEach((c) => { const p = priceOf(c); if (p) sum += p; else none.push(c); });
+        return { sum, none, n: codesInList.length };
+    }
+    function drawPrices() {
+        const on = opts.price !== false;
+        $('cpMoneyOn').hidden = !on;
+        list.classList.toggle('no-price', !on);
+        $('cpPrev').classList.toggle('no-price', !on);
+        list.querySelectorAll('.cp-price').forEach((inp) => {
+            const c = inp.dataset.pcode, a = autoPrice[c];
+            inp.placeholder = a ? money(a) : 'Sin precio';
+            if (document.activeElement !== inp) inp.value = prices[c] != null ? money(prices[c]) : '';
+            const edited = prices[c] != null && prices[c] !== (a || 0);
+            const row = inp.parentNode;
+            row.querySelector('button').hidden = !(prices[c] != null && a);
+            row.querySelector('em').textContent = edited ? (a ? 'cambiado (visor ' + money(a) + ')' : 'escrito a mano') : (a ? 'del visor' : '');
+            row.classList.toggle('is-edited', edited);
+            row.classList.toggle('is-none', !priceOf(c));
+        });
+        const t = totals();
+        $('cpTotal').innerHTML = `Total: <b>${money(t.sum)}</b> <small>· ${t.n} referencia${t.n === 1 ? '' : 's'}${t.none.length ? ', ' + (t.n - t.none.length) + ' con precio' : ''}</small>`;
+        $('cpNoPrice').hidden = !t.none.length;
+        $('cpNoPrice').textContent = t.none.length ? `⚠️ Sin precio (${t.none.length}): ${t.none.slice(0, 12).join(', ')}${t.none.length > 12 ? '…' : ''}. Escríbelo en su casilla o sale sin precio.` : '';
+    }
+    function savePrices() {
+        if (!writeJson('kinoPdfPrices', prices)) msg('⚠️ No se pudieron guardar los precios en este dispositivo (memoria llena).');
     }
     try {
-        const codes = [...new Set(items.map((it) => it.code))].slice(0, 400);
-        fetch('/api/precios?codes=' + encodeURIComponent(codes.join(',')), { headers: { Accept: 'application/json' } })
-            .then((r) => r.json()).then((d) => { Object.assign(autoPrice, d || {}); autoFill(); }).catch(() => {});
+        fetch('/api/precios?codes=' + encodeURIComponent(codesInList.slice(0, 400).join(',')), { headers: { Accept: 'application/json' } })
+            .then((r) => r.json()).then((d) => {
+                Object.keys(d || {}).forEach((k) => { const n = toNum(d[k]); if (n) autoPrice[k] = n; });
+                // Un precio guardado igual al del visor ya no cuenta como cambiado
+                Object.keys(prices).forEach((k) => { if (autoPrice[k] && prices[k] === autoPrice[k]) delete prices[k]; });
+                savePrices(); drawPrices();
+            }).catch(() => {});
     } catch (e) { /* sin precios automáticos */ }
 
     function warn(t) { const w = $('cpWarn'); w.textContent = t || ''; w.hidden = !t; }
@@ -194,6 +242,8 @@
         });
     }
     drawPreview();
+    drawPrices();
+    if (Object.keys(prices).length) { savePrices(); writeJson('kinoPdfTexts', texts); }
 
     let saveT;
     function saveTexts() {
@@ -211,16 +261,28 @@
     list.addEventListener('input', (e) => {
         const el = e.target;
         if (el.dataset.head) { heads[el.dataset.head] = el.value; saveTexts(); stale(); return; }
+        if (el.dataset.pcode) {
+            // Precio de un código: vacío = el del visor; las otras fotos del mismo código cambian igual
+            const c = el.dataset.pcode;
+            if (el.value.trim() === '') delete prices[c]; else prices[c] = toNum(el.value);
+            list.querySelectorAll('.cp-price').forEach((o) => { if (o !== el && o.dataset.pcode === c) o.value = el.value; });
+            savePrices(); drawPrices(); stale(); return;
+        }
         if (el.tagName !== 'TEXTAREA') return;
         const c = el.dataset.code;
         texts[c] = el.value;
         list.querySelectorAll('textarea').forEach((o) => { if (o !== el && o.dataset.code === c) o.value = el.value; });
         saveTexts(); stale();
     });
+    list.addEventListener('focusout', (e) => { if (e.target.classList && e.target.classList.contains('cp-price')) drawPrices(); });
     list.addEventListener('click', (e) => {
         const b = e.target.closest('button[data-a]');
         if (!b) return;
         const li = b.closest('.cp-item');
+        if (b.dataset.a === 'preset') {
+            const inp = b.parentNode.querySelector('.cp-price');
+            delete prices[inp.dataset.pcode]; savePrices(); drawPrices(); stale(); return;
+        }
         const row = li.querySelector('.cp-headrow');
         const input = row.querySelector('input');
         if (b.dataset.a === 'head') {
@@ -246,7 +308,24 @@
         saveOpts(); stale();
     });
     document.querySelectorAll('input[name="cpPer"]').forEach((r) => r.addEventListener('change', () => { opts.per = +r.value; saveOpts(); stale(); }));
-    $('cpPrice').addEventListener('change', (e) => { opts.price = e.target.checked; saveOpts(); autoFill(); stale(); });
+    $('cpPrice').addEventListener('change', (e) => { opts.price = e.target.checked; saveOpts(); drawPrices(); stale(); });
+    $('cpTotalPdf').addEventListener('change', (e) => { opts.total = e.target.checked; saveOpts(); stale(); });
+    $('cpPctApply').addEventListener('click', () => {
+        const pct = parseFloat(String($('cpPct').value).replace(',', '.'));
+        if (!isFinite(pct) || pct === 0 || pct < -90 || pct > 500) { $('cpPct').focus(); msg('Escribe un porcentaje (ej.: 10 para subir, −10 para bajar).'); return; }
+        let n = 0;
+        codesInList.forEach((c) => { const p = priceOf(c); if (p) { prices[c] = Math.round(p * (1 + pct / 100) / 100) * 100; n++; } });
+        $('cpPct').value = '';
+        msg(n ? `Precios ${pct > 0 ? 'subidos' : 'bajados'} ${Math.abs(pct)} % en ${n} código${n === 1 ? '' : 's'} (redondeado a $100).` : 'No hay precios para ajustar.');
+        savePrices(); drawPrices(); stale();
+    });
+    $('cpPriceReset').addEventListener('click', () => {
+        const mine = codesInList.filter((c) => prices[c] != null);
+        if (!mine.length) { msg('Todos los precios ya son los del visor.'); return; }
+        if (!confirm(`¿Volver al precio del visor en ${mine.length} código${mine.length === 1 ? '' : 's'}?`)) return;
+        mine.forEach((c) => delete prices[c]);
+        msg(''); savePrices(); drawPrices(); stale();
+    });
     $('cpOpen').addEventListener('change', (e) => { opts.open = e.target.checked; saveOpts(); stale(); });
 
     function bulk(mode) {
@@ -403,6 +482,12 @@
             const textH = lh(codePt) + 3 + (anyText ? 3 * lh(textPt) : 0) + 3 + (openBtn ? BTN_H + 2 : 0);
             const c1 = rgb(opts.c1), c2 = rgb(opts.c2), on1 = rgb(onColor(opts.c1)), sub1 = rgb(subOnBand()), ink1 = rgb(onWhite(opts.c1));
             const { boxes, pages } = layout(rows, { M, top, bottom, cw, ch, cols, gap: GAP, headH: HEAD_H }, headsUse);
+            let totalLine = '';
+            if (opts.price !== false && opts.total !== false) {
+                const cs = [...new Set(rows.map((r) => r.it.code))];
+                const sum = cs.reduce((a, c) => a + priceOf(c), 0), withP = cs.filter((c) => priceOf(c)).length;
+                if (sum) totalLine = `Total ${withP} referencia${withP === 1 ? '' : 's'}: ${money(sum)}` + (withP < cs.length ? ` (${cs.length - withP} sin precio)` : '');
+            }
             const emojis = rows.some((r) => lostChars(txt(r.it.code)) || lostChars(heads[r.it.id])) || lostChars(opts.title) || lostChars(opts.subtitle) || lostChars(opts.footer);
 
             const lines = (t, width) => {
@@ -451,6 +536,11 @@
                 footLines.forEach((ln, i) => doc.text(ln, M, fy + 5 + i * 4));
                 doc.setFont('helvetica', 'bold'); doc.setTextColor(...ink1);
                 doc.text(`${p + 1} / ${pages}`, W - M, fy + 5, { align: 'right' });
+                // Total (última página, encima de la línea del pie): suma de un precio por código de lo que salió
+                if (p === pages - 1 && totalLine) {
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...ink1);
+                    doc.text(totalLine, W - M, fy - 1.8, { align: 'right' });
+                }
             }
 
             // 3) Páginas

@@ -3591,3 +3591,23 @@ a.active, .filter-field.on, summary.filter-field.on { background: var(--color-su
 .stock-tag.in::before, .stock-tag.out::before { content: ""; display: inline-block; width: 0.5em; height: 0.5em; border-radius: 50%; background: currentColor; margin-right: 0.35em; vertical-align: 0.05em; }
 .search-clear { color: #3a3a3c !important; }
 .parent-card .card-price .stock-tag, .product-price .stock-tag { margin-left: 0.5rem; }
+/* Catálogo PDF: precios por código y total */
+.cp-money h2 { margin-bottom: 0.3rem; }
+.cp-total { margin: 0.6rem 0 0.3rem; font-size: 1.05rem; }
+.cp-total small { color: var(--color-text-muted); font-size: 0.78rem; }
+.cp-noprice { margin: 0.2rem 0 0.4rem; font-size: 0.8rem; color: var(--color-warning); }
+.cp-adjust { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.5rem; margin-top: 0.7rem; font-size: 0.85rem; }
+.cp-adjust > span:first-child { color: var(--color-text-muted); flex-basis: 100%; }
+.cp-pct { display: inline-flex; align-items: center; gap: 0.3rem; }
+.cp-pct input { width: 5.2rem; background: var(--color-surface-2); color: var(--color-text); border: 1px solid var(--color-border);
+    border-radius: 10px; padding: 0.45rem 0.6rem; font: inherit; font-size: 16px; }
+.cp-price-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.cp-price-row > span { font-size: 0.75rem; color: var(--color-text-muted); }
+.cp-price-row .cp-price { width: 8.5rem; padding: 0.4rem 0.6rem; font-variant-numeric: tabular-nums; }
+.cp-price-row button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface-2); color: var(--color-text); cursor: pointer; }
+.cp-price-row em { font-style: normal; font-size: 0.72rem; color: var(--color-text-muted); }
+.cp-price-row.is-edited .cp-price { border-color: var(--color-primary); }
+.cp-price-row.is-edited em { color: var(--color-primary); }
+.cp-price-row.is-none .cp-price { border-style: dashed; }
+.cp-list.no-price .cp-price-row { display: none; }
+.cp-prev.no-price .cp-prev-grid small { visibility: hidden; }
