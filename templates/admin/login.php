@@ -7,15 +7,11 @@
     <title>Admin Login · Viewfinder</title>
     <style>
         body {
-            background: #0a0a0f;
-            color: #e8e8f0
+            background: var(--color-bg,#161618);
+            color: var(--color-text,#f5f5f7)
         }
     </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print"
-        onload="this.media='all'">
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 

@@ -6,17 +6,17 @@
  */
 $mnavActive = $mnavActive ?? '';
 $mnavItems = [
-    'inicio'   => ['/', '🏠', 'Inicio'],
-    'buscar'   => ['/buscar', '🔍', 'Buscar'],
-    'carpetas' => ['/#carpetas', '📂', 'Carpetas'],
-    'seleccion' => ['/mi-seleccion', '⭐', 'Selección'],
-    'enviar'   => ['/enviar-catalogo', '📤', 'Enviar'],
+    'inicio'   => ['/', 'home', 'Inicio'],
+    'buscar'   => ['/buscar', 'search', 'Buscar'],
+    'carpetas' => ['/#carpetas', 'folder', 'Carpetas'],
+    'seleccion' => ['/mi-seleccion', 'star', 'Selección'],
+    'enviar'   => ['/enviar-catalogo', 'send', 'Enviar'],
 ];
 ?>
 <nav class="mnav" id="mobileNav" aria-label="Navegación">
     <?php foreach ($mnavItems as $mnavKey => [$mnavHref, $mnavIcon, $mnavLabel]): ?>
         <a href="<?= $mnavHref ?>" class="mnav-item<?= $mnavKey === $mnavActive ? ' active' : '' ?>" data-mnav="<?= $mnavKey ?>"<?= $mnavKey === $mnavActive ? ' aria-current="page"' : '' ?>>
-            <span class="mnav-icon" aria-hidden="true"><?= $mnavIcon ?><?php if ($mnavKey === 'seleccion'): ?><span class="mnav-badge" id="mnavSelCount" hidden></span><?php endif; ?></span>
+            <span class="mnav-icon" aria-hidden="true"><?= icon($mnavIcon) ?><?php if ($mnavKey === 'seleccion'): ?><span class="mnav-badge" id="mnavSelCount" hidden></span><?php endif; ?></span>
             <span class="mnav-label"><?= $mnavLabel ?></span>
         </a>
     <?php endforeach; ?>
@@ -36,7 +36,7 @@ $mnavItems = [
         back.href = up ? up.getAttribute('href') : '/';
         back.setAttribute('aria-label', 'Atrás');
         back.title = 'Atrás';
-        back.innerHTML = '<span class="hdr-back-arrow" aria-hidden="true">←</span><span>Atrás</span>';
+        back.innerHTML = '<span class="hdr-back-arrow" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" focusable="false"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></span><span>Atrás</span>';
         back.addEventListener('click', function (ev) {
             var fromHere = false;
             try { fromHere = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (err) {}

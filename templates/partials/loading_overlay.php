@@ -10,7 +10,7 @@
     position: fixed;
     inset: 0;
     z-index: 99999;
-    background: rgba(10, 10, 15, 0.85);
+    background: rgba(22, 22, 24, 0.85);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     display: flex;
@@ -32,11 +32,11 @@
     font-size: 3.5rem;
     animation: hourglassSpin 1.2s ease-in-out infinite;
     display: inline-block;
-    filter: drop-shadow(0 0 20px rgba(201, 168, 76, 0.6));
+    filter: drop-shadow(0 0 20px rgba(196, 164, 107, 0.6));
 }
 .loading-text {
     margin-top: 1rem;
-    color: #e8e8f0;
+    color: var(--color-text,#f5f5f7);
     font-size: 0.95rem;
     font-weight: 500;
     letter-spacing: 0.5px;

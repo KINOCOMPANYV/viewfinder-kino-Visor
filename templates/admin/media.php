@@ -7,15 +7,11 @@
     <title>Media · Viewfinder Admin</title>
     <style>
         body {
-            background: #0a0a0f;
-            color: #e8e8f0
+            background: var(--color-bg,#161618);
+            color: var(--color-text,#f5f5f7)
         }
     </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print"
-        onload="this.media='all'">
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
         .drive-status {
@@ -77,7 +73,7 @@
         .upload-zone:hover,
         .upload-zone.dragover {
             border-color: var(--color-gold);
-            background: rgba(201, 168, 76, 0.05);
+            background: rgba(196, 164, 107, 0.05);
         }
 
         .upload-zone .icon {
@@ -185,7 +181,7 @@
         }
 
         .btn-set-cover {
-            background: rgba(201, 168, 76, 0.15);
+            background: rgba(196, 164, 107, 0.15);
             color: var(--color-gold);
             border: 1px solid var(--color-gold);
             border-radius: var(--radius);
@@ -231,7 +227,7 @@
         }
 
         .bc-item:hover:not(.active) {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgb(var(--rgb-fg,255 255 255) / 0.1);
             color: var(--color-gold);
         }
 
@@ -1021,7 +1017,7 @@
 
             progressDiv.innerHTML = `
                 <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
-                    <div class="loading-spinner" style="width:20px;height:20px;border:2px solid rgba(201,168,76,0.3);border-top-color:var(--color-gold);border-radius:50%;animation:spin 0.6s linear infinite;flex-shrink:0;"></div>
+                    <div class="loading-spinner" style="width:20px;height:20px;border:2px solid rgba(196, 164, 107,0.3);border-top-color:var(--color-gold);border-radius:50%;animation:spin 0.6s linear infinite;flex-shrink:0;"></div>
                     <div>
                         <div style="font-weight:600; color:var(--color-text);" id="syncStatusText">Descargando índice de archivos de Drive...</div>
                         <div style="font-size:0.8rem; color:var(--color-text-muted);" id="syncStatusDetail">Esto indexa todos los archivos de una vez (mucho más rápido)</div>
@@ -1077,7 +1073,7 @@
                                 · <a href="/admin/media/sin-codigo.csv?tipo=productos" style="color:var(--color-gold);">productos sin foto</a>
                             </div>
                             ${data.errors && data.errors.length > 0 ? '<div style="margin-top:0.5rem; font-size:0.8rem; color:#dc3545;">⚠️ ' + data.errors.length + ' error(es): ' + data.errors.slice(0, 3).join(', ') + '</div>' : ''}
-                            ${data.unmapped_files && data.unmapped_files.length > 0 ? '<div style="margin-top:1rem; font-size:0.8rem; color:var(--color-text-muted); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.8rem;"><strong style="color:var(--color-gold);">⚠️ Archivos cuyo nombre no es el código de ningún producto (' + data.unmapped_files.length + '):</strong><br><div style="max-height:150px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:0.3rem; word-break: break-all;">' + data.unmapped_files.join('<br>') + '</div></div>' : ''}
+                            ${data.unmapped_files && data.unmapped_files.length > 0 ? '<div style="margin-top:1rem; font-size:0.8rem; color:var(--color-text-muted); border-top: 1px solid rgb(var(--rgb-fg,255 255 255) / 0.1); padding-top: 0.8rem;"><strong style="color:var(--color-gold);">⚠️ Archivos cuyo nombre no es el código de ningún producto (' + data.unmapped_files.length + '):</strong><br><div style="max-height:150px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:0.3rem; word-break: break-all;">' + data.unmapped_files.join('<br>') + '</div></div>' : ''}
                         </div>`;
 
                     statusText.textContent = data.assigned > 0 ? '¡Portadas asignadas!' : 'Proceso completado';

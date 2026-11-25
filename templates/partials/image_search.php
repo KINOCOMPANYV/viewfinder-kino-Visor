@@ -18,7 +18,7 @@ if ($imgSearchPart === 'button'): ?>
 <style>
 .imgs-modal { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.75); display:none; align-items:flex-start; justify-content:center; overflow-y:auto; padding:1rem; }
 .imgs-modal.open { display:flex; }
-.imgs-panel { background:var(--color-surface, #12121a); border:1px solid var(--color-border, #333); border-radius:var(--radius, 12px); width:100%; max-width:960px; padding:1rem; margin:auto 0; }
+.imgs-panel { background:var(--color-surface, var(--color-surface,#1c1c1e)); border:1px solid var(--color-border, #333); border-radius:var(--radius, 12px); width:100%; max-width:960px; padding:1rem; margin:auto 0; }
 .imgs-head { display:flex; gap:1rem; align-items:center; margin-bottom:1rem; }
 .imgs-head img { width:84px; height:84px; object-fit:cover; border-radius:8px; background:#000; flex-shrink:0; }
 .imgs-head .imgs-title { flex:1; min-width:0; }
@@ -33,7 +33,7 @@ if ($imgSearchPart === 'button'): ?>
 .imgs-card span { color:var(--color-text-muted, #999); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .imgs-msg { text-align:center; padding:2rem 1rem; color:var(--color-text-muted, #999); }
 .imgs-actions { display:flex; justify-content:center; margin-top:1rem; }
-.imgs-again { padding:.7rem 1.5rem; background:var(--color-primary, #c9a84c); color:#000; font-weight:600; border:none; border-radius:var(--radius-sm, 8px); cursor:pointer; font-size:.95rem; }
+.imgs-again { padding:.7rem 1.5rem; background:var(--color-primary, #c4a46b); color:#000; font-weight:600; border:none; border-radius:var(--radius-sm, 8px); cursor:pointer; font-size:.95rem; }
 @media (max-width: 600px) { .imgs-grid { grid-template-columns:repeat(3, 1fr); gap:.4rem; } .imgs-card div { font-size:.7rem; } .imgs-modal { padding:.5rem; } }
 </style>
 <input type="file" id="imgsFile" accept="image/*" hidden>

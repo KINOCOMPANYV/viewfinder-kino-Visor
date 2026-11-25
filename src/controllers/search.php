@@ -277,11 +277,9 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
         'image_id' => $shareImageId,
     ]);
     ?>
-    <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 
@@ -291,7 +289,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
             <div style="display:flex; gap:0.4rem; align-items:center;">
                 <?= pedidosHeaderBtn() ?>
-                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar fotos con lista</a>
+                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;"><?= icon('send') ?> Enviar fotos con lista</a>
             </div>
         </div>
     </header>
@@ -302,7 +300,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
         <div class="search-main" style="width: 100%; max-width: 100%;">
         <!-- Search bar inline -->
         <div class="search-box" style="max-width:800px; margin: 0 auto 1.5rem auto;">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon"><?= icon('search') ?></span>
             <form action="/buscar" method="GET" id="searchForm" style="width:100%;">
                 <span class="search-field">
                     <textarea name="q" id="searchInput" rows="1"
@@ -380,7 +378,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
         <?php if (!empty($matchedFolders)): ?>
             <!-- Matched Folders -->
             <div class="section-header-landing" style="margin-bottom:1rem; border-top: 1px solid var(--color-border); padding-top:1.5rem;">
-                <h2 style="font-size:1.2rem;">📂 Carpetas encontradas</h2>
+                <h2 style="font-size:1.2rem;"><?= icon('folder') ?> Carpetas encontradas</h2>
             </div>
             <div class="parent-grid folder-hits" style="margin-bottom:2rem;">
                 <?php foreach ($matchedFolders as $idx => $folder): 
@@ -435,7 +433,7 @@ if (!$isMultiCode && $q !== '' && $page === 1 && $pageRoots) {
                                              onload="this.classList.add('loaded')"
                                              onerror="this.outerHTML='<div class=\'cover-placeholder\'>📷</div>'">
                                     <?php else: ?>
-                                        <div class="cover-placeholder">📷</div>
+                                        <div class="cover-placeholder"><?= icon('image') ?></div>
                                     <?php endif; ?>
                                 </div>
                             </a>

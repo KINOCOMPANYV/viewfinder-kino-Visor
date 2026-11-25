@@ -103,8 +103,8 @@
         g.fillStyle = '#111111';
         g.textAlign = 'center'; g.textBaseline = 'middle';
         let size = Math.round(band * 0.55);
-        g.font = `700 ${size}px Inter, Arial, sans-serif`;
-        while (size > 12 && g.measureText(code).width > w * 0.92) { size -= 2; g.font = `700 ${size}px Inter, Arial, sans-serif`; }
+        g.font = `700 ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif`;
+        while (size > 12 && g.measureText(code).width > w * 0.92) { size -= 2; g.font = `700 ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif`; }
         g.fillText(code, w / 2, h + band / 2);
         if (img.close) img.close();
         return await new Promise((ok, bad) => c.toBlob((b) => b ? ok(b) : bad(new Error('no se pudo generar la imagen')), 'image/jpeg', 0.9));

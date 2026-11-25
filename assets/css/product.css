@@ -237,7 +237,7 @@
    ============================================================ */
 
 .btn-set-cover {
-    background: rgba(201, 168, 76, 0.15);
+    background: rgba(196, 164, 107, 0.15);
     color: var(--color-gold);
     border: 1px solid var(--color-gold);
     border-radius: var(--radius);
@@ -357,7 +357,7 @@
 .main-image-download:hover {
     color: var(--color-primary);
     border-color: var(--color-primary);
-    background: rgba(201, 168, 76, 0.1);
+    background: rgba(196, 164, 107, 0.1);
     transform: translateY(-1px);
 }
 
@@ -463,13 +463,13 @@
     font-weight: 700;
     font-size: 0.8rem;
     transition: all 0.3s;
-    box-shadow: 0 2px 10px rgba(201, 168, 76, 0.4);
+    box-shadow: 0 2px 10px rgba(196, 164, 107, 0.4);
     margin-right: auto;
 }
 
 .btn-back-catalog:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 18px rgba(201, 168, 76, 0.6);
+    box-shadow: 0 4px 18px rgba(196, 164, 107, 0.6);
 }
 
 .breadcrumb-bar {
@@ -601,7 +601,7 @@
 .variant-chip-link:hover .variant-thumb {
     transform: translateY(-2px) scale(1.04);
     border-color: var(--color-primary);
-    box-shadow: 0 4px 12px rgba(201, 168, 76, 0.3);
+    box-shadow: 0 4px 12px rgba(196, 164, 107, 0.3);
 }
 
 .variant-chip-link.active .variant-thumb {

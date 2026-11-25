@@ -256,14 +256,12 @@ unset($v);
         'image_id' => $serverCoverId ?? driveIdFromUrl($product['cover_image_url'] ?? ''),
     ]);
     ?>
-    <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
     <?php if ($serverCover): ?>
         <link rel="preload" as="image" href="<?= e($serverCover) ?>">
     <?php endif; ?>
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="/assets/css/product.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="/assets/css/gallery-slider.css?v=<?= APP_VERSION ?>">
@@ -275,7 +273,7 @@ unset($v);
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
             <div style="display:flex; gap:0.4rem; align-items:center;">
                 <?= pedidosHeaderBtn() ?>
-                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar fotos con lista</a>
+                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;"><?= icon('send') ?> Enviar fotos con lista</a>
             </div>
         </div>
     </header>
@@ -315,7 +313,7 @@ unset($v);
                     <div class="main-image-info" id="mainImageInfo">
                         <span class="main-image-name" id="mainImageName"></span>
                         <button class="main-image-download" id="mainImageDownload" onclick="downloadMainImage()"<?= $serverCoverId ? '' : ' style="display:none;"' ?>>
-                            ⬇️ Descargar imagen
+                            <?= icon('download') ?> Descargar imagen
                         </button>
                         <button class="main-image-wa" id="mainImageWaShare" onclick="shareMainImageWa()">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -369,7 +367,7 @@ unset($v);
                         <h3 style="font-size:0.9rem; color:var(--color-text-muted); margin-bottom:0.5rem;">Descripción</h3>
                         <div class="description-box" id="descriptionBox">
                             <button class="btn-copy" onclick="copyDescription()" id="copyBtn" title="Copiar descripción">
-                                📋 Copiar
+                                <?= icon('copy') ?> Copiar
                             </button>
                             <p id="descriptionText">
                                 <?= e($product['description']) ?>
@@ -395,7 +393,7 @@ unset($v);
                                                 <img src="<?= e($v['thumb']) ?>" alt="<?= e($v['sku']) ?>" loading="lazy"
                                                      onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'variant-noimg',textContent:'📷'}))">
                                             <?php else: ?>
-                                                <span class="variant-noimg">📷</span>
+                                                <span class="variant-noimg"><?= icon('image') ?></span>
                                             <?php endif; ?>
                                         </span>
                                         <span class="variant-sku"><?= e($v['sku']) ?></span>
@@ -423,7 +421,7 @@ unset($v);
 
             <!-- Media Gallery -->
             <div class="media-gallery" id="mediaGallery" style="display:none;">
-                <h2>📂 Archivos multimedia</h2>
+                <h2><?= icon('folder') ?> Archivos multimedia</h2>
                 <div class="gallery-grid" id="galleryGrid"></div>
             </div>
         </div>

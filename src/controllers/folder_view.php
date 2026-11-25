@@ -114,11 +114,9 @@ $shareDesc = implode(' · ', array_filter([
     <meta name="robots" content="noindex, nofollow">
     <title><?= e(folderDisplayName($folderName)) ?> — Viewfinder</title>
     <?= shareMetaTags(['title' => $shareTitle, 'description' => $shareDesc, 'url' => $shareUrl, 'image_id' => $shareImageId]) ?>
-    <style>body{background:#0a0a0f;color:#e8e8f0}img{max-width:100%;height:auto}</style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}img{max-width:100%;height:auto}</style>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 
@@ -128,7 +126,7 @@ $shareDesc = implode(' · ', array_filter([
             <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
             <div style="display:flex; gap:0.5rem; align-items:center;">
                 <?= pedidosHeaderBtn() ?>
-                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">📤 Enviar fotos con lista</a>
+                <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;"><?= icon('send') ?> Enviar fotos con lista</a>
                 <a href="/" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Inicio</a>
             </div>
         </div>
@@ -144,7 +142,7 @@ $shareDesc = implode(' · ', array_filter([
                 <?php endforeach; ?>
                 › <span><?= e(folderDisplayName($folderName)) ?></span>
             </div>
-            <h1 style="font-size:1.5rem; margin:0;">📂 <?= e(folderDisplayName($folderName)) ?></h1>
+            <h1 style="font-size:1.5rem; margin:0;"><?= icon('folder') ?> <?= e(folderDisplayName($folderName)) ?></h1>
             <p style="color:var(--color-text-muted); font-size:0.9rem; margin-top:0.25rem;">
                 <?= count($subfolders) ?> subcarpeta<?= count($subfolders) !== 1 ? 's' : '' ?> · 
                 <?= $fromSubfolders ? 0 : count($files) ?> archivo<?= (!$fromSubfolders && count($files) === 1) ? '' : 's' ?>
@@ -164,7 +162,7 @@ $shareDesc = implode(' · ', array_filter([
         <?php if (!empty($subfolders)): ?>
             <div class="drive-folders-section">
                 <div class="section-header-landing">
-                    <h2>📂 Subcarpetas</h2>
+                    <h2><?= icon('folder') ?> Subcarpetas</h2>
                     <span class="product-count"><?= count($subfolders) ?></span>
                 </div>
                 <div class="drive-folders-scroll">

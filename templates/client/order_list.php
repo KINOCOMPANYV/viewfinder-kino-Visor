@@ -19,24 +19,25 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Lista Bodega · Viewfinder</title>
-    <style>body{background:#0a0a0f;color:#e8e8f0}</style>
+    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
     <link rel="preconnect" href="https://lh3.googleusercontent.com">
+    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <style>
-        .ol-card { background:var(--color-surface, #14141c); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.1rem; margin-bottom:1rem; }
+        .ol-card { background:var(--color-surface, var(--color-surface,#1c1c1e)); border:1px solid rgb(var(--rgb-fg,255 255 255) / 0.08); border-radius:12px; padding:1.1rem; margin-bottom:1rem; }
         .ol-card h2 { font-size:1.05rem; margin:0 0 0.6rem; }
-        .ol-help { color:#a0a0b0; font-size:0.88rem; margin:0 0 0.8rem; }
+        .ol-help { color:var(--color-text-muted,#a0a0b0); font-size:0.88rem; margin:0 0 0.8rem; }
         .ol-order { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:0.5rem 1rem; font-size:0.95rem; }
-        .ol-order > * > span { color:#a0a0b0; display:block; font-size:0.78rem; }
+        .ol-order > * > span { color:var(--color-text-muted,#a0a0b0); display:block; font-size:0.78rem; }
         .ol-miss { color:#ff9f43; }
-        .ol-edit { width:100%; box-sizing:border-box; padding:0.35rem 0.5rem; margin:0.15rem 0; background:#15151c; color:#f0f0f0; border:1px solid #c9a84c; border-radius:6px; font:inherit; }
-        .ol-note { display:block; color:#a0a0b0; font-size:0.75rem; }
+        .ol-edit { width:100%; box-sizing:border-box; padding:0.35rem 0.5rem; margin:0.15rem 0; background:var(--color-surface,#1c1c1e); color:var(--color-text,#f0f0f0); border:1px solid #c4a46b; border-radius:6px; font:inherit; }
+        .ol-note { display:block; color:var(--color-text-muted,#a0a0b0); font-size:0.75rem; }
         .ol-field { cursor:pointer; }
         .ol-type { display:flex; flex-wrap:wrap; align-items:center; gap:0.4rem 1.2rem; margin:0 0 1rem; padding:0.7rem 1rem; border-radius:10px;
-            border:1px solid #c9a84c55; background:#c9a84c14; font-size:0.92rem; }
+            border:1px solid #c4a46b55; background:#c4a46b14; font-size:0.92rem; }
         .ol-type label { cursor:pointer; }
-        .ol-type input { accent-color:#c9a84c; vertical-align:middle; }
-        .ol-type small { flex-basis:100%; color:#a0a0b0; }
+        .ol-type input { accent-color:#c4a46b; vertical-align:middle; }
+        .ol-type small { flex-basis:100%; color:var(--color-text-muted,#a0a0b0); }
         body.ol-remision .ol-type { border-color:#e0505a66; background:#e0505a14; }
         body.ol-remision .ol-type input, body.ol-remision .ol-field input, body.ol-remision .ol-opts input { accent-color:#e0505a; }
         body.ol-remision #olTitle { color:#ff8a92; }
@@ -51,29 +52,29 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
         @media (prefers-reduced-motion: reduce) { .ol-preview-btn { animation:none; } }
         .ol-pv { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.85); display:flex; flex-direction:column; }
         .ol-pv[hidden] { display:none; }
-        .ol-pv-head { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; padding:0.7rem 1rem; background:#15151c; border-bottom:1px solid #2a2a35; }
+        .ol-pv-head { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; padding:0.7rem 1rem; background:var(--color-surface,#1c1c1e); border-bottom:1px solid var(--color-surface-3,#2c2c2e); }
         .ol-pv-head strong { flex:1; min-width:10rem; font-size:1rem; }
         .ol-pv-head .btn { min-height:40px; }
         .ol-pv-pages { flex:1; overflow:auto; padding:1rem; display:flex; flex-direction:column; align-items:center; gap:1rem; }
         .ol-pv-pages canvas { width:100%; max-width:820px; height:auto; background:#fff; box-shadow:0 4px 18px rgba(0,0,0,.5); border-radius:2px; }
-        .ol-pv-pages p { color:#c8c8d0; margin:0; }
+        .ol-pv-pages p { color:var(--color-text-muted,#c8c8d0); margin:0; }
         .ol-field.off { opacity:0.45; text-decoration:line-through; }
-        .ol-field input, .ol-opts input { accent-color:#c9a84c; vertical-align:middle; }
-        .ol-opts { display:flex; flex-wrap:wrap; gap:0.4rem 1.2rem; margin-top:0.8rem; font-size:0.85rem; color:#c8c8d0; }
+        .ol-field input, .ol-opts input { accent-color:#c4a46b; vertical-align:middle; }
+        .ol-opts { display:flex; flex-wrap:wrap; gap:0.4rem 1.2rem; margin-top:0.8rem; font-size:0.85rem; color:var(--color-text-muted,#c8c8d0); }
         .ol-opts label { cursor:pointer; }
-        .ol-cols { flex-basis:100%; display:flex; flex-wrap:wrap; gap:0.3rem 1rem; padding:0.6rem 0.7rem; border:1px solid #2a2a35; border-radius:8px; }
+        .ol-cols { flex-basis:100%; display:flex; flex-wrap:wrap; gap:0.3rem 1rem; padding:0.6rem 0.7rem; border:1px solid var(--color-surface-3,#2c2c2e); border-radius:8px; }
         .ol-cols b { color:#e8e8ee; font-weight:600; }
         .ol-warn { background:rgba(255,159,67,0.08); border:1px solid rgba(255,159,67,0.5); border-radius:10px; padding:0.7rem 0.9rem; margin-bottom:1rem; font-size:0.9rem; }
         .ol-warn ul { margin:0.3rem 0 0; padding-left:1.1rem; }
         .ol-list { list-style:none; margin:0; padding:0; }
-        .ol-list li { display:grid; grid-template-columns:2rem 64px 1fr auto; gap:0.75rem; align-items:center; padding:0.45rem 0; border-bottom:1px solid rgba(255,255,255,0.06); }
-        .ol-list .n { color:#a0a0b0; font-size:0.8rem; text-align:right; }
+        .ol-list li { display:grid; grid-template-columns:2rem 64px 1fr auto; gap:0.75rem; align-items:center; padding:0.45rem 0; border-bottom:1px solid rgb(var(--rgb-fg,255 255 255) / 0.06); }
+        .ol-list .n { color:var(--color-text-muted,#a0a0b0); font-size:0.8rem; text-align:right; }
         .ol-list .ph { width:64px; height:64px; border-radius:8px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden; }
         .ol-list .ph img { max-width:100%; max-height:100%; object-fit:contain; }
-        .ol-list .ph.none { background:#22222c; color:#a0a0b0; font-size:0.62rem; text-align:center; line-height:1.15; padding:0.2rem; }
+        .ol-list .ph.none { background:var(--color-surface-2,#242426); color:var(--color-text-muted,#a0a0b0); font-size:0.62rem; text-align:center; line-height:1.15; padding:0.2rem; }
         .ol-list .cd { font-weight:600; word-break:break-all; }
-        .ol-list .cd small { display:block; font-weight:400; color:#a0a0b0; font-size:0.75rem; }
-        .ol-list .q { font-size:1.05rem; font-weight:700; color:var(--color-primary-light, #c9a84c); white-space:nowrap; }
+        .ol-list .cd small { display:block; font-weight:400; color:var(--color-text-muted,#a0a0b0); font-size:0.75rem; }
+        .ol-list .q { font-size:1.05rem; font-weight:700; color:var(--color-primary-light, #c4a46b); white-space:nowrap; }
         .ol-bar [hidden], #olBody[hidden], #olEmpty[hidden] { display:none !important; }
         @media (max-width: 640px) {
             .ol-list li { grid-template-columns:1.4rem 56px 1fr auto; gap:0.5rem; }
