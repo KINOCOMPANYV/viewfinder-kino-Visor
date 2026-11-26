@@ -104,15 +104,15 @@ $bank = shopBankInfo();
         <section id="tnS3" hidden>
             <fieldset class="tn-pay"><legend>¿Cómo quieres pagar?</legend>
                 <label class="tn-opt"><input type="radio" name="tnPay" value="contra_entrega" checked><span><b>Contra entrega</b><small>Pagas al recibir tu pedido.</small></span></label>
-                <label class="tn-opt"><input type="radio" name="tnPay" value="transferencia"><span><b>Transferencia</b><small>Pagas por banco o Nequi y nos envías el comprobante por WhatsApp.</small></span></label>
+                <label class="tn-opt"><input type="radio" name="tnPay" value="transferencia"><span><b>Transferencia</b><small><?= $bank !== '' ? 'Pagas por banco o Nequi y nos envías el comprobante por WhatsApp.' : 'Te enviamos los datos de pago por WhatsApp.' ?></small></span></label>
             </fieldset>
-            <div class="tn-bank" id="tnBank" hidden><?= $bank !== '' ? nl2br(e($bank)) : 'Te enviaremos los datos de la cuenta por WhatsApp.' ?></div>
+            <?php if ($bank !== ''): ?><div class="tn-bank" id="tnBank" hidden><?= nl2br(e($bank)) ?></div><?php endif; ?>
             <div class="tn-sum" id="tnSum"></div>
         </section>
         <section id="tnDone" class="tn-done" hidden>
             <div class="tn-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
             <h3>¡Pedido recibido!</h3>
-            <p>Tu pedido <b id="tnDoneNo"></b> ya está en nuestro sistema. Te contactamos por WhatsApp para confirmarlo.</p>
+            <p>Tu pedido <b id="tnDoneNo"></b> quedó registrado. Envíanos el resumen por WhatsApp y lo confirmamos más rápido.</p>
             <a class="tn-btn tn-btn-wa" id="tnDoneWa" target="_blank" rel="noopener">Enviar mi pedido por WhatsApp</a>
             <a class="tn-btn tn-btn-ghost" id="tnDoneView">Ver mi pedido con fotos</a>
             <button type="button" class="tn-btn tn-btn-ghost" id="tnDoneAgain">Seguir comprando</button>

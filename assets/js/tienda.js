@@ -7,6 +7,8 @@
     const KEY = 'kinoTienda';
     const meta = {};
     const st = { folder: '', q: '', page: 1, pages: 1, marca: '', genero: '', stock: false, precio: '', orden: '', seq: 0, step: 1, busy: false };
+    const nameOf = (m) => (m.name || '').replace(new RegExp('\\s*' + m.sku.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*', 'i'), ' ').trim() || 'Reloj ' + m.sku;
+    const isOut = (m) => !!m && m.stock !== null && m.stock !== undefined && m.stock <= 0;
     const PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
     const MINUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>';
 
@@ -33,10 +35,12 @@
     }
     function paintAdd(card, sku) {
         const q = qtyOf(sku); const box = card.querySelector('.tn-add');
+        if (isOut(meta[sku]) && q === 0) { box.className = 'tn-add'; box.innerHTML = ''; box.hidden = true; return; }
+        box.hidden = false;
         if (q > 0) {
             box.className = 'tn-add has';
             box.innerHTML = '<button type="button" data-d="-1" aria-label="Quitar uno">' + MINUS + '</button><b>' + q + '</b><button type="button" data-d="1" aria-label="Agregar otro">' + PLUS + '</button>';
-        } else { box.className = 'tn-add'; box.innerHTML = '<button type="button" data-d="1" aria-label="Agregar al pedido" style="all:unset;display:grid;place-items:center;width:40px;height:40px;cursor:pointer">' + PLUS + '</button>'; }
+        } else { box.className = 'tn-add'; box.innerHTML = '<button type="button" data-d="1" aria-label="Agregar al pedido">' + PLUS + '</button>'; }
     }
 
     // ── API ──
@@ -60,13 +64,14 @@
     // ── Pintar catálogo ──
     function card(it, i) {
         meta[it.sku] = it;
-        const out = it.stock !== null && it.stock <= 0;
-        return '<article class="tn-card" data-sku="' + esc(it.sku) + '" style="--i:' + (i % 12) + '">'
+        const out = isOut(it);
+        const low = !out && it.stock !== null && it.stock <= 3;
+        return '<article class="tn-card' + (out ? ' out' : '') + '" data-sku="' + esc(it.sku) + '" style="--i:' + (i % 12) + '">'
             + '<div class="tn-ph"><button type="button" class="tn-ph" data-quick="' + esc(it.sku) + '" aria-label="Ver ' + esc(it.sku) + '" style="all:unset;display:block;width:100%;height:100%;cursor:zoom-in">'
             + '<img src="' + esc(it.cover) + '" alt="' + esc(it.name || it.sku) + '" loading="lazy" decoding="async" width="400" height="400"></button>'
             + (out ? '<span class="tn-badge">Agotado</span>' : '') + '<div class="tn-add"></div></div>'
-            + '<div class="tn-info"><span class="tn-code">' + esc(it.sku) + '</span><span class="tn-nm">' + esc(it.name || 'Reloj ' + it.sku) + '</span>'
-            + '<div class="tn-pr"><b>' + (it.price ? money(it.price) : 'Consultar') + '</b>' + (it.stock === null ? '' : '<small class="' + (out ? 'out' : 'in') + '">' + (out ? 'Out stock' : 'In Stock') + '</small>') + '</div></div></article>';
+            + '<div class="tn-info"><span class="tn-code">' + esc(it.sku) + '</span><span class="tn-nm">' + esc(nameOf(it)) + '</span>'
+            + '<div class="tn-pr"><b>' + (it.price ? money(it.price) : 'Consultar') + '</b>' + (low ? '<small class="low">Quedan ' + it.stock + '</small>' : '') + '</div></div></article>';
     }
     async function load(reset) {
         const seq = ++st.seq; const grid = $('tnGrid');
@@ -93,7 +98,7 @@
         if (st.q || d.filters) { if (st.q || st.marca || st.genero || st.stock || st.precio) return; }
         if (d.folders && d.folders.length) {
             cats.hidden = false;
-            cats.innerHTML = (st.folder ? '' : '<button type="button" class="tn-cat" data-f="" aria-current="true"><i>★</i><span>Todo</span></button>')
+            cats.innerHTML = (st.folder ? '' : '<button type="button" class="tn-cat" data-f="" aria-current="true"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg></i><span>Todo</span></button>')
                 + d.folders.map((f) => '<button type="button" class="tn-cat" data-f="' + esc(f.id) + '"><i' + (f.cover ? ' style="background-image:url(\'' + esc(f.cover) + '\')"' : '') + '>' + (f.cover ? '' : esc(f.name.charAt(0))) + '</i><span>' + esc(f.name) + '</span></button>').join('');
         } else if (!st.folder) cats.hidden = true;
     }
@@ -133,11 +138,11 @@
 
     // ── Vista rápida ──
     function quick(sku) {
-        const m = meta[sku]; if (!m) return; const q = $('tnQuick'); const out = m.stock !== null && m.stock <= 0;
+        const m = meta[sku]; if (!m) return; const q = $('tnQuick'); const out = isOut(m);
         q.innerHTML = '<div class="tn-q" style="position:relative"><button class="tn-qclose" type="button" data-x aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>'
-            + '<img src="' + esc(big(m.cover)) + '" alt="' + esc(m.name || sku) + '"><div class="tn-qbody"><span class="tn-code">' + esc(sku) + '</span><h3>' + esc(m.name || 'Reloj ' + sku) + '</h3>'
-            + '<div class="tn-qprice">' + (m.price ? money(m.price) : 'Consultar precio') + '</div>' + (m.stock === null ? '' : '<small class="stock-tag ' + (out ? 'out' : 'in') + '">' + (out ? 'Out stock' : 'In Stock') + '</small>')
-            + '<div style="margin-top:auto"></div><button type="button" class="tn-btn tn-btn-primary" data-add>' + PLUS + ' Agregar al pedido</button></div></div>';
+            + '<img src="' + esc(big(m.cover)) + '" alt="' + esc(nameOf(m)) + '"><div class="tn-qbody"><span class="tn-code">' + esc(sku) + '</span><h3>' + esc(nameOf(m)) + '</h3>'
+            + '<div class="tn-qprice">' + (m.price ? money(m.price) : 'Consultar precio') + '</div>' + (out ? '<small class="tn-outtag">Agotado</small>' : '')
+            + '<div style="margin-top:auto"></div><button type="button" class="tn-btn tn-btn-primary" data-add' + (out ? ' disabled' : '') + '>' + PLUS + ' Agregar al pedido</button></div></div>';
         q.showModal();
     }
     $('tnQuick').addEventListener('click', (e) => {
@@ -165,9 +170,9 @@
         const items = read().filter((i) => meta[i.sku]); const ul = $('tnLines');
         $('tnCartEmpty').hidden = items.length > 0;
         ul.innerHTML = items.map((i) => { const m = meta[i.sku]; return '<li class="tn-line" data-sku="' + esc(i.sku) + '"><img src="' + esc(m.cover) + '" alt="">'
-            + '<div class="nm">' + esc(m.name || 'Reloj ' + i.sku) + '<small>' + esc(i.sku) + '</small><div class="pr">' + (m.price ? money(m.price * i.qty) : 'Consultar') + '</div></div>'
+            + '<div class="nm">' + esc(nameOf(m)) + '<small>' + esc(i.sku) + '</small>' + (isOut(m) ? '<small class="tn-outtag">Agotado: quítalo para continuar</small>' : '') + '<div class="pr">' + (m.price ? money(m.price * i.qty) : 'Consultar') + '</div></div>'
             + '<div class="tn-qty"><button type="button" data-d="-1" aria-label="Quitar uno">' + MINUS + '</button><b>' + i.qty + '</b><button type="button" data-d="1" aria-label="Agregar otro">' + PLUS + '</button></div></li>'; }).join('');
-        const t = totals(); $('tnTotal').textContent = money(t.t); $('tnNext').disabled = !items.length;
+        const t = totals(); $('tnTotal').textContent = money(t.t); $('tnNext').disabled = !items.length || items.some((i) => isOut(meta[i.sku]));
     }
     $('tnLines').addEventListener('click', (e) => { const d = e.target.closest('[data-d]'); if (!d) return; const sku = d.closest('.tn-line').dataset.sku; setQty(sku, qtyOf(sku) + Number(d.dataset.d)); });
 
@@ -184,7 +189,7 @@
     $('tnBack').addEventListener('click', () => step(st.step - 1));
     document.querySelectorAll('input[name=tnPay]').forEach((r) => r.addEventListener('change', paintPay));
     function pay() { return (document.querySelector('input[name=tnPay]:checked') || {}).value || 'contra_entrega'; }
-    function paintPay() { $('tnBank').hidden = pay() !== 'transferencia'; }
+    function paintPay() { const b = $('tnBank'); if (b) b.hidden = pay() !== 'transferencia'; }
     function paintSummary() {
         const t = totals(); paintPay();
         $('tnSum').innerHTML = '<span><b>' + esc($('tnName').value) + '</b> · ' + esc($('tnPhone').value) + '</span><span>' + esc($('tnAddr').value) + ', ' + esc($('tnCity').value) + '</span><span>' + t.refs + (t.refs === 1 ? ' referencia' : ' referencias') + ' · ' + t.n + ' unidades</span>';
@@ -219,7 +224,7 @@
     });
     function done(d) {
         const t = totals(); const no = d.number || ('#' + d.id); const link = d.token ? location.origin + '/pedido/' + d.token : '';
-        const lines = read().filter((i) => meta[i.sku]).map((i) => '• ' + i.qty + ' × ' + i.sku + ' ' + (meta[i.sku].name || '')).join('\n');
+        const lines = read().filter((i) => meta[i.sku]).map((i) => '• ' + i.qty + ' × ' + i.sku + ' ' + nameOf(meta[i.sku])).join('\n');
         const msg = 'Hola Kino Company, soy ' + $('tnName').value.trim() + '. Hice el pedido ' + no + ' (' + t.n + ' unidades, ' + money(t.t) + ').\nPago: ' + (pay() === 'transferencia' ? 'transferencia' : 'contra entrega') + '\nEntrega: ' + $('tnAddr').value.trim() + ', ' + $('tnCity').value.trim() + '\n\n' + lines + (link ? '\n\nMi pedido con fotos: ' + link : '');
         $('tnDoneNo').textContent = no;
         const wa = $('tnDoneWa'); wa.href = 'https://wa.me/' + window.TN.notify + '?text=' + encodeURIComponent(msg); wa.hidden = !!(d.wa && d.wa.business);

@@ -39,14 +39,15 @@ $wa = 'https://wa.me/' . shopNotifyPhone() . '?text=' . rawurlencode('Hola Kino 
     <ul class="tn-ol">
     <?php foreach ($items as $i): $cv = parseStoredCover($i['cover_image_url'] ?? '', 400); ?>
         <li><?= $cv['url'] !== '' ? '<img src="' . e($cv['url']) . '" alt="' . e($i['sku']) . '" loading="lazy">' : '<span></span>' ?>
-            <div><b><?= e($i['name'] ?: $i['sku']) ?></b><small><?= e($i['sku']) ?> · <?= (int) $i['qty'] ?> × $<?= number_format((float) $i['unit_price'], 0, ',', '.') ?></small></div>
+            <div><b><?= e(trim(str_ireplace($i['sku'], '', (string) $i['name'])) ?: $i['sku']) ?></b><small><?= e($i['sku']) ?> · <?= (int) $i['qty'] ?> × $<?= number_format((float) $i['unit_price'], 0, ',', '.') ?></small></div>
             <b>$<?= number_format((float) $i['unit_price'] * (int) $i['qty'], 0, ',', '.') ?></b></li>
     <?php endforeach; ?>
     </ul>
     <div class="tn-otot"><span>Total</span><b>$<?= number_format((float) $o['total'], 0, ',', '.') ?></b></div>
     <?php if ($o['address'] !== ''): ?><div class="tn-ocard"><b>Entrega</b><br><?= e($o['address']) ?>, <?= e($o['city']) ?><?= $o['note'] !== '' ? '<br><small>' . e($o['note']) . '</small>' : '' ?></div><?php endif; ?>
-    <div class="tn-ocard"><b>Pago:</b> <?= $o['pay_method'] === 'transferencia' ? 'Transferencia' : 'Contra entrega' ?>
-        <?php if ($o['pay_method'] === 'transferencia'): ?><br><?= shopBankInfo() !== '' ? nl2br(e(shopBankInfo())) : 'Te enviaremos los datos de la cuenta por WhatsApp.' ?><br><small>Envía el comprobante por WhatsApp.</small><?php endif; ?></div>
+    <div class="tn-ocard"><b>Pago</b><br><?= $o['pay_method'] === 'transferencia' ? 'Transferencia' : 'Contra entrega' ?>
+        <?php if ($o['pay_method'] === 'transferencia'): ?><br><?= shopBankInfo() !== '' ? nl2br(e(shopBankInfo())) . '<br>Envía el comprobante por WhatsApp.' : 'Te enviamos los datos de pago por WhatsApp.' ?><?php endif; ?></div>
     <a class="tn-btn tn-btn-wa" href="<?= e($wa) ?>" target="_blank" rel="noopener">Escribir a Kino por WhatsApp</a>
+    <a class="tn-btn tn-btn-ghost" href="/tienda">Seguir comprando</a>
 <?php endif; ?>
 </main></body></html>
