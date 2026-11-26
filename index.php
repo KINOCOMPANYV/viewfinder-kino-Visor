@@ -418,6 +418,17 @@ if ($uri === '/admin/logout') {
     redirect('/admin/login');
 }
 
+if ($uri === '/panel') {
+    include __DIR__ . '/templates/panel.php';
+    exit;
+}
+
+if ($uri === '/admin/usuarios') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_users.php';
+    exit;
+}
+
 if ($uri === '/admin/products') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_products.php';

@@ -26,11 +26,28 @@ if (count($fails) >= 10) {
     redirect('/admin/login');
 }
 
-if ($user === ADMIN_USER && adminPasswordMatches($pass)) {
+require_once __DIR__ . '/../services/Users.php';
+$account = Users::authenticate(getDB(), $user, $pass);
+if ($account && $account['role'] === 'cliente') {
+    // Los clientes entran por el portal de clientes (módulo 4), no por aquí.
+    $account = null;
+}
+
+if ($account || ($user === ADMIN_USER && adminPasswordMatches($pass))) {
     @unlink($failFile);
     // Regenerar session ID para prevenir session fixation
     session_regenerate_id(true);
-    $_SESSION['admin_logged_in'] = true;
+    if ($account) {
+        $_SESSION['user_id'] = (int) $account['id'];
+        unset($_SESSION['admin_logged_in']);
+        if (!in_array($account['role'], ['admin', 'dev'], true)) {
+            unset($_SESSION['after_login']);
+            redirect('/panel'); // el resto de perfiles tendrá su bandeja en los módulos siguientes
+        }
+    } else {
+        unset($_SESSION['user_id']);
+        $_SESSION['admin_logged_in'] = true;
+    }
     // Volver a la página que pidió login (solo rutas internas /admin...).
     $next = $_SESSION['after_login'] ?? '/admin';
     unset($_SESSION['after_login']);

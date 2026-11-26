@@ -130,11 +130,46 @@ function getClientIP(): string
 }
 
 /**
- * Verifica si el admin está autenticado.
+ * Usuario con cuenta propia (tabla users) de la sesión actual, o null.
+ * Se revisa en la BD (activo y rol vigente); si se desactivó, la sesión se cierra.
+ */
+function sessionUser(): ?array
+{
+    static $cache = false;
+    if ($cache !== false) return $cache;
+    $cache = null;
+    $id = (int) ($_SESSION['user_id'] ?? 0);
+    if ($id > 0) {
+        try {
+            require_once __DIR__ . '/services/Users.php';
+            $u = Users::find(getDB(), $id);
+            if ($u && (int) $u['is_active']) {
+                $cache = $u;
+            } else {
+                unset($_SESSION['user_id']);
+            }
+        } catch (\Throwable $e) {
+            unset($_SESSION['user_id']);
+        }
+    }
+    return $cache;
+}
+
+/** Rol de la sesión: 'dev' para el admin de variables de entorno, el de su cuenta si tiene, '' si nadie. */
+function currentRole(): string
+{
+    if (!empty($_SESSION['user_id'])) {
+        return sessionUser()['role'] ?? '';
+    }
+    return (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) ? 'dev' : '';
+}
+
+/**
+ * Verifica si hay un admin autenticado (Administrador o Desarrollador).
  */
 function isAdminLoggedIn(): bool
 {
-    return isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true;
+    return in_array(currentRole(), ['admin', 'dev'], true);
 }
 
 /**
