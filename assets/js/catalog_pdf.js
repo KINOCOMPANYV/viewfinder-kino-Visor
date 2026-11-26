@@ -85,7 +85,7 @@
             st.hidden = false;
         }
     }
-    const items = src.items.slice(0, MAX_ITEMS);
+    let items = src.items.slice(0, MAX_ITEMS); // se puede quitar productos de la lista antes de generar (✕ Quitar)
     const texts = asMap(readJson(ls, 'kinoPdfTexts', {}));
     const heads = asMap(readJson(ls, 'kinoPdfHeads', {}));
     const saved = asMap(readJson(ls, 'kinoPdfOpts', {}));
@@ -156,7 +156,7 @@
             <span class="ms-n">${i + 1}</span>
             <img src="https://lh3.googleusercontent.com/d/${encodeURIComponent(it.id)}=s400" alt="" loading="lazy">
             <span class="cp-info"><span class="cp-pname" data-nm="${esc(it.code)}"></span>
-                <span class="cp-info-top"><strong>${esc(it.code)}</strong><button type="button" class="cp-addhead" data-a="head"${heads[it.id] ? ' hidden' : ''}>＋ Subtítulo</button></span>
+                <span class="cp-info-top"><strong>${esc(it.code)}</strong><button type="button" class="cp-addhead" data-a="head"${heads[it.id] ? ' hidden' : ''}>＋ Subtítulo</button><button type="button" class="cp-del" data-a="del" title="Quitar este producto de la lista" aria-label="Quitar ${esc(it.code)} de la lista">✕ Quitar</button></span>
                 <span class="cp-price-row"><span>Precio</span><input type="text" class="cp-price" inputmode="numeric" maxlength="16" data-pcode="${esc(it.code)}" value="${prices[it.code] != null ? esc(money(prices[it.code])) : ''}" placeholder="Sin precio" aria-label="Precio de ${esc(it.code)}"><button type="button" data-a="preset" title="Volver al precio del visor" hidden>↩</button><em></em></span>
                 <textarea rows="2" maxlength="120" data-code="${esc(it.code)}" placeholder="Otra información (opcional)">${esc(texts[it.code] || '')}</textarea>
             </span></li>`).join('');
@@ -179,7 +179,7 @@
     const autoPrice = {}; // código → pesos (del visor)
     const useVisor = () => opts.visor !== false; // «Usar precio del visor»: apagado, solo sale el que escribas
     const priceOf = (code) => (prices[code] != null ? prices[code] : (useVisor() ? (autoPrice[code] || 0) : 0));
-    const codesInList = [...new Set(items.map((it) => it.code))];
+    let codesInList = [...new Set(items.map((it) => it.code))];
     const names = {}, brands = {}; // código → nombre del producto (va encima del código) / marca (resumen final)
     const nameOf = (code) => (opts.names !== false ? clean(names[code] || '') : '');
     function drawNames() {
@@ -290,6 +290,20 @@
         list.querySelectorAll('textarea').forEach((o) => { if (o !== el && o.dataset.code === c) o.value = el.value; });
         saveTexts(); stale();
     });
+    // Quitar un producto de la lista (solo de este PDF; la selección guardada no cambia). Recalcula conteo y total al instante.
+    function removeItem(id) {
+        const i = items.findIndex((it) => it.id === id);
+        if (i < 0) return;
+        items.splice(i, 1);
+        const li = list.querySelector('.cp-item[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+        if (li) li.remove();
+        list.querySelectorAll('.ms-n').forEach((n, k) => { n.textContent = k + 1; });
+        codesInList = [...new Set(items.map((it) => it.code))];
+        $('cpCount').textContent = items.length ? '(' + items.length + ')' : '';
+        if (!items.length) { $('cpBody').hidden = true; $('cpBar').hidden = true; $('cpEmpty').hidden = false; }
+        drawPrices(); stale();
+        msg('Quitaste ' + (items.length ? 'un producto: quedan ' + items.length + '.' : 'el último producto.') + ' Recarga la página para recuperar la lista.');
+    }
     list.addEventListener('focusout', (e) => { if (e.target.classList && e.target.classList.contains('cp-price')) drawPrices(); });
     list.addEventListener('click', (e) => {
         const b = e.target.closest('button[data-a]');
@@ -299,6 +313,7 @@
             const inp = b.parentNode.querySelector('.cp-price');
             delete prices[inp.dataset.pcode]; savePrices(); drawPrices(); stale(); return;
         }
+        if (b.dataset.a === 'del') { removeItem(li.dataset.id); return; }
         const row = li.querySelector('.cp-headrow');
         const input = row.querySelector('input');
         if (b.dataset.a === 'head') {
