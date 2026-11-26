@@ -17,7 +17,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 $adminNav = 'tienda';
 $v2 = ['nav' => 'gestion', 'sub' => 'tienda', 'title' => 'Tienda', 'subtitle' => 'Catálogo de venta público: avisos y datos de pago'];
 include __DIR__ . '/../../templates/admin/partials/v2_start.php';
-require_once __DIR__ . '/../services/Whatsapp.php';
 ?>
 <form method="post" class="v2-card" style="padding:1.25rem;max-width:640px;display:grid;gap:.9rem">
     <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
@@ -34,7 +33,5 @@ require_once __DIR__ . '/../services/Whatsapp.php';
         <input class="v2-input" name="delivery" value="<?= e(appSetting('tienda_delivery', '')) ?>" maxlength="200" style="width:100%" placeholder="Ej. Envíos a todo el país · Medellín mismo día"></label>
     <button class="btn btn-primary" type="submit" style="justify-self:start">Guardar</button>
 </form>
-<p class="v2-card" style="padding:1rem 1.25rem;max-width:640px;margin-top:1rem">
-    <b>WhatsApp automático:</b> <?= Whatsapp::enabled() ? 'activo (API de Meta configurada).' : 'apagado. Sin la API de Meta, al terminar el pedido el cliente toca «Enviar por WhatsApp» y el pedido con fotos llega a tu número; desde el detalle del pedido tú le envías su resumen al cliente.' ?>
-    Para activarlo en Railway: <code>WHATSAPP_TOKEN</code>, <code>WHATSAPP_PHONE_ID</code> y, si Meta lo exige, <code>WHATSAPP_TEMPLATE</code>.</p>
+<p class="v2-card" style="padding:1rem 1.25rem;max-width:640px;margin-top:1rem">Al terminar su pedido, el cliente toca <b>«Enviar pedido por WhatsApp»</b> y el mensaje (con el enlace del pedido y sus fotos) llega a este celular. Tú le respondes desde el detalle del pedido.</p>
 <?php include __DIR__ . '/../../templates/admin/partials/v2_end.php';

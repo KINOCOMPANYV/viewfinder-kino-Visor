@@ -227,7 +227,10 @@
         const lines = read().filter((i) => meta[i.sku]).map((i) => '• ' + i.qty + ' × ' + i.sku + ' ' + nameOf(meta[i.sku])).join('\n');
         const msg = 'Hola Kino Company, soy ' + $('tnName').value.trim() + '. Hice el pedido ' + no + ' (' + t.n + ' unidades, ' + money(t.t) + ').\nPago: ' + (pay() === 'transferencia' ? 'transferencia' : 'contra entrega') + '\nEntrega: ' + $('tnAddr').value.trim() + ', ' + $('tnCity').value.trim() + '\n\n' + lines + (link ? '\n\nMi pedido con fotos: ' + link : '');
         $('tnDoneNo').textContent = no;
-        const wa = $('tnDoneWa'); wa.href = 'https://wa.me/' + window.TN.notify + '?text=' + encodeURIComponent(msg); wa.hidden = !!(d.wa && d.wa.business);
+        const wa = $('tnDoneWa'); wa.href = 'https://wa.me/' + window.TN.notify + '?text=' + encodeURIComponent(msg); wa.hidden = false;
+        let mine = $('tnPhone').value.replace(/\D+/g, ''); if (mine.length === 10) mine = '57' + mine;
+        const own = 'Mi compra en Kino Company, pedido ' + no + ' (' + t.n + ' unidades, ' + money(t.t) + '):\n\n' + lines + '\n\nEntrega: ' + $('tnAddr').value.trim() + ', ' + $('tnCity').value.trim() + (link ? '\n\nMi pedido con fotos: ' + link : '');
+        $('tnDoneMine').href = 'https://wa.me/' + mine + '?text=' + encodeURIComponent(own);
         const v = $('tnDoneView'); v.hidden = !link; if (link) v.href = '/pedido/' + d.token;
         write([]); ['tnS1', 'tnS2', 'tnS3'].forEach((k) => { $(k).hidden = true; });
         $('tnDone').hidden = false; $('tnSteps').hidden = true; $('tnFoot').hidden = true; $('tnBack').hidden = true; $('tnDTitle').textContent = 'Listo';

@@ -112,8 +112,9 @@ $bank = shopBankInfo();
         <section id="tnDone" class="tn-done" hidden>
             <div class="tn-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
             <h3>¡Pedido recibido!</h3>
-            <p>Tu pedido <b id="tnDoneNo"></b> quedó registrado. Envíanos el resumen por WhatsApp y lo confirmamos más rápido.</p>
-            <a class="tn-btn tn-btn-wa" id="tnDoneWa" target="_blank" rel="noopener">Enviar mi pedido por WhatsApp</a>
+            <p>Tu pedido <b id="tnDoneNo"></b> quedó registrado. Toca el botón verde para enviárnoslo por WhatsApp y confirmarlo.</p>
+            <a class="tn-btn tn-btn-wa" id="tnDoneWa" target="_blank" rel="noopener">Enviar pedido por WhatsApp</a>
+            <a class="tn-btn tn-btn-ghost" id="tnDoneMine" target="_blank" rel="noopener">Enviarme mi compra a mi WhatsApp</a>
             <a class="tn-btn tn-btn-ghost" id="tnDoneView">Ver mi pedido con fotos</a>
             <button type="button" class="tn-btn tn-btn-ghost" id="tnDoneAgain">Seguir comprando</button>
         </section>
