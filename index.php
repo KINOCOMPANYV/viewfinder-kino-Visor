@@ -483,6 +483,12 @@ if (preg_match('#^/pedidos(?:/(\d+))?$#', $uri, $matches)) {
     include __DIR__ . '/src/controllers/orders_v2.php';
     exit;
 }
+if ($uri === '/manifiestos') {
+    requireStaff();
+    include __DIR__ . '/templates/admin/manifiestos.php';
+    exit;
+}
+
 if ($uri === '/clientes') {
     requireStaff();
     include __DIR__ . '/src/controllers/customers_v2.php';
