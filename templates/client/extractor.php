@@ -88,19 +88,10 @@
     </style>
 </head>
 
-<body>
-    <header class="header">
-        <div class="container header-inner">
-            <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
-            <div style="display:flex; gap:0.4rem; align-items:center;">
-                <a href="/enviar-catalogo" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Enviar fotos con lista</a>
-                <?= pedidosHeaderBtn() ?>
-            </div>
-        </div>
-    </header>
+<body class="v2 v2-legacy">
 
     <main class="container" style="padding-top:2rem; padding-bottom:3rem; max-width:900px;">
-        <?= breadcrumbs([['Enviar fotos con lista', '/enviar-catalogo'], ['Extractor', null]]) ?>
+        <?php $v2Nav = 'extractor'; $v2Crumb = [['Extractor', null]]; include __DIR__ . '/../admin/partials/nav.php'; ?>
         <h1 style="font-size:1.5rem; margin-bottom:1.25rem;">🧾 Extractor de pedidos PDF</h1>
 
         <section class="ex-card">
@@ -194,7 +185,6 @@
     </main>
 
     <script type="module" src="/assets/js/extractor.js?v=<?= APP_VERSION . filemtime(BASE_DIR . '/assets/js/extractor.js') ?>"></script>
-    <?php $mnavActive = 'enviar'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 
 </html>
