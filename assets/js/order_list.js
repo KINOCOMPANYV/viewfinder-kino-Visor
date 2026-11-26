@@ -24,7 +24,7 @@
     const order = data.order || {};
     // Cada línea del pedido, en el orden del Extractor; la foto se le pone a esta misma línea (por su código)
     const lines = data.items.map((it, i) => ({ n: i + 1, code: String(it.code || ''), qty: it.qty == null ? null : Number(it.qty),
-        desc: String(it.desc || ''), price: String(it.priceText || ''), total: String(it.lineTotalText || ''), photo: undefined }));
+        desc: String(it.desc || ''), note: String(it.note || '').slice(0, 1000), price: String(it.priceText || ''), total: String(it.lineTotalText || ''), photo: undefined }));
     const has = (v) => v !== null && v !== undefined && String(v).trim() !== '';
     // Plantilla de la Remisión (Admin → 🚚 Remisión); color «#rrggbb» → [r, g, b]
     const REM = window.KINO_REMISION || {};
@@ -185,6 +185,18 @@
         refresh(); drawOrder();
         resetPdf('Cambiaste el cliente: vuelve a generar el PDF.');
     });
+    // Notas generales de la Cotización: varias líneas, se guardan con el pedido y salen completas al final del PDF
+    const nBox = $('olNotes');
+    if (nBox) {
+        const grow = () => { nBox.style.height = 'auto'; nBox.style.height = nBox.scrollHeight + 2 + 'px'; };
+        nBox.value = String(order.notes || '');
+        nBox.addEventListener('input', () => {
+            order.notes = nBox.value.slice(0, 2000); data.order = order; grow();
+            try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (e) { /* sin almacenamiento */ }
+        });
+        nBox.addEventListener('change', () => resetPdf('Cambiaste las notas: vuelve a generar el PDF.'));
+        if (nBox.value) setTimeout(grow, 0);
+    }
     $('olOrder').addEventListener('keydown', (e) => { if (e.target && e.target.id === 'olClient' && e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
     $('olBody').hidden = false;
     $('olBar').hidden = false;
@@ -374,8 +386,12 @@
             // Productos: tabla(s) con bordes; en dos tablas, primero la de la izquierda y luego la de la derecha.
             let col = 0, top = y, leftEnd = 0;
             tableHead(0);
+            // Nota del producto (Extractor → ✏ Editar lista): completa, en una franja bajo su fila
+            const noteLines = (l) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+                return l.note ? l.note.split(/\n/).map(clean).filter(Boolean).flatMap((p, j) => doc.splitTextToSize((j ? '' : 'Nota: ') + p, TW - 4)) : []; };
             for (const l of lines) {
-                if (y + ROW > H - FOOT) {
+                const nl = noteLines(l), NH = nl.length ? nl.length * 3.3 + 2 : 0;
+                if (y + ROW + NH > H - FOOT) {
                     if (two && col === 0) { col = 1; leftEnd = y; y = top; }
                     else { newPage(); col = 0; top = y; leftEnd = 0; }
                     tableHead(col);
@@ -440,7 +456,13 @@
                     }
                     x += w;
                 });
-                y += ROW;
+                if (NH) {
+                    const nx = M + col * (TW + GAP);
+                    doc.setFillColor(248, 246, 240); doc.setDrawColor(...LINE); doc.setLineWidth(0.35); doc.rect(nx, y + ROW, TW, NH, 'FD');
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(70, 70, 70);
+                    doc.text(nl, nx + 2, y + ROW + 3.4);
+                }
+                y += ROW + NH;
             }
 
             // Remisión: el valor total también al final, debajo de la tabla (tal cual viene en el PDF)
@@ -453,6 +475,20 @@
                 doc.text('TOTAL COTIZACIÓN', bx + 4, ty + 7.6);
                 doc.setFontSize(13); doc.setTextColor(255, 255, 255);
                 doc.text(clean(order.totalText), bx + bw - 4, ty + 8, { align: 'right' });
+                y = ty + 12; if (col === 1) leftEnd = 0;
+            }
+
+            // Cotización: notas generales, completas, al final (siguen en otra página si no caben)
+            const gNotes = rem && has(order.notes) ? String(order.notes).split(/\n/).map(clean).filter(Boolean) : [];
+            if (gNotes.length) {
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+                const gl = gNotes.flatMap((p) => doc.splitTextToSize(p, W - 2 * M - 6));
+                let ny = Math.max(y, col === 1 ? leftEnd : 0) + 6;
+                if (ny + 12 > H - FOOT) { newPage(); ny = y; }
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text('NOTAS', M, ny); ny += 2;
+                doc.setDrawColor(...C2); doc.setLineWidth(0.4); doc.line(M, ny, M + 18, ny); ny += 4.5;
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...INK);
+                gl.forEach((ln) => { if (ny + 2 > H - FOOT) { newPage(); ny = y; doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...INK); } doc.text(ln, M + 1, ny); ny += 4; });
             }
 
             // Pie en cada página

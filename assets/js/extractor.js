@@ -218,9 +218,11 @@ function renderRows() {
         ? '<tr data-i="' + i + '"><td><input class="ex-cell" data-f="code" maxlength="60" value="' + esc(it.code) + '" placeholder="código"></td><td class="sep"></td>' +
           '<td class="num"><input class="ex-cell num" data-f="qty" type="number" min="0" step="1" inputmode="numeric" value="' + (it.qty ?? '') + '"></td><td class="c-u">UNIDAD</td><td class="sep"></td>' +
           '<td class="num c-price"><input class="ex-cell num" data-f="price" maxlength="30" value="' + esc(it.priceText) + '" placeholder="$0"><button type="button" class="ex-vp' + (it.fromVisor ? ' on' : '') + '" data-vp="' + i + '" title="' + (it.fromVisor ? 'Precio del visor (toca para volver al anterior)' : 'Usar el precio del visor') + '" aria-pressed="' + (it.fromVisor ? 'true' : 'false') + '">💲</button></td><td class="num c-disc">' + esc(discText(it)) + '</td>' +
-          '<td class="c-x"><button type="button" class="ex-del" data-del="' + i + '" title="Quitar esta línea" aria-label="Quitar">✕</button></td></tr>'
+          '<td class="c-x"><button type="button" class="ex-del" data-del="' + i + '" title="Quitar esta línea" aria-label="Quitar">✕</button></td></tr>' +
+          '<tr class="ex-note-row" data-i="' + i + '"><td colspan="8"><textarea class="ex-cell ex-linenote" data-f="note" rows="1" maxlength="1000" placeholder="Nota de este producto (opcional, sale en la Cotización)">' + esc(it.note || '') + '</textarea></td></tr>'
         : '<tr><td>' + esc(it.code) + '</td><td class="sep"></td><td class="num">' + (it.qty ?? '') +
-          '</td><td class="c-u">UNIDAD</td><td class="sep"></td><td class="num c-price">' + esc(it.priceText) + '</td><td class="num c-disc">' + esc(discText(it)) + '</td><td class="c-x"></td></tr>').join('');
+          '</td><td class="c-u">UNIDAD</td><td class="sep"></td><td class="num c-price">' + esc(it.priceText) + '</td><td class="num c-disc">' + esc(discText(it)) + '</td><td class="c-x"></td></tr>' +
+          (it.note ? '<tr class="ex-note-row"><td colspan="8" class="ex-note-txt">📝 ' + esc(it.note) + '</td></tr>' : '')).join('');
     $('exAddRow').hidden = !editing;
     $('exVpBar').hidden = !editing;
     $('exEdit').textContent = editing ? '✅ Listo' : '✏️ Editar lista';
@@ -301,6 +303,11 @@ $('exRows').addEventListener('input', (e) => {
     const inp = e.target, tr = inp.closest('tr[data-i]');
     if (!tr || !inp.dataset.f) return;
     const it = rows[+tr.dataset.i];
+    if (inp.dataset.f === 'note') { // nota del producto: varias líneas, crece con el texto
+        it.note = inp.value.slice(0, 1000); edited = true; $('exReset').hidden = false;
+        inp.style.height = 'auto'; inp.style.height = inp.scrollHeight + 2 + 'px';
+        return;
+    }
     if (inp.dataset.f === 'code') { it.code = inp.value.replace(/\s+/g, '').toUpperCase(); it.desc = ''; }
     else if (inp.dataset.f === 'qty') { const q = parseInt(inp.value, 10); it.qty = isNaN(q) ? null : Math.max(0, q); }
     else { it.priceText = inp.value.trim(); it.price = core.readPrice(it.priceText); it.fromVisor = false; it.prev = null; const b = tr.querySelector('.ex-vp'); if (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); } }
@@ -382,7 +389,7 @@ $('exToOrder').addEventListener('click', () => {
             nit: o.nit || '', address: o.address || '', city: o.city || '', phone: o.phone || '', seller: o.seller || '' },
         // Tipo de documento: la cotización en tabla es una factura → Remisión; el recibo es un pedido → Lista Bodega
         docType: o.format === 'tabla' ? 'remision' : 'pedido',
-        items: outRows().map((it) => ({ code: it.code, qty: it.qty ?? null, desc: it.desc || '', priceText: showP ? (it.priceText || '') : '', lineTotalText: showP ? (it.lineTotalText || '') : '' })),
+        items: outRows().map((it) => ({ code: it.code, qty: it.qty ?? null, desc: it.desc || '', note: String(it.note || '').trim(), priceText: showP ? (it.priceText || '') : '', lineTotalText: showP ? (it.lineTotalText || '') : '' })),
         // Lista corregida a mano: los avisos de lectura del PDF ya no aplican (no se llevan al recuadro «Revisar» del PDF)
         warnings: edited ? [] : result.warnings.slice(),
         edited,

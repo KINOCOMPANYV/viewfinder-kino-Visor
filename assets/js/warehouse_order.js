@@ -178,14 +178,16 @@
             '<button type="button" data-act="plus" data-id="' + l.id + '" aria-label="Más">+</button></span>' +
             '<span class="pb-price" title="Precio unitario (no se puede cambiar)">' + (l.price == null ? 'Sin precio' : money(l.price) + ' c/u') + '</span>' +
             '<span class="pb-sub">' + (s == null ? 'Sin precio' : money(s)) + '</span></div>' +
-            '<div class="pb-ctl"><input class="pb-note" maxlength="120" placeholder="Nota (opcional)" value="' + esc(l.note) + '" data-act="note" data-id="' + l.id + '">' +
+            '<div class="pb-ctl"><textarea class="pb-note" rows="1" maxlength="1000" placeholder="Nota (opcional)" data-act="note" data-id="' + l.id + '">' + esc(l.note) + '</textarea>' +
             '<button type="button" class="btn btn-sm btn-secondary" data-act="swap" data-id="' + l.id + '">🔄 Cambiar producto</button></div>' +
             '<div class="pb-sw" id="sw' + l.id + '" hidden></div></div>';
     }
+    function grow(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; }
     function drawList() {
         const shown = lines.filter((l) => !onlyPending || !l.checked);
         $('pbList').innerHTML = shown.map(itemHtml).join('') || '<div class="pb-card">✅ Todo chequeado.</div>';
         $('pbList').querySelectorAll('.pb-sw').forEach((e) => { e.hidden = true; });
+        $('pbList').querySelectorAll('.pb-note').forEach((ta) => { if (ta.value.includes('\n') || ta.value.length > 40) grow(ta); });
         drawTotal(); drawFin();
     }
     function drawTotal() {
@@ -265,6 +267,9 @@
             }
         } else if (act === 'swapok') swapTo(l);
     });
+    // La nota crece con el texto (varias líneas, hasta 1000 caracteres).
+    $('pbList').addEventListener('input', (e) => { if (e.target.classList.contains('pb-note')) grow(e.target); });
+    $('pbList').addEventListener('focusin', (e) => { if (e.target.classList.contains('pb-note')) grow(e.target); });
     $('pbList').addEventListener('change', (e) => {
         const b = e.target.closest('[data-act]'); if (!b) return;
         const l = byId(b.dataset.id); if (!l) return;
@@ -416,8 +421,14 @@
             cnt((l) => status(l).t === 'Cambiado') + ' cambiados · ' + cnt((l) => status(l).t === 'Agregado') + ' agregados · ' + cnt((l) => status(l).t === 'Quitado') + ' quitados' +
             (t.noPrice ? ' · ' + t.noPrice + ' sin precio' : '')), M, y);
         y += 6; head();
-        const RH = 16;
+        const RH0 = 16, NW = W - 2 * M - 25;
         lines.forEach((l, i) => {
+            // Nota completa (respeta los saltos de línea) en una franja a lo ancho, debajo de la fila.
+            doc.setFontSize(7.5);
+            const nl = l.note ? String(l.note).split(/\n/).map((p) => T(p)).filter(Boolean)
+                .flatMap((p, j) => doc.splitTextToSize((j ? '' : 'Nota: ') + p, NW)) : [];
+            doc.setFontSize(8);
+            const RH = RH0 + (nl.length ? nl.length * 3.3 + 1.5 : 0);
             if (y + RH > 284) { doc.addPage(); y = 12; head(); }
             const st = status(l), s = sub(l);
             if (st.t === 'Menos' || st.t === 'Quitado') { doc.setFillColor(253, 232, 232); doc.rect(M, y, W - 2 * M, RH, 'F'); }
@@ -431,7 +442,7 @@
             doc.setFont('helvetica', 'bold'); cell(l.code, 28); doc.setFont('helvetica', 'normal');
             const nm = doc.splitTextToSize(T(l.name || 'Sin nombre'), 48).slice(0, 2);
             doc.text(nm, x + 1, y + 5);
-            if (l.note) { doc.setFontSize(7); doc.setTextColor(110, 110, 110); doc.text(doc.splitTextToSize(T('Nota: ' + l.note), 48).slice(0, 2), x + 1, y + 5 + nm.length * 3.4 + 0.5); doc.setFontSize(8); doc.setTextColor(30, 30, 30); }
+            if (nl.length) { doc.setFontSize(7.5); doc.setTextColor(90, 90, 90); doc.text(nl, M + 24, y + RH0 + 1.5); doc.setFontSize(8); doc.setTextColor(30, 30, 30); }
             x += 50;
             cell(l.price == null ? 'Sin precio' : money(l.price), 23); cell(String(l.orig ? l.origQty : 0), 10); cell(String(l.qty), 11);
             doc.setFont('helvetica', 'bold'); cell(s == null ? '-' : money(s), 25); doc.setFont('helvetica', 'normal');
