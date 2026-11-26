@@ -54,6 +54,18 @@
             l.unit = q > 0 ? (q === 1 ? l.price : money(p / q)) : '';
         } else if (!l.total && q > 0) l.total = q === 1 ? l.price : money(p * q);
     });
+    // Descuento (columnas «Precio -X%» y «Total -X%» con su total): el % viene del Extractor y se cambia aquí mismo.
+    // Se calcula sobre el precio c/u y el total de cada línea; el precio original no se toca.
+    let pct = Math.min(100, Math.max(0, Math.round(+data.discountPct || 0)));
+    if (!(pct > 0) && data.discountPct == null) pct = 40;
+    // Mismo estilo de precio que el PDF («$295,000.00» o «$295.000»)
+    const pst = (() => { const m = /\d([.,])(\d{2})\s*$/.exec(order.totalText || (lines.find((l) => l.price) || {}).price || ''); return m ? { dec: m[1], thou: m[1] === '.' ? ',' : '.' } : null; })();
+    const dmoney = (n) => { if (!pst) return money(n); const [i, f] = Math.abs(n).toFixed(2).split('.'); return '$' + i.replace(/\B(?=(\d{3})+(?!\d))/g, pst.thou) + pst.dec + f; };
+    const lineNum = (l) => { const t = parsePrice(l.total); if (t != null) return t; const u = parsePrice(l.unit); return u != null && l.qty > 0 ? u * l.qty : null; };
+    const discOf = (t) => { const n = parsePrice(t); return n == null ? '' : dmoney(n * (1 - pct / 100)); };
+    const discLine = (l) => { const n = lineNum(l); return n == null ? '' : dmoney(n * (1 - pct / 100)); };
+    const discTotal = () => { const ok = lines.map(lineNum).filter((n) => n != null); return ok.length ? dmoney(ok.reduce((a, b) => a + b, 0) * (1 - pct / 100)) : null; };
+    const discOn = () => pct > 0 && (show.cDisc || show.cDiscTotal);
     // Plantilla de la Remisión (Admin → 🚚 Remisión); color «#rrggbb» → [r, g, b]
     const REM = window.KINO_REMISION || {};
     function rgb(hex, def) { const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || ''); return m ? [1, 2, 3].map((i) => parseInt(m[i], 16)) : def; }
@@ -85,11 +97,11 @@
         pedido: { name: 'Lista Bodega', title: 'Lista Bodega', file: 'Lista_Bodega_', icon: '🧾', pref: 'kinoOlFields',
             numLabel: 'N.º de pedido', c1: [28, 28, 30], c2: [201, 168, 76],
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: false, address: false, city: false, phone: false, seller: false,
-                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cUnit: true, cTotal: false } },
+                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cUnit: true, cTotal: false, cDisc: false, cDiscTotal: false, totalDisc: true } },
         remision: { name: 'Cotización', title: (REM.title || 'Cotización'), file: 'Cotizacion_', icon: '🚚', pref: 'kinoOlFieldsRemision',
             numLabel: 'N.º de cotización', c1: rgb(REM.headerColor, [14, 14, 14]), c2: rgb(REM.accentColor, [211, 35, 45]),
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: true, address: true, city: true, phone: false, seller: false,
-                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cUnit: true, cTotal: true } },
+                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cUnit: true, cTotal: true, cDisc: false, cDiscTotal: false, totalDisc: true } },
     };
     let type = TYPES[data.docType] ? data.docType : 'pedido';
     const T = () => TYPES[type];
@@ -105,18 +117,21 @@
         { key: 'items', label: 'Total de ítems', v: order.itemsPdf, count: counted.items },
         { key: 'units', label: 'Unidades', v: order.noQty ? null : order.unitsPdf, count: counted.units },
         { key: 'total', label: 'Valor total', v: order.totalText },
+        { key: 'totalDisc', label: 'Valor con descuento', v: null, disc: true }, // se calcula con el % (solo si hay columnas de descuento)
     ].filter((f) => !f.opt || has(f.v)); // NIT, dirección… solo si el PDF los trae (la factura en tabla sí)
-    const labelOf = (f) => f.key === 'number' ? T().numLabel : f.key === 'date' && type === 'pedido' ? 'Fecha del pedido' : f.label;
+    const labelOf = (f) => f.disc ? 'Valor con ' + pct + '% desc.' : f.key === 'number' ? T().numLabel : f.key === 'date' && type === 'pedido' ? 'Fecha del pedido' : f.label;
     // Qué sale en el PDF: lo elige el usuario y se recuerda en este dispositivo, aparte para cada tipo
-    let show = {};
+    let show = {}, discFromEx = !!data.discountCols;
     const loadPrefs = () => {
         show = Object.assign({}, T().def);
         try { Object.assign(show, JSON.parse(localStorage.getItem(T().pref) || '{}')); } catch (e) { /* sin preferencias */ }
+        if (discFromEx) { show.cDisc = true; show.cDiscTotal = true; } // marcado en el Extractor (solo al abrir)
     };
     loadPrefs();
+    if (discFromEx) { discFromEx = false; delete data.discountCols; try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (e) { /* sin almacenamiento */ } }
     const savePrefs = () => { try { localStorage.setItem(T().pref, JSON.stringify(show)); } catch (e) { /* sin almacenamiento */ } };
     // Valor que se usa: el del PDF; si falta y hay conteo (y se eligió usarlo), el conteo con «(contado)»
-    const valueOf = (f) => has(f.v) ? String(f.v) : (show.useCount && f.count != null ? f.count + ' (contado)' : null);
+    const valueOf = (f) => f.disc ? discTotal() : has(f.v) ? String(f.v) : (show.useCount && f.count != null ? f.count + ' (contado)' : null);
     // Columnas de la tabla; Producto, Precio y Total solo si el PDF los trae (la cotización en tabla sí; el recibo, precio)
     const allCols = [
         { key: 'cN', label: 'N.º', min: 8 },
@@ -126,12 +141,18 @@
         { key: 'cQty', label: 'Cantidad', min: 17 },
         { key: 'cUnit', label: 'Precio c/u', min: 24, avail: lines.some((l) => l.unit) },
         { key: 'cTotal', label: 'Total', min: 26, avail: lines.some((l) => l.total) },
+        { key: 'cDisc', label: 'Precio -%', min: 24, disc: true, avail: lines.some((l) => parsePrice(l.unit) != null) },
+        { key: 'cDiscTotal', label: 'Total -%', min: 26, disc: true, avail: lines.some((l) => lineNum(l) != null) },
     ].filter((c) => c.avail !== false);
-    const pickedCols = () => allCols.filter((c) => show[c.key]);
+    const hasDisc = allCols.some((c) => c.disc);
+    const colLabel = (c) => c.disc ? c.label.replace('%', pct + '%') : c.label;
+    const pickedCols = () => allCols.filter((c) => show[c.key] && (!c.disc || pct > 0));
+    // El renglón «Valor con X% desc.» solo existe si hay alguna columna de descuento elegida
+    const fieldOn = (f) => f.disc ? discOn() && hasDisc : true;
     const canCount = allFields.some((f) => !has(f.v) && f.count != null);
     let fields = [], problems = [];
     function refresh() {
-        fields = allFields.filter((f) => show[f.key]).map((f) => [labelOf(f), valueOf(f), f.key]);
+        fields = allFields.filter((f) => fieldOn(f) && show[f.key]).map((f) => [labelOf(f), valueOf(f), f.key]);
         problems = [];
         if (show.review) {
             fields.forEach(([k, v, key]) => { if (key !== 'number' && !has(v)) problems.push(k + ': no se pudo leer del PDF; no se inventó un valor.'); });
@@ -166,7 +187,7 @@
         try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (e) { /* sin almacenamiento */ }
     }
     function drawOrder() {
-        $('olOrder').innerHTML = allFields.map((f) => {
+        $('olOrder').innerHTML = allFields.filter(fieldOn).map((f) => {
             const v = valueOf(f);
             if (f.edit) {
                 return '<div class="ol-field' + (show[f.key] ? '' : ' off') + '"><span><label><input type="checkbox" data-k="' + f.key + '"' + (show[f.key] ? ' checked' : '') + '> ' + esc(labelOf(f)) + '</label></span>' +
@@ -179,7 +200,8 @@
         }).join('');
         $('olOpts').innerHTML = '<label><input type="checkbox" data-k="review"' + (show.review ? ' checked' : '') + '> Recuadro «Revisar» con avisos</label>' +
             '<label><input type="checkbox" data-k="names"' + (show.names !== false ? ' checked' : '') + '> Nombre del producto encima del código</label>' +
-            '<div class="ol-cols"><b>Columnas de la tabla:</b> ' + allCols.map((c) => '<label><input type="checkbox" data-k="' + c.key + '"' + (show[c.key] ? ' checked' : '') + '> ' + esc(c.label) + '</label>').join('') + '</div>' +
+            '<div class="ol-cols"><b>Columnas de la tabla:</b> ' + allCols.filter((c) => !c.disc || pct > 0).map((c) => '<label><input type="checkbox" data-k="' + c.key + '"' + (show[c.key] ? ' checked' : '') + '> ' + esc(colLabel(c)) + '</label>').join('') +
+            (hasDisc ? '<label class="ol-pct">🏷️ Descuento <input type="number" id="olPct" min="0" max="100" step="1" inputmode="numeric" value="' + pct + '"> %</label>' : '') + '</div>' +
             (canCount ? '<label><input type="checkbox" data-k="useCount"' + (show.useCount ? ' checked' : '') + '> Si el PDF no trae ítems o unidades, usar lo contado en sus líneas</label>' : '');
         drawWarn();
     }
@@ -196,14 +218,29 @@
         loadPrefs(); refresh(); drawType(); drawOrder();
         resetPdf('Cambiaste el tipo: vuelve a generar el PDF.');
     });
+    // Cambiar el % del descuento: etiquetas, columnas y total al instante; se guarda con el pedido
+    $('olBody').addEventListener('input', (e) => {
+        if (!e.target || e.target.id !== 'olPct') return;
+        const n = Math.round(+e.target.value);
+        pct = isNaN(n) ? 0 : Math.min(100, Math.max(0, n));
+        data.discountPct = pct;
+        try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (x) { /* sin almacenamiento */ }
+        refresh();
+        document.querySelectorAll('#olOpts .ol-cols label').forEach((lb) => { const i = lb.querySelector('[data-k]'); const c = i && allCols.find((x) => x.key === i.dataset.k); if (c && c.disc) lb.lastChild.textContent = ' ' + colLabel(c); });
+        const tf = allFields.find((f) => f.disc);
+        const row = document.querySelector('#olOrder [data-k="totalDisc"]');
+        if (row) { const lab = row.closest('.ol-field'); lab.innerHTML = '<span><input type="checkbox" data-k="totalDisc"' + (show.totalDisc ? ' checked' : '') + '> ' + esc(labelOf(tf)) + '</span>' + esc(valueOf(tf) || '—'); }
+        drawList();
+        resetPdf('Cambiaste el descuento: vuelve a generar el PDF.');
+    });
     $('olBody').addEventListener('change', (e) => {
-        if (e.target && e.target.name === 'olType') return;
+        if (e.target && (e.target.name === 'olType' || e.target.id === 'olPct')) return;
         const k = e.target && e.target.dataset ? e.target.dataset.k : null;
         if (!k) return;
         if (!e.target.checked && /^c[A-Z]/.test(k) && pickedCols().length <= 1) { e.target.checked = true; msg('Deja al menos una columna.'); return; }
         show[k] = e.target.checked;
         savePrefs(); refresh(); drawOrder();
-        if (k === 'names' || k === 'cUnit') drawList();
+        if (k === 'names' || k === 'cUnit' || k === 'cDisc' || k === 'cDiscTotal') drawList();
         resetPdf('Cambiaste lo que sale en el PDF: vuelve a generarlo.');
     });
     // Escribir el cliente: se aplica al salir de la casilla (o con Enter) y se puede volver a corregir
@@ -240,7 +277,9 @@
             return '<li><span class="n">' + l.n + '</span>' + ph + '<span class="cd">' + (nameOf(l) ? '<small class="nm">' + esc(nameOf(l)) + '</small>' : '') + esc(l.code) +
                 (l.photo && l.photo.sku !== l.code ? '<small>en el visor: ' + esc(l.photo.sku) + '</small>' : '') +
                 '</span><span class="q">' + (l.qty == null ? 'sin cantidad' : '× ' + esc(l.qty)) +
-                (show.cUnit && l.unit ? '<small class="pu">' + esc(l.unit) + ' c/u</small>' : '') + '</span></li>';
+                (show.cUnit && l.unit ? '<small class="pu">' + esc(l.unit) + ' c/u</small>' : '') +
+                (pct > 0 && show.cDisc && discOf(l.unit) ? '<small class="pu">' + esc(discOf(l.unit)) + ' c/u -' + pct + '%</small>' : '') +
+                (pct > 0 && show.cDiscTotal && discLine(l) ? '<small class="pu">' + esc(discLine(l)) + ' total -' + pct + '%</small>' : '') + '</span></li>';
         }).join('');
     }
     drawList();
@@ -375,7 +414,7 @@
                 if (rem) { doc.setFillColor(...C2); doc.rect(x0, y + TH - 0.6, x - x0, 0.6, 'F'); }
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255);
                 x = x0;
-                cols.map((c) => c.label).forEach((t, i) => { doc.text(t, x + COLS[i] / 2, y + 5.6, { align: 'center' }); x += COLS[i]; });
+                cols.map(colLabel).forEach((t, i) => { doc.text(t, x + COLS[i] / 2, y + 5.6, { align: 'center' }); x += COLS[i]; });
                 y += TH;
             };
             const newPage = () => { if (page) doc.addPage(); page++; band(); y = BAND + (rem ? 8 : 7); };
@@ -479,7 +518,7 @@
                         doc.setFont('helvetica', 'bold'); doc.setFontSize(l.qty == null ? 7.5 : (ROW > 10 ? 12 : 10)); doc.setTextColor(...(l.qty == null ? WARN : INK));
                         doc.text(l.qty == null ? 'sin cant.' : String(l.qty), cx, mid + 1.4, { align: 'center' });
                     } else {
-                        const t = c.key === 'cUnit' ? l.unit : l.total;
+                        const t = c.key === 'cUnit' ? l.unit : c.key === 'cTotal' ? l.total : c.key === 'cDisc' ? discOf(l.unit) : discLine(l);
                         doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...INK);
                         doc.text(t ? clean(t) : '', x + w - 2, mid + 1.2, { align: 'right' });
                     }
@@ -495,7 +534,7 @@
             }
 
             // Remisión: el valor total también al final, debajo de la tabla (tal cual viene en el PDF)
-            if (type === 'remision' && has(order.totalText)) {
+            if (type === 'remision' && show.total && has(order.totalText)) { // apagar «Valor total» lo quita también de aquí
                 let ty = Math.max(y, col === 1 ? leftEnd : 0) + 4;
                 if (ty + 12 > H - FOOT) { newPage(); ty = y; }
                 const bw = 95, bx = W - M - bw;
@@ -504,6 +543,19 @@
                 doc.text('TOTAL COTIZACIÓN', bx + 4, ty + 7.6);
                 doc.setFontSize(13); doc.setTextColor(255, 255, 255);
                 doc.text(clean(order.totalText), bx + bw - 4, ty + 8, { align: 'right' });
+                y = ty + 12; if (col === 1) leftEnd = 0;
+            }
+            // Con columnas de descuento: recuadro «TOTAL CON X% DESC.» al final (Lista Bodega y Cotización)
+            const dTot = discOn() && show.totalDisc ? discTotal() : null;
+            if (dTot) {
+                let ty = Math.max(y, col === 1 ? leftEnd : 0) + 3;
+                if (ty + 12 > H - FOOT) { newPage(); ty = y; }
+                const bw = 95, bx = W - M - bw;
+                doc.setFillColor(...C1); doc.roundedRect(bx, ty, bw, 12, 1.5, 1.5, 'F');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...C2);
+                doc.text('TOTAL CON ' + pct + '% DESC.', bx + 4, ty + 7.6);
+                doc.setFontSize(13); doc.setTextColor(255, 255, 255);
+                doc.text(clean(dTot), bx + bw - 4, ty + 8, { align: 'right' });
                 y = ty + 12; if (col === 1) leftEnd = 0;
             }
 

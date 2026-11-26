@@ -147,16 +147,17 @@
             </section>
 
             <section class="ex-card">
-                <h2>📷 Fotos de estos códigos</h2>
-                <p class="ex-help">Abre <strong>Enviar fotos con lista</strong> con estos códigos: ahí ves cuáles tienen foto y cuáles no,
-                    y puedes marcar, crear el PDF, guardarlas o mandarlas por WhatsApp.</p>
+                <h2>📄 Crear con esta lista</h2>
+                <p class="ex-help">Lo extraído sirve para todo: elige qué documento armar. En cada uno marcas qué datos y qué
+                    columnas salen (precio c/u, total, <strong>precio y total con descuento</strong>) y el PDF trae sus totales.</p>
                 <div class="ex-send">
-                    <button type="button" id="exToVisor" class="btn btn-primary">📷 Ver fotos en el visor</button>
-                    <button type="button" id="exToOrder" class="btn btn-secondary">🧾 Lista Bodega</button>
+                    <button type="button" id="exToOrder" data-doc="pedido" class="btn btn-secondary">🧾 Lista Bodega</button>
+                    <button type="button" id="exToQuote" data-doc="remision" class="btn btn-secondary">🚚 Cotización</button>
+                    <button type="button" id="exToVisor" class="btn btn-secondary">📷 Fotos / Catálogo PDF</button>
                 </div>
-                <p class="ex-help" style="margin:0.5rem 0 0">Arma un PDF con los datos del cliente, el total y cada referencia con su
-                    foto y su cantidad, tal como vienen en el PDF: «🧾 Lista Bodega» si es un recibo (pedido) o «🚚 Cotización» si
-                    es una factura en tabla.</p>
+                <p class="ex-help" style="margin:0.5rem 0 0">Se resalta el que corresponde al PDF (recibo → Lista Bodega; factura en tabla →
+                    Cotización), pero puedes abrir cualquiera. Si marcas «Mostrar precio con descuento» abajo, el documento ya abre con
+                    esas columnas y el mismo %.</p>
             </section>
 
             <section class="ex-card">

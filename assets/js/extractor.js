@@ -165,7 +165,10 @@ function render() {
         rv.innerHTML = '<strong>Revisión</strong><ul>' + warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>';
     } else rv.hidden = true;
 
-    $('exToOrder').textContent = order.format === 'tabla' ? '🚚 Cotización' : '🧾 Lista Bodega';
+    // El documento que corresponde al PDF sale resaltado; el otro queda disponible
+    const isTabla = order.format === 'tabla';
+    $('exToOrder').className = 'btn ' + (isTabla ? 'btn-secondary' : 'btn-primary');
+    $('exToQuote').className = 'btn ' + (isTabla ? 'btn-primary' : 'btn-secondary');
 
     // Datos del pedido
     const mark = (ok) => ok == null ? '' : ok ? ' <span class="ex-ok">✓</span>' : ' <span class="ex-bad">✗</span>';
@@ -242,7 +245,7 @@ function renderSummary() {
     const sum = out.reduce((s, it) => s + (it.price == null ? 0 : it.price * (unit ? (+it.qty || 0) : 1)), 0);
     box.hidden = false;
     box.innerHTML = '✏️ <b>Lista editada a mano</b>: ' + out.length + ' referencia' + (out.length === 1 ? '' : 's') + ' · ' + units + ' unidades' +
-        (out.some((it) => it.price != null) ? ' · suma ' + esc(core.formatPrice(sum, core.priceStyle(ref))) : '') + '. Esto es lo que se copia y pasa a fotos / ' + esc($('exToOrder').textContent.replace(/^\S+\s/, '')) + '.';
+        (out.some((it) => it.price != null) ? ' · suma ' + esc(core.formatPrice(sum, core.priceStyle(ref))) : '') + '. Esto es lo que se copia y pasa a fotos y documentos.';
 }
 
 $('exEdit').addEventListener('click', () => {
@@ -367,7 +370,7 @@ $('exToVisor').addEventListener('click', () => {
 
 // Lista pedido: pasa el pedido tal cual (datos del encabezado, y cada línea con su código y su cantidad, en el
 // orden mostrado) a /lista-pedido, que busca la foto de cada código y arma el PDF.
-$('exToOrder').addEventListener('click', () => {
+function toDoc(docType) {
     const o = result.order;
     if (fromPaste && o.format === 'tabla') rows.forEach((it) => { // cotización: total de cada línea = cantidad × precio
         it.lineTotal = it.price != null && it.qty != null ? it.price * it.qty : null;
@@ -397,7 +400,9 @@ $('exToOrder').addEventListener('click', () => {
             priceIsLineTotal: o.format !== 'tabla' && o.totalOk === true && !o.unitPrices,
             nit: o.nit || '', address: o.address || '', city: o.city || '', phone: o.phone || '', seller: o.seller || '' },
         // Tipo de documento: la cotización en tabla es una factura → Remisión; el recibo es un pedido → Lista Bodega
-        docType: o.format === 'tabla' ? 'remision' : 'pedido',
+        docType,
+        // Descuento: el % de aquí; si está marcado «Mostrar precio con descuento», el documento abre con esas columnas
+        discountPct: pct(), discountCols: $('exShowDisc').checked,
         items: outRows().map((it) => ({ code: it.code, qty: it.qty ?? null, desc: it.desc || '', note: String(it.note || '').trim(), priceText: showP ? (it.priceText || '') : '', lineTotalText: showP ? (it.lineTotalText || '') : '' })),
         // Lista corregida a mano: los avisos de lectura del PDF ya no aplican (no se llevan al recuadro «Revisar» del PDF)
         warnings: edited ? [] : result.warnings.slice(),
@@ -405,4 +410,6 @@ $('exToOrder').addEventListener('click', () => {
     };
     try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (e) { alert('No se pudo pasar el pedido en este dispositivo.'); return; }
     location.href = '/lista-pedido';
-});
+}
+$('exToOrder').addEventListener('click', () => toDoc('pedido'));
+$('exToQuote').addEventListener('click', () => toDoc('remision'));
