@@ -31,13 +31,32 @@ $cartKey = $moStaff ? 'kinoCarritoVendedor' : 'kinoCarrito';
         <h2>✅ Pedido enviado</h2>
         <p class="mo-help">Recibimos el pedido <b id="moDoneId"></b>. <?= $moStaff ? 'Ya está en «Recibido».' : 'Te contactaremos por WhatsApp para confirmarlo.' ?></p>
         <a class="btn btn-primary" href="<?= $moStaff ? '/pedidos' : '/buscar' ?>"><?= $moStaff ? 'Ver pedidos' : 'Seguir viendo el catálogo' ?></a>
-        <a class="btn btn-secondary" href="" onclick="location.reload();return false">Hacer otro</a>
+        <button type="button" class="btn btn-secondary" id="moEditLast" hidden>✏️ Editar este pedido</button>
+        <a class="btn btn-secondary" href="" onclick="location.reload();return false"><?= $moStaff ? 'Hacer otro' : 'Hacer otro pedido' ?></a>
     </section>
 
+    <div class="mo-banner" id="moMine" hidden></div>
     <div class="mo-grid" id="moWork">
         <div class="mo-browse">
             <h1 class="mo-title"><?= $moStaff ? '🧾 Nuevo pedido' : '🛒 Hacer pedido' ?></h1>
             <div class="mo-searchbar"><input type="search" id="moQ" class="mo-input" placeholder="Buscar por código o nombre (ej. M8363-3)" autocomplete="off"></div>
+            <div class="mo-filters" id="moFilters" aria-label="Filtros">
+                <select id="moMarca" class="mo-sel" aria-label="Marca"><option value="">Todas las marcas</option></select>
+                <span class="mo-chipset" id="moGenero">
+                    <button type="button" class="mo-chip" data-g="hombre">Hombre</button>
+                    <button type="button" class="mo-chip" data-g="mujer">Mujer</button>
+                    <button type="button" class="mo-chip" data-g="unisex">Unisex</button>
+                </span>
+                <select id="moPrecio" class="mo-sel" aria-label="Precio">
+                    <option value="">Cualquier precio</option><option value="0-50000">Hasta $50.000</option><option value="50000-100000">$50.000 – $100.000</option>
+                    <option value="100000-200000">$100.000 – $200.000</option><option value="200000-">Más de $200.000</option>
+                </select>
+                <button type="button" class="mo-chip" id="moStock">Solo con stock</button>
+                <select id="moOrden" class="mo-sel" aria-label="Ordenar">
+                    <option value="">Ordenar: Código A-Z</option><option value="codigo-desc">Código Z-A</option><option value="precio-asc">Precio: menor a mayor</option><option value="precio-desc">Precio: mayor a menor</option>
+                </select>
+                <button type="button" class="mo-chip mo-clear" id="moClear" hidden>✕ Limpiar filtros</button>
+            </div>
             <nav class="mo-crumbs" id="moCrumbs"></nav>
             <div class="mo-folders" id="moFolders"></div>
             <p class="mo-help" id="moHint"></p>
@@ -52,7 +71,7 @@ $cartKey = $moStaff ? 'kinoCarritoVendedor' : 'kinoCarrito';
                 <ul class="mo-cart" id="moCart"></ul>
                 <div class="mo-total" id="moTotal" hidden>Total: <b id="moTotalV"></b></div>
                 <div id="moForm">
-                    <label class="mo-lbl"><?= $moStaff ? 'Nombre del cliente' : 'Nombre' ?> <input class="mo-input" id="moName" maxlength="120" autocomplete="name"></label>
+                    <label class="mo-lbl"><?= $moStaff ? 'Nombre del cliente' : 'Nombre' ?> <input class="mo-input" id="moName" maxlength="120" autocomplete="<?= $moStaff ? 'off' : 'name' ?>"<?= $moStaff ? ' list="moCust"' : '' ?>><?php if ($moStaff): ?><datalist id="moCust"></datalist><?php endif; ?></label>
                     <label class="mo-lbl">WhatsApp / teléfono <input class="mo-input" id="moPhone" maxlength="40" inputmode="tel" autocomplete="tel"></label>
                     <label class="mo-lbl">Nota (opcional) <textarea class="mo-input" id="moNote" maxlength="500" rows="2"></textarea></label>
                     <input type="text" id="moWeb" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
