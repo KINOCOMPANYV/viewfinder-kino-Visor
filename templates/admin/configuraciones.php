@@ -1,7 +1,7 @@
 <?php
 /** v2 · Configuraciones: punto de entrada a las herramientas de v1 (Dashboard, Drive, Hoja master, precios…). */
 include __DIR__ . '/partials/config_tools.php';
-$v2 = ['nav' => 'gestion', 'title' => 'Configuraciones', 'subtitle' => 'Herramientas del sistema anterior'];
+$v2 = ['nav' => 'gestion', 'sub' => 'todas', 'title' => 'Configuraciones', 'subtitle' => 'Herramientas del sistema anterior'];
 include __DIR__ . '/partials/v2_start.php';
 $groups = [];
 foreach ($configTools as [$href, $label, $desc, $group]) {

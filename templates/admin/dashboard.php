@@ -58,7 +58,7 @@ $cacheFlash = $_SESSION['cache_flash'] ?? null;
 unset($_SESSION['cache_flash']);
 ?>
 <?php
-$v2 = ['nav' => 'gestion', 'title' => 'Dashboard', 'subtitle' => 'Configuraciones · conteos y listas del catálogo'];
+$v2 = ['nav' => 'gestion', 'sub' => 'dashboard', 'title' => 'Dashboard', 'subtitle' => 'Configuraciones · conteos y listas del catálogo'];
 include __DIR__ . '/partials/v2_start.php';
 ?>
 <style>

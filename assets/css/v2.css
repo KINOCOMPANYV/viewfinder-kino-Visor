@@ -106,3 +106,27 @@ details.v2-fd > .v2-filters { border-top: 1px solid var(--color-border); padding
 .v2-stage.st-recibido { color: var(--color-warning); } .v2-stage.st-por_alistar, .v2-stage.st-en_alistamiento { color: var(--color-orange); }
 .v2-stage.st-listo_facturar { color: var(--color-primary); } .v2-stage.st-facturado { color: var(--color-success); } .v2-stage.st-cancelado { color: var(--color-danger); }
 .v2-hist { list-style: none; margin: .6rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; font-size: .92rem; }
+
+/* Submenú de Configuraciones (desplegable) */
+.v2-group > summary { cursor: pointer; list-style: none; }
+.v2-group > summary::-webkit-details-marker { display: none; }
+.v2-group > summary:hover { background: rgba(255,255,255,.06); }
+.v2-caret { margin-left: auto; width: 7px; height: 7px; border-right: 2px solid var(--v2-side-dim); border-bottom: 2px solid var(--v2-side-dim); transform: rotate(-45deg); transition: transform .15s; }
+.v2-group[open] > summary .v2-caret { transform: rotate(45deg); }
+.v2-subs { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 6px 1.6rem; padding-left: .7rem; border-left: 1px solid rgba(255,255,255,.1); }
+.v2-sub-item { padding: .42rem .7rem; border-radius: 8px; color: var(--v2-side-dim); text-decoration: none; font-size: .86rem; }
+.v2-sub-item:hover { color: #fff; background: rgba(255,255,255,.06); }
+.v2-sub-item.on { color: #fff; background: var(--v2-side-2); font-weight: 600; }
+.v2-sub-h { margin: .6rem .7rem .2rem; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--v2-side-dim); opacity: .75; }
+
+/* Pantallas v1 dentro del marco: menú fijo a la izquierda, contenido a la derecha */
+body.v2-legacy { padding-left: 240px; background: var(--color-bg); }
+body.v2-legacy .v2-side { position: fixed; left: 0; top: 0; }
+.v2-legacy-top { padding: 1rem 1.75rem 0; max-width: 1400px; margin: 0 auto; }
+.v2-crumb { font-size: .95rem; color: var(--color-text-muted); }
+.v2-crumb a { color: var(--color-text-muted); text-decoration: none; } .v2-crumb a:hover { color: var(--color-primary); }
+.v2-crumb b { color: var(--color-text); font-size: 1.05rem; }
+@media (max-width: 900px) {
+    body.v2-legacy { padding-left: 0; }
+    .v2-legacy-top { padding: .8rem 1rem 0; }
+}

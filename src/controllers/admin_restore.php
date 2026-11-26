@@ -72,9 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
-<body>
+<body class="v2 v2-legacy">
 <div class="container" style="padding-top:1rem;max-width:760px;">
-    <?php $adminNav = ''; include __DIR__ . '/../../templates/admin/partials/nav.php'; ?>
+    <?php $adminNav = 'restaurar'; include __DIR__ . '/../../templates/admin/partials/nav.php'; ?>
     <h1 style="font-size:1.3rem;">♻️ Restaurar respaldo (solo v2)</h1>
     <p style="color:var(--color-text-muted);">Reemplaza las tablas de la base <b><?= e($dbName) ?></b> de ESTE servicio con un respaldo de Drive.
         Se conservan la conexión con Google y las cuentas de usuario de v2. La base de producción no se toca (este servicio no tiene acceso a ella).</p>
