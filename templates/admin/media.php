@@ -531,13 +531,7 @@
     </style>
 </head>
 
-<body>
-    <header class="header">
-        <div class="container header-inner">
-            <a href="/admin" class="logo"><span class="logo-icon">VF</span> Viewfinder Admin</a>
-            <a href="/admin/logout" class="btn btn-sm btn-secondary">Cerrar Sesión</a>
-        </div>
-    </header>
+<body class="v2 v2-legacy">
 
     <main class="container fade-in" style="padding-top:2rem; padding-bottom:2rem;">
 

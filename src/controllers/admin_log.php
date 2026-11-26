@@ -67,13 +67,7 @@ $fatal = count(array_filter($errors, fn($r) => in_array($r['level'], ['fatal', '
     </style>
 </head>
 
-<body>
-    <header class="header">
-        <div class="container header-inner">
-            <a href="/admin" class="logo"><span class="logo-icon">VF</span> Viewfinder Admin</a>
-            <a href="/admin/logout" class="btn btn-sm btn-secondary">Cerrar Sesión</a>
-        </div>
-    </header>
+<body class="v2 v2-legacy">
     <main class="container" style="padding-top:2rem; padding-bottom:3rem;">
         <?php $adminNav = 'registro'; include __DIR__ . '/../../templates/admin/partials/nav.php'; ?>
         <h1 style="font-size:1.5rem; margin-bottom:1rem;">🧾 Registro de errores y búsquedas sin resultado</h1>

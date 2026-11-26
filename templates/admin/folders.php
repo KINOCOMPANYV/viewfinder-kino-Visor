@@ -11,13 +11,7 @@
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
 </head>
 
-<body>
-    <header class="header">
-        <div class="container header-inner">
-            <a href="/admin" class="logo"><span class="logo-icon">VF</span> Viewfinder Admin</a>
-            <a href="/admin/logout" class="btn btn-sm btn-secondary">Cerrar Sesión</a>
-        </div>
-    </header>
+<body class="v2 v2-legacy">
 
     <main class="container" style="padding-top:2rem; padding-bottom:3rem;">
         <?php $adminNav = 'folders'; include __DIR__ . '/partials/nav.php'; ?>
