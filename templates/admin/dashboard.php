@@ -57,18 +57,11 @@ try {
 $cacheFlash = $_SESSION['cache_flash'] ?? null;
 unset($_SESSION['cache_flash']);
 ?>
-<!DOCTYPE html>
-<html lang="es">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard · Viewfinder Admin</title>
-    <style>
-        body {
-            background: var(--color-bg,#161618);
-            color: var(--color-text,#f5f5f7)
-        }
+<?php
+$v2 = ['nav' => 'gestion', 'title' => 'Dashboard', 'subtitle' => 'Configuraciones · conteos y listas del catálogo'];
+include __DIR__ . '/partials/v2_start.php';
+?>
+<style>
         /* Cada tarjeta abre su lista; «⬇ Excel» la descarga completa (mismo filtro que la lista) */
         .stat-wrap { position: relative; display: flex; }
         .stat-wrap > .stat-card { flex: 1; }
@@ -76,22 +69,7 @@ unset($_SESSION['cache_flash']);
             border: 1px solid var(--color-border); color: var(--color-text-muted); text-decoration: none; background: var(--color-surface-2); }
         .stat-dl:hover { color: var(--color-primary); border-color: var(--color-primary); }
     </style>
-    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
-    <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
-</head>
-
-<body>
-    <header class="header">
-        <div class="container header-inner">
-            <a href="/admin" class="logo"><span class="logo-icon">VF</span> Viewfinder Admin</a>
-            <a href="/admin/logout" class="btn btn-sm btn-secondary">Cerrar Sesión</a>
-        </div>
-    </header>
-
-    <main class="container" style="padding-top:2rem;">
-        <?php $adminNav = 'dashboard'; include __DIR__ . '/partials/nav.php'; ?>
-
-        <h1 style="font-size:1.5rem; margin-bottom:1.5rem;">Dashboard</h1>
+<div class="v2-dash">
 
         <!-- Stat Cards Row 1: Principales (cada tarjeta abre Productos filtrado) -->
         <div class="stats-grid">
@@ -315,13 +293,5 @@ unset($_SESSION['cache_flash']);
                 </form>
             </div>
         </details>
-    </main>
-
-    <footer class="footer">
-        <div class="container">
-            <p>Viewfinder Admin Panel · v1.0</p>
-        </div>
-    </footer>
-</body>
-
-</html>
+    </div>
+<?php include __DIR__ . '/partials/v2_end.php'; ?>
