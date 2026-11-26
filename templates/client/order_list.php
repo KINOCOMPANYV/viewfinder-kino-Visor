@@ -43,6 +43,9 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
         body.ol-remision #olTitle { color:var(--color-danger); }
         .ol-tpl-link { display:none; }
         body.ol-remision .ol-tpl-link { display:block; margin-top:-0.6rem; }
+        .ol-notes { display:none; margin-top:0.9rem; }
+        body.ol-remision .ol-notes { display:block; }
+        .ol-notes textarea { min-height:4.5rem; resize:vertical; line-height:1.4; }
         /* Botón «Previo»: llamativo, es el paso antes de descargar o enviar */
         .ol-preview-btn { background:linear-gradient(135deg,#ff8a00,#ffc93c); color:#1a1a1a; font-weight:800; font-size:1.05rem; border:none;
             box-shadow:0 0 0 0 rgba(255,170,40,.7); animation:olPulse 1.8s infinite; }
@@ -115,6 +118,8 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
                 <h2>Datos del pedido <small class="ol-help">(tal como vienen en el PDF · marca lo que sale en el PDF)</small></h2>
                 <div class="ol-order" id="olOrder"></div>
                 <div class="ol-opts" id="olOpts"></div>
+                <label class="ol-notes"><b>📝 Notas de la cotización</b> <small class="ol-help">(opcional · salen completas al final del PDF)</small>
+                    <textarea id="olNotes" class="ol-edit" rows="3" maxlength="2000" placeholder="Ej.: Condiciones de pago, tiempo de entrega, garantía…"></textarea></label>
             </section>
             <section class="ol-card">
                 <h2>Productos <small class="ol-help">(las cantidades son las del PDF y no se pueden cambiar)</small></h2>

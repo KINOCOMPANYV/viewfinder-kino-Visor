@@ -48,7 +48,7 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-price { color:#bbb; font-size:0.9rem; white-space:nowrap; }
         .pb-sub { margin-left:auto; font-weight:700; color:var(--color-primary-light, #c4a46b); }
         .pb-note, .pb-in { height:38px; border-radius:8px; border:1px solid #444; background:var(--color-bg,#161618); color:var(--color-text); padding:0 0.6rem; font-size:0.9rem; }
-        .pb-note { flex:1; min-width:9rem; }
+        .pb-note { flex:1 1 100%; min-width:9rem; height:auto; min-height:38px; padding:0.5rem 0.6rem; line-height:1.35; resize:vertical; font-family:inherit; }
         .pb-sw { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center; }
         .pb-sw .pb-in { flex:1; min-width:12rem; }
         .pb-pick { flex-basis:100%; display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:0.5rem; max-height:360px; overflow-y:auto; }
@@ -79,7 +79,7 @@ $wbJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/warehouse_order.js');
         .pb-chg ul { list-style:none; margin:0; padding:0; }
         .pb-chg li { display:flex; flex-wrap:wrap; gap:0.2rem 0.6rem; align-items:baseline; padding:0.45rem 0.6rem; border-radius:8px; background:var(--color-bg,#161618); margin-bottom:0.3rem; font-size:0.9rem; }
         .pb-chg li .q { margin-left:auto; color:var(--color-text-muted,#c8c8d0); white-space:nowrap; }
-        .pb-chg li .n { flex-basis:100%; color:var(--color-text-muted,#a0a0b0); font-size:0.8rem; }
+        .pb-chg li .n { flex-basis:100%; white-space:pre-wrap; color:var(--color-text-muted,#a0a0b0); font-size:0.8rem; }
         .pb-chg .arrow { color:#e6c76a; }
         .pb-chg .rm b { text-decoration:line-through; color:var(--color-danger); }
         .pb-chg .sum { margin-top:0.8rem; padding-top:0.6rem; border-top:1px solid var(--color-surface-3,#2c2c2e); display:flex; flex-wrap:wrap; gap:0.3rem 1.2rem; font-size:0.9rem; }
