@@ -114,6 +114,7 @@ $bank = shopBankInfo();
             <h3>¡Pedido recibido!</h3>
             <p>Tu pedido <b id="tnDoneNo"></b> quedó registrado. Toca el botón verde para enviárnoslo por WhatsApp y confirmarlo.</p>
             <a class="tn-btn tn-btn-wa" id="tnDoneWa" target="_blank" rel="noopener">Enviar pedido por WhatsApp</a>
+            <a class="tn-btn tn-btn-ghost" id="tnDoneMine" target="_blank" rel="noopener">Enviarme mi compra a mi WhatsApp</a>
             <a class="tn-btn tn-btn-ghost" id="tnDoneView">Ver mi pedido con fotos</a>
             <button type="button" class="tn-btn tn-btn-ghost" id="tnDoneAgain">Seguir comprando</button>
         </section>
