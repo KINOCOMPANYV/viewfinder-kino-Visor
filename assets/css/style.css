@@ -3643,3 +3643,6 @@ a.active, .filter-field.on, summary.filter-field.on { background: var(--color-su
 .cp-del:hover { border-color: var(--color-danger, #c0392b); }
 .cp-info-top { flex-wrap: wrap; }
 .ol-list .pu, #olList .pu { display: block; font-size: 0.75rem; color: var(--color-text-muted); font-weight: 400; }
+
+/* Contador del carrito «Hacer pedido» (v2) */
+.cart-count{display:inline-block;min-width:1.15rem;padding:0 .3rem;margin-left:.2rem;border-radius:999px;background:#fff;color:#111;font-size:.7rem;line-height:1.15rem;text-align:center;font-weight:700}

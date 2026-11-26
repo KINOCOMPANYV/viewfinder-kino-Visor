@@ -1647,8 +1647,39 @@ function icon(string $name, string $class = ''): string
     return '<svg class="ico ico-' . $name . ($class !== '' ? ' ' . $class : '') . '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' . $paths[$name] . '</svg>';
 }
 
-/** Botón fijo «Pedidos bodega» del encabezado de todas las páginas públicas (enlace siempre /pedidos-alistar; visible también en celular). */
+/** ¿Hay una cuenta del personal (vendedor, facturación, bodega, admin, dev) en la sesión? Los clientes y el público no. */
+function isStaff(): bool
+{
+    return in_array(currentRole(), ['vendedor', 'facturacion', 'bodega', 'admin', 'dev'], true);
+}
+
+/** Herramientas internas de pedidos (Extractor, Lista Bodega, Pedidos bodega): solo el personal; el público va al login. */
+function requireStaff(): void
+{
+    if (!isStaff()) {
+        $isAjax = (($_SERVER['HTTP_ACCEPT'] ?? '') !== '' && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'))
+            || !empty($_SERVER['HTTP_X_REQUESTED_WITH']) || ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET';
+        if ($isAjax) {
+            http_response_code(401);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => 'Solo el personal puede usar esta herramienta.']);
+            exit;
+        }
+        $_SESSION['after_login'] = '/admin';
+        redirect('/admin/login');
+    }
+}
+
+/**
+ * Botones fijos del encabezado de las páginas públicas: «🛒 Hacer pedido» (todos, con el contador del carrito)
+ * y, solo para el personal, «Pedidos bodega» (enlace /pedidos-alistar). Visibles también en celular.
+ */
 function pedidosHeaderBtn(): string
 {
-    return '<a href="/pedidos-alistar" class="btn btn-sm btn-primary hdr-pedidos" aria-label="Pedidos bodega" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Pedidos por alistar (rojo) y listos (verde)">' . icon('clipboard') . ' Pedidos bodega</a>';
+    $html = '<a href="/hacer-pedido" class="btn btn-sm btn-primary hdr-pedidos hdr-cart" aria-label="Hacer pedido" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Tu pedido: productos agregados y envío">' . icon('receipt') . ' Hacer pedido <span class="cart-count" id="cartCount" hidden></span></a>'
+        . '<script src="/assets/js/cart_badge.js?v=' . APP_VERSION . '" defer></script>';
+    if (isStaff()) {
+        $html = '<a href="/pedidos-alistar" class="btn btn-sm btn-secondary hdr-pedidos" aria-label="Pedidos bodega" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Pedidos por alistar (rojo) y listos (verde)">' . icon('clipboard') . ' Pedidos bodega</a>' . $html;
+    }
+    return $html;
 }
