@@ -147,9 +147,21 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
         <div class="cp-bar-row">
             <button type="button" class="btn btn-primary" id="cpMake">📄 Generar PDF</button>
             <button type="button" class="btn cp-share" id="cpShare" hidden>📲 Compartir</button>
+            <button type="button" class="btn btn-secondary" id="cpPreview" hidden>👁 Previo</button>
             <button type="button" class="btn btn-secondary" id="cpDown" hidden>⬇️ Descargar</button>
         </div>
         <div class="cp-msg" id="cpMsg" aria-live="polite"></div>
+    </div>
+
+    <div class="ol-pv" id="cpPv" hidden role="dialog" aria-modal="true" aria-label="Previo del PDF">
+        <div class="ol-pv-head">
+            <strong id="cpPvTitle">👁 Previo</strong>
+            <label class="cp-name ol-pv-name">📝 <span class="cp-name-in"><input type="text" id="cpPvName" maxlength="120" autocomplete="off" spellcheck="false" aria-label="Nombre del archivo PDF"><span>.pdf</span></span></label>
+            <button type="button" class="btn cp-share" id="cpPvShare" hidden>📲 Compartir</button>
+            <button type="button" class="btn btn-primary" id="cpPvDown">⬇️ Descargar</button>
+            <button type="button" class="btn btn-secondary" id="cpPvClose">✕ Cerrar</button>
+        </div>
+        <div class="ol-pv-pages" id="cpPvPages"></div>
     </div>
 
     <script src="/assets/vendor/jspdf-4.2.1.umd.min.js" defer></script>

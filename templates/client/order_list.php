@@ -50,14 +50,6 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
         body.ol-remision .ol-preview-btn { background:linear-gradient(135deg,#b3141e,#ff5a64); color:#fff; box-shadow:0 0 0 0 rgba(255,90,100,.7); }
         @keyframes olPulse { 0% { box-shadow:0 0 0 0 rgba(255,170,40,.6); } 70% { box-shadow:0 0 0 12px rgba(255,170,40,0); } 100% { box-shadow:0 0 0 0 rgba(255,170,40,0); } }
         @media (prefers-reduced-motion: reduce) { .ol-preview-btn { animation:none; } }
-        .ol-pv { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.85); display:flex; flex-direction:column; }
-        .ol-pv[hidden] { display:none; }
-        .ol-pv-head { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; padding:0.7rem 1rem; background:var(--color-surface,#1c1c1e); border-bottom:1px solid var(--color-surface-3,#2c2c2e); }
-        .ol-pv-head strong { flex:1; min-width:10rem; font-size:1rem; }
-        .ol-pv-head .btn { min-height:40px; }
-        .ol-pv-pages { flex:1; overflow:auto; padding:1rem; display:flex; flex-direction:column; align-items:center; gap:1rem; }
-        .ol-pv-pages canvas { width:100%; max-width:820px; height:auto; background:#fff; box-shadow:0 4px 18px rgba(0,0,0,.5); border-radius:2px; }
-        .ol-pv-pages p { color:var(--color-text-muted,#c8c8d0); margin:0; }
         .ol-field.off { opacity:0.45; text-decoration:line-through; }
         .ol-field input, .ol-opts input { accent-color:#c4a46b; vertical-align:middle; }
         .ol-opts { display:flex; flex-wrap:wrap; gap:0.4rem 1.2rem; margin-top:0.8rem; font-size:0.85rem; color:var(--color-text-muted,#c8c8d0); }

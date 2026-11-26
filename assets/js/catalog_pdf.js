@@ -389,7 +389,7 @@
         if (busy) return;
         pdfFile = null;
         $('cpShare').hidden = true;
-        $('cpDown').hidden = true;
+        $('cpDown').hidden = true; $('cpPreview').hidden = true;
         $('cpNameRow').hidden = true;
         $('cpMake').textContent = '📄 Generar PDF';
     }
@@ -428,7 +428,7 @@
         busy = true;
         const btn = $('cpMake');
         btn.disabled = true;
-        $('cpShare').hidden = true; $('cpDown').hidden = true; $('cpNameRow').hidden = true;
+        $('cpShare').hidden = true; $('cpDown').hidden = true; $('cpPreview').hidden = true; $('cpNameRow').hidden = true;
         pdfFile = null;
         const per = +opts.per;
         const maxPx = MAXPX[per];
@@ -611,9 +611,10 @@
             msg(`✅ PDF listo: ${rows.length} foto${rows.length === 1 ? '' : 's'}, ${pages} página${pages === 1 ? '' : 's'} · ${mb(blob.size)}.`
                 + (canShareFiles ? '' : ' Descárgalo y adjúntalo en WhatsApp Web (📎 → Documento).'));
             $('cpShare').hidden = !canShareFiles;
-            $('cpDown').hidden = false;
+            $('cpDown').hidden = false; $('cpPreview').hidden = false;
             KP.setName([$('cpName')], pdfFile.name); $('cpNameRow').hidden = false;
             btn.textContent = '🔄 Rehacer';
+            showPreview();
         } catch (e) {
             msg('No se pudo generar el PDF: ' + (e && e.message ? e.message : e));
             btn.textContent = '📄 Generar PDF';
@@ -623,6 +624,48 @@
         }
     }
     $('cpMake').addEventListener('click', make);
+
+    // Previo: el PDF ya armado, pintado página por página con pdf.js (igual que Lista Bodega)
+    let pdfjs = null, pvToken = 0;
+    async function showPreview() {
+        if (!pdfFile) return;
+        const pages = $('cpPvPages');
+        $('cpPvTitle').textContent = '👁 Previo: ' + (clean(opts.title) || 'Catálogo');
+        $('cpPvShare').hidden = !canShareFiles;
+        KP.setName([$('cpPvName')], pdfFile.name);
+        pages.innerHTML = '<p>Cargando el previo…</p>';
+        $('cpPv').hidden = false; document.body.style.overflow = 'hidden';
+        const my = ++pvToken;
+        try {
+            if (!pdfjs) {
+                pdfjs = await import('/assets/vendor/pdfjs/pdf.min.js');
+                pdfjs.GlobalWorkerOptions.workerSrc = '/assets/vendor/pdfjs/pdf.worker.min.js';
+            }
+            const doc = await pdfjs.getDocument({ data: new Uint8Array(await pdfFile.arrayBuffer()) }).promise;
+            if (my !== pvToken) return;
+            pages.innerHTML = '';
+            const width = Math.min(820, pages.clientWidth - 32) * (window.devicePixelRatio || 1);
+            for (let n = 1; n <= doc.numPages; n++) {
+                const page = await doc.getPage(n);
+                if (my !== pvToken) return;
+                const vp = page.getViewport({ scale: 1 });
+                const v = page.getViewport({ scale: width / vp.width });
+                const cv = document.createElement('canvas');
+                cv.width = v.width; cv.height = v.height;
+                pages.appendChild(cv);
+                await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+            }
+        } catch (e) {
+            pages.innerHTML = '<p>No se pudo mostrar el previo (' + String(e && e.message ? e.message : e).replace(/[<>&]/g, '') + '). Puedes descargarlo igual.</p>';
+        }
+    }
+    const closePreview = () => { pvToken++; $('cpPv').hidden = true; $('cpPvPages').innerHTML = ''; document.body.style.overflow = ''; };
+    $('cpPreview').addEventListener('click', showPreview);
+    $('cpPvClose').addEventListener('click', closePreview);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('cpPv').hidden) closePreview(); });
+    KP.linkNames([$('cpName'), $('cpPvName')]);
+    $('cpPvDown').addEventListener('click', () => KP.download(outFile(), msg));
+    $('cpPvShare').addEventListener('click', () => KP.share(outFile(), clean(opts.title) || 'Catálogo', msg));
 
     // Nombre del archivo: se puede cambiar antes de Descargar / Compartir
     const outFile = () => KP.named(pdfFile, $('cpName'));
