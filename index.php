@@ -219,6 +219,13 @@ if ($uri === '/api/error-js' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/api/pedido/explorar') {
+    checkRateLimit(120);
+    session_write_close();
+    include __DIR__ . '/src/controllers/api_pedido_explorar.php';
+    exit;
+}
+
 if ($uri === '/api/search') {
     // API de búsqueda (para autocomplete AJAX)
     checkRateLimit(120); // 120 req/min — autocomplete es frecuente
@@ -443,6 +450,12 @@ if ($uri === '/pedidos-clientes') {
     exit;
 }
 
+if ($uri === '/pedidos/nuevo') { // el vendedor arma un pedido con el mismo explorador visual
+    requireStaff();
+    $moStaff = true;
+    include __DIR__ . '/templates/client/make_order.php';
+    exit;
+}
 if (preg_match('#^/pedidos(?:/(\d+))?$#', $uri, $matches)) {
     requireStaff();
     $orderId = (int) ($matches[1] ?? 0);

@@ -1,7 +1,7 @@
 /* Contador del carrito «Hacer pedido» (localStorage kinoCarrito) sobre el botón del encabezado.
    Expone window.kinoCart para las páginas que agregan productos (ficha, Hacer pedido). */
 (function () {
-    const KEY = 'kinoCarrito';
+    const KEY = window.KINO_CART_KEY || 'kinoCarrito'; // el pedido del vendedor usa otro carrito para no mezclarse con el de un cliente
     const read = () => { try { const v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
     const write = (items) => { try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) { /* sin almacenamiento */ } paint(); window.dispatchEvent(new Event('kinoCart')); };
     function paint() {

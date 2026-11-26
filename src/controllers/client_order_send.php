@@ -40,6 +40,7 @@ if ($missing) {
 $total = 0;
 foreach ($want as $sku => $qty) $total += $qty * (float) $found[$sku]['price_suggested'];
 $userId = !empty($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
+$staffUser = isStaff() && !empty($in['staff']) ? (sessionUser() ?: ['id' => null, 'name' => '', 'username' => (string) (env('ADMIN_USER') ?: 'admin'), 'role' => currentRole()]) : null; // pedido hecho por un vendedor (/pedidos/nuevo)
 try {
     $db->beginTransaction();
     $db->prepare("INSERT INTO client_orders (user_id, customer_name, customer_phone, note, total) VALUES (?, ?, ?, ?, ?)")
@@ -50,13 +51,20 @@ try {
         $ins->execute([$id, $sku, mb_substr((string) $found[$sku]['name'], 0, 255, 'UTF-8'), $qty, (float) $found[$sku]['price_suggested']]);
     }
     $db->commit();
+    $number = '';
     try { // v2 módulo 3: el pedido núcleo (número, etapa, historial, ficha del cliente)
         require_once __DIR__ . '/../services/Orders.php';
-        Orders::create($db, ['stage' => 'recibido', 'origin' => 'cliente', 'customer_name' => $name, 'customer_phone' => $phone, 'client_order_id' => $id,
-            'items_count' => count($want), 'total' => $total, 'note' => $note, 'created_by' => $name]);
+        $f = ['stage' => 'recibido', 'origin' => 'cliente', 'customer_name' => $name, 'customer_phone' => $phone, 'client_order_id' => $id,
+            'items_count' => count($want), 'total' => $total, 'note' => $note, 'created_by' => $name];
+        if ($staffUser) {
+            $f = array_merge($f, ['origin' => 'vendedor', 'created_by' => $staffUser['name'] ?: $staffUser['username'], 'user' => $staffUser,
+                'seller_user_id' => $staffUser['role'] === 'vendedor' ? (int) $staffUser['id'] : null]);
+        }
+        $coreId = Orders::create($db, $f);
+        $number = (string) $db->query('SELECT number FROM orders WHERE id = ' . (int) $coreId)->fetchColumn();
     } catch (\Throwable $e) { /* migración 041 pendiente */ }
 } catch (\Throwable $e) {
     if ($db->inTransaction()) $db->rollBack();
     jsonResponse(['error' => 'No se pudo guardar el pedido. Intenta de nuevo en unos minutos.'], 500);
 }
-jsonResponse(['ok' => true, 'id' => $id]);
+jsonResponse(['ok' => true, 'id' => $id, 'number' => $number, 'core' => $coreId ?? 0]);
