@@ -471,7 +471,7 @@ if ($uri === '/pedidos-clientes') {
     exit;
 }
 
-if ($uri === '/pedidos/nuevo') { // el vendedor arma un pedido con el mismo explorador visual
+if ($uri === '/vender' || $uri === '/pedidos/nuevo') { // «Vender» (v2 módulo 5): el vendedor arma un pedido con el mismo explorador visual
     requireStaff();
     $moStaff = true;
     include __DIR__ . '/templates/client/make_order.php';

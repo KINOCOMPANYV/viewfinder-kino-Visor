@@ -1,17 +1,25 @@
 <?php
 /**
- * Hacer pedido (/hacer-pedido, cliente) y Nuevo pedido (/pedidos/nuevo, vendedor: $moStaff = true). v2 módulos 3-4.
+ * Hacer pedido (/hacer-pedido, cliente) y Vender (/vender = /pedidos/nuevo, vendedor: $moStaff = true). v2 módulos 3-4.
  * Explorador visual: carpetas con foto → fotos de productos → tocar para agregar (con cantidad); buscador del visor;
  * carrito siempre visible (columna a la derecha, o barra abajo en el celular). Carrito en localStorage; el envío
  * crea el pedido núcleo «recibido». Sin cuenta: nombre + WhatsApp.
+ * Vendedor: dentro del marco v2 (menú lateral «Vender»), buscador en el centro y pedido a la derecha.
  */
 $moStaff = !empty($moStaff);
 $cartKey = $moStaff ? 'kinoCarritoVendedor' : 'kinoCarrito';
 ?>
+<?php if ($moStaff):
+    $v2 = ['nav' => 'vender', 'title' => 'Vender', 'subtitle' => 'Busca con fotos y arma el pedido del cliente'];
+    include __DIR__ . '/../admin/partials/v2_start.php'; ?>
+<link rel="preconnect" href="https://lh3.googleusercontent.com">
+<link rel="stylesheet" href="/assets/css/make_order.css?v=<?= @filemtime(BASE_DIR . '/assets/css/make_order.css') ?>">
+<script>window.KINO_CART_KEY = '<?= $cartKey ?>';</script>
+<?php else: ?>
 <!DOCTYPE html>
 <html lang="es"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex, nofollow">
-<title><?= $moStaff ? 'Nuevo pedido' : 'Hacer pedido' ?> · Viewfinder</title>
+<title>Hacer pedido · Viewfinder</title>
 <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
 <link rel="preconnect" href="https://lh3.googleusercontent.com">
 <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
@@ -22,11 +30,11 @@ $cartKey = $moStaff ? 'kinoCarritoVendedor' : 'kinoCarrito';
 <header class="header"><div class="container header-inner">
     <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
     <div style="display:flex;gap:.4rem;align-items:center">
-        <?php if ($moStaff): ?><a href="/pedidos" class="btn btn-sm btn-secondary" style="font-size:.8rem;padding:.4rem .8rem">← Pedidos</a>
-        <?php else: ?><?= pedidosHeaderBtn() ?><?php endif; ?>
+        <?= pedidosHeaderBtn() ?>
     </div>
 </div></header>
-<main class="mo-wrap">
+<?php endif; ?>
+<<?= $moStaff ? 'div class="mo-wrap mo-v2"' : 'main class="mo-wrap"' ?>>
     <section class="mo-card" id="moDone" hidden>
         <h2>✅ Pedido enviado</h2>
         <p class="mo-help">Recibimos el pedido <b id="moDoneId"></b>. <?= $moStaff ? 'Ya está en «Recibido».' : 'Te contactaremos por WhatsApp para confirmarlo.' ?></p>
@@ -38,7 +46,7 @@ $cartKey = $moStaff ? 'kinoCarritoVendedor' : 'kinoCarrito';
     <div class="mo-banner" id="moMine" hidden></div>
     <div class="mo-grid" id="moWork">
         <div class="mo-browse">
-            <h1 class="mo-title"><?= $moStaff ? '🧾 Nuevo pedido' : '🛒 Hacer pedido' ?></h1>
+            <?php if (!$moStaff): ?><h1 class="mo-title">🛒 Hacer pedido</h1><?php endif; ?>
             <div class="mo-searchbar"><input type="search" id="moQ" class="mo-input" placeholder="Buscar por código o nombre (ej. M8363-3)" autocomplete="off"></div>
             <div class="mo-filters" id="moFilters" aria-label="Filtros">
                 <select id="moMarca" class="mo-sel" aria-label="Marca"><option value="">Todas las marcas</option></select>
@@ -82,8 +90,10 @@ $cartKey = $moStaff ? 'kinoCarritoVendedor' : 'kinoCarrito';
         </aside>
     </div>
     <button type="button" class="mo-bar" id="moBar" hidden><span id="moBarN">0</span> ref. · <b id="moBarT"></b> <span class="mo-bar-go">Ver pedido ›</span></button>
-</main>
+</<?= $moStaff ? 'div' : 'main' ?>>
 <script>window.MO_CSRF = '<?= csrfToken() ?>'; window.MO_STAFF = <?= $moStaff ? 'true' : 'false' ?>;</script>
 <script src="/assets/js/cart_badge.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="/assets/js/make_order.js?v=<?= @filemtime(BASE_DIR . '/assets/js/make_order.js') ?>" defer></script>
+<?php if ($moStaff): include __DIR__ . '/../admin/partials/v2_end.php'; else: ?>
 </body></html>
+<?php endif; ?>

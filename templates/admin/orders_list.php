@@ -8,7 +8,7 @@
             <a class="v2-chip<?= $stage === $k ? ' on' : '' ?>" href="/pedidos?etapa=<?= $k ?><?= $q !== '' ? '&q=' . urlencode($q) : '' ?>"><?= e($lbl) ?><?php if (!empty($counts[$k])): ?> <b><?= (int) $counts[$k] ?></b><?php endif; ?></a>
         <?php endforeach; ?>
         <span class="v2-spacer"></span>
-        <a class="v2-btn" href="/pedidos/nuevo">+ Nuevo pedido</a>
+        <a class="v2-btn" href="/vender">+ Nuevo pedido</a>
         <a class="v2-act" href="/pedidos-alistar">Checklist de bodega</a>
     </form>
     <table class="v2-table">

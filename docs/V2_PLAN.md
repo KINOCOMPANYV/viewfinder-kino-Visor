@@ -30,7 +30,7 @@ Nota: los PRs hacia `v2` se fusionan con squash; si la rama de trabajo se reutil
 2. **Productos (estilo KYTE)** — lista con foto, código, categoría, stock, precio, interruptor «Catálogo», totales, filtros y exportar. Fuente del catálogo y de Vender.
 3. **Pedido (núcleo)** — número único, etapas (Recibido → Por alistar → En alistamiento → Listo para facturar → Facturado), historial, origen / vendedor asignado / responsable de etapa por separado. Incluye **Clientes** básico (ficha + pedidos).
 4. **Portal de clientes + Catálogo Online** — registro, catálogo con referencias publicadas, «Enviar pedido», «Mis pedidos», «Mis datos».
-5. **Vender** — buscador y fotos al centro, pedido a la derecha, elegir cliente, cantidades, total.
+5. **Vender** (hecho: `/vender`) — buscador y fotos al centro, pedido a la derecha, elegir cliente, cantidades, total.
 6. **Facturación y Bodega** — bandejas «Pedidos recibidos» y «Listos para facturar»; «Pedidos por alistar» con faltantes.
 7. **Transacciones y estadísticas** — ventas por cliente/producto/vendedor/fecha; resúmenes diario/semanal/mensual.
 8. **Gestión** (un botón con las herramientas actuales del admin) y **Finanzas** (alcance por definir).
