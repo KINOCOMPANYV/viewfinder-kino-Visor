@@ -86,15 +86,4 @@ try {
     if ($db->inTransaction()) $db->rollBack();
     jsonResponse(['error' => 'No se pudo guardar el pedido. Intenta de nuevo en unos minutos.'], 500);
 }
-$shopWa = ['business' => false];
-if ($isShop && $token !== '') { // aviso automático solo si la API de WhatsApp está configurada; si no, el cliente usa los enlaces wa.me
-    try {
-        require_once __DIR__ . '/../services/Whatsapp.php';
-        if (Whatsapp::enabled()) {
-            $link = publicBaseUrl() . '/pedido/' . $token;
-            $shopWa['business'] = Whatsapp::send(shopNotifyPhone(), "🛒 Pedido {$number} de {$name} ({$phone})\n" . count($want) . ' ref. · $' . number_format($total, 0, ',', '.') . "\nPago: " . ($payTxt ?? '') . "\n{$address}, {$city}\n{$link}");
-            $shopWa['client'] = Whatsapp::send($phone, "¡Gracias {$name}! Recibimos tu pedido {$number} en Kino Company. Aquí están tus productos con fotos: {$link}");
-        }
-    } catch (\Throwable $e) { /* el pedido ya quedó guardado */ }
-}
-jsonResponse(['ok' => true, 'wa' => $shopWa, 'id' => $id, 'number' => $number, 'core' => $coreId ?? 0, 'token' => $staffUser ? '' : $token]);
+jsonResponse(['ok' => true, 'id' => $id, 'number' => $number, 'core' => $coreId ?? 0, 'token' => $staffUser ? '' : $token]);
