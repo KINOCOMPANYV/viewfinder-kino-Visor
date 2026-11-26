@@ -79,3 +79,7 @@
 .mo-clear{color:var(--color-danger,#ff453a)}
 @media (max-width:900px){.mo-filters{flex-wrap:nowrap;overflow-x:auto;padding-bottom:.3rem;-webkit-overflow-scrolling:touch}.mo-filters>*{flex:none}}
 .mo-banner{max-width:1240px;margin:0 auto 1rem;padding:.7rem 1rem;border:1px solid var(--color-primary);border-radius:12px;background:var(--color-surface,#1f1f22)}
+/* Vender (v2): dentro del marco con menú lateral; el área de búsqueda llena el centro y el pedido queda a la derecha */
+.mo-v2{max-width:none;padding:0 0 6rem}
+.mo-v2 .mo-cartbox{top:1rem}
+@media (max-width:900px){.mo-v2 .mo-grid{grid-template-columns:minmax(0,1fr)}}
