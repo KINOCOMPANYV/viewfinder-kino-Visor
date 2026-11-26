@@ -60,17 +60,9 @@ try {
     $tableOk = false;
 }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Usuarios · Viewfinder Admin</title>
-    <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
-    <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
-    <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
-    <style>
+<?php $v2 = ['nav' => 'usuarios', 'title' => 'Usuarios', 'subtitle' => 'Cuentas y permisos'];
+include __DIR__ . '/../../templates/admin/partials/v2_start.php'; ?>
+<style>
         .us-card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:1.25rem; margin-bottom:1.25rem; }
         .us-card p { color:var(--color-text-muted); font-size:0.85rem; }
         .us-form { display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.75rem; }
@@ -84,19 +76,7 @@ try {
         .us-row { display:inline-flex; gap:0.35rem; margin:0 0.5rem 0.25rem 0; }
         .us-off { opacity:0.55; }
     </style>
-</head>
 
-<body>
-    <header class="header">
-        <div class="container header-inner">
-            <a href="/admin" class="logo"><span class="logo-icon">VF</span> Viewfinder Admin</a>
-            <a href="/admin/logout" class="btn btn-sm btn-secondary">Cerrar Sesión</a>
-        </div>
-    </header>
-
-    <main class="container" style="padding-top:2rem; padding-bottom:3rem;">
-        <?php $adminNav = 'usuarios'; include __DIR__ . '/../../templates/admin/partials/nav.php'; ?>
-        <h1 style="font-size:1.5rem; margin-bottom:1rem;">👥 Usuarios</h1>
 
         <?php if ($msg): ?><div class="us-msg ok"><?= e($msg) ?></div><?php endif; ?>
         <?php if ($err): ?><div class="us-msg err"><?= e($err) ?></div><?php endif; ?>
@@ -172,7 +152,4 @@ try {
                 </div>
             <?php endif; ?>
         </section>
-    </main>
-</body>
-
-</html>
+    <?php include __DIR__ . '/../../templates/admin/partials/v2_end.php'; ?>

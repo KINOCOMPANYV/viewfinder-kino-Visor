@@ -23,5 +23,6 @@ $adminNavItems = [
     <?php foreach ($adminNavItems as $key => [$href, $label]): ?>
         <a href="<?= $href ?>"<?= $adminNav === $key ? ' class="active"' : '' ?>><?= $label ?></a>
     <?php endforeach; ?>
+    <a href="/admin/productos">✨ Sistema v2</a>
     <a href="/" target="_blank">🌐 Ver Portal</a>
 </nav>
