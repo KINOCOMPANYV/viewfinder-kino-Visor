@@ -412,3 +412,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - 2026-11-26 (v2, pausa): hechos #138 (plan) y #139 (módulo 1); módulo 2 sin empezar; pendiente del dueño: servicio Railway v2, cuentas de prueba, reglas del módulo 3. Detalle y próximos pasos en `docs/V2_PLAN.md`.
 - Rama `claude/project-thread-3w1ojl` (2026-11-26): **Columnas con descuento** en Lista Bodega/Cotización (Precio/Total -X%, valor y recuadro con descuento, % editable) y botones Lista Bodega / Cotización / Fotos en el Extractor.
 - 2026-11-26 (v2): main traído a v2 (#143); módulo 2 Productos estilo KYTE en `/admin/productos` (controller `admin_productos.php`, template `productos.php`). Sin probar con MySQL real.
+- 2026-11-26 (v2): `/admin/restaurar` (solo con `ALLOW_DB_RESTORE=1`) baja el respaldo `.sql.gz` de Drive y lo restaura en la base de v2 (conserva `google_tokens` y `users`). Servicio v2: sistemakino.up.railway.app, MySQL propia, `AUTO_SYNC=0`.

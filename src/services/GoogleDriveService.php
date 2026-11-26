@@ -698,6 +698,22 @@ class GoogleDriveService
      * Id del primer archivo (o carpeta, con $folder) llamado exactamente $name dentro de $parentId ('root' = Mi unidad).
      * null = no existe. Lanza RuntimeException si Drive no respondió (para no crear duplicados por un error).
      */
+    /** Baja un archivo de Drive a $dest (streaming a disco). Requiere getValidToken() antes. */
+    public function downloadFile(string $fileId, string $dest): bool
+    {
+        $fh = fopen($dest, 'wb');
+        if (!$fh) return false;
+        $ch = curl_init('https://www.googleapis.com/drive/v3/files/' . rawurlencode($fileId) . '?alt=media&supportsAllDrives=true');
+        curl_setopt_array($ch, [
+            CURLOPT_FILE => $fh, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 300,
+            CURLOPT_HTTPHEADER => ["Authorization: Bearer {$this->accessToken}"],
+        ]);
+        $ok = curl_exec($ch) !== false && (int) curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200;
+        curl_close($ch);
+        fclose($fh);
+        return $ok;
+    }
+
     public function findChildByName(string $parentId, string $name, bool $folder = false): ?string
     {
         $esc = fn(string $v) => str_replace(['\\', "'"], ['\\\\', "\\'"], $v);

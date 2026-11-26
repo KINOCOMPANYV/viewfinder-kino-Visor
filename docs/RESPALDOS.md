@@ -23,3 +23,9 @@ Repetir la prueba una vez al mes y tras cambios grandes de tablas.
 ## Restaurar de verdad (emergencia)
 Con el visor detenido (o `AUTO_SYNC=0`), restaura en una base nueva con el paso 3, apunta `MYSQL_URL` a ella y reconecta Google en Admin → Media.
 Probado 2026-11-23 en local: tablas con BLOB, saltos de línea, comillas y `\` volvieron idénticos (misma suma MD5).
+
+## Restaurar en v2 desde el navegador (solo servicio v2)
+- Requiere la variable `ALLOW_DB_RESTORE=1` (solo en el servicio v2; en producción `/admin/restaurar` responde 404).
+- Orden: 1) abrir `/admin/login` de v2 · 2) Admin → Media → «Conectar» Google (el respaldo no trae `google_tokens`) · 3) abrir `/admin/restaurar`,
+  elegir el `.sql.gz` más nuevo, escribir RESTAURAR · 4) reiniciar el servicio (corren las migraciones de v2).
+- Restaura en la base de ESTE servicio (su `MYSQL_URL`); conserva `google_tokens` y `users`. Quitar `ALLOW_DB_RESTORE` al terminar.

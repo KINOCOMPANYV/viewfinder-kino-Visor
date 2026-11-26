@@ -323,3 +323,4 @@ Ver `docs/RENDIMIENTO.md` (problemas conocidos y decisiones).
   JSON) se sirven por `/lista-pedido/logo/{id}?v=…`. `order_list.js` → `remBand()` (franja con logos) y pie por página.
 - Si no hay esa tabla, sigue el recibo de siempre («N artículos» … «Total:», `5x código … $`).
 - v2 · `/admin/productos` → `src/controllers/admin_productos.php` + `templates/admin/productos.php`: lista estilo KYTE con totales del filtro; reutiliza `adminProductFilter()`, `/admin/products/active` y el Excel de `/admin/products`.
+- v2 · `/admin/restaurar` → `src/controllers/admin_restore.php` (404 sin `ALLOW_DB_RESTORE=1`); usa `GoogleDriveService::downloadFile()` y `DbBackup::restore($db,$ruta,$tablasAConservar)`.
