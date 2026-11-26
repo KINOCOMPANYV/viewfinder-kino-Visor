@@ -147,25 +147,25 @@
             </section>
 
             <section class="ex-card">
-                <h2>📷 Fotos de estos códigos</h2>
-                <p class="ex-help">Abre <strong>Enviar fotos con lista</strong> con estos códigos: ahí ves cuáles tienen foto y cuáles no,
-                    y puedes marcar, crear el PDF, guardarlas o mandarlas por WhatsApp.</p>
-                <div class="ex-send">
-                    <button type="button" id="exToVisor" class="btn btn-primary">📷 Ver fotos en el visor</button>
-                    <button type="button" id="exToOrder" class="btn btn-secondary">🧾 Lista Bodega</button>
+                <h2>📄 Crear con esta lista</h2>
+                <p class="ex-help">Elige si lleva precio y si lleva <strong>descuento</strong> (precio y total con descuento, con sus totales) y toca el documento:
+                    ahí solo ajustas las columnas si quieres.</p>
+                <div class="ex-opts">
+                    <label><input type="checkbox" id="exShowPrice" checked> Mostrar precio</label>
+                    <label><input type="checkbox" id="exShowDisc"> Con descuento</label>
+                    <label>de <input type="number" id="exPct" min="0" max="100" step="1" value="40"> %</label>
                 </div>
-                <p class="ex-help" style="margin:0.5rem 0 0">Arma un PDF con los datos del cliente, el total y cada referencia con su
-                    foto y su cantidad, tal como vienen en el PDF: «🧾 Lista Bodega» si es un recibo (pedido) o «🚚 Cotización» si
-                    es una factura en tabla.</p>
+                <div class="ex-send">
+                    <button type="button" id="exToOrder" data-doc="pedido" class="btn btn-secondary">🧾 Lista Bodega</button>
+                    <button type="button" id="exToQuote" data-doc="remision" class="btn btn-secondary">🚚 Cotización</button>
+                    <button type="button" id="exToVisor" class="btn btn-secondary">📷 Fotos / Catálogo PDF</button>
+                </div>
+                <p class="ex-help" style="margin:0.5rem 0 0">El resaltado es el que corresponde al PDF (recibo → Lista Bodega; factura en tabla →
+                    Cotización); puedes abrir cualquiera. Con «Con descuento» el documento abre ya con esas columnas y el mismo %.</p>
             </section>
 
             <section class="ex-card">
                 <h2>📊 Resultado</h2>
-                <div class="ex-opts">
-                    <label><input type="checkbox" id="exShowPrice" checked> Mostrar precio</label>
-                    <label><input type="checkbox" id="exShowDisc"> Mostrar precio con descuento</label>
-                    <label>Descuento <input type="number" id="exPct" min="0" max="100" step="1" value="40"> %</label>
-                </div>
                 <div class="ex-actions" style="margin:0 0 0.8rem">
                     <button type="button" id="exSort" class="btn btn-secondary btn-sm">🔤 Organizar listado</button>
                     <button type="button" id="exEdit" class="btn btn-secondary btn-sm">✏️ Editar lista</button>
