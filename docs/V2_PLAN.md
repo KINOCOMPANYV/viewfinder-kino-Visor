@@ -5,7 +5,8 @@ Fuente: plan del dueño del 2026-11-26 (portal de clientes + panel interno; el *
 Referencia visual: pantalla Productos de KYTE (foto, nombre, código, categoría, stock, precio, interruptor de catálogo, totales, filtros, exportar).
 
 ## Estado
-- Rama `v2` creada desde `main` (2026-11-26). Módulos: **pendiente de OK del dueño**.
+- Rama `v2` creada desde `main` (2026-11-26). Orden de módulos aprobado por el dueño (2026-11-26).
+- Hecho: módulo 1 (Usuarios y permisos, en PR).
 - Despliegue de v2: servicio Railway aparte (dominio propio, variables copiadas, BD restaurada del respaldo nocturno). Lo hace el dueño.
 
 ## Módulos y orden (propuesto)

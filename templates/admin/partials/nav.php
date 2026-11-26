@@ -14,6 +14,7 @@ $adminNavItems = [
     'remision' => ['/admin/remision', '🚚 Cotización'],
     'condenados' => ['/admin/condenados', '🚫 Condenados'],
     'pedidos' => ['/admin/pedidos', '🗄 Pedidos'],
+    'usuarios' => ['/admin/usuarios', '👥 Usuarios'],
     'registro' => ['/admin/registro', '🧾 Registro'],
 ];
 ?>
