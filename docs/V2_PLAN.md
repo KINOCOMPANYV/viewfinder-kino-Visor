@@ -4,10 +4,25 @@ Rama larga `v2` (producción sigue en `main`, no se toca). Los PRs de v2 van **h
 Fuente: plan del dueño del 2026-11-26 (portal de clientes + panel interno; el **pedido** une ambas áreas).
 Referencia visual: pantalla Productos de KYTE (foto, nombre, código, categoría, stock, precio, interruptor de catálogo, totales, filtros, exportar).
 
-## Estado
-- Rama `v2` creada desde `main` (2026-11-26). Orden de módulos aprobado por el dueño (2026-11-26).
-- Hecho: módulo 1 (Usuarios y permisos, en PR).
-- Despliegue de v2: servicio Railway aparte (dominio propio, variables copiadas, BD restaurada del respaldo nocturno). Lo hace el dueño.
+## Estado (2026-11-26, pausa para continuar después)
+**Hecho**
+- Rama `v2` creada desde `main`; producción no se toca. Orden de módulos aprobado por el dueño.
+- Módulo 0 (parte de código): plan y rama (PR #138). El respaldo nocturno de v1 ya existe (`docs/RESPALDOS.md`); falta el respaldo manual con fecha/hora del plan, antes de tocar datos.
+- Módulo 1 Usuarios y permisos (PR #139, fusionado en `v2`): tabla `users` (migración 039), roles, Admin → 👥 Usuarios, `/panel` provisional. **Sin probar con MySQL real.**
+
+**En curso**
+- Módulo 2 Productos estilo KYTE: **no empezado** (no hay código). Idea: pantalla nueva (no cambia `/admin/products` de v1 hasta probarla) con foto, nombre, código, categoría, stock, precio, interruptor «Catálogo», totales (valor en stock, sin stock, en stock), filtros y exportar; el interruptor «Catálogo» hoy lo da `is_active` (+ regla pública `archived = 0` y portada).
+
+**Pendiente del dueño**
+1. Railway: duplicar el servicio, rama `v2`, dominio nuevo, copiar variables (cambiar `GOOGLE_REDIRECT_URI`), MySQL propia restaurada del respaldo nocturno, `AUTO_SYNC=0` hasta confirmar que es la base de pruebas.
+2. Con v2 arriba: crear cuentas de prueba (Vendedor y Bodega) en Admin → Usuarios y confirmar que entran.
+3. Antes del módulo 3, decidir las reglas operativas (abajo).
+
+**Próximos pasos exactos**
+1. Probar módulo 1 en el servicio v2 (migración 039 se aplica sola al arrancar).
+2. Módulo 2: PR hacia `v2` con la pantalla Productos.
+3. Con las reglas decididas: módulo 3 (Pedido + Clientes básico), luego 4 a 8.
+Nota: los PRs hacia `v2` se fusionan con squash; si la rama de trabajo se reutiliza, traer `v2` antes (`git merge origin/v2`).
 
 ## Módulos y orden (propuesto)
 0. **Base y respaldo** — respaldo completo con fecha/hora (código + BD + configuración), servicio v2 en Railway.

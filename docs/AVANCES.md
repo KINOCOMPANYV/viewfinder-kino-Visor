@@ -407,3 +407,4 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
 - Rama `claude/project-thread-4bv0fr` (2026-11-26): **Catálogo PDF: «🔎 Armar con filtros» plegado** (`<details>`) con la nota «Para armar el catálogo con otros productos»; se abre al tocarlo, y solo viene abierto con `?desde=filtro` o si no hay fotos marcadas.
 - 2026-11-26: rama `v2` creada y `docs/V2_PLAN.md` (plan por módulos, pendiente de OK).
 - 2026-11-26 (v2): módulo 1 Usuarios y permisos (Admin → 👥 Usuarios, tabla `users`, roles, `/panel`). Sin probar con MySQL real: probar en el servicio v2.
+- 2026-11-26 (v2, pausa): hechos #138 (plan) y #139 (módulo 1); módulo 2 sin empezar; pendiente del dueño: servicio Railway v2, cuentas de prueba, reglas del módulo 3. Detalle y próximos pasos en `docs/V2_PLAN.md`.
