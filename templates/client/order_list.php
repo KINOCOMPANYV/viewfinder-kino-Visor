@@ -81,19 +81,10 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
     </style>
 </head>
 
-<body>
-    <header class="header">
-        <div class="container header-inner">
-            <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
-            <div style="display:flex; gap:0.4rem; align-items:center;">
-                <a href="/extractor" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;">← Extractor</a>
-                <?= pedidosHeaderBtn() ?>
-            </div>
-        </div>
-    </header>
+<body class="v2 v2-legacy">
 
     <main class="container ol-main" style="padding-top:2rem; padding-bottom:9rem; max-width:900px;">
-        <?= breadcrumbs([['Extractor', '/extractor'], ['Lista Bodega', null]]) ?>
+        <?php $v2Nav = 'extractor'; $v2Crumb = [['Extractor', '/extractor'], ['Lista Bodega / Cotización', null]]; include __DIR__ . '/../admin/partials/nav.php'; ?>
         <h1 id="olTitle" style="font-size:1.5rem; margin-bottom:1rem;">🧾 Lista Bodega</h1>
         <?php if (isAdminLoggedIn()): ?>
             <p class="ol-help ol-tpl-link"><a href="/admin/remision">✏️ Editar plantilla de la Cotización (logos, pie, colores)</a></p>
@@ -170,7 +161,6 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
             } catch (x) { m.textContent = '⚠️ No se pudo enviar (' + (x && x.message ? x.message : x) + ').'; b.disabled = false; }
         });
     </script>
-    <?php $mnavActive = 'enviar'; include __DIR__ . '/../partials/mobile_nav.php'; ?>
 </body>
 
 </html>

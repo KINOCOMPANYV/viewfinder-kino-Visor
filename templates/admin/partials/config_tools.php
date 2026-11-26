@@ -22,9 +22,8 @@ $configTools = [
 if (env('ALLOW_DB_RESTORE') === '1') {
     $configTools['restaurar'] = ['/admin/restaurar', '♻️ Restaurar respaldo', 'Cargar un respaldo de la base de datos (solo en el servicio v2).', 'Respaldo y registro'];
 }
-// Herramientas de pedido de v1 (siguen funcionando; el pedido nuevo está en «Pedidos»)
+// Herramientas de pedido de v1 (siguen funcionando; el pedido nuevo está en «Pedidos»). El Extractor tiene su propio enlace en el menú.
 $configLinks = [
-    ['/extractor', '📄 Extractor', 'Leer una cotización o lista y armar documentos.'],
     ['/pedido-bodega', '📦 Pedido de bodega', 'Checklist de alistado v1.'],
     ['/pedidos-alistar', '🗂 Pedidos bodega', 'Pedidos de bodega guardados.'],
     ['/enviar-catalogo', '📤 Enviar fotos con lista', 'Pegar una lista y mandar las fotos.'],
