@@ -4,6 +4,7 @@ $adminNav = $adminNav ?? '';
 $adminNavItems = [
     'dashboard' => ['/admin', '📊 Dashboard'],
     'products' => ['/admin/products', '📦 Productos'],
+    'productos' => ['/admin/productos', '🛍 Productos v2'],
     'folders' => ['/admin/folders', '📂 Carpetas'],
     'media' => ['/admin/media', '🖼️ Media'],
     'sync' => ['/admin/sync', '🔄 Sincronizar'],
