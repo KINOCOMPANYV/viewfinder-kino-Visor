@@ -98,6 +98,12 @@ class Orders
         if (!in_array($to, self::nextStages($from), true)) return 'No se puede pasar de «' . self::label($from) . '» a «' . self::label($to) . '».';
         if (!self::canMove($role, $to)) return 'Tu perfil no puede pasar el pedido a «' . self::label($to) . '».';
         if ($to === 'cancelado' && trim($note) === '') return 'Para cancelar escribe el motivo.';
+        if (in_array($to, ['listo_facturar', 'facturado'], true)) {
+            // El alistamiento es obligatorio: solo se pasa a facturar cuando la bodega finalizó su checklist.
+            $w = $db->prepare("SELECT w.status FROM orders o LEFT JOIN warehouse_orders w ON w.id = o.warehouse_order_id WHERE o.id = ?");
+            $w->execute([$id]);
+            if ($w->fetchColumn() !== 'listo') return 'Primero hay que terminar el alistamiento: marca todos los productos y toca «Finalizar alistamiento».';
+        }
         $db->prepare('UPDATE orders SET stage = ?, stage_at = NOW(), responsible_user_id = ? WHERE id = ?')->execute([$to, $user['id'] ?? null, $id]);
         if ($to === 'por_alistar') self::toWarehouse($db, $id);
         self::addHistory($db, $id, $from, $to, $note, $user);

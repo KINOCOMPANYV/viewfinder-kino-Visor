@@ -50,6 +50,40 @@ if ($orderId > 0) {
             $s->execute([$order['client_order_id']]);
             $items = $s->fetchAll(PDO::FETCH_ASSOC);
         }
+        $wh = null;
+        if ($order['warehouse_order_id']) {
+            $s = $db->prepare('SELECT id, status, checked_by, order_json, lines_json FROM warehouse_orders WHERE id = ?');
+            $s->execute([$order['warehouse_order_id']]);
+            $wh = $s->fetch(PDO::FETCH_ASSOC) ?: null;
+            if ($wh) {
+                $wo = json_decode($wh['order_json'], true) ?: [];
+                $lineTotal = !empty($wo['priceIsLineTotal']);
+                $lines = $wh['lines_json'] ? (json_decode($wh['lines_json'], true) ?: []) : [];
+                if (!$lines) {
+                    $n = 0;
+                    foreach (($wo['items'] ?? []) as $it) {
+                        $q = isset($it['qty']) && $it['qty'] !== null ? (int) $it['qty'] : 1;
+                        $p = is_numeric($it['priceText'] ?? null) ? (float) $it['priceText'] : null;
+                        if ($p !== null && $lineTotal && $q > 0) $p = round($p / $q);
+                        $code = (string) ($it['code'] ?? '');
+                        $name = (string) ($it['desc'] ?? '');
+                        $lines[] = ['id' => ++$n, 'code' => $code, 'name' => $name, 'price' => $p, 'orig' => true, 'origQty' => $q, 'qty' => $q,
+                            'checked' => false, 'note' => '', 'photo' => null, 'base' => ['code' => $code, 'name' => $name, 'price' => $p, 'photo' => null]];
+                    }
+                }
+                $covers = [];
+                if ($lines) {
+                    $skus = array_values(array_unique(array_map(fn($l) => (string) ($l['code'] ?? ''), $lines)));
+                    $in = implode(',', array_fill(0, count($skus), '?'));
+                    $cs = $db->prepare("SELECT sku, cover_image_url FROM products WHERE sku IN ($in)");
+                    $cs->execute($skus);
+                    foreach ($cs->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                        if ($r['cover_image_url']) $covers[$r['sku']] = parseStoredCover($r['cover_image_url'], 200)['url'];
+                    }
+                }
+                $whData = ['id' => (int) $wh['id'], 'status' => $wh['status'], 'who' => $wh['checked_by'] ?: ($me['name'] ?? $me['username'] ?? ''), 'lines' => $lines, 'covers' => $covers];
+            }
+        }
         $s = $db->prepare('SELECT * FROM order_history WHERE order_id = ? ORDER BY id DESC');
         $s->execute([$orderId]);
         $history = $s->fetchAll(PDO::FETCH_ASSOC);

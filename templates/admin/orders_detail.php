@@ -19,7 +19,7 @@
         <form method="post" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.9rem;align-items:center">
             <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>"><input type="hidden" name="action" value="move">
             <input name="note" placeholder="Nota (obligatoria para cancelar)" style="flex:1 1 240px;padding:.55rem .7rem;border-radius:8px;border:1px solid var(--color-border-hover);background:var(--color-bg);color:inherit">
-            <?php foreach ($next as $to): if (!Orders::canMove($role, $to)) continue; ?>
+            <?php foreach ($next as $to): if (!Orders::canMove($role, $to)) continue; if ($to === 'listo_facturar') continue; /* lo pasa solo la bodega al finalizar el alistamiento */ ?>
                 <button class="v2-btn" name="to" value="<?= e($to) ?>" <?= $to === 'cancelado' ? 'style="background:var(--color-danger);color:#fff" onclick="return this.form.note.value.trim()!==\'\'||(alert(\'Escribe el motivo\'),false)"' : '' ?>><?= $to === 'cancelado' ? 'Cancelar pedido' : 'Pasar a «' . e(Orders::label($to)) . '»' ?></button>
             <?php endforeach; ?>
         </form>
@@ -30,6 +30,16 @@
         </form>
         <?php endif; ?>
     </div>
+    <?php if (!empty($whData)): $closed = in_array($order['stage'], ['cancelado'], true); ?>
+    <div class="v2-card" style="padding:1rem 1.25rem;margin-bottom:1rem" id="alistar" data-wh='<?= e(json_encode($whData, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS)) ?>' data-csrf="<?= e($csrf) ?>" data-readonly="<?= ($whData['status'] === 'listo' || $closed || !in_array($order['stage'], ['por_alistar', 'en_alistamiento'], true)) ? '1' : '0' ?>">
+        <b>📦 Alistamiento</b> <small class="v2-code">obligatorio antes de facturar</small>
+        <div id="alMsg" class="v2-code" style="margin:.4rem 0"></div><div id="alList"></div>
+        <div id="alFoot" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.8rem"></div>
+    </div>
+    <script src="/assets/js/v2_alistar.js?v=<?= @filemtime(BASE_DIR . '/assets/js/v2_alistar.js') ?>" defer></script>
+    <?php elseif (in_array($order['stage'], ['recibido'], true)): ?>
+    <p class="v2-card" style="padding:.8rem 1rem">Al pasar a «Por alistar» se arma aquí la lista de alistamiento para la bodega.</p>
+    <?php endif; ?>
     <?php if ($items): ?>
     <div class="v2-card" style="margin-bottom:1rem"><table class="v2-table"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio c/u</th></tr></thead><tbody>
         <?php foreach ($items as $it): ?><tr>
