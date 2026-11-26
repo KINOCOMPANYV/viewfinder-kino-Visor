@@ -1,61 +1,70 @@
 <?php
 /**
- * Hacer pedido (/hacer-pedido, v2 módulo 4): el cliente busca productos, los agrega al carrito (guardado en su dispositivo,
- * localStorage kinoCarrito), ajusta cantidades y envía el pedido (queda «recibido»). Sin cuenta: nombre + WhatsApp.
+ * Hacer pedido (/hacer-pedido, cliente) y Nuevo pedido (/pedidos/nuevo, vendedor: $moStaff = true). v2 módulos 3-4.
+ * Explorador visual: carpetas con foto → fotos de productos → tocar para agregar (con cantidad); buscador del visor;
+ * carrito siempre visible (columna a la derecha, o barra abajo en el celular). Carrito en localStorage; el envío
+ * crea el pedido núcleo «recibido». Sin cuenta: nombre + WhatsApp.
  */
+$moStaff = !empty($moStaff);
+$cartKey = $moStaff ? 'kinoCarritoVendedor' : 'kinoCarrito';
 ?>
 <!DOCTYPE html>
 <html lang="es"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex, nofollow">
-<title>Hacer pedido · Viewfinder</title>
+<title><?= $moStaff ? 'Nuevo pedido' : 'Hacer pedido' ?> · Viewfinder</title>
 <style>body{background:var(--color-bg,#161618);color:var(--color-text,#f5f5f7)}</style>
 <link rel="preconnect" href="https://lh3.googleusercontent.com">
 <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
 <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
-<link rel="stylesheet" href="/assets/css/make_order.css?v=<?= APP_VERSION ?>">
+<link rel="stylesheet" href="/assets/css/make_order.css?v=<?= @filemtime(BASE_DIR . '/assets/css/make_order.css') ?>">
+<script>window.KINO_CART_KEY = '<?= $cartKey ?>';</script>
 </head><body>
 <header class="header"><div class="container header-inner">
     <a href="/" class="logo"><span class="logo-icon">VF</span> Viewfinder</a>
     <div style="display:flex;gap:.4rem;align-items:center">
-        <?= pedidosHeaderBtn() ?>
-        <a href="/buscar" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:.8rem;padding:.4rem .8rem">← Seguir buscando</a>
+        <?php if ($moStaff): ?><a href="/pedidos" class="btn btn-sm btn-secondary" style="font-size:.8rem;padding:.4rem .8rem">← Pedidos</a>
+        <?php else: ?><?= pedidosHeaderBtn() ?><?php endif; ?>
     </div>
 </div></header>
-<main class="container mo-main">
-    <?= breadcrumbs([['Hacer pedido', null]]) ?>
-    <h1 class="mo-title">🛒 Hacer pedido</h1>
-
+<main class="mo-wrap">
     <section class="mo-card" id="moDone" hidden>
         <h2>✅ Pedido enviado</h2>
-        <p class="mo-help">Recibimos tu pedido <b id="moDoneId"></b>. Te contactaremos por WhatsApp para confirmarlo.</p>
-        <a class="btn btn-primary" href="/buscar">Seguir viendo el catálogo</a>
+        <p class="mo-help">Recibimos el pedido <b id="moDoneId"></b>. <?= $moStaff ? 'Ya está en «Recibido».' : 'Te contactaremos por WhatsApp para confirmarlo.' ?></p>
+        <a class="btn btn-primary" href="<?= $moStaff ? '/pedidos' : '/buscar' ?>"><?= $moStaff ? 'Ver pedidos' : 'Seguir viendo el catálogo' ?></a>
+        <a class="btn btn-secondary" href="" onclick="location.reload();return false">Hacer otro</a>
     </section>
 
-    <div id="moWork">
-        <section class="mo-card">
-            <h2>1. Agrega productos</h2>
-            <input type="search" id="moQ" class="mo-input" placeholder="Código o nombre (ej. M8363-3)" autocomplete="off">
-            <ul class="mo-results" id="moResults"></ul>
-        </section>
+    <div class="mo-grid" id="moWork">
+        <div class="mo-browse">
+            <h1 class="mo-title"><?= $moStaff ? '🧾 Nuevo pedido' : '🛒 Hacer pedido' ?></h1>
+            <div class="mo-searchbar"><input type="search" id="moQ" class="mo-input" placeholder="Buscar por código o nombre (ej. M8363-3)" autocomplete="off"></div>
+            <nav class="mo-crumbs" id="moCrumbs"></nav>
+            <div class="mo-folders" id="moFolders"></div>
+            <p class="mo-help" id="moHint"></p>
+            <div class="mo-items" id="moItems"></div>
+            <div class="mo-more" id="moMore" hidden><button type="button" class="btn btn-secondary" id="moMoreBtn">Ver más</button></div>
+        </div>
 
-        <section class="mo-card">
-            <h2>2. Tu pedido <span id="moCount"></span></h2>
-            <p class="mo-help" id="moEmpty">Aún no agregaste productos. También puedes tocar «🛒 Agregar al pedido» en la ficha de cada producto.</p>
-            <ul class="mo-cart" id="moCart"></ul>
-            <div class="mo-total" id="moTotal" hidden>Total: <b id="moTotalV"></b></div>
-        </section>
-
-        <section class="mo-card" id="moForm">
-            <h2>3. Tus datos y envío</h2>
-            <label class="mo-lbl">Nombre <input class="mo-input" id="moName" maxlength="120" autocomplete="name"></label>
-            <label class="mo-lbl">WhatsApp / teléfono <input class="mo-input" id="moPhone" maxlength="40" inputmode="tel" autocomplete="tel"></label>
-            <label class="mo-lbl">Nota (opcional) <textarea class="mo-input" id="moNote" maxlength="500" rows="2"></textarea></label>
-            <input type="text" id="moWeb" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
-            <p class="mo-err" id="moErr" role="alert" hidden></p>
-            <button class="btn btn-primary" id="moSend" type="button" disabled>Enviar pedido</button>
-        </section>
+        <aside class="mo-cartbox" id="moCartBox">
+            <div class="mo-sheet-head" id="moSheetHead"><b>Tu pedido <span id="moCount"></span></b><span id="moHeadTotal"></span><button type="button" class="mo-close" id="moClose" aria-label="Cerrar">✕</button></div>
+            <div class="mo-sheet-body">
+                <p class="mo-help" id="moEmpty">Toca una foto para agregarla al pedido.</p>
+                <ul class="mo-cart" id="moCart"></ul>
+                <div class="mo-total" id="moTotal" hidden>Total: <b id="moTotalV"></b></div>
+                <div id="moForm">
+                    <label class="mo-lbl"><?= $moStaff ? 'Nombre del cliente' : 'Nombre' ?> <input class="mo-input" id="moName" maxlength="120" autocomplete="name"></label>
+                    <label class="mo-lbl">WhatsApp / teléfono <input class="mo-input" id="moPhone" maxlength="40" inputmode="tel" autocomplete="tel"></label>
+                    <label class="mo-lbl">Nota (opcional) <textarea class="mo-input" id="moNote" maxlength="500" rows="2"></textarea></label>
+                    <input type="text" id="moWeb" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
+                    <p class="mo-err" id="moErr" role="alert" hidden></p>
+                    <button class="btn btn-primary mo-send" id="moSend" type="button" disabled>Enviar pedido</button>
+                </div>
+            </div>
+        </aside>
     </div>
+    <button type="button" class="mo-bar" id="moBar" hidden><span id="moBarN">0</span> ref. · <b id="moBarT"></b> <span class="mo-bar-go">Ver pedido ›</span></button>
 </main>
-<script>window.MO_CSRF = '<?= csrfToken() ?>';</script>
-<script src="/assets/js/make_order.js?v=<?= APP_VERSION ?>" defer></script>
+<script>window.MO_CSRF = '<?= csrfToken() ?>'; window.MO_STAFF = <?= $moStaff ? 'true' : 'false' ?>;</script>
+<script src="/assets/js/cart_badge.js?v=<?= APP_VERSION ?>" defer></script>
+<script src="/assets/js/make_order.js?v=<?= @filemtime(BASE_DIR . '/assets/js/make_order.js') ?>" defer></script>
 </body></html>
