@@ -51,6 +51,7 @@ Resumen pensado para orientarse rápido (humanos y agentes) sin leer todo el có
 | `/admin/condenados` (POST `action=add\|remove`) | `admin_condemned.php` | **Códigos condenados**: lista manual (`condemned_codes`, migración 034). Helpers `condemnedIndex()`, `isCondemnedCode()`, `isCondemnedFile()`, `purgeCondemnedProducts()`: `MasterSheet::upsert` salta esas filas, `DriveIndex::relink` borra el producto y quita sus archivos antes de enlazar (tampoco crean «Solo Drive»), la búsqueda no muestra carpetas con ese nombre. Al agregar: borra + `relink` al momento |
 | `/admin/folders` (`?id=`, `?q=`, `?ver=ocultas`) | `admin_folders.php` + `templates/admin/folders.php` | Mostrar/ocultar carpetas (cualquier nivel). Cambio: `POST /admin/folders/toggle` |
 | `/admin/*` | `src/controllers/admin_*.php` + `templates/admin/*` | Panel (login, productos, carpetas, media, sincronizar, caché). Menú común: `templates/admin/partials/nav.php` |
+| `/admin/productos`, `/admin/usuarios` (marco v2) | `templates/admin/partials/v2_start.php` + `v2_end.php`, `assets/css/v2.css` | Marco de la v2: antes del include `$v2 = [nav,title,subtitle]`; menú lateral oscuro (módulos sin construir = «Pronto»), tema claro por defecto (`data-default-theme`). Las demás pantallas siguen con `nav.php` (tiene enlace «Sistema v2») |
 
 ## Tablas
 - `products`: `sku` (único), `parent_sku` (familia), datos de la hoja maestra (`name`, `color`, `category`, `gender`,
