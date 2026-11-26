@@ -41,7 +41,6 @@
             <div style="display:flex; gap:0.5rem; align-items:center;">
                 <?= pedidosHeaderBtn() ?>
                 <a href="/enviar-catalogo" class="btn btn-sm btn-primary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;"><?= icon('send') ?> Enviar fotos con lista</a>
-                <?php if (isStaff()): ?><a href="/extractor" class="btn btn-sm btn-secondary hdr-hide-m" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Leer un recibo o pedido en PDF"><?= icon('receipt') ?> Extractor</a><?php endif; ?>
                 <a href="/admin/login" class="btn btn-sm btn-secondary"
                     style="font-size:0.75rem; padding:0.4rem 0.8rem; opacity:0.4;">Admin</a>
             </div>
