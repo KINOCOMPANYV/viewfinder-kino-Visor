@@ -88,7 +88,7 @@ class DbBackup
      * Ejecuta un respaldo en la base $db (vacía o de pruebas) y compara conteos.
      * @return array{ok: bool, tables: int, mismatches: array<string,string>, statements: int}
      */
-    public static function restore(PDO $db, string $path): array
+    public static function restore(PDO $db, string $path, array $skipTables = []): array
     {
         $gz = gzopen($path, 'rb');
         if (!$gz) {
@@ -104,7 +104,7 @@ class DbBackup
             }
             if (strncmp($line, '-- COUNT ', 9) === 0) {
                 [, , $t, $n] = explode(' ', $line);
-                $expected[$t] = (int) $n;
+                if (!in_array($t, $skipTables, true)) $expected[$t] = (int) $n;
                 continue;
             }
             if ($line === '-- FIN') {
@@ -113,6 +113,10 @@ class DbBackup
             }
             if (strncmp($line, '--', 2) === 0) {
                 continue;
+            }
+            // Tablas a conservar tal como están en la base destino (p. ej. google_tokens en v2): se saltan DROP/CREATE/INSERT
+            foreach ($skipTables as $st) {
+                if (preg_match('/^(DROP TABLE IF EXISTS|CREATE TABLE|INSERT INTO) `' . preg_quote($st, '/') . '`/', $line)) continue 2;
             }
             $db->exec($line);
             $statements++;
@@ -134,6 +138,9 @@ class DbBackup
     /** @return array{ok: bool, skipped?: bool, msg: string} */
     public static function toDrive(PDO $db, bool $force = false): array
     {
+        if (GoogleDriveService::readonly()) {
+            return ['ok' => true, 'skipped' => true, 'msg' => 'Este servicio (v2) no escribe en Drive (DRIVE_READONLY=1): sin respaldo en Drive.'];
+        }
         $drive = new GoogleDriveService();
         if (!$drive->getValidToken($db)) {
             return ['ok' => false, 'msg' => 'No hay conexión a Google Drive (reconectar en Admin → Media).'];

@@ -10,8 +10,8 @@ Referencia visual: pantalla Productos de KYTE (foto, nombre, código, categoría
 - Módulo 0 (parte de código): plan y rama (PR #138). El respaldo nocturno de v1 ya existe (`docs/RESPALDOS.md`); falta el respaldo manual con fecha/hora del plan, antes de tocar datos.
 - Módulo 1 Usuarios y permisos (PR #139, fusionado en `v2`): tabla `users` (migración 039), roles, Admin → 👥 Usuarios, `/panel` provisional. **Sin probar con MySQL real.**
 
-**En curso**
-- Módulo 2 Productos estilo KYTE: **no empezado** (no hay código). Idea: pantalla nueva (no cambia `/admin/products` de v1 hasta probarla) con foto, nombre, código, categoría, stock, precio, interruptor «Catálogo», totales (valor en stock, sin stock, en stock), filtros y exportar; el interruptor «Catálogo» hoy lo da `is_active` (+ regla pública `archived = 0` y portada).
+**En curso / hecho sin probar**
+- Módulo 2 Productos estilo KYTE: **hecho en código, sin probar con MySQL real** (2026-11-26). Pantalla nueva `/admin/productos` (nav «🛍 Productos v2»; `/admin/products` de v1 queda igual): foto, nombre/código, categoría, stock, precio, interruptor «Catálogo» (= `is_active` vía `/admin/products/active`), totales del filtro (en stock, sin stock, valor = stock × precio público), búsqueda, filtros (categoría, marca, stock, catálogo/sin foto), orden y paginado de 50, «⬇ Excel» reutiliza el de v1. Falta decidir con el dueño: reemplazar la pantalla de v1 o convivir.
 
 **Pendiente del dueño**
 1. Railway: duplicar el servicio, rama `v2`, dominio nuevo, copiar variables (cambiar `GOOGLE_REDIRECT_URI`), MySQL propia restaurada del respaldo nocturno, `AUTO_SYNC=0` hasta confirmar que es la base de pruebas.
@@ -20,7 +20,7 @@ Referencia visual: pantalla Productos de KYTE (foto, nombre, código, categoría
 
 **Próximos pasos exactos**
 1. Probar módulo 1 en el servicio v2 (migración 039 se aplica sola al arrancar).
-2. Módulo 2: PR hacia `v2` con la pantalla Productos.
+2. Probar `/admin/productos` en el servicio v2 y ajustar a lo que falte del diseño KYTE.
 3. Con las reglas decididas: módulo 3 (Pedido + Clientes básico), luego 4 a 8.
 Nota: los PRs hacia `v2` se fusionan con squash; si la rama de trabajo se reutiliza, traer `v2` antes (`git merge origin/v2`).
 

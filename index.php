@@ -429,6 +429,18 @@ if ($uri === '/admin/usuarios') {
     exit;
 }
 
+if ($uri === '/admin/restaurar') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_restore.php';
+    exit;
+}
+
+if ($uri === '/admin/productos') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_productos.php';
+    exit;
+}
+
 if ($uri === '/admin/products') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_products.php';

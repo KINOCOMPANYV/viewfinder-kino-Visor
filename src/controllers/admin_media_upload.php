@@ -61,7 +61,7 @@ for ($i = 0; $i < count($files['name']); $i++) {
         $uploaded++;
         $uploadedIds[] = $result['id'];
     } else {
-        $errMsg = $result['error']['message'] ?? 'error desconocido';
+        $errMsg = GoogleDriveService::readonly() ? 'v2 no escribe en Drive (DRIVE_READONLY=1)' : ($result['error']['message'] ?? 'error desconocido');
         $errors[] = "{$filename}: {$errMsg}";
     }
 }

@@ -32,13 +32,20 @@ class GoogleDriveService
     /**
      * URL para iniciar el flujo OAuth (redirigir al usuario aquí).
      */
+    /** v2 comparte la carpeta de Drive de producción: con DRIVE_READONLY=1 ninguna escritura en Drive sale de este servicio. */
+    public static function readonly(): bool
+    {
+        return env('DRIVE_READONLY') === '1';
+    }
+
     public function getAuthUrl(): string
     {
         $params = [
             'client_id' => $this->clientId,
             'redirect_uri' => $this->redirectUri,
             'response_type' => 'code',
-            'scope' => 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets',
+            // Con DRIVE_READONLY=1 Google mismo impide escribir en Drive (la hoja sigue editable: v2 usa su propia copia)
+            'scope' => (self::readonly() ? 'https://www.googleapis.com/auth/drive.readonly' : 'https://www.googleapis.com/auth/drive') . ' https://www.googleapis.com/auth/spreadsheets',
             'access_type' => 'offline',
             'prompt' => 'consent',
         ];
@@ -380,6 +387,7 @@ class GoogleDriveService
      */
     public function uploadFile(string $folderId, string $filename, string $filePath, string $mimeType): ?array
     {
+        if (self::readonly()) return null; // DRIVE_READONLY
         $fileSize = filesize($filePath);
 
         // Para archivos grandes (>=5MB), usar resumable upload
@@ -517,6 +525,7 @@ class GoogleDriveService
      */
     public function deleteFile(string $fileId): bool
     {
+        if (self::readonly()) return false; // DRIVE_READONLY
         $url = "https://www.googleapis.com/drive/v3/files/{$fileId}";
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -537,6 +546,7 @@ class GoogleDriveService
      */
     public function makePublic(string $fileId): bool
     {
+        if (self::readonly()) return false; // DRIVE_READONLY
         $url = "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions?supportsAllDrives=true";
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -572,6 +582,7 @@ class GoogleDriveService
      */
     public function makePublicMany(array $fileIds, int $concurrency = 20): array
     {
+        if (self::readonly()) return []; // DRIVE_READONLY
         $ok = [];
         $body = json_encode(['role' => 'reader', 'type' => 'anyone']);
 
@@ -698,6 +709,22 @@ class GoogleDriveService
      * Id del primer archivo (o carpeta, con $folder) llamado exactamente $name dentro de $parentId ('root' = Mi unidad).
      * null = no existe. Lanza RuntimeException si Drive no respondió (para no crear duplicados por un error).
      */
+    /** Baja un archivo de Drive a $dest (streaming a disco). Requiere getValidToken() antes. */
+    public function downloadFile(string $fileId, string $dest): bool
+    {
+        $fh = fopen($dest, 'wb');
+        if (!$fh) return false;
+        $ch = curl_init('https://www.googleapis.com/drive/v3/files/' . rawurlencode($fileId) . '?alt=media&supportsAllDrives=true');
+        curl_setopt_array($ch, [
+            CURLOPT_FILE => $fh, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 300,
+            CURLOPT_HTTPHEADER => ["Authorization: Bearer {$this->accessToken}"],
+        ]);
+        $ok = curl_exec($ch) !== false && (int) curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200;
+        curl_close($ch);
+        fclose($fh);
+        return $ok;
+    }
+
     public function findChildByName(string $parentId, string $name, bool $folder = false): ?string
     {
         $esc = fn(string $v) => str_replace(['\\', "'"], ['\\\\', "\\'"], $v);
@@ -715,6 +742,7 @@ class GoogleDriveService
      */
     public function createFolder(string $parentId, string $name): ?array
     {
+        if (self::readonly()) return null; // DRIVE_READONLY
         $url = 'https://www.googleapis.com/drive/v3/files?fields=id,name';
         $ch = curl_init($url);
         curl_setopt_array($ch, [

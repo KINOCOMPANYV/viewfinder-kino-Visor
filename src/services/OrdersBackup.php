@@ -89,6 +89,9 @@ class OrdersBackup
      */
     public static function toDrive(PDO $db, bool $force = false): array
     {
+        if (GoogleDriveService::readonly()) {
+            return ['ok' => true, 'skipped' => true, 'msg' => 'Este servicio (v2) no escribe en Drive (DRIVE_READONLY=1): sin respaldo en Drive.'];
+        }
         $drive = new GoogleDriveService();
         if (!$drive->getValidToken($db)) {
             return ['ok' => false, 'msg' => 'No hay conexión a Google Drive (reconectar en Admin → Media).'];
