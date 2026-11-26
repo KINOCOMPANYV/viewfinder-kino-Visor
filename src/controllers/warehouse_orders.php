@@ -182,6 +182,7 @@ if ($woAction === 'save') {
             }
         }
         $l['price'] = $price;
+        $l['note'] = $cut($l['note'] ?? '', 1000);
         $lines[$i] = $l;
         $qty = max(0, (int) ($l['qty'] ?? 0));
         if ($price !== null && $qty > 0) {

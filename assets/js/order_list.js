@@ -24,7 +24,7 @@
     const order = data.order || {};
     // Cada línea del pedido, en el orden del Extractor; la foto se le pone a esta misma línea (por su código)
     const lines = data.items.map((it, i) => ({ n: i + 1, code: String(it.code || ''), qty: it.qty == null ? null : Number(it.qty),
-        desc: String(it.desc || ''), price: String(it.priceText || ''), total: String(it.lineTotalText || ''), photo: undefined }));
+        desc: String(it.desc || ''), note: String(it.note || '').slice(0, 1000), price: String(it.priceText || ''), total: String(it.lineTotalText || ''), photo: undefined }));
     const has = (v) => v !== null && v !== undefined && String(v).trim() !== '';
     // Plantilla de la Remisión (Admin → 🚚 Remisión); color «#rrggbb» → [r, g, b]
     const REM = window.KINO_REMISION || {};
@@ -57,11 +57,11 @@
         pedido: { name: 'Lista Bodega', title: 'Lista Bodega', file: 'Lista_Bodega_', icon: '🧾', pref: 'kinoOlFields',
             numLabel: 'N.º de pedido', c1: [28, 28, 30], c2: [201, 168, 76],
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: false, address: false, city: false, phone: false, seller: false,
-                review: true, useCount: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: false, cTotal: false } },
+                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: false, cTotal: false } },
         remision: { name: 'Cotización', title: (REM.title || 'Cotización'), file: 'Cotizacion_', icon: '🚚', pref: 'kinoOlFieldsRemision',
             numLabel: 'N.º de cotización', c1: rgb(REM.headerColor, [14, 14, 14]), c2: rgb(REM.accentColor, [211, 35, 45]),
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: true, address: true, city: true, phone: false, seller: false,
-                review: true, useCount: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: true, cTotal: true } },
+                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: true, cTotal: true } },
     };
     let type = TYPES[data.docType] ? data.docType : 'pedido';
     const T = () => TYPES[type];
@@ -150,6 +150,7 @@
                 (has(v) ? esc(v) : (f.key === 'number' ? '—' : '<b class="ol-miss">⚠ ' + MISSING + '</b>')) + '</label>';
         }).join('');
         $('olOpts').innerHTML = '<label><input type="checkbox" data-k="review"' + (show.review ? ' checked' : '') + '> Recuadro «Revisar» con avisos</label>' +
+            '<label><input type="checkbox" data-k="names"' + (show.names !== false ? ' checked' : '') + '> Nombre del producto encima del código</label>' +
             '<div class="ol-cols"><b>Columnas de la tabla:</b> ' + allCols.map((c) => '<label><input type="checkbox" data-k="' + c.key + '"' + (show[c.key] ? ' checked' : '') + '> ' + esc(c.label) + '</label>').join('') + '</div>' +
             (canCount ? '<label><input type="checkbox" data-k="useCount"' + (show.useCount ? ' checked' : '') + '> Si el PDF no trae ítems o unidades, usar lo contado en sus líneas</label>' : '');
         drawWarn();
@@ -174,6 +175,7 @@
         if (!e.target.checked && /^c[A-Z]/.test(k) && pickedCols().length <= 1) { e.target.checked = true; msg('Deja al menos una columna.'); return; }
         show[k] = e.target.checked;
         savePrefs(); refresh(); drawOrder();
+        if (k === 'names') drawList();
         resetPdf('Cambiaste lo que sale en el PDF: vuelve a generarlo.');
     });
     // Escribir el cliente: se aplica al salir de la casilla (o con Enter) y se puede volver a corregir
@@ -183,21 +185,46 @@
         refresh(); drawOrder();
         resetPdf('Cambiaste el cliente: vuelve a generar el PDF.');
     });
+    // Notas generales de la Cotización: varias líneas, se guardan con el pedido y salen completas al final del PDF
+    const nBox = $('olNotes');
+    if (nBox) {
+        const grow = () => { nBox.style.height = 'auto'; nBox.style.height = nBox.scrollHeight + 2 + 'px'; };
+        nBox.value = String(order.notes || '');
+        nBox.addEventListener('input', () => {
+            order.notes = nBox.value.slice(0, 2000); data.order = order; grow();
+            try { sessionStorage.setItem('kinoPedido', JSON.stringify(data)); } catch (e) { /* sin almacenamiento */ }
+        });
+        nBox.addEventListener('change', () => resetPdf('Cambiaste las notas: vuelve a generar el PDF.'));
+        if (nBox.value) setTimeout(grow, 0);
+    }
     $('olOrder').addEventListener('keydown', (e) => { if (e.target && e.target.id === 'olClient' && e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
     $('olBody').hidden = false;
     $('olBar').hidden = false;
 
+    // Nombre del producto (columna NAME de la Hoja master) por línea; lo llena loadNames()
+    const names = {};
+    const nameOf = (l) => (show.names !== false ? KP.clean(names[l.code] || '') : '');
     function drawList() {
         $('olList').innerHTML = lines.map((l) => {
             const ph = l.photo === undefined ? '<span class="ph none">…</span>'
                 : l.photo ? '<span class="ph"><img src="https://lh3.googleusercontent.com/d/' + encodeURIComponent(l.photo.id) + '=s200" alt="" loading="lazy"></span>'
                 : '<span class="ph none">Foto no disponible</span>';
-            return '<li><span class="n">' + l.n + '</span>' + ph + '<span class="cd">' + esc(l.code) +
+            return '<li><span class="n">' + l.n + '</span>' + ph + '<span class="cd">' + (nameOf(l) ? '<small class="nm">' + esc(nameOf(l)) + '</small>' : '') + esc(l.code) +
                 (l.photo && l.photo.sku !== l.code ? '<small>en el visor: ' + esc(l.photo.sku) + '</small>' : '') +
                 '</span><span class="q">' + (l.qty == null ? 'sin cantidad' : '× ' + esc(l.qty)) + '</span></li>';
         }).join('');
     }
     drawList();
+
+    // Nombre del producto (columna NAME de la Hoja master), encima del código; se busca por el código del visor
+    async function loadNames() {
+        const key = (l) => (l.photo && l.photo.sku) || l.code;
+        const codes = [...new Set(lines.map(key).filter(Boolean))].slice(0, 400);
+        if (!codes.length) return;
+        const r = await fetch('/api/nombres?codes=' + encodeURIComponent(codes.join(',')), { headers: { Accept: 'application/json' } });
+        const d = await r.json().catch(() => ({}));
+        lines.forEach((l) => { const o = d && d[key(l)]; if (o && o.n) names[l.code] = String(o.n); });
+    }
 
     // ---- Fotos: una búsqueda exacta por código (sin corregir lo leído) ----
     async function lookup() {
@@ -263,6 +290,7 @@
             const COLS = cols.map((c) => c.min + (flexSum ? spare * (c.flex || 0) / flexSum : spare / cols.length));
             const clean = KP.clean;
             const val = (v) => has(v) ? clean(v) : null;
+            const fitText = (t, mw) => { if (doc.getTextWidth(t) <= mw) return t; while (t.length > 1 && doc.getTextWidth(t + '…') > mw) t = t.slice(0, -1); return t + '…'; };
 
             let y = 0, page = 0;
             // Remisión: franja con logos a la izquierda, título y número, y logos a la derecha (separados por una raya fina)
@@ -358,8 +386,12 @@
             // Productos: tabla(s) con bordes; en dos tablas, primero la de la izquierda y luego la de la derecha.
             let col = 0, top = y, leftEnd = 0;
             tableHead(0);
+            // Nota del producto (Extractor → ✏ Editar lista): completa, en una franja bajo su fila
+            const noteLines = (l) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+                return l.note ? l.note.split(/\n/).map(clean).filter(Boolean).flatMap((p, j) => doc.splitTextToSize((j ? '' : 'Nota: ') + p, TW - 4)) : []; };
             for (const l of lines) {
-                if (y + ROW > H - FOOT) {
+                const nl = noteLines(l), NH = nl.length ? nl.length * 3.3 + 2 : 0;
+                if (y + ROW + NH > H - FOOT) {
                     if (two && col === 0) { col = 1; leftEnd = y; y = top; }
                     else { newPage(); col = 0; top = y; leftEnd = 0; }
                     tableHead(col);
@@ -387,9 +419,29 @@
                             doc.text(['Foto no', 'disponible'], cx, mid - 0.4, { align: 'center' });
                         }
                     } else if (c.key === 'cCode') {
-                        doc.setFont('helvetica', 'bold'); doc.setFontSize(ROW > 10 ? 11 : 9.5); doc.setTextColor(...INK);
-                        const cl = doc.splitTextToSize(clean(l.code), w - 4).slice(0, ROW > 10 ? 2 : 1);
-                        doc.text(cl, cx, mid + 1.4 - (cl.length - 1) * 2.3, { align: 'center' });
+                        const nm = nameOf(l), big = ROW > 10;
+                        if (nm) {
+                            // Nombre (hasta 2 líneas, o 1 sin foto) encima del código, con «…» si no cabe; sin encimarse
+                            const nPt = big ? 7 : 6, nLh = nPt * 0.3528 * 1.2, maxL = big ? 2 : 1;
+                            doc.setFont('helvetica', 'normal'); doc.setFontSize(nPt); doc.setTextColor(70, 70, 70);
+                            let nl = doc.splitTextToSize(nm, w - 3);
+                            if (nl.length > maxL) {
+                                nl = nl.slice(0, maxL);
+                                let last = nl[maxL - 1];
+                                while (last.length && doc.getTextWidth(last + '…') > w - 3) last = last.slice(0, -1);
+                                nl[maxL - 1] = last.replace(/\s+$/, '') + '…';
+                            }
+                            const cPt = big ? 10.5 : 8.5, cH = cPt * 0.3528;
+                            const blockH = nl.length * nLh + 0.8 + cH;
+                            let ny = mid - blockH / 2 + nLh * 0.8;
+                            nl.forEach((ln) => { doc.text(ln, cx, ny, { align: 'center' }); ny += nLh; });
+                            doc.setFont('helvetica', 'bold'); doc.setFontSize(cPt); doc.setTextColor(...INK);
+                            doc.text(fitText(clean(l.code), w - 3), cx, mid + blockH / 2, { align: 'center' });
+                        } else {
+                            doc.setFont('helvetica', 'bold'); doc.setFontSize(big ? 11 : 9.5); doc.setTextColor(...INK);
+                            const cl = doc.splitTextToSize(clean(l.code), w - 4).slice(0, big ? 2 : 1);
+                            doc.text(cl, cx, mid + 1.4 - (cl.length - 1) * 2.3, { align: 'center' });
+                        }
                     } else if (c.key === 'cDesc') {
                         doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...INK);
                         const dl = doc.splitTextToSize(clean(l.desc), w - 4).slice(0, ROW > 10 ? 3 : 1);
@@ -404,7 +456,13 @@
                     }
                     x += w;
                 });
-                y += ROW;
+                if (NH) {
+                    const nx = M + col * (TW + GAP);
+                    doc.setFillColor(248, 246, 240); doc.setDrawColor(...LINE); doc.setLineWidth(0.35); doc.rect(nx, y + ROW, TW, NH, 'FD');
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(70, 70, 70);
+                    doc.text(nl, nx + 2, y + ROW + 3.4);
+                }
+                y += ROW + NH;
             }
 
             // Remisión: el valor total también al final, debajo de la tabla (tal cual viene en el PDF)
@@ -417,6 +475,20 @@
                 doc.text('TOTAL COTIZACIÓN', bx + 4, ty + 7.6);
                 doc.setFontSize(13); doc.setTextColor(255, 255, 255);
                 doc.text(clean(order.totalText), bx + bw - 4, ty + 8, { align: 'right' });
+                y = ty + 12; if (col === 1) leftEnd = 0;
+            }
+
+            // Cotización: notas generales, completas, al final (siguen en otra página si no caben)
+            const gNotes = rem && has(order.notes) ? String(order.notes).split(/\n/).map(clean).filter(Boolean) : [];
+            if (gNotes.length) {
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+                const gl = gNotes.flatMap((p) => doc.splitTextToSize(p, W - 2 * M - 6));
+                let ny = Math.max(y, col === 1 ? leftEnd : 0) + 6;
+                if (ny + 12 > H - FOOT) { newPage(); ny = y; }
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text('NOTAS', M, ny); ny += 2;
+                doc.setDrawColor(...C2); doc.setLineWidth(0.4); doc.line(M, ny, M + 18, ny); ny += 4.5;
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...INK);
+                gl.forEach((ln) => { if (ny + 2 > H - FOOT) { newPage(); ny = y; doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...INK); } doc.text(ln, M + 1, ny); ny += 4; });
             }
 
             // Pie en cada página
@@ -510,7 +582,8 @@
     $('olShare').addEventListener('click', () => KP.share(outFile(), T().title, msg));
     $('olDown').addEventListener('click', () => KP.download(outFile(), msg));
 
-    lookup().then(() => {
+    lookup().then(async () => {
+        try { await loadNames(); } catch (e) { /* sin nombres: sale solo el código */ }
         drawList();
         const none = lines.filter((l) => !l.photo).length;
         $('olMake').disabled = false; $('olMake').textContent = PREVIEW;

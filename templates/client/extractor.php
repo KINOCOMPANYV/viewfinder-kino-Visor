@@ -69,6 +69,9 @@
         .ex-editing .c-x { display:table-cell; }
         .ex-cell { width:100%; min-width:3.2rem; box-sizing:border-box; padding:0.25rem 0.4rem; background:var(--color-surface,#1c1c1e); color:var(--color-text,#f0f0f0); border:1px solid #c4a46b; border-radius:6px; font:inherit; }
         .ex-cell.num { text-align:right; max-width:7rem; }
+        .ex-note-row td { border-top:0; padding-top:0; }
+        .ex-cell.ex-linenote { min-height:2rem; resize:vertical; line-height:1.35; font-size:0.85rem; }
+        .ex-note-txt { white-space:pre-wrap; color:var(--color-text-muted,#a0a0b0); font-size:0.85rem; }
         .ex-vp-bar { display:inline-flex; gap:0.4rem; flex-wrap:wrap; }
         .ex-cell[data-f="code"] { min-width:7.5rem; }
         .ex-cell[data-f="qty"] { max-width:4rem; }
