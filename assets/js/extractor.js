@@ -333,7 +333,10 @@ $('exRows').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.targ
 
 $('exShowPrice').addEventListener('change', (e) => $('exTable').classList.toggle('ex-hide-price', !e.target.checked));
 $('exShowDisc').addEventListener('change', (e) => $('exTable').classList.toggle('ex-hide-disc', !e.target.checked));
-$('exPct').addEventListener('input', () => { if (result) renderRows(); });
+$('exPct').addEventListener('input', () => { // escribir un % ya activa el descuento (sin tener que marcar la casilla)
+    if (!$('exShowDisc').checked && +$('exPct').value > 0) { $('exShowDisc').checked = true; $('exTable').classList.remove('ex-hide-disc'); }
+    if (result) renderRows();
+});
 
 $('exSort').addEventListener('click', () => {
     rows.sort((a, b) => core.naturalCompare(a.code, b.code) || a.n - b.n);
