@@ -3226,6 +3226,15 @@ body:has(.parent-grid) .container { max-width: 1680px; }
 /* Armar con filtros (catálogo filtrado) */
 .cp-filter .filter-bar, .cp-filter .filter-active { margin: 0 0 0.5rem; max-width: none; }
 .cp-filter.on { border-color: var(--color-primary); }
+.cp-filter > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 0.6rem; padding-right: 1.6rem; position: relative; }
+.cp-filter > summary::-webkit-details-marker { display: none; }
+.cp-filter > summary h2 { margin: 0; }
+.cp-filter > summary::after { content: ''; position: absolute; right: 0.2rem; top: 50%; width: 0.5rem; height: 0.5rem; border-right: 1.5px solid var(--color-text-muted); border-bottom: 1.5px solid var(--color-text-muted); transform: translateY(-70%) rotate(45deg); transition: transform 0.2s; }
+.cp-filter[open] > summary::after { transform: translateY(-30%) rotate(-135deg); }
+.cp-filter[open] > summary { margin-bottom: 0.6rem; }
+.cp-filter[open] .cp-filter-hint { display: none; }
+.cp-filter-hint { font-size: 0.8rem; color: var(--color-text-muted); }
+.cp-filter > summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; border-radius: 4px; }
 .cp-filter-help { font-size: 0.8rem; color: var(--color-text-muted); margin: 0 0 0.6rem; }
 .cp-filter-st { font-size: 0.85rem; font-weight: 600; color: var(--color-primary); margin: 0.25rem 0 0; }
 .filter-q { flex: 1 1 220px; min-width: 0; font-size: 16px; }
