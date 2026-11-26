@@ -122,6 +122,7 @@
 
     $('cpCount').textContent = items.length ? '(' + items.length + ')' : '';
     $('cpEmpty').hidden = !!items.length;
+    if (!items.length && $('cpFilter')) $('cpFilter').open = true; // sin fotos: los filtros son el camino
     $('cpBody').hidden = !items.length;
     $('cpBar').hidden = !items.length;
     if (!items.length) return;

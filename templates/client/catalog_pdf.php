@@ -45,13 +45,13 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
             recuerda aquí para la próxima vez.</p>
 
         <?php if ($db): ?>
-            <section class="ms-look cp-filter<?= $fromFilter ? ' on' : '' ?>">
-                <h2>🔎 Armar con filtros</h2>
+            <details class="ms-look cp-filter<?= $fromFilter ? ' on' : '' ?>" id="cpFilter"<?= $fromFilter ? ' open' : '' ?>>
+                <summary><h2>🔎 Armar con filtros</h2><span class="cp-filter-hint">Para armar el catálogo con otros productos</span></summary>
                 <p class="cp-filter-help">Elige marcas, carpetas, categorías, precio o un texto (puedes marcar varias) y toca
                     «📄 Armar catálogo»: entran las fotos de todos los productos que cumplan (hasta 300).</p>
                 <?php $filterTarget = '/catalogo-pdf'; include __DIR__ . '/../partials/filter_bar.php'; ?>
                 <p class="cp-filter-st" id="cpFilterSt" hidden></p>
-            </section>
+            </details>
         <?php endif; ?>
 
         <div class="ms-empty" id="cpEmpty" hidden>
