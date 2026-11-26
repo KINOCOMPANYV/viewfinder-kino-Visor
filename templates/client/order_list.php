@@ -59,6 +59,7 @@ $olJs = APP_VERSION . filemtime(BASE_DIR . '/assets/js/order_list.js');
         .ol-opts label { cursor:pointer; }
         .ol-cols { flex-basis:100%; display:flex; flex-wrap:wrap; gap:0.3rem 1rem; padding:0.6rem 0.7rem; border:1px solid var(--color-surface-3,#2c2c2e); border-radius:8px; }
         .ol-cols b { color:#e8e8ee; font-weight:600; }
+        .ol-cols .ol-pct input { width:4.2rem; margin:0 0.2rem; padding:0.15rem 0.35rem; background:var(--color-surface-2,#242426); color:inherit; border:1px solid var(--color-surface-3,#2c2c2e); border-radius:6px; }
         .ol-warn { background:rgba(255,159,67,0.08); border:1px solid rgba(255,159,67,0.5); border-radius:10px; padding:0.7rem 0.9rem; margin-bottom:1rem; font-size:0.9rem; }
         .ol-warn ul { margin:0.3rem 0 0; padding-left:1.1rem; }
         .ol-list { list-style:none; margin:0; padding:0; }
