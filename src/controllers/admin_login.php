@@ -42,7 +42,7 @@ if ($account || ($user === ADMIN_USER && adminPasswordMatches($pass))) {
         unset($_SESSION['admin_logged_in']);
         if (!in_array($account['role'], ['admin', 'dev'], true)) {
             unset($_SESSION['after_login']);
-            redirect('/panel'); // el resto de perfiles tendrá su bandeja en los módulos siguientes
+            redirect('/pedidos'); // Vendedor, Facturación y Bodega entran directo a Pedidos (v2)
         }
     } else {
         unset($_SESSION['user_id']);

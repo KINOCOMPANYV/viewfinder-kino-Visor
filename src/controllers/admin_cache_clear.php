@@ -7,7 +7,7 @@
 
 if (!verifyCsrf()) {
     $_SESSION['cache_flash'] = ['type' => 'error', 'msg' => '❌ Token CSRF inválido. Recarga la página.'];
-    redirect('/admin');
+    redirect('/admin/dashboard');
 }
 
 $db = getDB();
@@ -39,4 +39,4 @@ try {
     $_SESSION['cache_flash'] = ['type' => 'error', 'msg' => '❌ Error: ' . $e->getMessage()];
 }
 
-redirect('/admin');
+redirect('/admin/dashboard');

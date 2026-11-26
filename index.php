@@ -414,9 +414,19 @@ if (preg_match('#^/enviar-catalogo/foto/([a-zA-Z0-9_-]+)$#', $uri, $matches)) {
 // RUTAS ADMIN
 // ============================================================
 
+// Al entrar al admin se va directo al sistema nuevo (v2); el Dashboard de v1 vive en Configuraciones
 if ($uri === '/admin' || $uri === '/admin/') {
+    requireStaff();
+    redirect('/pedidos');
+}
+if ($uri === '/admin/dashboard') {
     requireAdmin();
     include __DIR__ . '/templates/admin/dashboard.php';
+    exit;
+}
+if ($uri === '/admin/configuraciones') {
+    requireAdmin();
+    include __DIR__ . '/templates/admin/configuraciones.php';
     exit;
 }
 

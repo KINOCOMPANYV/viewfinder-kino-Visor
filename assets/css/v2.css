@@ -76,6 +76,12 @@ details.v2-fd > .v2-filters { border-top: 1px solid var(--color-border); padding
 .v2-pager { display: flex; gap: .6rem; align-items: center; justify-content: center; padding: 1rem; color: var(--color-text-muted); font-size: .9rem; }
 .v2-pager a { color: var(--color-text); border: 1px solid var(--color-border-hover); border-radius: 8px; padding: .45rem .8rem; text-decoration: none; }
 
+/* Configuraciones: tarjetas a las herramientas de v1 */
+.v2-cfg-h { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin: 1.6rem 0 .6rem; font-weight: 600; }
+.v2-cfg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .75rem; }
+.v2-cfg { display: flex; flex-direction: column; gap: .3rem; padding: 1rem 1.1rem; text-decoration: none; color: var(--color-text); transition: border-color .15s; }
+.v2-cfg:hover { border-color: var(--color-primary); }
+.v2-cfg span { font-size: .85rem; color: var(--color-text-muted); line-height: 1.35; }
 @media (max-width: 900px) {
     .v2-side { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform .2s; }
     body.v2-open .v2-side { transform: none; box-shadow: 8px 0 30px rgba(0,0,0,.35); }
