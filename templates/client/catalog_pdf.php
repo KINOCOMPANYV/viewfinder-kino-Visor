@@ -149,7 +149,7 @@ $filters = $fromFilter ? catalogFiltersFromRequest($_GET) : catalogFiltersFromRe
         <div class="cp-bar-row">
             <button type="button" class="btn btn-primary" id="cpMake">📄 Generar PDF</button>
             <button type="button" class="btn cp-share" id="cpShare" hidden>📲 Compartir</button>
-            <button type="button" class="btn btn-secondary" id="cpPreview" hidden>👁 Previo</button>
+            <button type="button" class="btn cp-preview" id="cpPreview" hidden>👁 Previo</button>
             <button type="button" class="btn btn-secondary" id="cpDown" hidden>⬇️ Descargar</button>
         </div>
         <div class="cp-msg" id="cpMsg" aria-live="polite"></div>
