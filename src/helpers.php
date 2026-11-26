@@ -1678,5 +1678,8 @@ function pedidosHeaderBtn(): string
 {
     $html = '<a href="/hacer-pedido" class="btn btn-sm btn-primary hdr-pedidos hdr-cart" aria-label="Hacer pedido" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Tu pedido: productos agregados y envío">' . icon('receipt') . ' Hacer pedido <span class="cart-count" id="cartCount" hidden></span></a>'
         . '<script src="/assets/js/cart_badge.js?v=' . APP_VERSION . '" defer></script>';
+    if (isStaff()) {
+        $html = '<a href="/pedidos" class="btn btn-sm btn-secondary hdr-pedidos" aria-label="Sistema" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Abrir el sistema nuevo (Pedidos, Productos, Configuraciones)">' . icon('clipboard') . ' Sistema</a>' . $html;
+    }
     return $html;
 }
