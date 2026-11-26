@@ -12,16 +12,16 @@ require_once __DIR__ . '/../../../src/services/Users.php';
 $v2Initials = strtoupper(mb_substr(preg_replace('/[^\p{L}\p{N} ]/u', '', $v2Name) ?: 'A', 0, 2));
 $v2Pending = null;
 try {
-    $v2Pending = (int) getDB()->query("SELECT COUNT(*) FROM warehouse_orders WHERE status <> 'listo'")->fetchColumn();
+    $v2Pending = (int) getDB()->query("SELECT COUNT(*) FROM orders WHERE stage IN ('recibido','por_alistar','en_alistamiento')")->fetchColumn();
 } catch (Throwable $e) {
 }
 // [clave, ruta (null = pronto), texto, icono SVG]
 $v2Menu = [
     ['vender', null, 'Vender', '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>'],
-    ['pedidos', '/pedidos-alistar', 'Pedidos', '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>'],
+    ['pedidos', '/pedidos', 'Pedidos', '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>'],
     ['productos', '/admin/productos', 'Productos', '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'],
     ['catalogo', '/', 'Catálogo Online', '<circle cx="9" cy="20" r="1.3"/><circle cx="18" cy="20" r="1.3"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 7H6"/>'],
-    ['clientes', null, 'Clientes', '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
+    ['clientes', '/clientes', 'Clientes', '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
     ['transacciones', null, 'Transacciones', '<path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
     ['finanzas', null, 'Finanzas', '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 3h12"/>'],
     ['estadisticas', null, 'Estadísticas', '<path d="M5 21V12"/><path d="M12 21V4"/><path d="M19 21v-6"/>'],

@@ -90,7 +90,10 @@ if ($woAction === 'create') {
     $st = $db->prepare('INSERT INTO warehouse_orders (order_key, number, client, order_date, items_count, order_json) VALUES (?, ?, ?, ?, ?, ?)');
     $st->execute([$key, $cut($info['number'] ?? '', 100), $cut($info['client'] ?? '', 255), $cut($info['date'] ?? '', 100),
         count($order['items']), json_encode($order, JSON_UNESCAPED_UNICODE)]);
-    jsonResponse(['id' => (int) $db->lastInsertId(), 'existing' => false]);
+    $newId = (int) $db->lastInsertId();
+    require_once __DIR__ . '/../services/Orders.php';
+    Orders::syncWarehouse($db, $newId);
+    jsonResponse(['id' => $newId, 'existing' => false]);
 }
 
 if ($woAction === 'delete') {
@@ -120,6 +123,8 @@ if ($woAction === 'invoice') {
     if ($r['status'] !== 'listo') {
         jsonResponse(['error' => 'Solo se puede marcar como facturado un pedido listo.'], 409);
     }
+    require_once __DIR__ . '/../services/Orders.php';
+    Orders::syncWarehouse($db, $woId);
     jsonResponse(['ok' => true, 'order' => $woRow($r)]);
 }
 
@@ -199,6 +204,8 @@ if ($woAction === 'save') {
     if ($status === false) {
         jsonResponse(['error' => 'Ese pedido no existe.'], 404);
     }
+    require_once __DIR__ . '/../services/Orders.php';
+    Orders::syncWarehouse($db, $woId);
     jsonResponse(['ok' => true, 'status' => $status]);
 }
 

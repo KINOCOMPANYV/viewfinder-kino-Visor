@@ -443,6 +443,18 @@ if ($uri === '/pedidos-clientes') {
     exit;
 }
 
+if (preg_match('#^/pedidos(?:/(\d+))?$#', $uri, $matches)) {
+    requireStaff();
+    $orderId = (int) ($matches[1] ?? 0);
+    include __DIR__ . '/src/controllers/orders_v2.php';
+    exit;
+}
+if ($uri === '/clientes') {
+    requireStaff();
+    include __DIR__ . '/src/controllers/customers_v2.php';
+    exit;
+}
+
 if ($uri === '/panel') {
     include __DIR__ . '/templates/panel.php';
     exit;

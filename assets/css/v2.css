@@ -94,3 +94,9 @@ details.v2-fd > .v2-filters { border-top: 1px solid var(--color-border); padding
     .v2-table th, .v2-table td { padding: .55rem .45rem; }
     .v2-table { font-size: .86rem; }
 }
+
+/* Etapas del pedido */
+.v2-stage { display: inline-block; font-size: .78rem; font-weight: 700; border-radius: 999px; padding: .15rem .65rem; background: var(--color-surface-2); border: 1px solid var(--color-border-hover); white-space: nowrap; }
+.v2-stage.st-recibido { color: var(--color-warning); } .v2-stage.st-por_alistar, .v2-stage.st-en_alistamiento { color: var(--color-orange); }
+.v2-stage.st-listo_facturar { color: var(--color-primary); } .v2-stage.st-facturado { color: var(--color-success); } .v2-stage.st-cancelado { color: var(--color-danger); }
+.v2-hist { list-style: none; margin: .6rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; font-size: .92rem; }
