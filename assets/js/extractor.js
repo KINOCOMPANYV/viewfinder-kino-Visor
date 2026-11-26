@@ -379,11 +379,20 @@ $('exToOrder').addEventListener('click', () => {
         o.date = new Date().toLocaleDateString('es-CO');
         o.totalText = withP.length ? core.formatPrice(withP.reduce((s, it) => s + it.price * (+it.qty || 0), 0), core.priceStyle(withP[0].priceText)) : '';
     }
+    // Lista editada a mano (cantidades, precios, líneas quitadas o agregadas): los totales del PDF ya no valen; se pasan los
+    // nuevos (referencias, unidades y valor total, como en el resumen «Lista editada a mano»). El PDF leído no se toca.
+    let tot = { itemsPdf: o.itemsPdf, unitsPdf: o.unitsPdf, totalText: o.totalText };
+    if (edited && !fromPaste) {
+        const out = outRows(), withP = out.filter((it) => it.price != null), unit = o.unitPrices;
+        tot = { itemsPdf: out.length, unitsPdf: o.noQty ? o.unitsPdf : out.reduce((s, it) => s + (+it.qty || 0), 0),
+            totalText: withP.length ? core.formatPrice(withP.reduce((s, it) => s + it.price * (unit ? (+it.qty || 0) : 1), 0),
+                core.priceStyle(o.totalText || withP[0].priceText)) : o.totalText };
+    }
     const showP = $('exShowPrice').checked; // «Mostrar precio» apagado: el documento sale sin precios
     const data = {
         file: file ? file.name : (fromPaste ? 'listado pegado' : ''),
-        order: { number: o.number || '', client: o.client || '', clientPdf: o.clientPdf ?? o.client ?? '', date: o.date || '', totalText: o.totalText || '',
-            itemsPdf: o.itemsPdf ?? null, unitsPdf: o.unitsPdf ?? null, noQty: !!o.noQty,
+        order: { number: o.number || '', client: o.client || '', clientPdf: o.clientPdf ?? o.client ?? '', date: o.date || '', totalText: tot.totalText || '',
+            itemsPdf: tot.itemsPdf ?? null, unitsPdf: tot.unitsPdf ?? null, noQty: !!o.noQty,
             // Recibo cuyo precio por línea es el total de la línea (cuadra con el Total sin multiplicar): Pedido de bodega lo divide por la cantidad
             priceIsLineTotal: o.format !== 'tabla' && o.totalOk === true && !o.unitPrices,
             nit: o.nit || '', address: o.address || '', city: o.city || '', phone: o.phone || '', seller: o.seller || '' },

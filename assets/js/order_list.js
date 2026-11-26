@@ -26,6 +26,34 @@
     const lines = data.items.map((it, i) => ({ n: i + 1, code: String(it.code || ''), qty: it.qty == null ? null : Number(it.qty),
         desc: String(it.desc || ''), note: String(it.note || '').slice(0, 1000), price: String(it.priceText || ''), total: String(it.lineTotalText || ''), photo: undefined }));
     const has = (v) => v !== null && v !== undefined && String(v).trim() !== '';
+    // Precio unitario por línea (columna «Precio c/u»): en la cotización en tabla el precio ya es unitario; en el recibo
+    // puede ser el total de la línea (order.priceIsLineTotal, o se deduce si la suma de precios cuadra con el Total del
+    // PDF sin multiplicar) y entonces se divide por la cantidad. El total de la línea se calcula si no viene.
+    const parsePrice = (t) => {
+        let s = String(t || '').replace(/[^\d.,]/g, '');
+        if (!s) return null;
+        const m = s.match(/^(.*)[.,](\d{1,2})$/);
+        s = m ? m[1].replace(/[.,]/g, '') + '.' + m[2] : s.replace(/[.,]/g, '');
+        const n = parseFloat(s);
+        return isFinite(n) && n > 0 ? n : null;
+    };
+    const money = (n) => '$' + Math.round(n).toLocaleString('es-CO');
+    const priceIsLine = order.priceIsLineTotal != null ? !!order.priceIsLineTotal : (() => {
+        const tot = parsePrice(order.totalText);
+        if (tot == null) return false;
+        let sp = 0, su = 0;
+        lines.forEach((l) => { const p = parsePrice(l.price) || 0, q = l.qty == null ? 1 : l.qty; sp += p; su += p * q; });
+        return Math.abs(sp - tot) < 1 && Math.abs(su - tot) >= 1;
+    })();
+    lines.forEach((l) => {
+        const p = parsePrice(l.price), q = l.qty == null ? null : l.qty;
+        l.unit = l.price;
+        if (p == null) return;
+        if (priceIsLine) {
+            if (!l.total) l.total = l.price;
+            l.unit = q > 0 ? (q === 1 ? l.price : money(p / q)) : '';
+        } else if (!l.total && q > 0) l.total = q === 1 ? l.price : money(p * q);
+    });
     // Plantilla de la Remisión (Admin → 🚚 Remisión); color «#rrggbb» → [r, g, b]
     const REM = window.KINO_REMISION || {};
     function rgb(hex, def) { const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || ''); return m ? [1, 2, 3].map((i) => parseInt(m[i], 16)) : def; }
@@ -57,11 +85,11 @@
         pedido: { name: 'Lista Bodega', title: 'Lista Bodega', file: 'Lista_Bodega_', icon: '🧾', pref: 'kinoOlFields',
             numLabel: 'N.º de pedido', c1: [28, 28, 30], c2: [201, 168, 76],
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: false, address: false, city: false, phone: false, seller: false,
-                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: false, cTotal: false } },
+                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cUnit: true, cTotal: false } },
         remision: { name: 'Cotización', title: (REM.title || 'Cotización'), file: 'Cotizacion_', icon: '🚚', pref: 'kinoOlFieldsRemision',
             numLabel: 'N.º de cotización', c1: rgb(REM.headerColor, [14, 14, 14]), c2: rgb(REM.accentColor, [211, 35, 45]),
             def: { number: true, client: true, date: true, items: true, units: true, total: true, nit: true, address: true, city: true, phone: false, seller: false,
-                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cPrice: true, cTotal: true } },
+                review: true, useCount: true, names: true, cN: true, cPhoto: true, cCode: true, cDesc: false, cQty: true, cUnit: true, cTotal: true } },
     };
     let type = TYPES[data.docType] ? data.docType : 'pedido';
     const T = () => TYPES[type];
@@ -96,7 +124,7 @@
         { key: 'cCode', label: 'Código', min: 26, flex: 1 },
         { key: 'cDesc', label: 'Producto', min: 50, flex: 3, avail: lines.some((l) => l.desc) },
         { key: 'cQty', label: 'Cantidad', min: 17 },
-        { key: 'cPrice', label: 'Precio', min: 24, avail: lines.some((l) => l.price) },
+        { key: 'cUnit', label: 'Precio c/u', min: 24, avail: lines.some((l) => l.unit) },
         { key: 'cTotal', label: 'Total', min: 26, avail: lines.some((l) => l.total) },
     ].filter((c) => c.avail !== false);
     const pickedCols = () => allCols.filter((c) => show[c.key]);
@@ -175,7 +203,7 @@
         if (!e.target.checked && /^c[A-Z]/.test(k) && pickedCols().length <= 1) { e.target.checked = true; msg('Deja al menos una columna.'); return; }
         show[k] = e.target.checked;
         savePrefs(); refresh(); drawOrder();
-        if (k === 'names') drawList();
+        if (k === 'names' || k === 'cUnit') drawList();
         resetPdf('Cambiaste lo que sale en el PDF: vuelve a generarlo.');
     });
     // Escribir el cliente: se aplica al salir de la casilla (o con Enter) y se puede volver a corregir
@@ -211,7 +239,8 @@
                 : '<span class="ph none">Foto no disponible</span>';
             return '<li><span class="n">' + l.n + '</span>' + ph + '<span class="cd">' + (nameOf(l) ? '<small class="nm">' + esc(nameOf(l)) + '</small>' : '') + esc(l.code) +
                 (l.photo && l.photo.sku !== l.code ? '<small>en el visor: ' + esc(l.photo.sku) + '</small>' : '') +
-                '</span><span class="q">' + (l.qty == null ? 'sin cantidad' : '× ' + esc(l.qty)) + '</span></li>';
+                '</span><span class="q">' + (l.qty == null ? 'sin cantidad' : '× ' + esc(l.qty)) +
+                (show.cUnit && l.unit ? '<small class="pu">' + esc(l.unit) + ' c/u</small>' : '') + '</span></li>';
         }).join('');
     }
     drawList();
@@ -450,7 +479,7 @@
                         doc.setFont('helvetica', 'bold'); doc.setFontSize(l.qty == null ? 7.5 : (ROW > 10 ? 12 : 10)); doc.setTextColor(...(l.qty == null ? WARN : INK));
                         doc.text(l.qty == null ? 'sin cant.' : String(l.qty), cx, mid + 1.4, { align: 'center' });
                     } else {
-                        const t = c.key === 'cPrice' ? l.price : l.total;
+                        const t = c.key === 'cUnit' ? l.unit : l.total;
                         doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...INK);
                         doc.text(t ? clean(t) : '', x + w - 2, mid + 1.2, { align: 'right' });
                     }
