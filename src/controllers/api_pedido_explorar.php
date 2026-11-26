@@ -30,7 +30,7 @@ if (isset($_GET['skus'])) {
     $codes = array_slice(array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $_GET['skus'])), 'strlen'))), 0, 100);
     $items = [];
     if ($codes) {
-        $st = $db->prepare('SELECT p.sku, p.name, p.cover_image_url, p.price_suggested, ' . stockSql('p') . ' AS stock FROM products p WHERE p.archived = 0 AND p.cover_image_url > \'\' AND p.sku IN (' . implode(',', array_fill(0, count($codes), '?')) . ')');
+        $st = $db->prepare('SELECT p.sku, p.name, p.cover_image_url, p.price_suggested, ' . stockSql('p') . ' AS stock FROM products p WHERE p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > \'\' AND p.sku IN (' . implode(',', array_fill(0, count($codes), '?')) . ')');
         $st->execute($codes);
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $items[] = $mapRow($r);
     }
@@ -47,7 +47,7 @@ if (!empty($_GET['facets'])) { // opciones de los filtros (se piden una vez al a
     $o = searchFilterOptions($db);
     $out['facets'] = ['brands' => $o['brands'] ?? [], 'prices' => !empty($o['prices'])];
 }
-$wantProducts = $q !== '' || $filtersOn;
+$wantProducts = $q !== '' || $filtersOn || !empty($_GET['todos']);
 if ($folderId !== '' && $folderId !== $root) {
     $c = DriveIndex::folderContents($db, $folderId, $root);
     if ($c === null) jsonResponse($out);
@@ -91,7 +91,7 @@ if ($wantProducts) {
         $order = 'CASE WHEN ' . skuSearchSql('p.sku') . " IN ($ph) THEN 0 ELSE 1 END, $order";
         $orderArgs = $forms;
     }
-    $base = "FROM products p WHERE p.archived = 0 AND p.cover_image_url > ''" . $sql;
+    $base = "FROM products p WHERE p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > ''" . $sql;
     $cnt = $db->prepare("SELECT COUNT(*) $base");
     $cnt->execute($params);
     $out['total'] = (int) $cnt->fetchColumn();

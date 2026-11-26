@@ -8,6 +8,10 @@
             <span class="v2-stage st-<?= e($order['stage']) ?>"><?= e(Orders::label($order['stage'])) ?></span>
             <b><?= e($order['customer_name'] ?: 'Sin nombre') ?></b>
             <?php if ($order['customer_phone'] !== ''): ?><a href="https://wa.me/<?= e(preg_replace('/\D+/', '', $order['customer_phone'])) ?>" target="_blank" rel="noopener">💬 <?= e($order['customer_phone']) ?></a><?php endif; ?>
+            <?php if ($order['client_order_id']) { $tk = getDB()->prepare('SELECT edit_token FROM client_orders WHERE id = ?'); $tk->execute([$order['client_order_id']]); $tk = (string) $tk->fetchColumn();
+                if ($tk !== '' && $order['customer_phone'] !== ''): $cp = preg_replace('/\D+/', '', $order['customer_phone']); if (strlen($cp) === 10) $cp = '57' . $cp; ?>
+                <a class="v2-act" target="_blank" rel="noopener" href="https://wa.me/<?= e($cp) ?>?text=<?= rawurlencode('Hola ' . $order['customer_name'] . ', recibimos tu pedido ' . $order['number'] . ' en Kino Company. Aquí están tus productos con fotos: ' . publicBaseUrl() . '/pedido/' . $tk) ?>">📲 Enviar resumen con fotos por WhatsApp</a>
+            <?php endif; } ?>
             <small class="v2-code">Origen: <?= e($order['origin']) ?> · <?= e(substr($order['created_at'], 0, 16)) ?></small>
             <?php if ($order['warehouse_order_id']): ?><a class="v2-act" href="/pedido-bodega?id=<?= (int) $order['warehouse_order_id'] ?>">📦 Abrir checklist de bodega</a><?php endif; ?>
         </div>

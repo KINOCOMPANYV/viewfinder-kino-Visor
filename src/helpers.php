@@ -1683,3 +1683,18 @@ function pedidosHeaderBtn(): string
     }
     return $html;
 }
+
+// ── Tienda web (/tienda): ajustes editables en Configuraciones → Tienda ──
+
+/** Celular del negocio que recibe el aviso de cada pedido de la tienda (solo dígitos, con 57). */
+function shopNotifyPhone(): string
+{
+    $d = preg_replace('/\D+/', '', appSetting('tienda_notify_phone', (string) (env('SHOP_NOTIFY_PHONE') ?: '3002436120'))) ?: '3002436120';
+    return strlen($d) === 10 ? '57' . $d : $d;
+}
+
+/** Datos para transferencias (texto libre del admin; se muestra al elegir «Transferencia» y en la página del pedido). */
+function shopBankInfo(): string
+{
+    return trim(appSetting('tienda_bank_info', ''));
+}
