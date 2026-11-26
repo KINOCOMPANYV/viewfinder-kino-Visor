@@ -336,6 +336,15 @@ unset($v);
                     <?php $whole = (float) ($product['sys_price'] ?? 0) ?: (float) ($product['price_wholesale'] ?? 0); ?>
                     <?php if (showWholesalePublic() && $whole > 0): ?><div class="product-wholesale" style="color:#9a9aa8;font-size:0.9rem;margin:-0.4rem 0 0.75rem">Mayorista: <?= e(priceText($whole)) ?></div><?php endif; ?>
 
+                    <button type="button" class="btn btn-primary" id="btnAddCart" data-sku="<?= e($product['sku']) ?>" style="margin:0 0 .9rem">🛒 Agregar al pedido</button>
+                    <script>
+                        document.getElementById('btnAddCart').addEventListener('click', function () {
+                            if (!window.kinoCart) return;
+                            kinoCart.add(this.dataset.sku, 1);
+                            this.textContent = '✓ Agregado · ver pedido';
+                            this.onclick = function () { location.href = '/hacer-pedido'; };
+                        });
+                    </script>
                     <?php include __DIR__ . '/../../templates/partials/share_whatsapp.php'; ?>
 
                     <!-- Meta info -->

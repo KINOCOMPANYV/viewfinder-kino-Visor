@@ -322,47 +322,56 @@ if ($uri === '/enviar-catalogo') {
 }
 
 if ($uri === '/extractor') {
+    requireStaff();
     include __DIR__ . '/templates/client/extractor.php';
     exit;
 }
 
 if ($uri === '/lista-pedido') {
+    requireStaff();
     include __DIR__ . '/templates/client/order_list.php';
     exit;
 }
 
 if ($uri === '/pedido-bodega') {
+    requireStaff();
     include __DIR__ . '/templates/client/warehouse_order.php';
     exit;
 }
 
 // Pedidos bodega (warehouse_orders): lista roja/verde y su API JSON
 if ($uri === '/pedidos-alistar') {
+    requireStaff();
     include __DIR__ . '/templates/client/warehouse_orders.php';
     exit;
 }
 if ($uri === '/pedidos-alistar/api' && $method === 'GET') {
+    requireStaff();
     $woAction = 'list';
     include __DIR__ . '/src/controllers/warehouse_orders.php';
 }
 if ($uri === '/pedidos-alistar/api' && $method === 'POST') {
+    requireStaff();
     checkRateLimit(30);
     $woAction = 'create';
     include __DIR__ . '/src/controllers/warehouse_orders.php';
 }
 if (preg_match('#^/pedidos-alistar/api/(\d+)/borrar$#', $uri, $matches) && $method === 'POST') {
+    requireStaff();
     checkRateLimit(10); // frena probar claves a la fuerza
     $woAction = 'delete';
     $woId = (int) $matches[1];
     include __DIR__ . '/src/controllers/warehouse_orders.php';
 }
 if (preg_match('#^/pedidos-alistar/api/(\d+)/facturado$#', $uri, $matches) && $method === 'POST') {
+    requireStaff();
     checkRateLimit(60);
     $woAction = 'invoice';
     $woId = (int) $matches[1];
     include __DIR__ . '/src/controllers/warehouse_orders.php';
 }
 if (preg_match('#^/pedidos-alistar/api/(\d+)$#', $uri, $matches)) {
+    requireStaff();
     if ($method === 'POST') {
         checkRateLimit(120); // el panel guarda el avance cada vez que se marca algo
     }
@@ -416,6 +425,22 @@ if ($uri === '/admin/login') {
 if ($uri === '/admin/logout') {
     session_destroy();
     redirect('/admin/login');
+}
+
+// Hacer pedido (clientes): carrito en el dispositivo, envío a la BD, y bandeja del personal
+if ($uri === '/hacer-pedido') {
+    include __DIR__ . '/templates/client/make_order.php';
+    exit;
+}
+if ($uri === '/hacer-pedido/enviar' && $method === 'POST') {
+    checkRateLimit(10);
+    include __DIR__ . '/src/controllers/client_order_send.php';
+    exit;
+}
+if ($uri === '/pedidos-clientes') {
+    requireStaff();
+    include __DIR__ . '/src/controllers/client_orders_list.php';
+    exit;
 }
 
 if ($uri === '/panel') {
