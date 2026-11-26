@@ -5,6 +5,34 @@ $db = getDB();
 $role = currentRole();
 $me = sessionUser();
 $q = trim((string) ($_GET['q'] ?? ''));
+if (($_SERVER['REQUEST_URI'] ?? '') !== '' && str_starts_with(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '', '/clientes/buscar')) {
+    // JSON para el autocompletar de /pedidos/nuevo (el vendedor solo ve los suyos)
+    $w = $role === 'vendedor' && $me ? 'AND seller_user_id = ' . (int) $me['id'] : '';
+    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
+    $st = $db->prepare("SELECT name, phone FROM customers WHERE (name LIKE ? OR phone LIKE ?) $w ORDER BY updated_at DESC LIMIT 8");
+    $st->execute([$like, $like]);
+    jsonResponse(['customers' => mb_strlen($q) >= 2 ? $st->fetchAll(PDO::FETCH_ASSOC) : []]);
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { // asignar vendedor (Admin/Facturación)
+    $cid = (int) ($_POST['id'] ?? 0);
+    if (!verifyCsrf()) {
+        $_SESSION['orders_flash'] = ['err', 'Token inválido.'];
+    } elseif (!in_array($role, ['admin', 'dev', 'facturacion'], true)) {
+        $_SESSION['orders_flash'] = ['err', 'Solo Administración o Facturación asigna vendedores.'];
+    } else {
+        $sid = (int) ($_POST['seller'] ?? 0);
+        $ok = $sid === 0 || $db->query("SELECT COUNT(*) FROM users WHERE id = $sid AND role = 'vendedor' AND is_active = 1")->fetchColumn();
+        if ($ok) {
+            $db->prepare('UPDATE customers SET seller_user_id = ? WHERE id = ?')->execute([$sid ?: null, $cid]);
+            $db->prepare("UPDATE orders SET seller_user_id = ? WHERE customer_id = ? AND stage NOT IN ('facturado','cancelado')")->execute([$sid ?: null, $cid]);
+            $_SESSION['orders_flash'] = ['ok', 'Vendedor asignado.'];
+        }
+    }
+    redirect('/clientes');
+}
+$canAssign = in_array($role, ['admin', 'dev', 'facturacion'], true);
+$sellers = [];
+try { $sellers = $db->query("SELECT id, COALESCE(NULLIF(name,''), username) AS n FROM users WHERE role = 'vendedor' AND is_active = 1 ORDER BY n")->fetchAll(PDO::FETCH_KEY_PAIR); } catch (\Throwable $e) {}
 $where = $role === 'vendedor' && $me ? ['c.seller_user_id = ' . (int) $me['id']] : ['1=1'];
 $args = [];
 if ($q !== '') {

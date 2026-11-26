@@ -43,8 +43,15 @@ $userId = !empty($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
 $staffUser = isStaff() && !empty($in['staff']) ? (sessionUser() ?: ['id' => null, 'name' => '', 'username' => (string) (env('ADMIN_USER') ?: 'admin'), 'role' => currentRole()]) : null; // pedido hecho por un vendedor (/pedidos/nuevo)
 try {
     $db->beginTransaction();
-    $db->prepare("INSERT INTO client_orders (user_id, customer_name, customer_phone, note, total) VALUES (?, ?, ?, ?, ?)")
-        ->execute([$userId, $name, $phone, $note, $total]);
+    $token = bin2hex(random_bytes(16));
+    try {
+        $db->prepare("INSERT INTO client_orders (user_id, customer_name, customer_phone, note, total, edit_token) VALUES (?, ?, ?, ?, ?, ?)")
+            ->execute([$userId, $name, $phone, $note, $total, $token]);
+    } catch (\PDOException $e) { // migración 042 pendiente: sin edición
+        $token = '';
+        $db->prepare("INSERT INTO client_orders (user_id, customer_name, customer_phone, note, total) VALUES (?, ?, ?, ?, ?)")
+            ->execute([$userId, $name, $phone, $note, $total]);
+    }
     $id = (int) $db->lastInsertId();
     $ins = $db->prepare("INSERT INTO client_order_items (order_id, sku, name, qty, unit_price) VALUES (?, ?, ?, ?, ?)");
     foreach ($want as $sku => $qty) {
@@ -67,4 +74,4 @@ try {
     if ($db->inTransaction()) $db->rollBack();
     jsonResponse(['error' => 'No se pudo guardar el pedido. Intenta de nuevo en unos minutos.'], 500);
 }
-jsonResponse(['ok' => true, 'id' => $id, 'number' => $number, 'core' => $coreId ?? 0]);
+jsonResponse(['ok' => true, 'id' => $id, 'number' => $number, 'core' => $coreId ?? 0, 'token' => $staffUser ? '' : $token]);

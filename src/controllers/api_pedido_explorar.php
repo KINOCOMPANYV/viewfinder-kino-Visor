@@ -38,27 +38,41 @@ if (isset($_GET['skus'])) {
     jsonResponse(['items' => $items]);
 }
 
-$out = ['path' => [], 'folders' => [], 'items' => [], 'total' => 0, 'page' => $page, 'pages' => 1, 'folder' => $folderId, 'q' => $q];
-$wantProducts = $q !== '';
+// Filtros inteligentes (los mismos del visor): marca[], genero, pmin/pmax, stock=con|sin, oprecio=asc|desc, ocodigo=asc|desc
+$flt = catalogFiltersFromRequest($_GET);
+$genero = in_array($_GET['genero'] ?? '', ['hombre', 'mujer', 'unisex'], true) ? $_GET['genero'] : '';
+$filtersOn = $flt['marca'] || $flt['pmin'] !== null || $flt['pmax'] !== null || $flt['stock'] !== '' || $genero !== '';
+$out = ['path' => [], 'folders' => [], 'items' => [], 'total' => 0, 'page' => $page, 'pages' => 1, 'folder' => $folderId, 'q' => $q, 'filters' => $filtersOn];
+if (!empty($_GET['facets'])) { // opciones de los filtros (se piden una vez al abrir la página)
+    $o = searchFilterOptions($db);
+    $out['facets'] = ['brands' => $o['brands'] ?? [], 'prices' => !empty($o['prices'])];
+}
+$wantProducts = $q !== '' || $filtersOn;
 if ($folderId !== '' && $folderId !== $root) {
     $c = DriveIndex::folderContents($db, $folderId, $root);
     if ($c === null) jsonResponse($out);
     $out['path'] = DriveIndex::folderPath($db, $folderId, $root);
     $subs = $c['subfolders'];
-    if ($q === '') $wantProducts = !$subs || !empty($_GET['todo']);
+    if ($q === '' && !$filtersOn) $wantProducts = !$subs || !empty($_GET['todo']);
 } else {
     $c = DriveIndex::folderContents($db, $root, $root);
     $subs = $c['subfolders'] ?? [];
     $folderId = '';
 }
-if ($q === '') {
-    foreach ($subs as $s) $out['folders'][] = ['id' => $s['id'], 'name' => folderDisplayName($s['name']), 'cover' => $s['cover']];
+if ($q === '' && !$filtersOn) {
+    foreach ($subs as $s) {
+        if (str_starts_with(ltrim($s['name']), '_')) continue; // carpetas de trabajo como «_INDICE» no son catálogo
+        $out['folders'][] = ['id' => $s['id'], 'name' => folderDisplayName($s['name']), 'cover' => $s['cover']];
+    }
 }
 
 if ($wantProducts) {
-    $f = ['marca' => [], 'cat' => [], 'carpeta' => $folderId !== '' ? [$folderId] : [], 'pmin' => null, 'pmax' => null, 'foto' => true, 'contiene' => '', 'stock' => ''];
+    $f = ['marca' => $flt['marca'], 'cat' => [], 'carpeta' => $folderId !== '' ? [$folderId] : [], 'pmin' => $flt['pmin'], 'pmax' => $flt['pmax'], 'foto' => true, 'contiene' => '', 'stock' => $flt['stock']];
     [$sql, $params] = catalogFilterSql($db, $f);
-    $order = 'p.sku ASC';
+    if ($genero !== '') { $sql .= ' AND p.gender = ?'; $params[] = $genero; }
+    $order = $flt['oprecio'] === 'desc' ? 'p.price_suggested DESC, p.sku ASC'
+        : ($flt['oprecio'] === 'asc' ? '(p.price_suggested IS NULL OR p.price_suggested = 0), p.price_suggested ASC, p.sku ASC'
+        : ($flt['ocodigo'] === 'desc' ? 'p.sku DESC' : 'p.sku ASC'));
     $orderArgs = [];
     if ($q !== '') {
         $clean = preg_replace('/\.\w{2,4}$/i', '', $q);
@@ -74,7 +88,7 @@ if ($wantProducts) {
             array_push($params, $like, $like, $like, $like);
         }
         $sql .= ($wp ? ' OR (' . implode(' AND ', $wp) . ')' : '') . ')';
-        $order = 'CASE WHEN ' . skuSearchSql('p.sku') . " IN ($ph) THEN 0 ELSE 1 END, p.sku ASC";
+        $order = 'CASE WHEN ' . skuSearchSql('p.sku') . " IN ($ph) THEN 0 ELSE 1 END, $order";
         $orderArgs = $forms;
     }
     $base = "FROM products p WHERE p.archived = 0 AND p.cover_image_url > ''" . $sql;

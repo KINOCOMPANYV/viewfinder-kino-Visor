@@ -454,6 +454,17 @@ if ($uri === '/hacer-pedido/enviar' && $method === 'POST') {
     include __DIR__ . '/src/controllers/client_order_send.php';
     exit;
 }
+if ($uri === '/hacer-pedido/mio' && $method === 'POST') {
+    checkRateLimit(30);
+    include __DIR__ . '/src/controllers/client_order_edit.php';
+    exit;
+}
+if ($uri === '/clientes/buscar') { // staff: autocompletar cliente existente al crear un pedido
+    requireStaff();
+    session_write_close();
+    include __DIR__ . '/src/controllers/customers_v2.php';
+    exit;
+}
 if ($uri === '/pedidos-clientes') {
     requireStaff();
     include __DIR__ . '/src/controllers/client_orders_list.php';

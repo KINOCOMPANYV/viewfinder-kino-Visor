@@ -69,3 +69,13 @@
   .mo-bar[hidden]{display:none}
   .mo-bar-go{margin-left:auto}
 }
+
+/* Filtros inteligentes */
+.mo-filters{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:.7rem}
+.mo-sel{padding:.5rem .6rem;border-radius:10px;border:1px solid var(--color-border-hover,#44444a);background:var(--color-surface,#1f1f22);color:inherit;font:inherit;font-size:.88rem;max-width:100%}
+.mo-chipset{display:inline-flex;gap:.35rem}
+.mo-chip{padding:.5rem .8rem;border-radius:999px;border:1px solid var(--color-border-hover,#44444a);background:var(--color-surface,#1f1f22);color:inherit;font:inherit;font-size:.88rem;font-weight:600;cursor:pointer}
+.mo-chip.on{background:var(--color-primary);color:var(--color-on-primary,#111);border-color:transparent}
+.mo-clear{color:var(--color-danger,#ff453a)}
+@media (max-width:900px){.mo-filters{flex-wrap:nowrap;overflow-x:auto;padding-bottom:.3rem;-webkit-overflow-scrolling:touch}.mo-filters>*{flex:none}}
+.mo-banner{max-width:1240px;margin:0 auto 1rem;padding:.7rem 1rem;border:1px solid var(--color-primary);border-radius:12px;background:var(--color-surface,#1f1f22)}
