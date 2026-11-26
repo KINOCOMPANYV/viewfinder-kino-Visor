@@ -15,6 +15,7 @@ $configTools = [
     'inventario' => ['/admin/inventario', '📦 Inventario', 'Subir archivo SYS y comparar stock.', 'Datos'],
     'precios' => ['/admin/precios', '💲 Precios', 'Precio SYS, multiplicador y precio público.', 'Datos'],
     'condenados' => ['/admin/condenados', '🚫 Condenados', 'Códigos que se ignoran en todo el sistema.', 'Datos'],
+    'tienda' => ['/admin/tienda', '🛍️ Tienda', 'Catálogo de venta público: celular de avisos y datos de transferencia.', 'Documentos'],
     'remision' => ['/admin/remision', '🚚 Cotización', 'Plantilla de la Remisión / Cotización en PDF.', 'Documentos'],
     'pedidos' => ['/admin/pedidos', '🗄 Pedidos v1', 'Respaldo de los pedidos de bodega de v1.', 'Respaldo y registro'],
     'registro' => ['/admin/registro', '🧾 Registro', 'Errores y eventos del sistema; respaldos nocturnos.', 'Respaldo y registro'],

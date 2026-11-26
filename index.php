@@ -444,6 +444,17 @@ if ($uri === '/admin/logout') {
     redirect('/admin/login');
 }
 
+// Tienda web pública (catálogo de venta) y página pública del pedido con fotos
+if ($uri === '/tienda') {
+    include __DIR__ . '/templates/client/tienda.php';
+    exit;
+}
+if (preg_match('#^/pedido/([a-f0-9]{32})$#', $uri, $matches)) {
+    $shopToken = $matches[1];
+    include __DIR__ . '/templates/client/tienda_order.php';
+    exit;
+}
+
 // Hacer pedido (clientes): carrito en el dispositivo, envío a la BD, y bandeja del personal
 if ($uri === '/hacer-pedido') {
     include __DIR__ . '/templates/client/make_order.php';
@@ -572,6 +583,11 @@ if ($uri === '/admin/remision') {
     exit;
 }
 
+if ($uri === '/admin/tienda') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_tienda.php';
+    exit;
+}
 if ($uri === '/admin/precios') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_prices.php';
