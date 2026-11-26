@@ -1672,14 +1672,14 @@ function requireStaff(): void
 
 /**
  * Botones fijos del encabezado de las páginas públicas: «🛒 Hacer pedido» (todos, con el contador del carrito)
- * y, solo para el personal, «Pedidos bodega» (enlace /pedidos-alistar). Visibles también en celular.
+ * Las herramientas del personal (Pedidos bodega, Extractor) ya no salen aquí: se llega desde el menú lateral / Configuraciones.
  */
 function pedidosHeaderBtn(): string
 {
     $html = '<a href="/hacer-pedido" class="btn btn-sm btn-primary hdr-pedidos hdr-cart" aria-label="Hacer pedido" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Tu pedido: productos agregados y envío">' . icon('receipt') . ' Hacer pedido <span class="cart-count" id="cartCount" hidden></span></a>'
         . '<script src="/assets/js/cart_badge.js?v=' . APP_VERSION . '" defer></script>';
     if (isStaff()) {
-        $html = '<a href="/pedidos-alistar" class="btn btn-sm btn-secondary hdr-pedidos" aria-label="Pedidos bodega" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Pedidos por alistar (rojo) y listos (verde)">' . icon('clipboard') . ' Pedidos bodega</a>' . $html;
+        $html = '<a href="/pedidos" class="btn btn-sm btn-secondary hdr-pedidos" aria-label="Sistema" style="font-size:0.8rem; padding:0.4rem 0.8rem;" title="Abrir el sistema nuevo (Pedidos, Productos, Configuraciones)">' . icon('clipboard') . ' Sistema</a>' . $html;
     }
     return $html;
 }
