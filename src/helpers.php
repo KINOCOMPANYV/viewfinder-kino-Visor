@@ -1728,6 +1728,55 @@ function promoCategories(PDO $db): array
 }
 
 
+/** Enlace permitido en la tienda (banner, galería): vacío, #ancla, /ruta-interna o https://. Otro valor → ''. */
+function tiendaSafeLink(string $link): string
+{
+    $link = trim($link);
+    return ($link === '' || $link[0] === '#' || (str_starts_with($link, '/') && !str_starts_with($link, '//')) || preg_match('#^https://#i', $link)) ? $link : '';
+}
+
+/**
+ * Optimiza una imagen subida para la web: JPG/PNG/WebP → WebP (o JPG si el servidor no tiene WebP), máx. $maxW px de ancho.
+ * Devuelve [bytes, mime, ancho, alto]. Lanza RuntimeException si no es una imagen válida.
+ */
+function optimizeWebImage(string $path, int $maxW = 1000): array
+{
+    $info = @getimagesize($path);
+    $src = $info ? match ($info[2]) { IMAGETYPE_JPEG => @imagecreatefromjpeg($path), IMAGETYPE_PNG => @imagecreatefrompng($path), IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false, default => false } : false;
+    if (!$src) throw new RuntimeException('La imagen debe ser JPG, PNG o WebP.');
+    if (imagesx($src) > $maxW) $src = imagescale($src, $maxW);
+    if (!imageistruecolor($src)) imagepalettetotruecolor($src);
+    $w = imagesx($src); $h = imagesy($src);
+    ob_start();
+    if (function_exists('imagewebp')) { imagewebp($src, null, 78); $mime = 'image/webp'; }
+    else { imagejpeg($src, null, 82); $mime = 'image/jpeg'; }
+    return [ob_get_clean(), $mime, $w, $h];
+}
+
+/**
+ * Galería con scroll de /tienda (tabla tienda_gallery, migración 045). La primera vez se llena con las fotos de
+ * assets/img/tienda/galeria/ (POEDAGAR verde). Devuelve [['id','caption','link','src','w','h'], …] en orden.
+ */
+function tiendaGallery(bool $seed = true): array
+{
+    try {
+        $db = getDB();
+        if ($seed && appSetting('tienda_gal_seeded', '0') !== '1') {
+            setAppSetting($db, 'tienda_gal_seeded', '1'); // primero la marca: si el admin borra todas, no vuelven
+            if ((int) $db->query('SELECT COUNT(*) FROM tienda_gallery')->fetchColumn() === 0) {
+                $ins = $db->prepare("INSERT INTO tienda_gallery (pos, caption, mime, width, height, data) VALUES (?, '', 'image/webp', ?, ?, ?)");
+                foreach (glob(BASE_DIR . '/assets/img/tienda/galeria/*.webp') ?: [] as $i => $f) {
+                    $sz = @getimagesize($f) ?: [0, 0];
+                    $ins->execute([($i + 1) * 10, $sz[0], $sz[1], file_get_contents($f)]);
+                }
+            }
+        }
+        $rows = $db->query('SELECT id, caption, link, width, height, UNIX_TIMESTAMP(updated_at) AS t FROM tienda_gallery ORDER BY pos, id')->fetchAll(PDO::FETCH_ASSOC);
+    } catch (\Throwable $e) { return []; } // migración 045 pendiente
+    return array_map(fn($r) => ['id' => (int) $r['id'], 'caption' => $r['caption'], 'link' => $r['link'],
+        'src' => '/tienda/galeria/' . (int) $r['id'] . '?v=' . (int) $r['t'], 'w' => (int) $r['width'] ?: 800, 'h' => (int) $r['height'] ?: 1000], $rows);
+}
+
 /** Banner hero de /tienda (Admin → Tienda): textos en app_settings, imagen JPEG en doc_templates ('tienda_banner', base64). Devuelve null si está apagado. */
 function tiendaBanner(): ?array
 {
