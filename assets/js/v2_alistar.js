@@ -50,6 +50,46 @@
             (Math.round(diff) !== 0 ? '<span style="color:var(--color-' + (diff > 0 ? 'danger' : 'success') + ')">' + (diff > 0 ? '−' : '+') + money(Math.abs(diff)) + ' vs. pedido</span>' : '') + '</div>' +
             '<div style="margin-top:.5rem">' + (chg.length ? '<b>Cambios:</b> ' + chg.join(' · ') : '<span style="color:var(--color-success)">✅ Sin cambios: igual al pedido</span>') + '</div></div>';
     }
+    let swapId = 0; // línea con el buscador de cambio abierto
+    const coverSrc = (c) => String(c || '').replace(/^\[VIDEO\]/, '');
+    function swapBox(l) {
+        return '<div style="flex-basis:100%;margin-top:.4rem"><input id="swQ" placeholder="Busca el producto nuevo: código, nombre o carpeta" autocomplete="off" style="width:100%;padding:.4rem .55rem;border-radius:6px;border:1px solid var(--color-border-hover);background:var(--color-bg);color:inherit">' +
+            '<div id="swMsg" class="v2-code" style="margin:.3rem 0">Escribe y toca la foto del producto nuevo.</div>' +
+            '<div id="swGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.5rem"></div></div>';
+    }
+    function bindSwap(l) {
+        const inp = document.getElementById('swQ'), grid = document.getElementById('swGrid'), st = document.getElementById('swMsg');
+        if (!inp) return;
+        inp.focus();
+        let t = 0, seq = 0;
+        inp.addEventListener('input', () => {
+            clearTimeout(t);
+            const q = inp.value.trim();
+            if (q.length < 2) { grid.innerHTML = ''; return; }
+            t = setTimeout(() => {
+                const my = ++seq;
+                fetch('/api/search?limit=30&q=' + encodeURIComponent(q), { credentials: 'same-origin' }).then((r) => r.json()).then((data) => {
+                    if (my !== seq) return;
+                    grid.innerHTML = Array.isArray(data) && data.length ? data.map((x) =>
+                        '<button type="button" class="v2-chip" data-sku="' + esc(x.sku) + '" data-name="' + esc(x.name || '') + '" data-cover="' + esc(coverSrc(x.cover_image_url)) + '" style="display:block;text-align:left;padding:.3rem;height:auto">' +
+                        '<img src="' + esc(coverSrc(x.cover_image_url)) + '" alt="" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px"><b style="display:block;font-size:.8rem">' + esc(x.sku) + '</b><small style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.name || '') + '</small></button>').join('')
+                        : '<span class="v2-code">Sin resultados con foto.</span>';
+                }).catch(() => { if (my === seq) st.textContent = '⚠️ No se pudo buscar.'; });
+            }, 250);
+        });
+        grid.addEventListener('click', (e) => {
+            const b = e.target.closest('button[data-sku]'); if (!b) return;
+            st.textContent = 'Cambiando…';
+            fetch('/enviar-catalogo/extraer', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' }, body: JSON.stringify({ codes: [b.dataset.sku] }) })
+                .then((r) => r.json()).then((j) => {
+                    const pr = j && j.photos && j.photos[b.dataset.sku];
+                    if (!l.base) l.base = { code: l.code, name: l.name, price: l.price };
+                    Object.assign(l, { code: b.dataset.sku, name: b.dataset.name || (pr && pr.name) || '', price: pr && pr.price != null ? Number(pr.price) : null, checked: false });
+                    if (b.dataset.cover) covers[l.code] = b.dataset.cover;
+                    swapId = 0; draw(); later();
+                }).catch(() => { st.textContent = '⚠️ No se pudo cambiar.'; });
+        });
+    }
     function draw() {
         list.innerHTML = lines.map((l) => {
             const img = covers[l.code] ? '<img class="v2-thumb al-zoom" loading="lazy" src="' + esc(covers[l.code]) + '" alt="Ver foto grande" title="Ver foto grande" data-code="' + esc(l.code) + '" data-name="' + esc(l.name) + '">' : '';
@@ -57,12 +97,19 @@
             const off = lock ? ' disabled' : '';
             return '<div class="v2-prod" style="padding:.55rem 0;border-top:1px solid var(--color-border);gap:.7rem;align-items:center;' + (l.qty === 0 ? 'opacity:.5' : '') + '">' + img +
                 '<div style="flex:1;min-width:0"><div class="v2-name">' + esc(l.name) + '</div><span class="v2-code">' + esc(l.code) + ' · pedido ' + l.origQty + '</span>' +
-                '<input data-i="' + l.id + '" data-f="note" value="' + esc(l.note) + '" placeholder="Nota (faltante, cambio…)"' + off + ' style="display:block;width:100%;margin-top:.3rem;padding:.35rem .5rem;border-radius:6px;border:1px solid var(--color-border-hover);background:var(--color-bg);color:inherit"></div>' +
+                '<input data-i="' + l.id + '" data-f="note" value="' + esc(l.note) + '" placeholder="Nota (faltante, cambio…)"' + off + ' style="display:block;width:100%;margin-top:.3rem;padding:.35rem .5rem;border-radius:6px;border:1px solid var(--color-border-hover);background:var(--color-bg);color:inherit">' +
+                (l.base && l.code !== l.base.code ? '<div class="v2-code" style="margin-top:.25rem">🔄 Cambiado · antes ' + esc(l.base.code) + (lock ? '' : ' <button class="v2-chip" data-a="undo" data-i="' + l.id + '">Deshacer</button>') + '</div>' : '') +
+                (lock ? '' : '<button class="v2-chip" data-a="sw" data-i="' + l.id + '" style="margin-top:.3rem">🔄 Cambiar producto</button>') + '</div>' +
                 '<div style="display:flex;align-items:center;gap:.3rem"><button class="v2-chip" data-a="m" data-i="' + l.id + '"' + off + '>−</button><b>' + l.qty + '</b><button class="v2-chip" data-a="p" data-i="' + l.id + '"' + off + '>+</button></div>' +
                 (ro ? '<span class="v2-code">' + (l.checked ? '🔒 Alistado' : '') + '</span>' : l.checked
                     ? '<button class="v2-chip" data-a="u" data-i="' + l.id + '" title="Solo Administración o Facturación">🔒 Alistado · Desbloquear</button>'
                     : '<label style="white-space:nowrap"><input type="checkbox" data-a="c" data-i="' + l.id + '"> Alistado</label>') + '</div>';
         }).join('');
+        const sl = swapId && lines.find((x) => x.id === swapId);
+        if (sl && !ro && !sl.checked) {
+            const row = list.querySelector('button[data-a="sw"][data-i="' + sl.id + '"]');
+            if (row) { row.parentElement.insertAdjacentHTML('beforeend', swapBox(sl)); bindSwap(sl); }
+        }
         const p = pending();
         if (ro) { foot.innerHTML = (d.status === 'listo' ? '🟢 Alistamiento finalizado' + (d.who ? ' · chequeó ' + esc(d.who) : '') : '') + totals(); return; }
         foot.innerHTML = '<span>' + (lines.length - p) + ' de ' + lines.length + ' listos</span>' +
@@ -95,6 +142,8 @@
         const b = e.target.closest('button[data-a]'); if (!b || ro) return;
         const l = lines.find((x) => x.id === +b.dataset.i);
         if (b.dataset.a === 'u') { unlockLine(l); return; }
+        if (b.dataset.a === 'sw') { swapId = swapId === l.id ? 0 : l.id; draw(); return; }
+        if (b.dataset.a === 'undo' && !l.checked && l.base) { Object.assign(l, { code: l.base.code, name: l.base.name, price: l.base.price }); draw(); later(); return; }
         if (l.checked) return;
         l.qty = Math.max(0, l.qty + (b.dataset.a === 'p' ? 1 : -1)); draw(); later();
     });
