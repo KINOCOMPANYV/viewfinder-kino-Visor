@@ -611,6 +611,12 @@ if ($uri === '/admin/products/price' && $method === 'POST') {
     exit;
 }
 
+if ($uri === '/admin/categorias/promo' && $method === 'POST') {
+    requireAdmin();
+    include __DIR__ . '/src/controllers/admin_categoria_promo.php';
+    exit;
+}
+
 if ($uri === '/admin/products/active' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_products_active.php';

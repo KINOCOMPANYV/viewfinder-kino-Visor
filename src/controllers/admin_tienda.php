@@ -11,6 +11,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         setAppSetting($db, 'tienda_bank_info', mb_substr(trim((string) ($_POST['bank'] ?? '')), 0, 800, 'UTF-8'));
         setAppSetting($db, 'tienda_tagline', mb_substr(trim((string) ($_POST['tagline'] ?? '')), 0, 120, 'UTF-8'));
         setAppSetting($db, 'tienda_hero_sku', mb_substr(trim((string) ($_POST['hero_sku'] ?? '')), 0, 60, 'UTF-8'));
+        setAppSetting($db, 'tienda_brands', mb_substr(trim((string) ($_POST['brands'] ?? '')), 0, 200, 'UTF-8') ?: '*');
         setAppSetting($db, 'tienda_delivery', mb_substr(trim((string) ($_POST['delivery'] ?? '')), 0, 200, 'UTF-8'));
         $flash = 'Guardado.';
     } catch (\Throwable $e) { $error = $e->getMessage(); }
@@ -23,11 +24,13 @@ include __DIR__ . '/../../templates/admin/partials/v2_start.php';
     <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
     <?php if ($flash): ?><p style="color:var(--color-success)"><?= e($flash) ?></p><?php endif; ?>
     <?php if ($error): ?><p style="color:var(--color-danger)"><?= e($error) ?></p><?php endif; ?>
-    <p>Tu tienda pública está en <a href="/tienda" target="_blank" rel="noopener"><b>/tienda</b></a>. Solo muestra los productos con el interruptor «Catálogo» encendido en Productos.</p>
+    <p>Tu tienda pública está en <a href="/tienda" target="_blank" rel="noopener"><b>/tienda</b></a>. Solo muestra los productos con el interruptor «Catálogo» encendido en Productos, con foto y con stock. Las categorías «Promocionales» (Productos → Categorías) salen primero.</p>
     <label>Celular que recibe el aviso de cada pedido
         <input class="v2-input" name="notify" value="<?= e(substr(shopNotifyPhone(), 2)) ?>" inputmode="tel" maxlength="20" style="width:100%"></label>
     <label>Datos para transferencia (banco, cuenta, titular, Nequi…)
         <textarea class="v2-input" name="bank" rows="4" maxlength="800" style="width:100%"><?= e(shopBankInfo()) ?></textarea></label>
+    <label>Marcas que muestra la tienda (separadas por coma; «*» = todas)
+        <input class="v2-input" name="brands" value="<?= e(appSetting('tienda_brands', 'POEDAGAR')) ?>" maxlength="200" style="width:100%" placeholder="POEDAGAR"></label>
     <label>Frase bajo el nombre (opcional)
         <input class="v2-input" name="tagline" value="<?= e(appSetting('tienda_tagline', 'Medellín · Bogotá · Panamá')) ?>" maxlength="120" style="width:100%"></label>
     <label>Entrega (opcional, se muestra en el pedido)

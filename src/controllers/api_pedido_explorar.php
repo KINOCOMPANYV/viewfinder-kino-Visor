@@ -15,6 +15,7 @@ $folderId = preg_match('/^[A-Za-z0-9_-]{10,100}$/', (string) ($_GET['carpeta'] ?
 $q = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 80, 'UTF-8');
 $page = max(1, min(200, (int) ($_GET['p'] ?? 1)));
 $per = 24;
+$tienda = !empty($_GET['tienda']); // /tienda: solo con stock, marcas permitidas, categorías y promocionales primero
 
 $mapRow = function (array $r): array {
     $cv = parseStoredCover($r['cover_image_url'], 400);
@@ -30,8 +31,9 @@ if (isset($_GET['skus'])) {
     $codes = array_slice(array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $_GET['skus'])), 'strlen'))), 0, 100);
     $items = [];
     if ($codes) {
-        $st = $db->prepare('SELECT p.sku, p.name, p.cover_image_url, p.price_suggested, ' . stockSql('p') . ' AS stock FROM products p WHERE p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > \'\' AND p.sku IN (' . implode(',', array_fill(0, count($codes), '?')) . ')');
-        $st->execute($codes);
+        [$tr, $tp] = $tienda ? tiendaRulesSql() : ['', []];
+        $st = $db->prepare('SELECT p.sku, p.name, p.cover_image_url, p.price_suggested, ' . stockSql('p') . ' AS stock FROM products p WHERE p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > \'\' AND p.sku IN (' . implode(',', array_fill(0, count($codes), '?')) . ')' . $tr);
+        $st->execute(array_merge($codes, $tp));
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $items[] = $mapRow($r);
     }
     header('Cache-Control: no-store');
@@ -46,6 +48,20 @@ $out = ['path' => [], 'folders' => [], 'items' => [], 'total' => 0, 'page' => $p
 if (!empty($_GET['facets'])) { // opciones de los filtros (se piden una vez al abrir la página)
     $o = searchFilterOptions($db);
     $out['facets'] = ['brands' => $o['brands'] ?? [], 'prices' => !empty($o['prices'])];
+    if ($tienda) {
+        $allowed = tiendaBrands();
+        if ($allowed) $out['facets']['brands'] = array_values(array_filter($out['facets']['brands'], fn($b) => in_array(is_array($b) ? ($b['name'] ?? $b['brand'] ?? '') : $b, $allowed, true)));
+        [$tr, $tp] = tiendaRulesSql();
+        $promo = promoCategories($db);
+        $cs = $db->prepare("SELECT p.category AS name, COUNT(*) AS n, MIN(p.cover_image_url) AS cover FROM products p WHERE TRIM(p.category) <> ''" . $tr . ' GROUP BY p.category');
+        $cs->execute($tp);
+        $cats = [];
+        foreach ($cs->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $cats[] = ['name' => $r['name'], 'n' => (int) $r['n'], 'cover' => coverUrlAtSize($r['cover'], 400), 'promo' => in_array($r['name'], $promo, true)];
+        }
+        usort($cats, fn($a, $b) => [$b['promo'], $b['n']] <=> [$a['promo'], $a['n']]);
+        $out['facets']['cats'] = $cats;
+    }
 }
 $wantProducts = $q !== '' || $filtersOn || !empty($_GET['todos']);
 if ($folderId !== '' && $folderId !== $root) {
@@ -59,7 +75,7 @@ if ($folderId !== '' && $folderId !== $root) {
     $subs = $c['subfolders'] ?? [];
     $folderId = '';
 }
-if ($q === '' && !$filtersOn) {
+if ($q === '' && !$filtersOn && !$tienda) {
     foreach ($subs as $s) {
         if (str_starts_with(ltrim($s['name']), '_')) continue; // carpetas de trabajo como «_INDICE» no son catálogo
         $out['folders'][] = ['id' => $s['id'], 'name' => folderDisplayName($s['name']), 'cover' => $s['cover']];
@@ -67,13 +83,18 @@ if ($q === '' && !$filtersOn) {
 }
 
 if ($wantProducts) {
-    $f = ['marca' => $flt['marca'], 'cat' => [], 'carpeta' => $folderId !== '' ? [$folderId] : [], 'pmin' => $flt['pmin'], 'pmax' => $flt['pmax'], 'foto' => true, 'contiene' => '', 'stock' => $flt['stock']];
+    $f = ['marca' => $flt['marca'], 'cat' => $tienda ? $flt['cat'] : [], 'carpeta' => $folderId !== '' ? [$folderId] : [], 'pmin' => $flt['pmin'], 'pmax' => $flt['pmax'], 'foto' => true, 'contiene' => '', 'stock' => $flt['stock']];
     [$sql, $params] = catalogFilterSql($db, $f);
     if ($genero !== '') { $sql .= ' AND p.gender = ?'; $params[] = $genero; }
+    if ($tienda) { [$tr, $tp] = tiendaRulesSql(); $sql .= $tr; $params = array_merge($params, $tp); }
     $order = $flt['oprecio'] === 'desc' ? 'p.price_suggested DESC, p.sku ASC'
         : ($flt['oprecio'] === 'asc' ? '(p.price_suggested IS NULL OR p.price_suggested = 0), p.price_suggested ASC, p.sku ASC'
         : ($flt['ocodigo'] === 'desc' ? 'p.sku DESC' : 'p.sku ASC'));
     $orderArgs = [];
+    if ($tienda && $flt['oprecio'] === '' && $flt['ocodigo'] === '') { // categorías promocionales primero (el código exacto de una búsqueda sigue yendo antes)
+        $promo = promoCategories($db);
+        if ($promo) $order = '(p.category IN (' . implode(',', array_map([$db, 'quote'], $promo)) . ')) DESC, ' . $order;
+    }
     if ($q !== '') {
         $clean = preg_replace('/\.\w{2,4}$/i', '', $q);
         $forms = skuExactForms($clean) ?: [''];

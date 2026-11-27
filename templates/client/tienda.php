@@ -11,8 +11,9 @@ $bank = shopBankInfo();
 // Fotos reales del catálogo para la portada y la tarjeta de JOEFOX (solo lee MySQL; sin foto no se muestra el bloque).
 $pickPhoto = function (string $where, array $args = []) {
     try {
-        $st = getDB()->prepare("SELECT sku, name, cover_image_url FROM products WHERE archived = 0 AND is_active = 1 AND cover_image_url > '' AND cover_image_url NOT LIKE '[VIDEO]%' $where LIMIT 1");
-        $st->execute($args);
+        [$tr, $tp] = tiendaRulesSql(); // mismas reglas que el catálogo: activo, foto, con stock y marcas de la tienda
+        $st = getDB()->prepare("SELECT p.sku, p.name, p.cover_image_url FROM products p WHERE p.cover_image_url NOT LIKE '[VIDEO]%' $tr $where LIMIT 1");
+        $st->execute(array_merge($tp, $args));
         $r = $st->fetch(PDO::FETCH_ASSOC);
         return $r ? ['url' => coverUrlAtSize($r['cover_image_url'], 900), 'alt' => trim((string) $r['name']) !== '' ? $r['name'] : 'Reloj ' . $r['sku']] : null;
     } catch (\Throwable $e) { return null; }
@@ -22,6 +23,8 @@ $hero = ($heroSku !== '' ? $pickPhoto('AND sku = ?', [$heroSku]) : null)
     ?? $pickPhoto("AND brand IN ('POEDAGAR','JOEFOX') AND price_suggested > 0 ORDER BY (brand = 'POEDAGAR') DESC, sku");
 $joefoxPhoto = $pickPhoto("AND brand = 'JOEFOX' ORDER BY (price_suggested > 0) DESC, sku DESC");
 $img = '/assets/img/marcas/';
+$okBrands = tiendaBrands(); // vacío = todas
+$showBrand = fn(string $b) => !$okBrands || in_array($b, $okBrands, true);
 $ver = APP_VERSION;
 ?><!DOCTYPE html>
 <html lang="es" data-default-theme="light">
@@ -58,6 +61,7 @@ $ver = APP_VERSION;
                 <button class="tn-filterbtn" id="tnFilterBtn" type="button" aria-expanded="false" aria-controls="tnFilters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span>Filtros</span><b id="tnFilterN" hidden></b></button>
             </div>
             <div class="tn-filters" id="tnFilters" hidden>
+                <select id="tnCat" class="tn-sel" aria-label="Categoría"><option value="">Todas las categorías</option></select>
                 <select id="tnMarca" class="tn-sel" aria-label="Marca"><option value="">Todas las marcas</option></select>
                 <span class="tn-seg" id="tnGenero" role="group" aria-label="Para">
                     <button type="button" data-g="hombre">Hombre</button><button type="button" data-g="mujer">Mujer</button><button type="button" data-g="unisex">Unisex</button>
@@ -85,7 +89,7 @@ $ver = APP_VERSION;
         <section class="tn-sec" aria-labelledby="tnBrandH">
             <h2 id="tnBrandH">Por marca</h2>
             <div class="tn-brands">
-                <button type="button" class="tn-brand-card" data-marca="JOEFOX">
+                <?php if ($showBrand('JOEFOX')): ?><button type="button" class="tn-brand-card" data-marca="JOEFOX">
                     <span class="tn-bc-txt">
                         <img class="tn-bc-logo tn-logo-l" src="<?= $img ?>joefox.webp?v=<?= $ver ?>" alt="JOEFOX" width="640" height="281">
                         <img class="tn-bc-logo tn-logo-d" src="<?= $img ?>joefox-oscuro.webp?v=<?= $ver ?>" alt="" aria-hidden="true" width="640" height="281">
@@ -93,15 +97,15 @@ $ver = APP_VERSION;
                         <span class="tn-bc-go">Ver colección</span>
                     </span>
                     <?php if ($joefoxPhoto): ?><span class="tn-bc-ph"><img src="<?= e($joefoxPhoto['url']) ?>" alt="" loading="lazy" decoding="async"></span><?php endif; ?>
-                </button>
-                <button type="button" class="tn-brand-card tn-bc-dark" data-marca="POEDAGAR">
+                </button><?php endif; ?>
+                <?php if ($showBrand('POEDAGAR')): ?><button type="button" class="tn-brand-card tn-bc-dark" data-marca="POEDAGAR">
                     <span class="tn-bc-txt">
                         <img class="tn-bc-logo" src="<?= $img ?>poedagar-blanco.png?v=<?= $ver ?>" alt="POEDAGAR" width="1200" height="887">
                         <span class="tn-bc-cap">KINO es distribuidor exclusivo autorizado de POEDAGAR en Colombia</span>
                         <span class="tn-bc-go">Ver colección</span>
                     </span>
                     <span class="tn-bc-ph"><img src="/assets/img/tienda/poedagar-oro-rosa-card.webp?v=<?= $ver ?>" alt="" loading="lazy" decoding="async"></span>
-                </button>
+                </button><?php endif; ?>
             </div>
             <p class="tn-allbrands"><button type="button" class="tn-link" id="tnAllBrands" aria-expanded="false" aria-controls="tnBrandList">Ver todas las marcas</button></p>
             <div class="tn-brandlist" id="tnBrandList" hidden></div>

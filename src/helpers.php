@@ -1698,3 +1698,27 @@ function shopBankInfo(): string
 {
     return trim(appSetting('tienda_bank_info', ''));
 }
+
+/** Marcas que muestra la tienda (/tienda). Ajuste «tienda_brands» (separadas por coma); por defecto POEDAGAR; «*» = todas. */
+function tiendaBrands(): array
+{
+    $v = trim(appSetting('tienda_brands', 'POEDAGAR'));
+    if ($v === '' || $v === '*') return [];
+    return array_values(array_unique(array_filter(array_map('trim', explode(',', $v)), 'strlen')));
+}
+
+/** Reglas de la tienda: activo en el catálogo, con foto, con stock > 0 y de las marcas permitidas. Devuelve [sql con AND, params]. Alias p. */
+function tiendaRulesSql(): array
+{
+    $sql = " AND p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > '' AND " . stockSql('p') . ' > 0';
+    $b = tiendaBrands();
+    if ($b) $sql .= ' AND p.brand IN (' . implode(',', array_fill(0, count($b), '?')) . ')';
+    return [$sql, $b];
+}
+
+/** Categorías marcadas como «Promocional» (salen primero en la tienda). */
+function promoCategories(PDO $db): array
+{
+    try { return $db->query('SELECT category FROM category_settings WHERE is_promo = 1')->fetchAll(PDO::FETCH_COLUMN); }
+    catch (\Throwable $e) { return []; }
+}

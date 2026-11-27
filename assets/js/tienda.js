@@ -6,7 +6,7 @@
     const big = (u) => String(u || '').replace(/=s\d+/, '=s900');
     const KEY = 'kinoTienda';
     const meta = {};
-    const st = { folder: '', q: '', page: 1, pages: 1, marca: '', genero: '', stock: false, precio: '', orden: '', seq: 0, step: 1, busy: false };
+    const st = { folder: '', q: '', page: 1, pages: 1, marca: '', cat: '', genero: '', stock: false, precio: '', orden: '', seq: 0, step: 1, busy: false };
     const nameOf = (m) => (m.name || '').replace(new RegExp('\\s*' + m.sku.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*', 'i'), ' ').trim() || 'Reloj ' + m.sku;
     const isOut = (m) => !!m && m.stock !== null && m.stock !== undefined && m.stock <= 0;
     const PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
@@ -49,9 +49,9 @@
         return r.json();
     }
     function params() {
-        const p = { todos: '1', todo: '1', p: st.page };
-        if (st.folder) p.carpeta = st.folder;
-        if (st.q) p.q = st.q;
+        const p = { tienda: '1', todos: '1', todo: '1', p: st.page };
+        if (st.cat) p['cat[]'] = st.cat;
+                if (st.q) p.q = st.q;
         if (st.marca) p['marca[]'] = st.marca;
         if (st.genero) p.genero = st.genero;
         if (st.stock) p.stock = 'con';
@@ -81,7 +81,7 @@
         let d;
         try { d = await api(params()); } catch (e) { if (seq === st.seq) grid.innerHTML = '<p class="tn-empty">No pudimos cargar los productos. Revisa tu conexión e intenta de nuevo.</p>'; return; }
         if (seq !== st.seq) return;
-        if (reset) { grid.innerHTML = ''; paintCats(d); }
+        if (reset) { grid.innerHTML = ''; paintCats(); }
         const base = grid.children.length;
         grid.insertAdjacentHTML('beforeend', d.items.map((it, i) => card(it, base + i)).join(''));
         grid.querySelectorAll('.tn-card:not([data-ok])').forEach((c) => { c.dataset.ok = '1'; paintAdd(c, c.dataset.sku); });
@@ -92,37 +92,39 @@
         if (d.facets && d.facets.brands) fillBrands(d.facets.brands);
         paintCart();
     }
-    const tile = (f) => '<button type="button" class="tn-cat" data-f="' + esc(f.id) + '"><span class="tn-cat-ph">' + (f.cover ? '<img src="' + esc(f.cover) + '" alt="" loading="lazy" decoding="async" data-fb="' + esc(f.name.charAt(0)) + '">' : esc(f.name.charAt(0))) + '</span><span class="tn-cat-nm">' + esc(f.name) + '</span></button>';
-    function paintCats(d) {
-        const path = d.path || [];
+    let CATS = [];
+    const tile = (c) => '<button type="button" class="tn-cat" data-cat="' + esc(c.name) + '"><span class="tn-cat-ph">' + (c.cover ? '<img src="' + esc(c.cover) + '" alt="" loading="lazy" decoding="async" data-fb="' + esc(c.name.charAt(0)) + '">' : esc(c.name.charAt(0))) + (c.promo ? '<i class="tn-promo">Promo</i>' : '') + '</span><span class="tn-cat-nm">' + esc(c.name) + '</span></button>';
+    function paintCats() {
         const home = isHome();
         $('tnMain').classList.toggle('tn-searching', !home);
-        $('tnCrumbs').innerHTML = home ? '' : '<button type="button" data-home>Inicio</button>' + path.map((p, i) => ' › <button type="button" data-f="' + esc(p.id) + '"' + (i === path.length - 1 ? ' aria-current="page"' : '') + '>' + esc(p.name) + '</button>').join('');
-        $('tnTitle').textContent = st.q ? 'Resultados para «' + st.q + '»' : (path.length ? path[path.length - 1].name : (st.marca ? st.marca : (home ? 'Todos los productos' : 'Resultados')));
-        const folders = (d.folders || []);
-        const cats = $('tnCats'), subs = $('tnSubs');
-        cats.innerHTML = home ? folders.map(tile).join('') : '';
-        cats.closest('.tn-sec').hidden = !(home && folders.length);
-        subs.innerHTML = (!home && st.folder) ? folders.map(tile).join('') : '';
-        subs.hidden = !subs.innerHTML;
+        $('tnCrumbs').innerHTML = home ? '' : '<button type="button" data-home>Inicio</button>' + (st.cat ? ' › <button type="button" aria-current="page">' + esc(st.cat) + '</button>' : '');
+        $('tnTitle').textContent = st.q ? 'Resultados para «' + st.q + '»' : (st.cat ? st.cat : (st.marca ? st.marca : (home ? 'Todos los productos' : 'Resultados')));
+        const cats = $('tnCats');
+        cats.innerHTML = home ? CATS.map(tile).join('') : '';
+        cats.closest('.tn-sec').hidden = !(home && CATS.length);
+    }
+    function fillCats(list) {
+        CATS = list || [];
+        const s = $('tnCat'); if (s.options.length <= 1) CATS.forEach((c) => s.add(new Option(c.name, c.name)));
+        paintCats();
     }
     function fillBrands(b) {
         const names = b.map((x) => typeof x === 'string' ? x : (x.name || x.brand || '')).filter(Boolean);
         const s = $('tnMarca'); if (s.options.length <= 1) names.forEach((n) => s.add(new Option(n, n)));
         const l = $('tnBrandList'); if (!l.childElementCount) l.innerHTML = names.map((n) => '<button type="button" class="tn-chip" data-marca="' + esc(n) + '">' + esc(n) + '</button>').join('');
     }
-    function isHome() { return !(st.q || st.folder || filtersCount()); }
+    function isHome() { return !(st.q || st.cat || filtersCount()); }
     function resetAll() {
-        st.folder = st.q = st.marca = st.genero = st.precio = st.orden = ''; st.stock = false;
-        $('tnQ').value = ''; $('tnMarca').value = $('tnPrecio').value = $('tnOrden').value = '';
+        st.cat = st.q = st.marca = st.genero = st.precio = st.orden = ''; st.stock = false;
+        $('tnQ').value = ''; $('tnCat').value = $('tnMarca').value = $('tnPrecio').value = $('tnOrden').value = '';
         reload(); window.scrollTo({ top: 0 });
     }
     function pickBrand(name) {
         const s = $('tnMarca'); if (![...s.options].some((o) => o.value === name)) s.add(new Option(name, name));
-        st.marca = name; s.value = name; st.folder = ''; st.q = ''; $('tnQ').value = '';
+        st.marca = name; s.value = name; st.cat = ''; $('tnCat').value = ''; st.q = ''; $('tnQ').value = '';
         reload(); window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    function filtersCount() { return [st.marca, st.genero, st.stock, st.precio, st.orden].filter(Boolean).length; }
+    function filtersCount() { return [st.cat, st.marca, st.genero, st.stock, st.precio, st.orden].filter(Boolean).length; }
     function syncFilterUI() {
         const n = filtersCount(); $('tnFilterN').hidden = !n; $('tnFilterN').textContent = n; $('tnClear').hidden = !n;
         $('tnGenero').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.g === st.genero)));
@@ -134,17 +136,17 @@
     let tm = 0;
     $('tnQ').addEventListener('input', (e) => { clearTimeout(tm); tm = setTimeout(() => { st.q = e.target.value.trim(); reload(); }, 280); });
     $('tnFilterBtn').addEventListener('click', () => { const f = $('tnFilters'); f.hidden = !f.hidden; $('tnFilterBtn').setAttribute('aria-expanded', String(!f.hidden)); });
+    $('tnCat').addEventListener('change', (e) => { st.cat = e.target.value; st.q = ''; $('tnQ').value = ''; reload(); });
     $('tnMarca').addEventListener('change', (e) => { st.marca = e.target.value; reload(); });
     $('tnPrecio').addEventListener('change', (e) => { st.precio = e.target.value; reload(); });
     $('tnOrden').addEventListener('change', (e) => { st.orden = e.target.value; reload(); });
     $('tnStock').addEventListener('click', () => { st.stock = !st.stock; reload(); });
     $('tnGenero').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.genero = st.genero === b.dataset.g ? '' : b.dataset.g; reload(); });
-    $('tnClear').addEventListener('click', () => { st.marca = st.genero = st.precio = st.orden = ''; st.stock = false; $('tnMarca').value = $('tnPrecio').value = $('tnOrden').value = ''; reload(); });
+    $('tnClear').addEventListener('click', () => { st.cat = st.marca = st.genero = st.precio = st.orden = ''; st.stock = false; $('tnCat').value = $('tnMarca').value = $('tnPrecio').value = $('tnOrden').value = ''; reload(); });
     $('tnMore').addEventListener('click', () => { st.page++; load(false); });
-    const goFolder = (e) => { const b = e.target.closest('[data-f]'); if (!b) return; st.folder = b.dataset.f; st.q = ''; $('tnQ').value = ''; reload(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-    $('tnCats').addEventListener('click', goFolder);
-    $('tnSubs').addEventListener('click', goFolder);
-    $('tnCrumbs').addEventListener('click', (e) => { if (e.target.closest('[data-home]')) return resetAll(); goFolder(e); });
+    const goCat = (e) => { const b = e.target.closest('[data-cat]'); if (!b) return; st.cat = b.dataset.cat; st.q = ''; $('tnQ').value = ''; $('tnCat').value = st.cat; reload(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    $('tnCats').addEventListener('click', goCat);
+    $('tnCrumbs').addEventListener('click', (e) => { if (e.target.closest('[data-home]')) resetAll(); });
     document.addEventListener('click', (e) => { const b = e.target.closest('[data-marca]'); if (b) pickBrand(b.dataset.marca); });
     $('tnAllBrands').addEventListener('click', () => { const l = $('tnBrandList'); l.hidden = !l.hidden; $('tnAllBrands').setAttribute('aria-expanded', String(!l.hidden)); $('tnAllBrands').textContent = l.hidden ? 'Ver todas las marcas' : 'Ocultar marcas'; });
     document.addEventListener('error', (e) => { const t = e.target; if (t && t.tagName === 'IMG' && t.dataset.fb) { const sp = document.createElement('span'); sp.textContent = t.dataset.fb; t.replaceWith(sp); } }, true);
@@ -195,7 +197,7 @@
     async function ensureMeta() {
         const need = read().map((i) => i.sku).filter((s) => !meta[s]);
         if (!need.length) return;
-        try { const d = await api({ skus: need.join(',') }); d.items.forEach((it) => { meta[it.sku] = it; }); } catch (e) {}
+        try { const d = await api({ tienda: '1', skus: need.join(',') }); d.items.forEach((it) => { meta[it.sku] = it; }); } catch (e) {}
         // códigos que ya no están en el catálogo se quitan solos
         const gone = need.filter((s) => !meta[s]);
         if (gone.length) write(read().filter((i) => !gone.includes(i.sku)));
@@ -272,7 +274,7 @@
     $('tnDoneAgain').addEventListener('click', () => { closeDrawer(); step(1); });
 
     // ── Inicio ──
-    api({ facets: '1', todos: '1', todo: '1', p: 1 }).then((d) => { if (d.facets) fillBrands(d.facets.brands || []); }).catch(() => {});
+    api({ tienda: '1', facets: '1', todos: '1', todo: '1', p: 1 }).then((d) => { if (d.facets) { fillBrands(d.facets.brands || []); fillCats(d.facets.cats); } }).catch(() => {});
     paintCart(); ensureMeta().then(paintCart);
     load(true);
 })();
