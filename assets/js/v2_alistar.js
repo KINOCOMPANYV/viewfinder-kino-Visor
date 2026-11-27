@@ -19,20 +19,36 @@
     const pct = +d.pct || 0;
     // Total en vivo: lo pedido (precio original × cantidad pedida) vs lo alistado (precio × cantidad actual), con descuento.
     function totals() {
-        let orig = 0, now = 0, short = 0;
+        let orig = 0, now = 0, short = 0, more = 0, swapped = 0, added = 0, removed = 0, noted = 0, units = 0, refs = 0;
         lines.forEach((l) => {
             const bp = l.base && l.base.price != null ? +l.base.price : (l.price != null ? +l.price : 0);
-            if (l.orig !== false) { orig += bp * (+l.origQty || 0); short += Math.max(0, (+l.origQty || 0) - (+l.qty || 0)); }
-            now += (l.price != null ? +l.price : 0) * (+l.qty || 0);
+            const q = +l.qty || 0, oq = +l.origQty || 0;
+            if (l.orig !== false) { orig += bp * oq; if (q < oq) short += oq - q; else if (q > oq) more += q - oq; if (q === 0) removed++; }
+            else if (q > 0) added++;
+            if (l.base && l.base.code && l.code !== l.base.code) swapped++;
+            if (l.note) noted++;
+            now += (l.price != null ? +l.price : 0) * q;
+            units += q; if (q > 0) refs++;
         });
-        const k = 1 - pct / 100;
+        const k = 1 - pct / 100, diff = (orig - now) * k;
         const head = document.getElementById('ordTotal');
         if (head) head.textContent = 'Total ' + (now > 0 ? money(now * k) : '—');
-        return '<div style="flex-basis:100%;padding:.6rem 0;border-top:1px solid var(--color-border);display:flex;gap:1rem;flex-wrap:wrap;align-items:baseline">' +
-            '<span class="v2-code">Pedido ' + money(orig * k) + '</span><b style="font-size:1.1rem">Alistado ' + money(now * k) + '</b>' +
-            (Math.round(orig) !== Math.round(now) ? '<span style="color:var(--color-' + (now < orig ? 'danger' : 'success') + ')">' + (now < orig ? '−' : '+') + money(Math.abs(orig - now) * k) + '</span>' : '') +
-            (short ? '<span class="v2-code">' + short + ' unidad' + (short === 1 ? '' : 'es') + ' faltante' + (short === 1 ? '' : 's') + '</span>' : '') +
-            (pct ? '<span class="v2-code">con ' + pct + '% de descuento</span>' : '') + '</div>';
+        const chg = [];
+        if (short) chg.push(short + ' unidad' + (short === 1 ? '' : 'es') + ' faltante' + (short === 1 ? '' : 's'));
+        if (more) chg.push(more + ' de más');
+        if (removed) chg.push(removed + ' producto' + (removed === 1 ? '' : 's') + ' sin alistar');
+        if (swapped) chg.push(swapped + ' cambiado' + (swapped === 1 ? '' : 's'));
+        if (added) chg.push(added + ' agregado' + (added === 1 ? '' : 's'));
+        if (noted) chg.push(noted + ' con nota');
+        return '<div style="flex-basis:100%;margin-top:.4rem;padding:1rem 1.1rem;border-radius:12px;background:var(--color-bg);border:1px solid var(--color-border-hover)">' +
+            '<div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:baseline">' +
+            '<div><div class="v2-code">Cliente</div><b style="font-size:1.15rem">' + esc(d.client || 'Sin nombre') + '</b>' + (d.number ? ' <span class="v2-code">' + esc(d.number) + '</span>' : '') + '</div>' +
+            '<div style="text-align:right"><div class="v2-code">Total alistado' + (pct ? ' (con ' + pct + '% de descuento)' : '') + '</div><b style="font-size:1.9rem;line-height:1.1">' + money(now * k) + '</b></div></div>' +
+            '<div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--color-border)">' +
+            '<span><b>' + refs + '</b> referencia' + (refs === 1 ? '' : 's') + ' · <b>' + units + '</b> unidad' + (units === 1 ? '' : 'es') + '</span>' +
+            '<span class="v2-code">Pedido original ' + money(orig * k) + '</span>' +
+            (Math.round(diff) !== 0 ? '<span style="color:var(--color-' + (diff > 0 ? 'danger' : 'success') + ')">' + (diff > 0 ? '−' : '+') + money(Math.abs(diff)) + ' vs. pedido</span>' : '') + '</div>' +
+            '<div style="margin-top:.5rem">' + (chg.length ? '<b>Cambios:</b> ' + chg.join(' · ') : '<span style="color:var(--color-success)">✅ Sin cambios: igual al pedido</span>') + '</div></div>';
     }
     function draw() {
         list.innerHTML = lines.map((l) => {
@@ -48,10 +64,10 @@
                     : '<label style="white-space:nowrap"><input type="checkbox" data-a="c" data-i="' + l.id + '"> Alistado</label>') + '</div>';
         }).join('');
         const p = pending();
-        if (ro) { foot.innerHTML = totals() + (d.status === 'listo' ? '🟢 Alistamiento finalizado' + (d.who ? ' · chequeó ' + esc(d.who) : '') : ''); return; }
-        foot.innerHTML = totals() + '<span>' + (lines.length - p) + ' de ' + lines.length + ' listos</span>' +
+        if (ro) { foot.innerHTML = (d.status === 'listo' ? '🟢 Alistamiento finalizado' + (d.who ? ' · chequeó ' + esc(d.who) : '') : '') + totals(); return; }
+        foot.innerHTML = '<span>' + (lines.length - p) + ' de ' + lines.length + ' listos</span>' +
             '<input id="alWho" value="' + esc(who) + '" placeholder="Chequeado por" style="padding:.45rem .6rem;border-radius:8px;border:1px solid var(--color-border-hover);background:var(--color-bg);color:inherit">' +
-            '<button class="v2-btn" id="alDone"' + (p ? ' disabled style="opacity:.5;cursor:not-allowed"' : '') + '>✅ Finalizar alistamiento</button>';
+            '<button class="v2-btn" id="alDone"' + (p ? ' disabled style="opacity:.5;cursor:not-allowed"' : '') + '>✅ Finalizar alistamiento</button>' + totals();
         document.getElementById('alWho').oninput = (e) => { who = e.target.value; later(); };
         document.getElementById('alDone').onclick = () => {
             if (pending() || !who.trim()) { msg.textContent = 'Marca todo y escribe quién chequeó.'; return; }
