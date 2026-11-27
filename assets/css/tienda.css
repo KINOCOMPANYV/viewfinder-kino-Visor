@@ -17,7 +17,7 @@
 .tn-logo { height: 40px; width: auto; display: block; }
 .tn-cartbtn { position: relative; height: 40px; padding: 0 .9rem; border-radius: 999px; border: 1px solid var(--color-border); background: var(--tn-soft); color: var(--color-text); display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; font-size: .92rem; transition: transform .18s, background .18s; }
 .tn-cartbtn:hover { background: var(--color-surface-3); }
-.tn-cartbtn.bump { transform: scale(1.06); }
+.tn-cartbtn.bump { transform: none; }
 .tn-cartn { min-width: 22px; height: 22px; padding: 0 6px; margin-right: -.3rem; border-radius: 11px; background: var(--tn-red); color: #fff; font-size: .74rem; font-weight: 800; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
 
 .tn-main { max-width: 1240px; margin: 0 auto; padding: 0 1rem 7rem; overflow-x: clip; }
@@ -303,3 +303,17 @@ body.tn-lock { overflow: hidden; }
   body.tn-dock .tn-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tn-drawer { transition: transform .3s cubic-bezier(.22,1,.36,1); }
 }
+
+/* Efecto en botones: degradado, destello y "pop" con halo */
+.tn-cartbtn, .tn-act .tn-btn-primary, .tn-btn-primary, .tn-cta { position: relative; overflow: hidden; isolation: isolate; background-image: linear-gradient(135deg, #ff3b43 0%, var(--tn-red) 45%, #a80a11 100%); }
+.tn-cartbtn::after, .tn-act .tn-btn-primary::after, .tn-btn-primary::after, .tn-cta::after { content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(100deg, transparent, rgb(255 255 255 / .55), transparent); transform: skewX(-20deg); transition: left .7s cubic-bezier(.22,1,.36,1); pointer-events: none; z-index: -1; }
+@media (hover: hover) { .tn-cartbtn:hover::after, .tn-btn-primary:hover::after, .tn-cta:hover::after { left: 130%; } }
+.tn-btn-primary:active, .tn-cta:active { transform: scale(.96); }
+.tn-btn-primary:not(:disabled) { box-shadow: 0 6px 18px rgb(216 15 23 / .28), inset 0 1px 0 rgb(255 255 255 / .25); }
+.tn-btn-primary:disabled { background-image: none; }
+.tn-cartbtn.bump { animation: tnPop .6s cubic-bezier(.22,1,.36,1); }
+.tn-cartbtn.bump::after { left: 130%; transition-duration: .55s; }
+@keyframes tnPop { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgb(216 15 23 / .55); } 30% { transform: scale(1.1); } 100% { transform: scale(1); box-shadow: 0 0 0 16px rgb(216 15 23 / 0); } }
+.tn-cartn { animation: tnBadge .4s cubic-bezier(.34,1.56,.64,1); }
+@keyframes tnBadge { from { transform: scale(.4); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .tn-cartbtn.bump, .tn-cartn { animation: none; } .tn-cartbtn::after, .tn-btn-primary::after, .tn-cta::after { transition: none; } }

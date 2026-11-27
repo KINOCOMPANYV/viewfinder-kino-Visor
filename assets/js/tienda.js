@@ -169,7 +169,7 @@
         if (c.querySelector('.tn-act').dataset.mode === 'in') setQty(c.dataset.sku, Math.max(0, parseInt(i.value, 10) || 0)); else i.value = clampQ(i.value);
     });
     $('tnGrid').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.classList.contains('tn-qi')) { e.preventDefault(); const c = e.target.closest('.tn-card'); const a = c.querySelector('[data-add]'); if (a) a.click(); else e.target.blur(); } });
-    function bump() { const b = $('tnCartBtn'); b.classList.add('bump'); setTimeout(() => b.classList.remove('bump'), 180); }
+    function bump() { const b = $('tnCartBtn'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); setTimeout(() => b.classList.remove('bump'), 700); }
 
     // ── Vista rápida ──
     function quick(sku) {
