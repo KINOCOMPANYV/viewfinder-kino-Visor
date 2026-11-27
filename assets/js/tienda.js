@@ -27,19 +27,25 @@
     function paintCart() {
         const t = totals();
         const badge = $('tnCartN'); badge.hidden = t.n < 1; badge.textContent = t.n > 99 ? '99+' : t.n;
+        $('tnCartT').textContent = t.t ? money(t.t) : ''; $('tnCartBtn').classList.toggle('has', t.n > 0);
         const bar = $('tnBar'); bar.hidden = t.n < 1 || $('tnDrawer').classList.contains('open');
         $('tnBarN').textContent = t.n + (t.n === 1 ? ' unidad' : ' unidades'); $('tnBarT').textContent = t.t ? money(t.t) : '';
         // tarjetas visibles
         document.querySelectorAll('.tn-card').forEach((c) => paintAdd(c, c.dataset.sku));
         if ($('tnDrawer').classList.contains('open')) paintLines();
     }
+    const clampQ = (v) => Math.max(1, Math.min(99, parseInt(v, 10) || 1));
     function paintAdd(card, sku) {
         const q = qtyOf(sku); const box = card.querySelector('.tn-act'); if (!box) return;
-        const had = box.contains(document.activeElement) ? (document.activeElement.dataset.d || '1') : null;
-        if (isOut(meta[sku]) && q === 0) box.innerHTML = '<button type="button" class="tn-btn tn-btn-primary" disabled>Agotado</button>';
-        else if (q > 0) box.innerHTML = '<div class="tn-step"><button type="button" data-d="-1" aria-label="Quitar uno">' + MINUS + '</button><span><b>' + q + '</b><i> en tu pedido</i></span><button type="button" data-d="1" aria-label="Agregar otro">' + PLUS + '</button></div>';
-        else box.innerHTML = '<button type="button" class="tn-btn tn-btn-primary" data-d="1">Agregar al pedido</button>';
-        if (had) { const b = box.querySelector('[data-d="' + had + '"]') || box.querySelector('button'); if (b) b.focus({ preventScroll: true }); }
+        const mode = isOut(meta[sku]) && q === 0 ? 'out' : (q > 0 ? 'in' : 'add');
+        if (box.dataset.mode === mode) { const i = box.querySelector('.tn-qi'); if (mode === 'in' && i && document.activeElement !== i) i.value = q; return; }
+        const had = box.contains(document.activeElement);
+        box.dataset.mode = mode;
+        const inp = (v) => '<input class="tn-qi" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="' + v + '" aria-label="Cantidad">';
+        if (mode === 'out') box.innerHTML = '<button type="button" class="tn-btn tn-btn-primary" disabled>Agotado</button>';
+        else if (mode === 'in') box.innerHTML = '<div class="tn-step"><button type="button" data-d="-1" aria-label="Quitar uno">' + MINUS + '</button>' + inp(q) + '<button type="button" data-d="1" aria-label="Agregar otro">' + PLUS + '</button></div><small class="tn-inl">en tu pedido</small>';
+        else box.innerHTML = '<div class="tn-pick"><div class="tn-step tn-step-s"><button type="button" data-p="-1" aria-label="Menos">' + MINUS + '</button>' + inp(1) + '<button type="button" data-p="1" aria-label="Más">' + PLUS + '</button></div><button type="button" class="tn-btn tn-btn-primary" data-add>Agregar</button></div>';
+        if (had) { const b = box.querySelector('button'); if (b) b.focus({ preventScroll: true }); }
     }
 
     // ── API ──
@@ -152,10 +158,17 @@
     document.addEventListener('error', (e) => { const t = e.target; if (t && t.tagName === 'IMG' && t.dataset.fb) { const sp = document.createElement('span'); sp.textContent = t.dataset.fb; t.replaceWith(sp); } }, true);
     $('tnGrid').addEventListener('click', (e) => {
         const c = e.target.closest('.tn-card'); if (!c) return;
-        const d = e.target.closest('[data-d]');
+        const d = e.target.closest('[data-d]'), p = e.target.closest('[data-p]'), ad = e.target.closest('[data-add]');
         if (d) { setQty(c.dataset.sku, qtyOf(c.dataset.sku) + Number(d.dataset.d)); if (Number(d.dataset.d) > 0) bump(); return; }
+        if (p) { const i = c.querySelector('.tn-qi'); i.value = clampQ(Number(i.value) + Number(p.dataset.p)); return; }
+        if (ad) { const i = c.querySelector('.tn-qi'); setQty(c.dataset.sku, qtyOf(c.dataset.sku) + clampQ(i.value)); bump(); if (docked()) openDrawer(); return; }
         if (e.target.closest('[data-quick]')) quick(c.dataset.sku);
     });
+    $('tnGrid').addEventListener('change', (e) => {
+        const i = e.target.closest('.tn-qi'); if (!i) return; const c = i.closest('.tn-card');
+        if (c.querySelector('.tn-act').dataset.mode === 'in') setQty(c.dataset.sku, Math.max(0, parseInt(i.value, 10) || 0)); else i.value = clampQ(i.value);
+    });
+    $('tnGrid').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.classList.contains('tn-qi')) { e.preventDefault(); const c = e.target.closest('.tn-card'); const a = c.querySelector('[data-add]'); if (a) a.click(); else e.target.blur(); } });
     function bump() { const b = $('tnCartBtn'); b.classList.add('bump'); setTimeout(() => b.classList.remove('bump'), 180); }
 
     // ── Vista rápida ──
@@ -169,28 +182,30 @@
     }
     $('tnQuick').addEventListener('click', (e) => {
         const q = $('tnQuick'); if (e.target === q || e.target.closest('[data-x]')) return q.close();
-        if (e.target.closest('[data-add]')) { const sku = q.querySelector('.tn-code').textContent; setQty(sku, qtyOf(sku) + 1); bump(); q.close(); }
+        if (e.target.closest('[data-add]')) { const sku = q.querySelector('.tn-code').textContent; setQty(sku, qtyOf(sku) + 1); bump(); q.close(); if (docked()) openDrawer(); }
     });
 
     // ── Cajón del pedido ──
     const drawer = $('tnDrawer');
     let savedY = 0;
     const isOpen = () => drawer.classList.contains('open');
+    const mq = window.matchMedia('(min-width: 1100px)'); let dockedNow = false; const docked = () => mq.matches;
     function openDrawer() {
-        if (isOpen()) return; savedY = window.scrollY;
-        drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); $('tnScrim').hidden = false; document.body.classList.add('tn-lock'); $('tnBar').hidden = true;
-        try { history.pushState({ tnDrawer: 1 }, ''); } catch (e) {}
-        step(1); ensureMeta().then(paintLines); drawer.focus();
+        if (isOpen()) return; savedY = window.scrollY; dockedNow = docked();
+        drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); $('tnBar').hidden = true;
+        if (dockedNow) document.body.classList.add('tn-dock');
+        else { $('tnScrim').hidden = false; document.body.classList.add('tn-lock'); try { history.pushState({ tnDrawer: 1 }, ''); } catch (e) {} }
+        if (st.step === 1 || !dockedNow) step(1); ensureMeta().then(paintLines); if (!dockedNow) drawer.focus();
     }
     function hideDrawer() {
         if (!isOpen()) return;
-        drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); $('tnScrim').hidden = true; document.body.classList.remove('tn-lock'); paintCart();
-        window.scrollTo({ top: savedY }); $('tnCartBtn').focus({ preventScroll: true });
+        drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); $('tnScrim').hidden = true; document.body.classList.remove('tn-lock', 'tn-dock'); paintCart();
+        if (!dockedNow) { window.scrollTo({ top: savedY }); $('tnCartBtn').focus({ preventScroll: true }); }
     }
     // Cerrar con ✕ o fuera del cajón vuelve atrás en el historial (así el botón «atrás» del celular también cierra el pedido y no sale de la tienda)
-    function closeDrawer() { if (isOpen() && history.state && history.state.tnDrawer) history.back(); else hideDrawer(); }
-    window.addEventListener('popstate', hideDrawer);
-    $('tnCartBtn').addEventListener('click', openDrawer); $('tnBar').addEventListener('click', openDrawer);
+    function closeDrawer() { if (isOpen() && !dockedNow && history.state && history.state.tnDrawer) history.back(); else hideDrawer(); }
+    window.addEventListener('popstate', () => { if (!dockedNow) hideDrawer(); });
+    $('tnCartBtn').addEventListener('click', () => { if (isOpen() && dockedNow) closeDrawer(); else openDrawer(); }); $('tnBar').addEventListener('click', openDrawer);
     $('tnClose').addEventListener('click', closeDrawer); $('tnScrim').addEventListener('click', closeDrawer);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer(); });
 

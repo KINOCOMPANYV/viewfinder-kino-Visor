@@ -51,7 +51,7 @@ if ($banner) $hero = null; // con banner, la portada va sin la foto lateral
         <img class="tn-logo tn-logo-l" src="<?= $img ?>kino-company.webp?v=<?= $ver ?>" alt="KINO COMPANY" width="720" height="274">
         <img class="tn-logo tn-logo-d" src="<?= $img ?>kino-company-oscuro.webp?v=<?= $ver ?>" alt="" width="720" height="274" aria-hidden="true">
     </a>
-    <button class="tn-cartbtn" id="tnCartBtn" type="button" aria-label="Mi pedido"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="tn-cartlbl">Mi pedido</span><span class="tn-cartn" id="tnCartN" hidden>0</span></button>
+    <button class="tn-cartbtn" id="tnCartBtn" type="button" aria-label="Mi pedido"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="tn-cartlbl">Mi pedido</span><span class="tn-cartt" id="tnCartT"></span><span class="tn-cartn" id="tnCartN" hidden>0</span></button>
 </div></header>
 
 <?php if ($banner && ($banner['title'] !== '' || $banner['img'] !== '')): ?>
