@@ -80,6 +80,7 @@ $cartKey = $moStaff ? 'kinoCarritoVendedor' : 'kinoCarrito';
                 <div class="mo-total" id="moTotal" hidden>Total: <b id="moTotalV"></b></div>
                 <div id="moForm">
                     <label class="mo-lbl"><?= $moStaff ? 'Nombre del cliente' : 'Nombre' ?> <input class="mo-input" id="moName" maxlength="120" autocomplete="<?= $moStaff ? 'off' : 'name' ?>"<?= $moStaff ? ' list="moCust"' : '' ?>><?php if ($moStaff): ?><datalist id="moCust"></datalist><?php endif; ?></label>
+                    <?php if ($moStaff): ?><div class="mo-banner" id="moRepeat" hidden></div><?php endif; ?>
                     <label class="mo-lbl">WhatsApp / teléfono <input class="mo-input" id="moPhone" maxlength="40" inputmode="tel" autocomplete="tel"></label><?php if ($moStaff): ?>
                     <p class="mo-debt" id="moDebt" role="status" hidden></p><?php endif; ?>
                     <label class="mo-lbl">Nota (opcional) <textarea class="mo-input" id="moNote" maxlength="500" rows="2"></textarea></label>

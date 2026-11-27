@@ -212,7 +212,21 @@
 
     // ── Vendedor: elegir un cliente existente (autocompletar por nombre o teléfono) ──
     if (window.MO_STAFF) {
-        let ct = 0, found = [];
+        let ct = 0, found = [], lastFor = '';
+        async function checkLast() {
+            const box = $('moRepeat'), ph = $('moPhone').value.replace(/\D+/g, '');
+            if (ph.length < 7 || ph === lastFor) { if (ph.length < 7) { box.hidden = true; lastFor = ''; } return; }
+            lastFor = ph;
+            let o = null;
+            try { o = (await (await fetch('/clientes/ultimo?phone=' + encodeURIComponent(ph))).json()).order; } catch (e) { return; }
+            if (!o || !o.items.length) { box.hidden = true; return; }
+            box.hidden = false;
+            box.innerHTML = 'Último pedido <b>' + esc(o.number) + '</b> (' + esc(o.date) + ', ' + o.items.length + ' ref.) · <button type="button" class="btn btn-sm btn-secondary" id="moRepeatBtn">↻ Repetir</button>';
+            $('moRepeatBtn').addEventListener('click', () => {
+                o.items.forEach((i) => setQty(i.sku, qtyOf(i.sku) + i.qty));
+                box.hidden = true;
+            });
+        }
         const digits = (t) => String(t || '').replace(/\D+/g, '');
         // Cartera: aviso si el cliente elegido debe
         const showDebt = (c) => {
@@ -225,6 +239,7 @@
                 : (days > 40 ? '‼ ' : '⚠ ') + 'Este cliente debe $' + Math.round(bal).toLocaleString('es-CO')
                   + (days > 20 ? ' hace ' + days + ' días' : '') + '. Revisa la cartera antes de despachar.';
         };
+        $('moPhone').addEventListener('change', checkLast);
         $('moPhone').addEventListener('change', async () => {
             const p = digits($('moPhone').value);
             if (p.length < 7) { showDebt(null); return; }
@@ -237,7 +252,7 @@
             clearTimeout(ct);
             const v = $('moName').value.trim();
             const hit = found.find((c) => c.name + ' — ' + c.phone === v);
-            if (hit) { $('moName').value = hit.name; $('moPhone').value = hit.phone; showDebt(hit); return; }
+            if (hit) { $('moName').value = hit.name; $('moPhone').value = hit.phone; showDebt(hit); checkLast(); return; }
             ct = setTimeout(async () => {
                 if (v.length < 2) return;
                 try { found = (await (await fetch('/clientes/buscar?q=' + encodeURIComponent(v))).json()).customers || []; } catch (e) { return; }
