@@ -13,6 +13,23 @@ if (($_SERVER['REQUEST_URI'] ?? '') !== '' && str_starts_with(parse_url($_SERVER
     $st->execute([$like, $like]);
     jsonResponse(['customers' => mb_strlen($q) >= 2 ? $st->fetchAll(PDO::FETCH_ASSOC) : []]);
 }
+if (str_starts_with(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '', '/clientes/ultimo')) {
+    // JSON: último pedido (no cancelado) del cliente por teléfono, para «Repetir último pedido» en Vender
+    $key = Orders::phoneKey((string) ($_GET['phone'] ?? ''));
+    $out = ['order' => null];
+    if ($key !== null) {
+        $w = $role === 'vendedor' && $me ? 'AND c.seller_user_id = ' . (int) $me['id'] : '';
+        $st = $db->prepare("SELECT o.number, o.created_at, o.client_order_id FROM orders o JOIN customers c ON c.id = o.customer_id
+            WHERE c.phone_key = ? $w AND o.client_order_id IS NOT NULL AND o.stage <> 'cancelado' ORDER BY o.id DESC LIMIT 1");
+        $st->execute([$key]);
+        if ($o = $st->fetch(PDO::FETCH_ASSOC)) {
+            $it = $db->prepare('SELECT sku, qty FROM client_order_items WHERE order_id = ? ORDER BY id');
+            $it->execute([$o['client_order_id']]);
+            $out['order'] = ['number' => $o['number'], 'date' => substr($o['created_at'], 0, 10), 'items' => $it->fetchAll(PDO::FETCH_ASSOC)];
+        }
+    }
+    jsonResponse($out);
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') { // asignar vendedor (Admin/Facturación)
     $cid = (int) ($_POST['id'] ?? 0);
     if (!verifyCsrf()) {

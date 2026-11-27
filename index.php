@@ -502,7 +502,7 @@ if ($uri === '/hacer-pedido/mio' && $method === 'POST') {
     include __DIR__ . '/src/controllers/client_order_edit.php';
     exit;
 }
-if ($uri === '/clientes/buscar') { // staff: autocompletar cliente existente al crear un pedido
+if ($uri === '/clientes/buscar' || $uri === '/clientes/ultimo') { // staff: autocompletar cliente existente al crear un pedido
     requireStaff();
     session_write_close();
     include __DIR__ . '/src/controllers/customers_v2.php';
