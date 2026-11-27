@@ -15,7 +15,7 @@ $xlsx = '/admin/products?' . http_build_query(array_filter($filters, fn($v) => $
             <input type="search" name="q" value="<?= e($filters['q']) ?>" placeholder="Buscar código, nombre, marca…" autocomplete="off"></label>
         <label class="v2-chip<?= $nFilt ? ' on' : '' ?>" for="kpFt">Filtro <?php if ($nFilt): ?><b><?= $nFilt ?></b><?php endif; ?></label>
         <span class="v2-spacer"></span>
-        <a class="v2-act v2-hide-m" href="#" title="Categorías: próximamente" onclick="return false"><?= $ico('<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>') ?>Categorías</a>
+        <a class="v2-act" href="#" title="Categorías y promocionales" onclick="document.getElementById('kpCats').showModal();return false"><?= $ico('<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>') ?>Categorías</a>
         <a class="v2-act" href="<?= e($xlsx) ?>"><?= $ico('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5-5 5 5"/><path d="M12 5v12"/>') ?>Exportar</a>
         <a class="v2-btn soon" href="/admin/products" title="Crear/editar productos: por ahora en Productos v1 y la Hoja master"><?= $ico('<path d="M12 5v14M5 12h14"/>') ?>Producto</a>
     </div>
@@ -89,6 +89,30 @@ async function kpToggle(cb) {
         if (!r.ok) throw new Error();
         row.classList.toggle('off', !on);
         const t = row.querySelector('.t'); t.textContent = on ? 'Sí' : 'No'; t.classList.toggle('on-t', on);
+    } catch (e) { cb.checked = !on; alert('No se pudo cambiar. Intenta de nuevo.'); }
+}
+</script>
+<dialog id="kpCats" style="border:1px solid var(--color-border);border-radius:14px;padding:0;max-width:520px;width:92vw;background:var(--color-surface,#fff);color:var(--color-text)">
+    <div style="padding:1.1rem 1.25rem;border-bottom:1px solid var(--color-border)"><b>Categorías</b><p style="margin:.3rem 0 0;font-size:.85rem;color:var(--color-text-muted)">Las que marques como <b>Promocional</b> salen primero en la tienda (/tienda).</p></div>
+    <div style="max-height:60vh;overflow:auto">
+    <?php foreach ($categories as $c): $isP = in_array($c['category'], $promoCats, true); ?>
+        <div style="display:flex;align-items:center;gap:.8rem;padding:.6rem 1.25rem;border-bottom:1px solid var(--color-border)">
+            <span style="flex:1;min-width:0"><?= e($c['category']) ?> <small style="color:var(--color-text-muted)">(<?= (int) $c['n'] ?>)</small></span>
+            <span class="v2-sw"><span class="t <?= $isP ? 'on-t' : '' ?>"><?= $isP ? 'Promocional' : '' ?></span></span>
+            <label class="toggle-switch" title="Promocional"><input type="checkbox" data-cat="<?= e($c['category']) ?>" <?= $isP ? 'checked' : '' ?> onchange="kpPromo(this)"><span class="toggle-slider"></span></label>
+        </div>
+    <?php endforeach; ?>
+    </div>
+    <div style="padding:.8rem 1.25rem;text-align:right"><button class="btn btn-primary" type="button" onclick="document.getElementById('kpCats').close()">Listo</button></div>
+</dialog>
+<script>
+async function kpPromo(cb) {
+    const on = cb.checked, body = new FormData();
+    body.append('category', cb.dataset.cat); body.append('promo', on ? '1' : '0');
+    try {
+        const r = await fetch('/admin/categorias/promo', { method: 'POST', headers: { 'X-CSRF-TOKEN': CSRF }, body });
+        if (!r.ok) throw new Error();
+        const t = cb.closest('div').querySelector('.t'); t.textContent = on ? 'Promocional' : ''; t.classList.toggle('on-t', on);
     } catch (e) { cb.checked = !on; alert('No se pudo cambiar. Intenta de nuevo.'); }
 }
 </script>

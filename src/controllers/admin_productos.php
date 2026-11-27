@@ -40,4 +40,5 @@ $products = $stmt->fetchAll();
 $categories = $db->query("SELECT category, COUNT(*) AS n FROM products WHERE category <> '' GROUP BY category ORDER BY category")->fetchAll();
 $brands = $db->query("SELECT brand, COUNT(*) AS n FROM products WHERE brand <> '' GROUP BY brand ORDER BY brand")->fetchAll();
 
+$promoCats = promoCategories($db);
 include __DIR__ . '/../../templates/admin/productos.php';
