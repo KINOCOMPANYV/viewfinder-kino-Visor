@@ -10,7 +10,7 @@
         <?php if ($debtTotal > 0): ?><span style="color:var(--color-text-muted);font-size:.9rem">Cartera total: <b style="color:var(--color-danger)"><?= e(priceText($debtTotal)) ?></b></span><?php endif; ?></form>
     <table class="v2-table"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Cartera</th><th>Pedidos</th><th class="v2-hide-m">Comprado</th><th class="v2-hide-m">Último</th><th>Vendedor</th></tr></thead><tbody>
     <?php foreach ($rows as $c): ?><tr>
-        <td><b><?= e($c['name'] ?: '—') ?></b></td>
+        <td><a href="/clientes/<?= (int) $c['id'] ?>"><b><?= e($c['name'] ?: '—') ?></b></a></td>
         <td><a href="https://wa.me/<?= e(preg_replace('/\D+/', '', $c['phone'])) ?>" target="_blank" rel="noopener"><?= e($c['phone']) ?></a></td>
         <td><?php $bal = (float) $c['balance']; $badge = $bal > 0
                 ? '<span class="cli-debt cli-debt--owes">Debe ' . e(priceText($bal)) . '</span>' : '<span class="cli-debt cli-debt--ok">Al día</span>';

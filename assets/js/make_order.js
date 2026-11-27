@@ -260,6 +260,13 @@
             }, 250);
         });
     }
+    if (window.MO_STAFF) { // desde la ficha del cliente: /vender?nombre=…&tel=…
+        const qs = new URLSearchParams(location.search);
+        if (qs.get('tel')) {
+            $('moName').value = qs.get('nombre') || ''; $('moPhone').value = qs.get('tel');
+            $('moPhone').dispatchEvent(new Event('change'));
+        }
+    }
     const CK = window.MO_STAFF ? 'kinoClienteVendedor' : 'kinoCliente';
     if (!window.MO_STAFF) try { const s = JSON.parse(localStorage.getItem(CK) || 'null'); if (s) { $('moName').value = s.name || ''; $('moPhone').value = s.phone || ''; } } catch (e) {}
     if (!window.MO_STAFF) ['moName', 'moPhone'].forEach((id) => $(id).addEventListener('change', () => {
