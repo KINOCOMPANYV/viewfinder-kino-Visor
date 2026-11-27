@@ -84,7 +84,7 @@ if ($orderId > 0) {
                         if ($r['cover_image_url']) $covers[$r['sku']] = parseStoredCover($r['cover_image_url'], 200)['url'];
                     }
                 }
-                $whData = ['id' => (int) $wh['id'], 'status' => $wh['status'], 'pct' => (float) $order['discount_pct'], 'who' => $wh['checked_by'] ?: ($me['name'] ?? $me['username'] ?? ''), 'lines' => $lines, 'covers' => $covers];
+                $whData = ['id' => (int) $wh['id'], 'status' => $wh['status'], 'pct' => (float) $order['discount_pct'], 'client' => (string) $order['customer_name'], 'number' => (string) $order['number'], 'who' => $wh['checked_by'] ?: ($me['name'] ?? $me['username'] ?? ''), 'lines' => $lines, 'covers' => $covers];
             }
         }
         $s = $db->prepare('SELECT * FROM order_history WHERE order_id = ? ORDER BY id DESC');
