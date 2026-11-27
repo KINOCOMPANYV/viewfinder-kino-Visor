@@ -93,15 +93,24 @@ async function kpToggle(cb) {
 }
 </script>
 <dialog id="kpCats" style="border:1px solid var(--color-border);border-radius:14px;padding:0;max-width:520px;width:92vw;background:var(--color-surface,#fff);color:var(--color-text)">
-    <div style="padding:1.1rem 1.25rem;border-bottom:1px solid var(--color-border)"><b>Categorías</b><p style="margin:.3rem 0 0;font-size:.85rem;color:var(--color-text-muted)">Las que marques como <b>Promocional</b> salen primero en la tienda (/tienda).</p></div>
+    <div style="padding:1.1rem 1.25rem;border-bottom:1px solid var(--color-border)"><b>Categorías</b><p style="margin:.3rem 0 0;font-size:.85rem;color:var(--color-text-muted)">Aquí van primero las categorías con productos visibles hoy en la tienda (con stock). Las que marques como <b>Promocional</b> salen primero.</p></div>
     <div style="max-height:60vh;overflow:auto">
-    <?php foreach ($categories as $c): $isP = in_array($c['category'], $promoCats, true); ?>
+    <?php
+    $row = function (array $c, bool $inStore) use ($promoCats, $storeCats) { $isP = in_array($c['category'], $promoCats, true); ?>
         <div style="display:flex;align-items:center;gap:.8rem;padding:.6rem 1.25rem;border-bottom:1px solid var(--color-border)">
-            <span style="flex:1;min-width:0"><?= e($c['category']) ?> <small style="color:var(--color-text-muted)">(<?= (int) $c['n'] ?>)</small></span>
+            <span style="flex:1;min-width:0"><?= e($c['category']) ?> <small style="color:var(--color-text-muted)"><?= $inStore ? '(' . (int) $storeCats[$c['category']] . ' en la tienda)' : '(' . (int) $c['n'] . ')' ?></small></span>
             <span class="v2-sw"><span class="t <?= $isP ? 'on-t' : '' ?>"><?= $isP ? 'Promocional' : '' ?></span></span>
             <label class="toggle-switch" title="Promocional"><input type="checkbox" data-cat="<?= e($c['category']) ?>" <?= $isP ? 'checked' : '' ?> onchange="kpPromo(this)"><span class="toggle-slider"></span></label>
         </div>
-    <?php endforeach; ?>
+    <?php };
+    $inStore = array_filter($categories, fn($c) => isset($storeCats[$c['category']]));
+    $others = array_filter($categories, fn($c) => !isset($storeCats[$c['category']]));
+    foreach ($inStore as $c) $row($c, true);
+    if (!$inStore): ?><p style="padding:.8rem 1.25rem;color:var(--color-text-muted)">Hoy ninguna categoría tiene productos visibles en la tienda.</p><?php endif;
+    if ($others): ?>
+        <details><summary style="padding:.6rem 1.25rem;cursor:pointer;color:var(--color-text-muted)">Otras categorías, sin productos en la tienda (<?= count($others) ?>)</summary>
+        <?php foreach ($others as $c) $row($c, false); ?></details>
+    <?php endif; ?>
     </div>
     <div style="padding:.8rem 1.25rem;text-align:right"><button class="btn btn-primary" type="button" onclick="document.getElementById('kpCats').close()">Listo</button></div>
 </dialog>

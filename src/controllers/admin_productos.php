@@ -41,4 +41,9 @@ $categories = $db->query("SELECT category, COUNT(*) AS n FROM products WHERE cat
 $brands = $db->query("SELECT brand, COUNT(*) AS n FROM products WHERE brand <> '' GROUP BY brand ORDER BY brand")->fetchAll();
 
 $promoCats = promoCategories($db);
+// Categorías con productos que hoy se ven en /tienda (activo + foto + stock > 0 + marcas de la tienda): n por categoría
+[$tr, $tp] = tiendaRulesSql();
+$ts = $db->prepare("SELECT p.category, COUNT(*) AS n FROM products p WHERE TRIM(p.category) <> ''" . $tr . ' GROUP BY p.category');
+$ts->execute($tp);
+$storeCats = array_column($ts->fetchAll(), 'n', 'category');
 include __DIR__ . '/../../templates/admin/productos.php';
