@@ -532,6 +532,12 @@ if ($uri === '/manifiestos') {
     exit;
 }
 
+if (preg_match('#^/clientes/(\d+)$#', $uri, $matches)) { // ficha del cliente
+    requireStaff();
+    $customerId = (int) $matches[1];
+    include __DIR__ . '/src/controllers/customer_detail.php';
+    exit;
+}
 if ($uri === '/clientes') {
     requireStaff();
     include __DIR__ . '/src/controllers/customers_v2.php';
