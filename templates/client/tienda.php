@@ -27,6 +27,8 @@ $okBrands = tiendaBrands(); // vacío = todas
 $showBrand = fn(string $b) => !$okBrands || in_array($b, $okBrands, true);
 $ver = APP_VERSION;
 $banner = tiendaBanner();
+$gallery = appSetting('tienda_gal_on', '1') === '1' ? tiendaGallery() : [];
+$galTitle = appSetting('tienda_gal_title', 'POEDAGAR verde');
 if ($banner) $hero = null; // con banner, la portada va sin la foto lateral
 ?><!DOCTYPE html>
 <html lang="es" data-default-theme="light">
@@ -97,6 +99,27 @@ if ($banner) $hero = null; // con banner, la portada va sin la foto lateral
     </section>
 
     <div id="tnBrowse">
+        <?php if ($gallery): ?>
+        <section class="tn-sec tn-gal" id="tnGal" aria-label="<?= e($galTitle !== '' ? $galTitle : 'Galería') ?>">
+            <div class="tn-gal-head">
+                <?php if ($galTitle !== ''): ?><h2><?= e($galTitle) ?></h2><?php endif; ?>
+                <div class="tn-gal-nav" hidden>
+                    <button type="button" class="tn-gal-btn" data-dir="-1" aria-label="Fotos anteriores" aria-controls="tnGalTrack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
+                    <button type="button" class="tn-gal-btn" data-dir="1" aria-label="Más fotos" aria-controls="tnGalTrack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
+                </div>
+            </div>
+            <ul class="tn-gal-track" id="tnGalTrack" tabindex="0" aria-label="Fotos, desliza para ver más">
+                <?php foreach ($gallery as $i => $g): $alt = $g['caption'] !== '' ? $g['caption'] : $galTitle . ' · foto ' . ($i + 1); ?>
+                <li class="tn-gal-item">
+                    <?php if ($g['link'] !== ''): ?><a class="tn-gal-ph" href="<?= e($g['link']) ?>"<?= str_starts_with($g['link'], 'https://') ? ' target="_blank" rel="noopener"' : '' ?>><?php else: ?><span class="tn-gal-ph"><?php endif; ?>
+                        <img src="<?= e($g['src']) ?>" alt="<?= e($alt) ?>" width="<?= $g['w'] ?>" height="<?= $g['h'] ?>" loading="<?= $i < 8 ? 'eager' : 'lazy' ?>" decoding="async" draggable="false">
+                    <?= $g['link'] !== '' ? '</a>' : '</span>' ?>
+                    <?php if ($g['caption'] !== ''): ?><p class="tn-gal-cap"><?= e($g['caption']) ?></p><?php endif; ?>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+        </section>
+        <?php endif; ?>
         <section class="tn-sec" aria-labelledby="tnCatH">
             <h2 id="tnCatH">Por categoría</h2>
             <nav class="tn-cats" id="tnCats" aria-label="Categorías"></nav>

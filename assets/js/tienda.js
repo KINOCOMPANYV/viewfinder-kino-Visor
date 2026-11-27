@@ -330,3 +330,20 @@
     paintCart(); ensureMeta().then(paintCart);
     load(true);
 })();
+
+// ── Galería: flechas (solo si hay scroll y hay ratón/PC) ──
+(function () {
+    const tr = document.getElementById('tnGalTrack'); if (!tr) return;
+    const nav = document.querySelector('.tn-gal-nav'); const [prev, next] = nav ? nav.querySelectorAll('.tn-gal-btn') : [];
+    const upd = () => {
+        const more = tr.scrollWidth > tr.clientWidth + 4; if (nav) nav.hidden = !more;
+        if (prev) prev.disabled = tr.scrollLeft < 4; if (next) next.disabled = tr.scrollLeft + tr.clientWidth >= tr.scrollWidth - 4;
+    };
+    if (nav) nav.addEventListener('click', (e) => {
+        const b = e.target.closest('.tn-gal-btn'); if (!b) return;
+        tr.scrollBy({ left: Number(b.dataset.dir) * tr.clientWidth * 0.8 });
+    });
+    tr.addEventListener('scroll', () => requestAnimationFrame(upd), { passive: true });
+    tr.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); tr.scrollBy({ left: (e.key === 'ArrowRight' ? 1 : -1) * tr.clientWidth * 0.6 }); } });
+    window.addEventListener('resize', upd); upd();
+})();

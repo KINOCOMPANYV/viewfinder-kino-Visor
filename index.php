@@ -466,6 +466,17 @@ if ($uri === '/tienda/banner') {
     echo $b;
     exit;
 }
+if (preg_match('#^/tienda/galeria/(\d+)$#', $uri, $matches)) {
+    $st = getDB()->prepare('SELECT mime, data FROM tienda_gallery WHERE id = ?');
+    $st->execute([(int) $matches[1]]);
+    $g = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$g) { http_response_code(404); exit; }
+    header('Content-Type: ' . (in_array($g['mime'], ['image/webp', 'image/jpeg'], true) ? $g['mime'] : 'image/webp'));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: public, max-age=31536000, immutable'); // la URL lleva ?v=fecha
+    echo $g['data'];
+    exit;
+}
 if ($uri === '/tienda') {
     include __DIR__ . '/templates/client/tienda.php';
     exit;
