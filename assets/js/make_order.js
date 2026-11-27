@@ -219,8 +219,11 @@
             const b = $('moDebt'), bal = c ? Number(c.balance) || 0 : 0;
             if (!c) { b.hidden = true; return; }
             b.hidden = false;
-            b.className = 'mo-debt' + (bal > 0 ? '' : ' mo-debt--ok');
-            b.textContent = bal > 0 ? '⚠ Este cliente debe $' + Math.round(bal).toLocaleString('es-CO') + '. Revisa la cartera antes de despachar.' : '✓ Cliente al día con la cartera.';
+            const days = Number(c.debt_days) || 0;
+            b.className = 'mo-debt' + (bal <= 0 ? ' mo-debt--ok' : days > 40 ? ' mo-debt--40' : '');
+            b.textContent = bal <= 0 ? '✓ Cliente al día con la cartera.'
+                : (days > 40 ? '‼ ' : '⚠ ') + 'Este cliente debe $' + Math.round(bal).toLocaleString('es-CO')
+                  + (days > 20 ? ' hace ' + days + ' días' : '') + '. Revisa la cartera antes de despachar.';
         };
         $('moPhone').addEventListener('change', async () => {
             const p = digits($('moPhone').value);

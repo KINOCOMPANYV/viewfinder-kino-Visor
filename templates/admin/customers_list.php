@@ -3,18 +3,23 @@
 <?php if (!$tableOk): ?><p class="v2-card" style="padding:1rem">Falta aplicar la migración 041.</p><?php endif; ?>
 <div class="v2-card">
     <form class="v2-bar" method="get" action="/clientes"><div class="v2-search"><input name="q" value="<?= e($q) ?>" placeholder="Nombre o teléfono"></div>
-        <?php if ($onlyDebt): ?><input type="hidden" name="cartera" value="debe"><?php endif; ?>
-        <a class="btn btn-sm <?= $onlyDebt ? 'btn-primary' : 'btn-secondary' ?>" href="/clientes<?= $onlyDebt ? '' : '?cartera=debe' ?>"><?= $onlyDebt ? '✕ Ver todos' : 'Solo los que deben' ?></a>
-        <span style="color:var(--color-text-muted);font-size:.9rem">Cartera: <b style="color:var(--color-danger)"><?= $debtCount ?></b> deben<?= $debtTotal > 0 ? ' · ' . e(priceText($debtTotal)) : '' ?></span></form>
+        <?php if ($onlyDebt): ?><input type="hidden" name="cartera" value="<?= e($cartera) ?>"><?php endif; ?>
+        <?php foreach (['debe' => 'Los que deben (' . $debtCount . ')', '20' => '⚠ Más de 20 días (' . $debt20 . ')', '40' => '‼ Más de 40 días (' . $debt40 . ')'] as $k => $t): ?>
+            <a class="btn btn-sm <?= $cartera === (string) $k ? 'btn-primary' : 'btn-secondary' ?>" href="/clientes<?= $cartera === (string) $k ? '' : '?cartera=' . $k ?>"><?= e($t) ?></a>
+        <?php endforeach; ?>
+        <?php if ($debtTotal > 0): ?><span style="color:var(--color-text-muted);font-size:.9rem">Cartera total: <b style="color:var(--color-danger)"><?= e(priceText($debtTotal)) ?></b></span><?php endif; ?></form>
     <table class="v2-table"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Cartera</th><th>Pedidos</th><th class="v2-hide-m">Comprado</th><th class="v2-hide-m">Último</th><th>Vendedor</th></tr></thead><tbody>
     <?php foreach ($rows as $c): ?><tr>
         <td><b><?= e($c['name'] ?: '—') ?></b></td>
         <td><a href="https://wa.me/<?= e(preg_replace('/\D+/', '', $c['phone'])) ?>" target="_blank" rel="noopener"><?= e($c['phone']) ?></a></td>
         <td><?php $bal = (float) $c['balance']; $badge = $bal > 0
-                ? '<span class="cli-debt cli-debt--owes">Debe ' . e(priceText($bal)) . '</span>' : '<span class="cli-debt cli-debt--ok">Al día</span>'; ?>
+                ? '<span class="cli-debt cli-debt--owes">Debe ' . e(priceText($bal)) . '</span>' : '<span class="cli-debt cli-debt--ok">Al día</span>';
+            $dd = (int) $c['debt_days'];
+            if ($bal > 0 && $dd > 20) $badge .= ' <span class="cli-age cli-age--' . ($dd > 40 ? '40' : '20') . '">' . ($dd > 40 ? '‼' : '⚠') . ' ' . $dd . ' días</span>'; ?>
             <?php if ($canAssign): ?><details class="cli-bal"><summary title="<?= e($c['balance_note'] . ($c['balance_at'] ? ' · ' . substr((string) $c['balance_at'], 0, 10) : '')) ?>"><?= $badge ?></summary>
-                <form method="post" action="/clientes"><input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>"><input type="hidden" name="action" value="balance"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>"><?php if ($onlyDebt): ?><input type="hidden" name="back" value="debe"><?php endif; ?>
+                <form method="post" action="/clientes"><input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>"><input type="hidden" name="action" value="balance"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>"><?php if ($onlyDebt): ?><input type="hidden" name="back" value="<?= e($cartera) ?>"><?php endif; ?>
                     <label>Saldo que debe ($) <input name="balance" inputmode="numeric" value="<?= $bal > 0 ? number_format($bal, 0, ',', '.') : '0' ?>"></label>
+                    <label>Debe desde <input type="date" name="debt_since" max="<?= date('Y-m-d') ?>" value="<?= e((string) $c['debt_since']) ?>"></label>
                     <label>Nota <input name="balance_note" maxlength="255" value="<?= e($c['balance_note']) ?>" placeholder="Ej.: factura 1234, abono 20/11"></label>
                     <button class="btn btn-sm btn-primary" type="submit">Guardar</button> <small>0 = al día</small></form></details>
             <?php else: ?><span title="<?= e($c['balance_note']) ?>"><?= $badge ?></span><?php endif; ?></td>
