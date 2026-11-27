@@ -227,7 +227,6 @@
                 box.hidden = true;
             });
         }
-        $('moPhone').addEventListener('change', checkLast);
         const digits = (t) => String(t || '').replace(/\D+/g, '');
         // Cartera: aviso si el cliente elegido debe
         const showDebt = (c) => {
@@ -240,6 +239,7 @@
                 : (days > 40 ? '‼ ' : '⚠ ') + 'Este cliente debe $' + Math.round(bal).toLocaleString('es-CO')
                   + (days > 20 ? ' hace ' + days + ' días' : '') + '. Revisa la cartera antes de despachar.';
         };
+        $('moPhone').addEventListener('change', checkLast);
         $('moPhone').addEventListener('change', async () => {
             const p = digits($('moPhone').value);
             if (p.length < 7) { showDebt(null); return; }
