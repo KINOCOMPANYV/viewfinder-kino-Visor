@@ -112,7 +112,7 @@ if ($banner) $hero = null; // con banner, la portada va sin la foto lateral
                 <?php foreach ($gallery as $i => $g): $alt = $g['caption'] !== '' ? $g['caption'] : $galTitle . ' · foto ' . ($i + 1); ?>
                 <li class="tn-gal-item">
                     <?php if ($g['link'] !== ''): ?><a class="tn-gal-ph" href="<?= e($g['link']) ?>"<?= str_starts_with($g['link'], 'https://') ? ' target="_blank" rel="noopener"' : '' ?>><?php else: ?><span class="tn-gal-ph"><?php endif; ?>
-                        <img src="<?= e($g['src']) ?>" alt="<?= e($alt) ?>" width="<?= $g['w'] ?>" height="<?= $g['h'] ?>" loading="<?= $i < 3 ? 'eager' : 'lazy' ?>" decoding="async" draggable="false">
+                        <img src="<?= e($g['src']) ?>" alt="<?= e($alt) ?>" width="<?= $g['w'] ?>" height="<?= $g['h'] ?>" loading="<?= $i < 8 ? 'eager' : 'lazy' ?>" decoding="async" draggable="false">
                     <?= $g['link'] !== '' ? '</a>' : '</span>' ?>
                     <?php if ($g['caption'] !== ''): ?><p class="tn-gal-cap"><?= e($g['caption']) ?></p><?php endif; ?>
                 </li>
