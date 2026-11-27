@@ -1699,10 +1699,10 @@ function shopBankInfo(): string
     return trim(appSetting('tienda_bank_info', ''));
 }
 
-/** Marcas que muestra la tienda (/tienda). Ajuste «tienda_brands» (separadas por coma); por defecto POEDAGAR; «*» = todas. */
+/** Marcas que muestra la tienda (/tienda). Ajuste «tienda_brands» (separadas por coma); por defecto todas (como Vender); «*» = todas. */
 function tiendaBrands(): array
 {
-    $v = trim(appSetting('tienda_brands', 'POEDAGAR'));
+    $v = trim(appSetting('tienda_marcas', '*'));
     if ($v === '' || $v === '*') return [];
     return array_values(array_unique(array_filter(array_map('trim', explode(',', $v)), 'strlen')));
 }
