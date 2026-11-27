@@ -1,6 +1,6 @@
 # Plan: rediseño de la tienda `/tienda` (estilo Apple Mac Colombia)
 
-Estado: **propuesta, falta la aprobación del dueño**. Rama `v2`. No se toca `main`.
+Estado: **aprobado e implementado (2026-11-27)**. Rama `v2`. No se toca `main`.
 
 ## Qué se mantiene (no cambia)
 - Datos y reglas: solo productos con «Catálogo» encendido (`is_active`) y foto; precio público = SYS × multiplicador; API `/api/pedido/explorar`.
@@ -42,8 +42,8 @@ Estado: **propuesta, falta la aprobación del dueño**. Rama `v2`. No se toca `m
 - Desde ahí sigue el flujo actual de entrega, pago y WhatsApp sin cambios.
 
 ## Logos (guardados en `assets/img/marcas/`)
-- `kino-company.jpeg` (3792×1566, fondo blanco): original. Al implementar se genera una versión web liviana con fondo transparente y otra para modo oscuro (letras negras → blancas, rojo igual).
-- `joefox-negro.png` (1650×1275, transparente): se usa tal cual en claro; en oscuro, versión con letras blancas.
+- `kino-company.webp` (claro) y `kino-company-oscuro.webp` (letras blancas, rojo igual), generados del original de 3792×1566 (el original no se guarda en el repo).
+- `joefox.webp` / `joefox-oscuro.webp`: del PNG original; en oscuro, letras blancas.
 - `poedagar-blanco.png` / `poedagar-negro.png` (1200 px, transparentes): recortados de la foto que envió el dueño. Blanco para fondo oscuro, negro para fondo claro.
 - `assets/img/tienda/poedagar-oro-rosa-2400.webp` y `-1200.webp` (212 KB / 80 KB): foto de producto POEDAGAR (oro rosa, esfera de nácar, malla tejida, fondo negro), optimizada desde el original de 11584×8688.
 
