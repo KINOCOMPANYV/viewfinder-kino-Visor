@@ -130,6 +130,11 @@ if ($banner) $hero = null; // con banner, la portada va sin la foto lateral
     <section class="tn-results" id="tnCatalog" aria-labelledby="tnTitle">
         <nav class="tn-crumbs" id="tnCrumbs" aria-label="Ruta"></nav>
         <div class="tn-headrow"><h2 id="tnTitle">Todos los productos</h2><span id="tnCount"></span></div>
+        <div class="tn-share" id="tnShare" hidden>
+            <button type="button" class="tn-sharebtn" id="tnShareBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M6 12v7h12v-7"/></svg><span>Compartir esta búsqueda</span></button>
+            <button type="button" class="tn-sharebtn tn-sharewa" id="tnShareWa" aria-label="Enviar por WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7L4 20z"/></svg><span>WhatsApp</span></button>
+            <small id="tnShareMsg" role="status" hidden></small>
+        </div>
         <nav class="tn-subs" id="tnSubs" aria-label="Subcategorías" hidden></nav>
         <div class="tn-grid" id="tnGrid" aria-live="polite"></div>
         <p class="tn-empty" id="tnEmpty" hidden>No encontramos productos con esa búsqueda. Prueba con otra referencia o quita filtros.</p>

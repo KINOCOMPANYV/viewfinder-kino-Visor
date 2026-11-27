@@ -111,12 +111,12 @@
     }
     function fillCats(list) {
         CATS = list || [];
-        const s = $('tnCat'); if (s.options.length <= 1) CATS.forEach((c) => s.add(new Option(c.name, c.name)));
+        const s = $('tnCat'); CATS.forEach((c) => addOpt(s, c.name)); s.value = st.cat;
         paintCats();
     }
     function fillBrands(b) {
         const names = b.map((x) => typeof x === 'string' ? x : (x.name || x.brand || '')).filter(Boolean);
-        const s = $('tnMarca'); if (s.options.length <= 1) names.forEach((n) => s.add(new Option(n, n)));
+        const s = $('tnMarca'); names.forEach((n) => addOpt(s, n)); s.value = st.marca;
         const l = $('tnBrandList'); if (!l.childElementCount) l.innerHTML = names.map((n) => '<button type="button" class="tn-chip" data-marca="' + esc(n) + '">' + esc(n) + '</button>').join('');
     }
     function isHome() { return !(st.q || st.cat || filtersCount()); }
@@ -126,7 +126,7 @@
         reload(); window.scrollTo({ top: 0 });
     }
     function pickBrand(name) {
-        const s = $('tnMarca'); if (![...s.options].some((o) => o.value === name)) s.add(new Option(name, name));
+        const s = $('tnMarca'); addOpt(s, name);
         st.marca = name; s.value = name; st.cat = ''; $('tnCat').value = ''; st.q = ''; $('tnQ').value = '';
         reload(); window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -136,7 +136,43 @@
         $('tnGenero').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.g === st.genero)));
         $('tnStock').setAttribute('aria-pressed', String(st.stock));
     }
-    const reload = () => { syncFilterUI(); load(true); };
+    const reload = () => { syncFilterUI(); writeUrl(); load(true); };
+
+    // ── Enlace para compartir: los filtros viven en la URL (?cat=POEDAGAR&para=hombre…) y se restauran al abrirla ──
+    const addOpt = (s, v) => { if (v && ![...s.options].some((o) => o.value === v)) s.add(new Option(v, v)); };
+    const GEN = ['hombre', 'mujer', 'unisex'];
+    function shareUrl() {
+        const u = new URLSearchParams();
+        if (st.q) u.set('q', st.q); if (st.cat) u.set('cat', st.cat); if (st.marca) u.set('marca', st.marca);
+        if (st.genero) u.set('para', st.genero); if (st.precio) u.set('precio', st.precio); if (st.stock) u.set('stock', '1'); if (st.orden) u.set('orden', st.orden);
+        const qs = u.toString(); return location.origin + location.pathname + (qs ? '?' + qs : '');
+    }
+    function writeUrl() { try { history.replaceState(history.state, '', shareUrl().slice(location.origin.length)); } catch (e) {} $('tnShare').hidden = isHome(); }
+    function readUrl() {
+        const u = new URLSearchParams(location.search); const g = (k) => (u.get(k) || '').trim().slice(0, 80);
+        st.q = g('q'); st.cat = g('cat'); st.marca = g('marca');
+        st.genero = GEN.includes(g('para')) ? g('para') : '';
+        st.precio = [...$('tnPrecio').options].some((o) => o.value === g('precio')) ? g('precio') : '';
+        st.orden = [...$('tnOrden').options].some((o) => o.value === g('orden')) ? g('orden') : '';
+        st.stock = g('stock') === '1';
+        $('tnQ').value = st.q; addOpt($('tnCat'), st.cat); addOpt($('tnMarca'), st.marca);
+        $('tnCat').value = st.cat; $('tnMarca').value = st.marca; $('tnPrecio').value = st.precio; $('tnOrden').value = st.orden;
+        if (filtersCount()) { $('tnFilters').hidden = false; $('tnFilterBtn').setAttribute('aria-expanded', 'true'); }
+        syncFilterUI(); $('tnShare').hidden = isHome();
+    }
+    function shareText() {
+        const bits = [st.cat, st.marca, st.genero && st.genero.charAt(0).toUpperCase() + st.genero.slice(1), st.q && '«' + st.q + '»'].filter(Boolean);
+        return 'Mira estos relojes en Kino Company' + (bits.length ? ': ' + bits.join(' · ') : '');
+    }
+    let shareTm = 0;
+    function shareMsg(t) { const m = $('tnShareMsg'); m.textContent = t; m.hidden = false; clearTimeout(shareTm); shareTm = setTimeout(() => { m.hidden = true; }, 2200); }
+    $('tnShareBtn').addEventListener('click', async () => {
+        const url = shareUrl();
+        if (navigator.share && matchMedia('(pointer: coarse)').matches) { try { await navigator.share({ title: 'Kino Company', text: shareText(), url }); } catch (e) {} return; }
+        try { await navigator.clipboard.writeText(url); shareMsg('Enlace copiado'); }
+        catch (e) { window.prompt('Copia este enlace:', url); }
+    });
+    $('tnShareWa').addEventListener('click', () => { window.open('https://wa.me/?text=' + encodeURIComponent(shareText() + '\n' + shareUrl()), '_blank', 'noopener'); });
 
     // ── Eventos del catálogo ──
     let tm = 0;
@@ -290,6 +326,7 @@
 
     // ── Inicio ──
     api({ tienda: '1', facets: '1', todos: '1', todo: '1', p: 1 }).then((d) => { if (d.facets) { fillBrands(d.facets.brands || []); fillCats(d.facets.cats); } }).catch(() => {});
+    readUrl();
     paintCart(); ensureMeta().then(paintCart);
     load(true);
 })();
