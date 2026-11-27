@@ -38,6 +38,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $flash = 'Guardado.';
     } catch (\Throwable $e) { $error = $e->getMessage(); }
 }
+// Estado real del banner (leído de la base, no del formulario) para ver si de verdad quedó guardado.
+$bnImg = null;
+try {
+    $bq = getDB()->query("SELECT LENGTH(data) AS n, UNIX_TIMESTAMP(updated_at) AS t FROM doc_templates WHERE name = 'tienda_banner'");
+    $bnImg = $bq ? $bq->fetch(PDO::FETCH_ASSOC) : null;
+} catch (\Throwable $e) { $bnImg = null; }
+try { $bnOn = (string) getDB()->query("SELECT value FROM app_settings WHERE name = 'tienda_banner_on'")->fetchColumn(); } catch (\Throwable $e) { $bnOn = ''; }
 $adminNav = 'tienda';
 $v2 = ['nav' => 'gestion', 'sub' => 'tienda', 'title' => 'Tienda', 'subtitle' => 'Catálogo de venta público: avisos y datos de pago'];
 include __DIR__ . '/../../templates/admin/partials/v2_start.php';
@@ -61,6 +68,8 @@ include __DIR__ . '/../../templates/admin/partials/v2_start.php';
         <input class="v2-input" name="hero_sku" value="<?= e(appSetting('tienda_hero_sku', '')) ?>" maxlength="60" style="width:100%" placeholder="Ej. PD1234"></label>
     <fieldset style="border:1px solid var(--color-border);border-radius:12px;padding:1rem;display:grid;gap:.7rem">
         <legend><b>Banner de la portada</b></legend>
+        <p style="margin:0;color:var(--color-text-muted)">Estado guardado: <b><?= $bnOn === '1' ? 'encendido' : 'apagado' ?></b> · imagen: <b><?= $bnImg ? 'sí (' . round(((int) $bnImg['n']) * 0.75 / 1024) . ' KB)' : 'no hay' ?></b> · <a href="/tienda?nc=<?= time() ?>" target="_blank" rel="noopener">ver /tienda</a></p>
+        <?php if ($bnImg): ?><img src="/tienda/banner?v=<?= (int) $bnImg['t'] ?>" alt="Banner actual" style="max-width:100%;max-height:140px;border-radius:10px;object-fit:cover"><?php endif; ?>
         <label><input type="checkbox" name="banner_on" value="1" <?= appSetting('tienda_banner_on', '0') === '1' ? 'checked' : '' ?>> Mostrar el banner arriba de la tienda</label>
         <label>Imagen (JPG, PNG o WebP; horizontal, ideal 2000×900, fondo oscuro)
             <input class="v2-input" type="file" name="banner_img" accept="image/jpeg,image/png,image/webp" style="width:100%"></label>
