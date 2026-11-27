@@ -466,6 +466,17 @@ if ($uri === '/tienda/banner') {
     echo $b;
     exit;
 }
+if (preg_match('#^/tienda/galeria/(\d+)$#', $uri, $matches)) {
+    $st = getDB()->prepare('SELECT mime, data FROM tienda_gallery WHERE id = ?');
+    $st->execute([(int) $matches[1]]);
+    $g = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$g) { http_response_code(404); exit; }
+    header('Content-Type: ' . (in_array($g['mime'], ['image/webp', 'image/jpeg'], true) ? $g['mime'] : 'image/webp'));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: public, max-age=31536000, immutable'); // la URL lleva ?v=fecha
+    echo $g['data'];
+    exit;
+}
 if ($uri === '/tienda') {
     include __DIR__ . '/templates/client/tienda.php';
     exit;
@@ -491,7 +502,7 @@ if ($uri === '/hacer-pedido/mio' && $method === 'POST') {
     include __DIR__ . '/src/controllers/client_order_edit.php';
     exit;
 }
-if ($uri === '/clientes/buscar') { // staff: autocompletar cliente existente al crear un pedido
+if ($uri === '/clientes/buscar' || $uri === '/clientes/ultimo') { // staff: autocompletar cliente existente al crear un pedido
     requireStaff();
     session_write_close();
     include __DIR__ . '/src/controllers/customers_v2.php';

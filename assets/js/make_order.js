@@ -212,12 +212,27 @@
 
     // ── Vendedor: elegir un cliente existente (autocompletar por nombre o teléfono) ──
     if (window.MO_STAFF) {
-        let ct = 0, found = [];
+        let ct = 0, found = [], lastFor = '';
+        async function checkLast() {
+            const box = $('moRepeat'), ph = $('moPhone').value.replace(/\D+/g, '');
+            if (ph.length < 7 || ph === lastFor) { if (ph.length < 7) { box.hidden = true; lastFor = ''; } return; }
+            lastFor = ph;
+            let o = null;
+            try { o = (await (await fetch('/clientes/ultimo?phone=' + encodeURIComponent(ph))).json()).order; } catch (e) { return; }
+            if (!o || !o.items.length) { box.hidden = true; return; }
+            box.hidden = false;
+            box.innerHTML = 'Último pedido <b>' + esc(o.number) + '</b> (' + esc(o.date) + ', ' + o.items.length + ' ref.) · <button type="button" class="btn btn-sm btn-secondary" id="moRepeatBtn">↻ Repetir</button>';
+            $('moRepeatBtn').addEventListener('click', () => {
+                o.items.forEach((i) => setQty(i.sku, qtyOf(i.sku) + i.qty));
+                box.hidden = true;
+            });
+        }
+        $('moPhone').addEventListener('change', checkLast);
         $('moName').addEventListener('input', () => {
             clearTimeout(ct);
             const v = $('moName').value.trim();
             const hit = found.find((c) => c.name + ' — ' + c.phone === v);
-            if (hit) { $('moName').value = hit.name; $('moPhone').value = hit.phone; return; }
+            if (hit) { $('moName').value = hit.name; $('moPhone').value = hit.phone; checkLast(); return; }
             ct = setTimeout(async () => {
                 if (v.length < 2) return;
                 try { found = (await (await fetch('/clientes/buscar?q=' + encodeURIComponent(v))).json()).customers || []; } catch (e) { return; }
