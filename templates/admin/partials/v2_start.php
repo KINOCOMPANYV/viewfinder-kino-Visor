@@ -30,3 +30,7 @@ $v2 = ($v2 ?? []) + ['nav' => '', 'sub' => '', 'title' => 'Admin', 'subtitle' =>
                     <span class="v2-user-txt"><b><?= e($v2Name) ?></b><small><?= e(Users::label($v2Role)) ?></small></span></div>
             </div>
         </header>
+        <?php if ($v2Cobro[0] && in_array(currentRole(), ['vendedor', 'facturacion', 'admin', 'dev'], true)): ?>
+        <a class="v2-cobro<?= $v2Cobro[1] ? ' v2-cobro--40' : '' ?>" href="/clientes?cartera=<?= $v2Cobro[1] ? '40' : '20' ?>">
+            <?= $v2Cobro[1] ? '‼' : '⚠' ?> <b>Por cobrar:</b> <?= currentRole() === 'vendedor' ? 'tienes ' : '' ?><?= $v2Cobro[0] ?> cliente<?= $v2Cobro[0] > 1 ? 's' : '' ?> con deuda de más de 20 días<?= $v2Cobro[1] ? ' (' . $v2Cobro[1] . ' de más de 40)' : '' ?>. <u>Ver lista</u></a>
+        <?php endif; ?>

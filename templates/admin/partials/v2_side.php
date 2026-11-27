@@ -18,6 +18,15 @@ try {
     $v2Pending = (int) getDB()->query("SELECT COUNT(*) FROM orders WHERE stage IN ('recibido','por_alistar','en_alistamiento')")->fetchColumn();
 } catch (Throwable $e) {
 }
+// Por cobrar: clientes con deuda de más de 20 / 40 días (el vendedor, solo los suyos). Avisa en el menú y arriba de cada pantalla.
+$v2Cobro = [0, 0];
+try {
+    $cu = sessionUser();
+    $cw = currentRole() === 'vendedor' && $cu ? ' AND seller_user_id = ' . (int) $cu['id'] : '';
+    $cr = getDB()->query("SELECT COALESCE(SUM(debt_since < CURDATE() - INTERVAL 20 DAY), 0), COALESCE(SUM(debt_since < CURDATE() - INTERVAL 40 DAY), 0)
+        FROM customers WHERE balance > 0$cw")->fetch(PDO::FETCH_NUM);
+    $v2Cobro = [(int) $cr[0], (int) $cr[1]];
+} catch (Throwable $e) { /* migración 045 aún sin aplicar */ }
 // [clave, ruta (null = pronto), texto, icono SVG]
 $v2Menu = [
     ['vender', '/vender', 'Vender', '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>'],
@@ -68,7 +77,7 @@ $v2CfgOpen = $v2['nav'] === 'gestion';
                     <span class="v2-item off" title="Módulo en construcción"><svg viewBox="0 0 24 24" aria-hidden="true"><?= $svg ?></svg><?= e($label) ?><em>Pronto</em></span>
                 <?php else: ?>
                     <a class="v2-item<?= $on ? ' on' : '' ?>" href="<?= $href ?>"<?= $key === 'catalogo' ? ' target="_blank"' : '' ?>>
-                        <?php if ($key === 'pedidos' && $v2Pending): ?><b class="v2-count"><?= $v2Pending ?></b><?php else: ?><svg viewBox="0 0 24 24" aria-hidden="true"><?= $svg ?></svg><?php endif; ?><?= e($label) ?></a>
+                        <?php if ($key === 'pedidos' && $v2Pending): ?><b class="v2-count"><?= $v2Pending ?></b><?php elseif ($key === 'clientes' && $v2Cobro[0]): ?><b class="v2-count v2-count--cobro" title="Clientes por cobrar (más de 20 días)"><?= $v2Cobro[0] ?></b><?php else: ?><svg viewBox="0 0 24 24" aria-hidden="true"><?= $svg ?></svg><?php endif; ?><?= e($label) ?></a>
                 <?php endif; ?>
             <?php endforeach; ?>
         </nav>
