@@ -26,6 +26,8 @@ $img = '/assets/img/marcas/';
 $okBrands = tiendaBrands(); // vacío = todas
 $showBrand = fn(string $b) => !$okBrands || in_array($b, $okBrands, true);
 $ver = APP_VERSION;
+$banner = tiendaBanner();
+if ($banner) $hero = null; // con banner, la portada va sin la foto lateral
 ?><!DOCTYPE html>
 <html lang="es" data-default-theme="light">
 <head>
@@ -36,6 +38,8 @@ $ver = APP_VERSION;
 <meta property="og:title" content="Kino Company · Tienda de relojes"><meta property="og:type" content="website">
 <style>body{background:var(--color-bg,#fbfbfd);color:var(--color-text,#1d1d1f)}</style>
 <link rel="preconnect" href="https://lh3.googleusercontent.com">
+<?php if ($banner): ?><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap">
+<?php if ($banner['img']): ?><link rel="preload" as="image" href="<?= e($banner['img']) ?>"><?php endif; endif; ?>
 <link rel="preload" as="image" href="<?= $img ?>kino-company.webp">
 <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
 <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
@@ -50,6 +54,17 @@ $ver = APP_VERSION;
     <button class="tn-cartbtn" id="tnCartBtn" type="button" aria-label="Mi pedido"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 12H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="tn-cartlbl">Mi pedido</span><span class="tn-cartn" id="tnCartN" hidden>0</span></button>
 </div></header>
 
+<?php if ($banner && ($banner['title'] !== '' || $banner['img'] !== '')): ?>
+<section class="tn-banner" id="tnBanner" aria-label="Destacado">
+    <?php if ($banner['img']): ?><img src="<?= e($banner['img']) ?>" alt="" fetchpriority="high" decoding="async"><?php endif; ?>
+    <div class="tn-banner-in">
+        <?php if ($banner['kicker'] !== ''): ?><p class="tn-banner-k"><?= e($banner['kicker']) ?></p><?php endif; ?>
+        <?php if ($banner['title'] !== ''): ?><p class="tn-banner-t"><?= e($banner['title']) ?></p><?php endif; ?>
+        <?php if ($banner['text'] !== ''): ?><p class="tn-banner-s"><?= e($banner['text']) ?></p><?php endif; ?>
+        <?php if ($banner['btn'] !== ''): ?><a class="tn-banner-b" href="<?= e($banner['link'] ?: '#tnCatalog') ?>"><?= e($banner['btn']) ?></a><?php endif; ?>
+    </div>
+</section>
+<?php endif; ?>
 <main class="tn-main" id="tnMain">
     <section class="tn-hero" id="tnHero">
         <div class="tn-hero-txt">

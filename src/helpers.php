@@ -1722,3 +1722,24 @@ function promoCategories(PDO $db): array
     try { return $db->query('SELECT category FROM category_settings WHERE is_promo = 1')->fetchAll(PDO::FETCH_COLUMN); }
     catch (\Throwable $e) { return []; }
 }
+
+
+/** Banner hero de /tienda (Admin → Tienda): textos en app_settings, imagen JPEG en doc_templates ('tienda_banner', base64). Devuelve null si está apagado. */
+function tiendaBanner(): ?array
+{
+    if (appSetting('tienda_banner_on', '0') !== '1') return null;
+    $v = '';
+    try {
+        $st = getDB()->prepare("SELECT UNIX_TIMESTAMP(updated_at) FROM doc_templates WHERE name = 'tienda_banner'");
+        $st->execute();
+        $v = (string) ($st->fetchColumn() ?: '');
+    } catch (\Throwable $e) {}
+    return [
+        'img' => $v !== '' ? '/tienda/banner?v=' . $v : '',
+        'kicker' => appSetting('tienda_banner_kicker', ''),
+        'title' => appSetting('tienda_banner_title', ''),
+        'text' => appSetting('tienda_banner_text', ''),
+        'btn' => appSetting('tienda_banner_btn', ''),
+        'link' => appSetting('tienda_banner_link', '#tnCatalog'),
+    ];
+}

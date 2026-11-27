@@ -13,6 +13,28 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         setAppSetting($db, 'tienda_hero_sku', mb_substr(trim((string) ($_POST['hero_sku'] ?? '')), 0, 60, 'UTF-8'));
         setAppSetting($db, 'tienda_brands', mb_substr(trim((string) ($_POST['brands'] ?? '')), 0, 200, 'UTF-8') ?: '*');
         setAppSetting($db, 'tienda_delivery', mb_substr(trim((string) ($_POST['delivery'] ?? '')), 0, 200, 'UTF-8'));
+        $clip = fn(string $k, int $n) => mb_substr(trim((string) ($_POST[$k] ?? '')), 0, $n, 'UTF-8');
+        setAppSetting($db, 'tienda_banner_on', !empty($_POST['banner_on']) ? '1' : '0');
+        setAppSetting($db, 'tienda_banner_kicker', $clip('banner_kicker', 40));
+        setAppSetting($db, 'tienda_banner_title', $clip('banner_title', 80));
+        setAppSetting($db, 'tienda_banner_text', $clip('banner_text', 160));
+        setAppSetting($db, 'tienda_banner_btn', $clip('banner_btn', 30));
+        $link = $clip('banner_link', 200);
+        setAppSetting($db, 'tienda_banner_link', ($link === '' || $link[0] === '#' || $link[0] === '/' || preg_match('#^https://#i', $link)) ? $link : '#tnCatalog');
+        if (!empty($_POST['banner_del'])) {
+            $db->prepare("DELETE FROM doc_templates WHERE name = 'tienda_banner'")->execute();
+        }
+        $f = $_FILES['banner_img'] ?? null;
+        if ($f && ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            if ($f['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name']) || $f['size'] > 12 * 1048576) throw new RuntimeException('No se pudo subir la imagen (máximo 12 MB).');
+            $info = @getimagesize($f['tmp_name']);
+            $src = $info ? match ($info[2]) { IMAGETYPE_JPEG => @imagecreatefromjpeg($f['tmp_name']), IMAGETYPE_PNG => @imagecreatefrompng($f['tmp_name']), IMAGETYPE_WEBP => @imagecreatefromwebp($f['tmp_name']), default => false } : false;
+            if (!$src) throw new RuntimeException('La imagen debe ser JPG, PNG o WebP.');
+            $w = imagesx($src); $h = imagesy($src);
+            if ($w > 2000) { $src = imagescale($src, 2000); }
+            ob_start(); imagejpeg($src, null, 82); $jpg = ob_get_clean();
+            $db->prepare("INSERT INTO doc_templates (name, data) VALUES ('tienda_banner', ?) ON DUPLICATE KEY UPDATE data = VALUES(data)")->execute([base64_encode($jpg)]);
+        }
         $flash = 'Guardado.';
     } catch (\Throwable $e) { $error = $e->getMessage(); }
 }
@@ -20,7 +42,7 @@ $adminNav = 'tienda';
 $v2 = ['nav' => 'gestion', 'sub' => 'tienda', 'title' => 'Tienda', 'subtitle' => 'Catálogo de venta público: avisos y datos de pago'];
 include __DIR__ . '/../../templates/admin/partials/v2_start.php';
 ?>
-<form method="post" class="v2-card" style="padding:1.25rem;max-width:640px;display:grid;gap:.9rem">
+<form method="post" enctype="multipart/form-data" class="v2-card" style="padding:1.25rem;max-width:640px;display:grid;gap:.9rem">
     <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
     <?php if ($flash): ?><p style="color:var(--color-success)"><?= e($flash) ?></p><?php endif; ?>
     <?php if ($error): ?><p style="color:var(--color-danger)"><?= e($error) ?></p><?php endif; ?>
@@ -37,6 +59,23 @@ include __DIR__ . '/../../templates/admin/partials/v2_start.php';
         <input class="v2-input" name="delivery" value="<?= e(appSetting('tienda_delivery', '')) ?>" maxlength="200" style="width:100%" placeholder="Ej. Envíos a todo el país · Medellín mismo día"></label>
     <label>Reloj de la portada (código del producto; vacío = uno de JOEFOX/POEDAGAR con foto)
         <input class="v2-input" name="hero_sku" value="<?= e(appSetting('tienda_hero_sku', '')) ?>" maxlength="60" style="width:100%" placeholder="Ej. PD1234"></label>
+    <fieldset style="border:1px solid var(--color-border);border-radius:12px;padding:1rem;display:grid;gap:.7rem">
+        <legend><b>Banner de la portada</b></legend>
+        <label><input type="checkbox" name="banner_on" value="1" <?= appSetting('tienda_banner_on', '0') === '1' ? 'checked' : '' ?>> Mostrar el banner arriba de la tienda</label>
+        <label>Imagen (JPG, PNG o WebP; horizontal, ideal 2000×900, fondo oscuro)
+            <input class="v2-input" type="file" name="banner_img" accept="image/jpeg,image/png,image/webp" style="width:100%"></label>
+        <label><input type="checkbox" name="banner_del" value="1"> Quitar la imagen actual</label>
+        <label>Texto pequeño dorado
+            <input class="v2-input" name="banner_kicker" value="<?= e(appSetting('tienda_banner_kicker', 'Nueva colección')) ?>" maxlength="40" style="width:100%"></label>
+        <label>Titular
+            <input class="v2-input" name="banner_title" value="<?= e(appSetting('tienda_banner_title', 'Siente el movimiento.')) ?>" maxlength="80" style="width:100%"></label>
+        <label>Subtexto (opcional)
+            <input class="v2-input" name="banner_text" value="<?= e(appSetting('tienda_banner_text', '')) ?>" maxlength="160" style="width:100%"></label>
+        <label>Botón (opcional)
+            <input class="v2-input" name="banner_btn" value="<?= e(appSetting('tienda_banner_btn', '')) ?>" maxlength="30" style="width:100%" placeholder="Ej. Ver colección"></label>
+        <label>Enlace del botón (#tnCatalog = bajar al catálogo)
+            <input class="v2-input" name="banner_link" value="<?= e(appSetting('tienda_banner_link', '#tnCatalog')) ?>" maxlength="200" style="width:100%"></label>
+    </fieldset>
     <button class="btn btn-primary" type="submit" style="justify-self:start">Guardar</button>
 </form>
 <p class="v2-card" style="padding:1rem 1.25rem;max-width:640px;margin-top:1rem">Al terminar su pedido, el cliente toca <b>«Enviar pedido por WhatsApp»</b> y el mensaje (con el enlace del pedido y sus fotos) llega a este celular. Tú le respondes desde el detalle del pedido.</p>
