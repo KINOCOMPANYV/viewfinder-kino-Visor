@@ -151,3 +151,7 @@ body.v2-legacy .v2-side { position: fixed; left: 0; top: 0; }
 .cli-age--20 { background: color-mix(in srgb, var(--color-warning, #d9a400) 18%, transparent); color: var(--color-warning, #b58900); }
 .cli-age--40 { background: var(--color-danger); color: #fff; }
 .mo-debt--40 { background: var(--color-danger); color: #fff; font-weight: 600; }
+.v2-count--cobro { background: var(--color-danger) !important; color: #fff !important; }
+.v2-cobro { display: block; margin: 0 0 1rem; padding: .7rem 1rem; border-radius: 12px; text-decoration: none; font-size: .92rem;
+    background: color-mix(in srgb, var(--color-warning) 16%, transparent); color: var(--color-text); border: 1px solid color-mix(in srgb, var(--color-warning) 45%, transparent); }
+.v2-cobro--40 { background: color-mix(in srgb, var(--color-danger) 14%, transparent); border-color: color-mix(in srgb, var(--color-danger) 50%, transparent); }
