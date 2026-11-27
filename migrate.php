@@ -3,6 +3,10 @@
  * Ejecuta migraciones SQL pendientes.
  * Uso: php migrate.php
  */
+if (PHP_SAPI !== 'cli') { // solo por consola (arranque del contenedor): por web nadie debe poder lanzarlo
+    http_response_code(404);
+    exit;
+}
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/config/app.php';
 

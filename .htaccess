@@ -4,6 +4,11 @@ RewriteEngine On
 RewriteCond %{HTTP:X-Forwarded-Proto} =http
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+# ── Cerrar lo interno: código, migraciones, scripts, pruebas, datos y archivos de proyecto NO se sirven por web ──
+# (más abajo «si el archivo existe, servirlo» los dejaba abiertos: /migrate.php, /migrations/*.sql, /storage/*…)
+RewriteRule ^(migrations|scripts|tests|src|config|templates|storage|docs|\.git)(/|$) - [R=404,L]
+RewriteRule ^(migrate\.php|version\.php|Dockerfile|railway\.toml|CLAUDE\.md|README\.md|\.env.*|\.gitignore|\.dockerignore)$ - [R=404,L]
+
 # ── Cache de assets estáticos (1 año + immutable) ──
 <IfModule mod_headers.c>
     <FilesMatch "\.(css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot)$">
