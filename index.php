@@ -342,6 +342,17 @@ if ($uri === '/lista-pedido') {
 
 if ($uri === '/pedido-bodega') {
     requireStaff();
+    // v2: el alistamiento se hace dentro del detalle del pedido; si este checklist pertenece a un pedido, se abre allí.
+    if ((int) ($_GET['id'] ?? 0) > 0) {
+        try {
+            $ov = getDB()->prepare('SELECT id FROM orders WHERE warehouse_order_id = ? LIMIT 1');
+            $ov->execute([(int) $_GET['id']]);
+            if ($oid = $ov->fetchColumn()) {
+                redirect('/pedidos/' . (int) $oid . '#alistar');
+            }
+        } catch (\Throwable $e) {
+        }
+    }
     include __DIR__ . '/templates/client/warehouse_order.php';
     exit;
 }

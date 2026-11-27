@@ -13,7 +13,6 @@
                 <a class="v2-act" target="_blank" rel="noopener" href="https://wa.me/<?= e($cp) ?>?text=<?= rawurlencode('Hola ' . $order['customer_name'] . ', recibimos tu pedido ' . $order['number'] . ' en Kino Company. Aquí están tus productos con fotos: ' . publicBaseUrl() . '/pedido/' . $tk) ?>">📲 Enviar resumen con fotos por WhatsApp</a>
             <?php endif; } ?>
             <small class="v2-code">Origen: <?= e($order['origin']) ?> · <?= e(substr($order['created_at'], 0, 16)) ?></small>
-            <?php if ($order['warehouse_order_id']): ?><a class="v2-act" href="/pedido-bodega?id=<?= (int) $order['warehouse_order_id'] ?>">📦 Abrir checklist de bodega</a><?php endif; ?>
         </div>
         <?php if ($order['note'] !== ''): ?><p style="margin:.7rem 0 0">📝 <?= e($order['note']) ?></p><?php endif; ?>
         <?php $pct = (float) $order['discount_pct']; $total = (float) $order['total']; ?>
