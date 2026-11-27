@@ -4,7 +4,7 @@
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const money = (n) => '$' + Math.round(n).toLocaleString('es-CO');
     const meta = {};            // sku → {name, cover, price, stock}
-    const st = { folder: '', q: '', page: 1, pages: 1, todo: false, seq: 0, marca: '', genero: '', stock: false, precio: '', orden: '', facets: false };
+    const st = { folder: '', q: '', page: 1, pages: 1, todo: false, seq: 0, marca: '', genero: '', stock: false, precio: '', orden: '', facets: false, cats: [] };
     let timer = 0;
 
     const qtyOf = (sku) => { const it = kinoCart.read().find((i) => i.sku === sku); return it ? it.qty : 0; };
@@ -40,8 +40,8 @@
         $('moItems').innerHTML = append ? $('moItems').innerHTML + html : html;
     }
     function crumbs(path) {
-        const bits = ['<a href="#" data-f="">Todas las carpetas</a>'];
-        path.forEach((c, i) => bits.push(i === path.length - 1 ? '<span>' + esc(c.name.replace(/^\d+\s*[-.)]\s*/, '')) + '</span>' : '<a href="#" data-f="' + esc(c.id) + '">' + esc(c.name.replace(/^\d+\s*[-.)]\s*/, '')) + '</a>'));
+        const bits = [st.marca || st.q ? '<a href="#" data-f="">Todas las categorías</a>' : '<span>Todas las categorías</span>'];
+        if (st.marca) bits.push('<span>' + esc(st.marca) + '</span>');
         if (st.q) bits.push('<span>Búsqueda: «' + esc(st.q) + '»</span>');
         $('moCrumbs').innerHTML = bits.join(' › ');
     }
@@ -53,6 +53,7 @@
         if (st.stock) params.set('stock', 'con');
         if (st.precio) { const [a, b] = st.precio.split('-'); if (a) params.set('pmin', a); if (b) params.set('pmax', b); }
         if (st.orden) { const [k, d] = st.orden.split('-'); params.set(k === 'precio' ? 'oprecio' : 'ocodigo', d); }
+        params.set('cats', 1);
         if (!st.facets) params.set('facets', 1);
         $('moHint').textContent = append ? '' : 'Cargando…';
         let j;
@@ -61,29 +62,29 @@
         st.pages = j.pages;
         if (j.facets && !st.facets) {
             st.facets = true;
-            $('moMarca').innerHTML = '<option value="">Todas las marcas</option>' + j.facets.brands.map((b) => '<option>' + esc(b) + '</option>').join('');
+            $('moMarca').innerHTML = '<option value="">Todas las categorías</option>' + j.facets.brands.map((b) => '<option>' + esc(b) + '</option>').join('');
+            st.cats = j.facets.cats || [];
             if (!j.facets.prices) { $('moPrecio').hidden = true; }
         }
         crumbs(j.path);
         const on = !!(st.marca || st.genero || st.stock || st.precio);
         $('moClear').hidden = !on;
         if (!append) {
-            $('moFolders').innerHTML = j.folders.map((f) => '<button type="button" class="mo-folder" data-f="' + esc(f.id) + '">' +
-                (f.cover ? '<img src="' + esc(f.cover) + '" alt="" loading="lazy">' : '<span class="mo-noimg"></span>') + '<span>' + esc(f.name) + '</span></button>').join('');
+            const showCats = !st.marca && !st.q && !on;
+            $('moFolders').innerHTML = showCats ? st.cats.map((f) => '<button type="button" class="mo-folder" data-cat="' + esc(f.name) + '">' +
+                (f.cover ? '<img src="' + esc(f.cover) + '" alt="" loading="lazy">' : '<span class="mo-noimg"></span>') + '<span>' + esc(f.name) + '</span></button>').join('') : '';
         }
         drawItems(j.items, append);
         $('moMore').hidden = st.page >= j.pages;
-        let hint = '';
-        if (!j.items.length && !j.folders.length) hint = st.q ? 'Sin resultados para «' + st.q + '».' : 'No hay productos aquí.';
-        else if (j.folders.length && !j.items.length && !st.q) hint = 'Elige una carpeta o filtra por marca, género o precio.';
-        if (st.folder && j.folders.length && !j.items.length && !st.q) { $('moHint').innerHTML = 'Elige una subcarpeta o <a href="#" data-todo="1">ver todos los productos de esta carpeta</a>.'; }
-        else $('moHint').textContent = hint || (j.total ? j.total + ' producto' + (j.total === 1 ? '' : 's') : '');
+        const catsShown = !st.marca && !st.q && !on;
+        $('moHint').textContent = catsShown ? 'Elige una categoría o busca por código.'
+            : (!j.items.length ? (st.q ? 'Sin resultados para «' + st.q + '».' : 'No hay productos aquí.') : (j.total ? j.total + ' producto' + (j.total === 1 ? '' : 's') : ''));
     }
-    function go(folder, todo) { st.folder = folder; st.todo = !!todo; st.page = 1; st.q = ''; $('moQ').value = ''; load(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function go(cat) { st.marca = cat || ''; $('moMarca').value = st.marca; st.page = 1; st.q = ''; $('moQ').value = ''; load(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     document.addEventListener('click', (ev) => {
-        const f = ev.target.closest('[data-f]'); if (f) { ev.preventDefault(); go(f.dataset.f, false); return; }
-        const t = ev.target.closest('[data-todo]'); if (t) { ev.preventDefault(); go(st.folder, true); return; }
+        const f = ev.target.closest('[data-f]'); if (f) { ev.preventDefault(); go(''); return; }
+        const c = ev.target.closest('[data-cat]'); if (c) { ev.preventDefault(); go(c.dataset.cat); return; }
     });
     $('moItems').addEventListener('click', (ev) => {
         const tl = ev.target.closest('.mo-tile'); if (!tl) return;

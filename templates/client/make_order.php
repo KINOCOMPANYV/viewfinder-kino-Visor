@@ -49,7 +49,7 @@ $cartKey = $moStaff ? 'kinoCarritoVendedor' : 'kinoCarrito';
             <?php if (!$moStaff): ?><h1 class="mo-title">🛒 Hacer pedido</h1><?php endif; ?>
             <div class="mo-searchbar"><input type="search" id="moQ" class="mo-input" placeholder="Buscar por código o nombre (ej. M8363-3)" autocomplete="off"></div>
             <div class="mo-filters" id="moFilters" aria-label="Filtros">
-                <select id="moMarca" class="mo-sel" aria-label="Marca"><option value="">Todas las marcas</option></select>
+                <select id="moMarca" class="mo-sel" aria-label="Categoría"><option value="">Todas las categorías</option></select>
                 <span class="mo-chipset" id="moGenero">
                     <button type="button" class="mo-chip" data-g="hombre">Hombre</button>
                     <button type="button" class="mo-chip" data-g="mujer">Mujer</button>
