@@ -16,7 +16,7 @@ Estado: **aprobado e implementado (2026-11-27)**. Rama `v2`. No se toca `main`.
 
 ## 1. Encabezado y portada
 - Encabezado fijo y delgado: **logo KINO COMPANY** a la izquierda (reloj + engranaje), a la derecha «**Mi pedido**» con contador de unidades (rojo).
-- Portada sobre blanco: titular **«Relojes al por mayor para tu negocio»** en negro grande, una línea de apoyo (ciudades / entrega) y botón rojo «Ver catálogo».
+- Portada sobre blanco: titular **«Las mejores marcas y el mejor respaldo para tu negocio»** en negro grande, una línea de apoyo (ciudades / entrega) y botón rojo «Ver catálogo».
 - Escritorio: texto a la izquierda, a la derecha la **foto real** de un reloj del catálogo donde se vean esfera, bisel y brazalete. La foto la elige el admin (código guardado en Configuraciones → 🛍 Tienda, campo nuevo «Reloj de portada»); si está vacío, se toma uno de JOEFOX/POEDAGAR con foto. La foto oro rosa de POEDAGAR queda como alternativa para una franja oscura de marca debajo de la portada (no en la portada, que es blanca).
 - Móvil: titular y, justo debajo, el buscador **«Buscar por referencia, marca o producto»**, visible en la primera pantalla. La foto pasa debajo, más pequeña.
 

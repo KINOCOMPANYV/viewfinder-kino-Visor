@@ -50,7 +50,7 @@ $ver = APP_VERSION;
 <main class="tn-main" id="tnMain">
     <section class="tn-hero" id="tnHero">
         <div class="tn-hero-txt">
-            <h1>Relojes al por mayor para tu negocio</h1>
+            <h1>Las mejores marcas y el mejor respaldo para tu negocio</h1>
             <p class="tn-sub"><?= e($tagline) ?><?= $delivery !== '' ? ' · ' . e($delivery) : '' ?></p>
             <div class="tn-bar" id="tnBarTop">
                 <label class="tn-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg>
