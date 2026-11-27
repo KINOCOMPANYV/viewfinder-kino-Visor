@@ -134,6 +134,53 @@ if ($woAction === 'save') {
         jsonResponse(['error' => 'Datos inválidos.'], 400);
     }
     $done = !empty($input['done']);
+    // Candado: un producto ya «Alistado» (o todo el pedido, si está listo) solo cambia con la clave de un usuario
+    // Administrador, Desarrollador o Facturación (el de bodega no puede). La clave llega en `unlock` y se valida aquí.
+    $lockSt = $db->prepare('SELECT lines_json, status FROM warehouse_orders WHERE id = ?');
+    $lockSt->execute([$woId]);
+    $lockRow = $lockSt->fetch(PDO::FETCH_ASSOC);
+    if (!$lockRow) {
+        jsonResponse(['error' => 'Ese pedido no existe.'], 404);
+    }
+    $oldLines = $lockRow['lines_json'] ? (json_decode($lockRow['lines_json'], true) ?: []) : [];
+    $newById = [];
+    foreach ($lines as $l) {
+        if (is_array($l) && isset($l['id'])) {
+            $newById[(string) $l['id']] = $l;
+        }
+    }
+    $touched = false;
+    foreach ($oldLines as $ol) {
+        if (!is_array($ol) || !isset($ol['id']) || (empty($ol['checked']) && $lockRow['status'] !== 'listo')) {
+            continue;
+        }
+        $nl = $newById[(string) $ol['id']] ?? null;
+        $key = fn($x) => [(string) ($x['code'] ?? ''), (int) ($x['qty'] ?? 0), (string) ($x['note'] ?? ''), !empty($x['checked'])];
+        if ($nl === null || $key($nl) !== $key($ol)) {
+            $touched = true;
+            break;
+        }
+    }
+    if ($touched) {
+        $pw = (string) (($input['unlock']['password'] ?? ''));
+        $ok = false;
+        if ($pw !== '') {
+            try {
+                $us = $db->query("SELECT password_hash FROM users WHERE is_active = 1 AND role IN ('admin','dev','facturacion')");
+                foreach ($us->fetchAll(PDO::FETCH_COLUMN) as $h) {
+                    if (password_verify($pw, (string) $h)) {
+                        $ok = true;
+                        break;
+                    }
+                }
+            } catch (\PDOException $e) {
+            }
+        }
+        if (!$ok) {
+            sleep(1);
+            jsonResponse(['error' => $pw === '' ? 'Este producto ya está alistado. Solo Administración o Facturación pueden cambiarlo con su contraseña.' : 'Contraseña incorrecta.', 'locked' => true], 403);
+        }
+    }
     // Precios bloqueados: el alistador no los cambia. Se conserva el precio ya guardado (o el original si
     // deshace un cambio); un código nuevo toma el precio del visor. Solo se acepta la reparación del #112
     // (precio viejo ÷ 100 y/o ÷ cantidad pedida).

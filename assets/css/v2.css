@@ -130,3 +130,10 @@ body.v2-legacy .v2-side { position: fixed; left: 0; top: 0; }
     body.v2-legacy { padding-left: 0; }
     .v2-legacy-top { padding: .8rem 1rem 0; }
 }
+
+/* Alistamiento: foto en grande al tocar */
+.al-zoom { cursor: zoom-in; }
+.al-lb { position: fixed; inset: 0; z-index: 10000; background: rgba(5,5,10,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .8rem; padding: 1rem; cursor: zoom-out; }
+.al-lb img { max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 8px; background: #fff; }
+.al-lb-cap { color: #fff; font-size: .9rem; text-align: center; }
+.al-lb-x { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.15); color: #fff; font-size: 1.1rem; cursor: pointer; }
