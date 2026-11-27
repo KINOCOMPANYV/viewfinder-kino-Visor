@@ -10,6 +10,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         setAppSetting($db, 'tienda_notify_phone', $phone);
         setAppSetting($db, 'tienda_bank_info', mb_substr(trim((string) ($_POST['bank'] ?? '')), 0, 800, 'UTF-8'));
         setAppSetting($db, 'tienda_tagline', mb_substr(trim((string) ($_POST['tagline'] ?? '')), 0, 120, 'UTF-8'));
+        setAppSetting($db, 'tienda_hero_sku', mb_substr(trim((string) ($_POST['hero_sku'] ?? '')), 0, 60, 'UTF-8'));
         setAppSetting($db, 'tienda_delivery', mb_substr(trim((string) ($_POST['delivery'] ?? '')), 0, 200, 'UTF-8'));
         $flash = 'Guardado.';
     } catch (\Throwable $e) { $error = $e->getMessage(); }
@@ -31,6 +32,8 @@ include __DIR__ . '/../../templates/admin/partials/v2_start.php';
         <input class="v2-input" name="tagline" value="<?= e(appSetting('tienda_tagline', 'Medellín · Bogotá · Panamá')) ?>" maxlength="120" style="width:100%"></label>
     <label>Entrega (opcional, se muestra en el pedido)
         <input class="v2-input" name="delivery" value="<?= e(appSetting('tienda_delivery', '')) ?>" maxlength="200" style="width:100%" placeholder="Ej. Envíos a todo el país · Medellín mismo día"></label>
+    <label>Reloj de la portada (código del producto; vacío = uno de JOEFOX/POEDAGAR con foto)
+        <input class="v2-input" name="hero_sku" value="<?= e(appSetting('tienda_hero_sku', '')) ?>" maxlength="60" style="width:100%" placeholder="Ej. PD1234"></label>
     <button class="btn btn-primary" type="submit" style="justify-self:start">Guardar</button>
 </form>
 <p class="v2-card" style="padding:1rem 1.25rem;max-width:640px;margin-top:1rem">Al terminar su pedido, el cliente toca <b>«Enviar pedido por WhatsApp»</b> y el mensaje (con el enlace del pedido y sus fotos) llega a este celular. Tú le respondes desde el detalle del pedido.</p>
