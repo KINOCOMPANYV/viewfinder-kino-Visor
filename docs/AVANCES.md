@@ -195,6 +195,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
+- 2026-11-27 (v2): Pedidos más intuitivo: columna «Siguiente paso» con botón directo por rol, «Le toca a», antigüedad en la etapa (ámbar >1 d, rojo >3 d) y filtro «⚡ Me toca a mí». Plan A+B+C aprobado (B Vender, C Clientes pendientes).
 - 2026-11-24: precio público = Precio SYS × multiplicador (configurable); KYTE solo reporte; precio por defecto en Extractor y Catálogo PDF; mayorista opcional en ficha.
 - #1–#7 (oct 2026): carpetas como en Drive (todos los niveles), códigos con prefijo M:/M/M-, búsqueda tolerante,
   hoja maestra como única fuente + activación solo en admin, familias bajo el código -1, visor responsive.

@@ -43,7 +43,7 @@ if ($orderId > 0) {
             }
         }
         $_SESSION['orders_flash'] = $err ? ['err', $err] : ['ok', 'Listo.'];
-        redirect('/pedidos/' . $orderId);
+        redirect(($_POST['back'] ?? '') === 'lista' ? '/pedidos' : '/pedidos/' . $orderId);
     }
     $items = [];
     $history = [];
@@ -109,10 +109,16 @@ if ($q !== '') {
 }
 $rows = [];
 $counts = [];
+$mine = !empty($_GET['mio']);
+$mineN = 0;
 try {
+    $st = $db->prepare("SELECT o.stage FROM orders o WHERE $visSql AND o.stage NOT IN ('facturado','cancelado')");
+    $st->execute($visArgs);
+    foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $sg) if (Orders::nextAction($role, $sg)) $mineN++;
     $st = $db->prepare('SELECT o.* FROM orders o WHERE ' . implode(' AND ', $where) . ' ORDER BY o.id DESC LIMIT 200');
     $st->execute($args);
     $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+    if ($mine) $rows = array_values(array_filter($rows, fn($o) => Orders::nextAction($role, $o['stage'])));
     $st = $db->prepare("SELECT o.stage, COUNT(*) FROM orders o WHERE $visSql GROUP BY o.stage");
     $st->execute($visArgs);
     $counts = $st->fetchAll(PDO::FETCH_KEY_PAIR);
