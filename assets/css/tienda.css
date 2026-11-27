@@ -265,3 +265,16 @@ body.tn-lock { overflow: hidden; }
 @media (max-width: 639px) { .tn-act .tn-btn { font-size: .86rem; padding: .4rem .5rem; } .tn-step i { display: none; } .tn-step span { flex: 1; text-align: center; } }
 .tn-cat-ph { position: relative; }
 .tn-promo { position: absolute; top: .45rem; left: .45rem; font-style: normal; font-size: .68rem; font-weight: 700; letter-spacing: .02em; padding: .15rem .5rem; border-radius: 999px; background: #D80F17; color: #fff; }
+
+/* Banner hero editable (Admin → Tienda): foto oscura a todo el ancho, texto abajo a la izquierda */
+.tn-banner { position: relative; isolation: isolate; min-height: clamp(280px, 52vw, 520px); display: flex; align-items: flex-end; background: linear-gradient(135deg, #111 0%, #26231f 100%); color: #fff; overflow: hidden; }
+.tn-banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+.tn-banner::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(0 0 0 / .72) 0%, rgb(0 0 0 / .25) 55%, rgb(0 0 0 / .1) 100%); }
+.tn-banner-in { width: 100%; max-width: 1240px; margin: 0 auto; padding: 2rem 1rem 2.2rem; }
+.tn-banner-k { font-size: .72rem; letter-spacing: .24em; text-transform: uppercase; font-weight: 700; color: #c4a46b; margin: 0 0 .6rem; }
+.tn-banner-t { font-family: "Playfair Display", Georgia, "Times New Roman", serif; font-style: italic; font-weight: 600; font-size: clamp(2.2rem, 7.5vw, 4.4rem); line-height: 1.05; letter-spacing: -.01em; margin: 0; text-wrap: balance; max-width: 18ch; }
+.tn-banner-s { margin: .8rem 0 0; color: rgb(255 255 255 / .8); font-size: 1.05rem; max-width: 46ch; }
+.tn-banner-b { text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; margin-top: 1.2rem; padding: 0 1.5rem; border-radius: 999px; border: 1px solid #c4a46b; color: #fff; font-weight: 600; transition: background .18s, color .18s; }
+.tn-banner-b:hover { background: #c4a46b; color: #111; }
+.tn-searching .tn-banner { display: none; }
+@media (min-width: 900px) { .tn-banner-in { padding: 3rem 1.5rem 3.2rem; } }

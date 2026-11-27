@@ -445,6 +445,16 @@ if ($uri === '/admin/logout') {
 }
 
 // Tienda web pública (catálogo de venta) y página pública del pedido con fotos
+if ($uri === '/tienda/banner') {
+    $st = getDB()->prepare("SELECT data FROM doc_templates WHERE name = 'tienda_banner'");
+    $st->execute();
+    $b = base64_decode((string) $st->fetchColumn(), true);
+    if (!$b) { http_response_code(404); exit; }
+    header('Content-Type: image/jpeg');
+    header('Cache-Control: public, max-age=31536000, immutable'); // la URL lleva ?v=fecha
+    echo $b;
+    exit;
+}
 if ($uri === '/tienda') {
     include __DIR__ . '/templates/client/tienda.php';
     exit;
