@@ -16,6 +16,8 @@ $q = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 80, 'UTF-8');
 $page = max(1, min(200, (int) ($_GET['p'] ?? 1)));
 $per = 24;
 $tienda = !empty($_GET['tienda']); // /tienda: solo con stock, marcas permitidas, categorías y promocionales primero
+$catMode = $tienda || !empty($_GET['cats']); // navegar por categoría (tienda y Vender comparten esto); sin ?tienda no aplica stock ni marcas permitidas
+if ($catMode) $folderId = '';
 
 $mapRow = function (array $r): array {
     $cv = parseStoredCover($r['cover_image_url'], 400);
@@ -48,9 +50,9 @@ $out = ['path' => [], 'folders' => [], 'items' => [], 'total' => 0, 'page' => $p
 if (!empty($_GET['facets'])) { // opciones de los filtros (se piden una vez al abrir la página)
     $o = searchFilterOptions($db);
     $out['facets'] = ['brands' => $o['brands'] ?? [], 'prices' => !empty($o['prices'])];
-    if ($tienda) {
-        $allowed = tiendaBrands();
-        [$tr, $tp] = tiendaRulesSql();
+    if ($catMode) {
+        $allowed = $tienda ? tiendaBrands() : [];
+        [$tr, $tp] = $tienda ? tiendaRulesSql() : [" AND p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > ''", []];
         // Marcas = categorías (con productos que cumplen las reglas de la tienda), limitadas a las permitidas.
         $bs = $db->prepare("SELECT p.category FROM products p WHERE TRIM(p.category) <> ''" . $tr . ' GROUP BY p.category ORDER BY COUNT(*) DESC');
         $bs->execute($tp);
@@ -80,7 +82,7 @@ if ($folderId !== '' && $folderId !== $root) {
     $subs = $c['subfolders'] ?? [];
     $folderId = '';
 }
-if ($q === '' && !$filtersOn && !$tienda) {
+if ($q === '' && !$filtersOn && !$catMode) {
     foreach ($subs as $s) {
         if (str_starts_with(ltrim($s['name']), '_')) continue; // carpetas de trabajo como «_INDICE» no son catálogo
         $out['folders'][] = ['id' => $s['id'], 'name' => folderDisplayName($s['name']), 'cover' => $s['cover']];
@@ -88,7 +90,7 @@ if ($q === '' && !$filtersOn && !$tienda) {
 }
 
 if ($wantProducts) {
-    $f = ['marca' => $tienda ? [] : $flt['marca'], 'cat' => $tienda ? ($flt['marca'] ?: $flt['cat']) : [], 'carpeta' => $folderId !== '' ? [$folderId] : [], 'pmin' => $flt['pmin'], 'pmax' => $flt['pmax'], 'foto' => true, 'contiene' => '', 'stock' => $flt['stock']];
+    $f = ['marca' => $catMode ? [] : $flt['marca'], 'cat' => $catMode ? ($flt['marca'] ?: $flt['cat']) : [], 'carpeta' => $folderId !== '' ? [$folderId] : [], 'pmin' => $flt['pmin'], 'pmax' => $flt['pmax'], 'foto' => true, 'contiene' => '', 'stock' => $flt['stock']];
     [$sql, $params] = catalogFilterSql($db, $f);
     if ($genero !== '') { $sql .= ' AND p.gender = ?'; $params[] = $genero; }
     if ($tienda) { [$tr, $tp] = tiendaRulesSql(); $sql .= $tr; $params = array_merge($params, $tp); }
@@ -96,7 +98,7 @@ if ($wantProducts) {
         : ($flt['oprecio'] === 'asc' ? '(p.price_suggested IS NULL OR p.price_suggested = 0), p.price_suggested ASC, p.sku ASC'
         : ($flt['ocodigo'] === 'desc' ? 'p.sku DESC' : 'p.sku ASC'));
     $orderArgs = [];
-    if ($tienda && $flt['oprecio'] === '' && $flt['ocodigo'] === '') { // categorías promocionales primero (el código exacto de una búsqueda sigue yendo antes)
+    if ($catMode && $flt['oprecio'] === '' && $flt['ocodigo'] === '') { // categorías promocionales primero (el código exacto de una búsqueda sigue yendo antes)
         $promo = promoCategories($db);
         if ($promo) $order = '(p.category IN (' . implode(',', array_map([$db, 'quote'], $promo)) . ')) DESC, ' . $order;
     }
