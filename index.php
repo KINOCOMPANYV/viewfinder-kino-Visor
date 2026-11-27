@@ -632,11 +632,6 @@ if ($uri === '/admin/photo-check') {
     exit;
 }
 
-// La importación por Excel se quitó: la hoja maestra es la única fuente
-if ($uri === '/admin/import') {
-    redirect('/admin/sync');
-}
-
 if ($uri === '/admin/products/price' && $method === 'POST') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_products_price.php';
@@ -1094,18 +1089,6 @@ if ($uri === '/api/covers/batch' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($uri === '/api/webhook/sheets' && $method === 'POST') {
     session_write_close();
     include __DIR__ . '/src/controllers/webhook_sheets.php';
-    exit;
-}
-
-// ============================================================
-// CRON: Pre-caché Drive — calienta media_search_cache
-// GET /api/cron/precache-drive?token=CRON_SECRET
-// ============================================================
-
-if ($uri === '/api/cron/precache-drive') {
-    // Nombre viejo del cron: hoy es lo mismo que /api/cron/sync-covers (índice de Drive + portadas)
-    session_write_close();
-    include __DIR__ . '/src/controllers/admin_sync_covers.php';
     exit;
 }
 
