@@ -213,11 +213,28 @@
     // ── Vendedor: elegir un cliente existente (autocompletar por nombre o teléfono) ──
     if (window.MO_STAFF) {
         let ct = 0, found = [];
+        const digits = (t) => String(t || '').replace(/\D+/g, '');
+        // Cartera: aviso si el cliente elegido debe
+        const showDebt = (c) => {
+            const b = $('moDebt'), bal = c ? Number(c.balance) || 0 : 0;
+            if (!c) { b.hidden = true; return; }
+            b.hidden = false;
+            b.className = 'mo-debt' + (bal > 0 ? '' : ' mo-debt--ok');
+            b.textContent = bal > 0 ? '⚠ Este cliente debe $' + Math.round(bal).toLocaleString('es-CO') + '. Revisa la cartera antes de despachar.' : '✓ Cliente al día con la cartera.';
+        };
+        $('moPhone').addEventListener('change', async () => {
+            const p = digits($('moPhone').value);
+            if (p.length < 7) { showDebt(null); return; }
+            try {
+                const list = (await (await fetch('/clientes/buscar?q=' + encodeURIComponent($('moPhone').value.trim()))).json()).customers || [];
+                showDebt(list.find((c) => digits(c.phone) === p) || null);
+            } catch (e) { /* sin red */ }
+        });
         $('moName').addEventListener('input', () => {
             clearTimeout(ct);
             const v = $('moName').value.trim();
             const hit = found.find((c) => c.name + ' — ' + c.phone === v);
-            if (hit) { $('moName').value = hit.name; $('moPhone').value = hit.phone; return; }
+            if (hit) { $('moName').value = hit.name; $('moPhone').value = hit.phone; showDebt(hit); return; }
             ct = setTimeout(async () => {
                 if (v.length < 2) return;
                 try { found = (await (await fetch('/clientes/buscar?q=' + encodeURIComponent(v))).json()).customers || []; } catch (e) { return; }

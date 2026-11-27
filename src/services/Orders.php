@@ -95,6 +95,8 @@ class Orders
             $s = $db->prepare('SELECT seller_user_id FROM customers WHERE id = ?');
             $s->execute([$custId]);
             $seller = $s->fetchColumn() ?: null;
+        } elseif ($seller && $custId) { // cliente nuevo o sin asignar: queda en la cartera del vendedor que vendió
+            $db->prepare('UPDATE customers SET seller_user_id = ? WHERE id = ? AND seller_user_id IS NULL')->execute([(int) $seller, $custId]);
         }
         $db->prepare('INSERT INTO orders (stage, origin, customer_id, customer_name, customer_phone, seller_user_id, client_order_id, warehouse_order_id, items_count, total, note, created_by, stage_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())')

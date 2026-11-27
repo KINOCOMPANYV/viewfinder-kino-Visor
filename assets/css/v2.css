@@ -137,3 +137,13 @@ body.v2-legacy .v2-side { position: fixed; left: 0; top: 0; }
 .al-lb img { max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 8px; background: #fff; }
 .al-lb-cap { color: #fff; font-size: .9rem; text-align: center; }
 .al-lb-x { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.15); color: #fff; font-size: 1.1rem; cursor: pointer; }
+/* Cartera del cliente (Clientes y Vender) */
+.cli-debt { display: inline-block; padding: .15rem .55rem; border-radius: 999px; font-size: .82rem; font-weight: 600; white-space: nowrap; }
+.cli-debt--owes { background: color-mix(in srgb, var(--color-danger) 14%, transparent); color: var(--color-danger); }
+.cli-debt--ok { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+.cli-bal summary { cursor: pointer; list-style: none; } .cli-bal summary::-webkit-details-marker { display: none; }
+.cli-bal form { display: grid; gap: .4rem; margin-top: .5rem; min-width: 190px; }
+.cli-bal label { display: grid; gap: .2rem; font-size: .8rem; color: var(--color-text-muted); }
+.cli-bal input { padding: .35rem .5rem; border-radius: 8px; border: 1px solid var(--color-border-hover); background: var(--color-bg); color: inherit; }
+.mo-debt { margin: .2rem 0 .6rem; padding: .55rem .75rem; border-radius: 10px; font-size: .9rem; background: color-mix(in srgb, var(--color-danger) 12%, transparent); color: var(--color-danger); }
+.mo-debt--ok { background: color-mix(in srgb, var(--color-success) 12%, transparent); color: var(--color-success); }
