@@ -16,7 +16,7 @@
         </div>
         <?php if ($order['note'] !== ''): ?><p style="margin:.7rem 0 0">📝 <?= e($order['note']) ?></p><?php endif; ?>
         <?php $pct = (float) $order['discount_pct']; $total = (float) $order['total']; ?>
-        <p style="margin:.7rem 0 0"><b>Total <?= $total > 0 ? e(priceText($total * (1 - $pct / 100))) : '—' ?></b>
+        <p style="margin:.7rem 0 0"><b id="ordTotal">Total <?= $total > 0 ? e(priceText($total * (1 - $pct / 100))) : '—' ?></b>
             <?php if ($pct > 0): ?><small class="v2-code"> (con <?= e(rtrim(rtrim(number_format($pct, 2, '.', ''), '0'), '.')) ?>% de descuento; sin descuento <?= e(priceText($total)) ?>)</small><?php endif; ?></p>
         <?php if ($next): ?>
         <form method="post" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.9rem;align-items:center">
@@ -26,15 +26,17 @@
                 <button class="v2-btn" name="to" value="<?= e($to) ?>" <?= $to === 'cancelado' ? 'style="background:var(--color-danger);color:#fff" onclick="return this.form.note.value.trim()!==\'\'||(alert(\'Escribe el motivo\'),false)"' : '' ?>><?= $to === 'cancelado' ? 'Cancelar pedido' : 'Pasar a «' . e(Orders::label($to)) . '»' ?></button>
             <?php endforeach; ?>
         </form>
+        <?php $maxDisc = Orders::maxDiscount($role); if ($maxDisc !== 0.0): ?>
         <form method="post" style="display:flex;gap:.5rem;margin-top:.6rem;align-items:center">
             <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>"><input type="hidden" name="action" value="discount">
             <label>Descuento %</label><input name="pct" value="<?= e((string) $pct) ?>" size="4" inputmode="decimal" style="padding:.45rem;border-radius:8px;border:1px solid var(--color-border-hover);background:var(--color-bg);color:inherit">
-            <button class="v2-chip" type="submit">Aplicar</button><small class="v2-code">Vendedor: hasta <?= (int) Orders::MAX_SELLER_DISCOUNT ?>%</small>
+            <button class="v2-chip" type="submit">Aplicar</button><small class="v2-code"><?= $maxDisc === null ? 'Sin límite (Administración)' : 'Tu perfil: hasta ' . (int) $maxDisc . '%' ?></small>
         </form>
+        <?php endif; ?>
         <?php endif; ?>
     </div>
     <?php if (!empty($whData)): $closed = in_array($order['stage'], ['cancelado'], true); ?>
-    <div class="v2-card" style="padding:1rem 1.25rem;margin-bottom:1rem" id="alistar" data-wh='<?= e(json_encode($whData, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS)) ?>' data-csrf="<?= e($csrf) ?>" data-readonly="<?= ($whData['status'] === 'listo' || $closed || !in_array($order['stage'], ['por_alistar', 'en_alistamiento'], true)) ? '1' : '0' ?>">
+    <div class="v2-card" style="padding:1rem 1.25rem;margin-bottom:1rem" id="alistar" data-wh='<?= e(json_encode($whData, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS)) ?>' data-csrf="<?= e($csrf) ?>" data-readonly="<?= ($whData['status'] === 'listo' || $closed || !Orders::can($role, 'alistar') || !in_array($order['stage'], ['por_alistar', 'en_alistamiento'], true)) ? '1' : '0' ?>">
         <b>📦 Alistamiento</b> <small class="v2-code">obligatorio antes de facturar</small>
         <div id="alMsg" class="v2-code" style="margin:.4rem 0"></div><div id="alList"></div>
         <div id="alFoot" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.8rem"></div>

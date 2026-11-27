@@ -15,6 +15,25 @@
         }).then((r) => r.json().then((j) => { if (!r.ok) throw new Error(j.error || 'error ' + r.status); return j; }));
     }
     const later = () => { clearTimeout(timer); timer = setTimeout(() => save(false).then(() => { msg.textContent = 'Guardado.'; }).catch((e) => { msg.textContent = '⚠️ No se guardó: ' + e.message; }), 800); };
+    const money = (n) => '$' + Math.round(n).toLocaleString('es-CO');
+    const pct = +d.pct || 0;
+    // Total en vivo: lo pedido (precio original × cantidad pedida) vs lo alistado (precio × cantidad actual), con descuento.
+    function totals() {
+        let orig = 0, now = 0, short = 0;
+        lines.forEach((l) => {
+            const bp = l.base && l.base.price != null ? +l.base.price : (l.price != null ? +l.price : 0);
+            if (l.orig !== false) { orig += bp * (+l.origQty || 0); short += Math.max(0, (+l.origQty || 0) - (+l.qty || 0)); }
+            now += (l.price != null ? +l.price : 0) * (+l.qty || 0);
+        });
+        const k = 1 - pct / 100;
+        const head = document.getElementById('ordTotal');
+        if (head) head.textContent = 'Total ' + (now > 0 ? money(now * k) : '—');
+        return '<div style="flex-basis:100%;padding:.6rem 0;border-top:1px solid var(--color-border);display:flex;gap:1rem;flex-wrap:wrap;align-items:baseline">' +
+            '<span class="v2-code">Pedido ' + money(orig * k) + '</span><b style="font-size:1.1rem">Alistado ' + money(now * k) + '</b>' +
+            (Math.round(orig) !== Math.round(now) ? '<span style="color:var(--color-' + (now < orig ? 'danger' : 'success') + ')">' + (now < orig ? '−' : '+') + money(Math.abs(orig - now) * k) + '</span>' : '') +
+            (short ? '<span class="v2-code">' + short + ' unidad' + (short === 1 ? '' : 'es') + ' faltante' + (short === 1 ? '' : 's') + '</span>' : '') +
+            (pct ? '<span class="v2-code">con ' + pct + '% de descuento</span>' : '') + '</div>';
+    }
     function draw() {
         list.innerHTML = lines.map((l) => {
             const img = covers[l.code] ? '<img class="v2-thumb al-zoom" loading="lazy" src="' + esc(covers[l.code]) + '" alt="Ver foto grande" title="Ver foto grande" data-code="' + esc(l.code) + '" data-name="' + esc(l.name) + '">' : '';
@@ -29,8 +48,8 @@
                     : '<label style="white-space:nowrap"><input type="checkbox" data-a="c" data-i="' + l.id + '"> Alistado</label>') + '</div>';
         }).join('');
         const p = pending();
-        if (ro) { foot.innerHTML = d.status === 'listo' ? '🟢 Alistamiento finalizado' + (d.who ? ' · chequeó ' + esc(d.who) : '') : ''; return; }
-        foot.innerHTML = '<span>' + (lines.length - p) + ' de ' + lines.length + ' listos</span>' +
+        if (ro) { foot.innerHTML = totals() + (d.status === 'listo' ? '🟢 Alistamiento finalizado' + (d.who ? ' · chequeó ' + esc(d.who) : '') : ''); return; }
+        foot.innerHTML = totals() + '<span>' + (lines.length - p) + ' de ' + lines.length + ' listos</span>' +
             '<input id="alWho" value="' + esc(who) + '" placeholder="Chequeado por" style="padding:.45rem .6rem;border-radius:8px;border:1px solid var(--color-border-hover);background:var(--color-bg);color:inherit">' +
             '<button class="v2-btn" id="alDone"' + (p ? ' disabled style="opacity:.5;cursor:not-allowed"' : '') + '>✅ Finalizar alistamiento</button>';
         document.getElementById('alWho').oninput = (e) => { who = e.target.value; later(); };
