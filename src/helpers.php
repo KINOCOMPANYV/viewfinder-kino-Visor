@@ -1712,8 +1712,10 @@ function tiendaRulesSql(): array
 {
     $sql = " AND p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > '' AND " . stockSql('p') . ' > 0';
     $b = tiendaBrands();
-    if ($b) $sql .= ' AND p.brand IN (' . implode(',', array_fill(0, count($b), '?')) . ')';
-    return [$sql, $b];
+    if (!$b) return [$sql, []];
+    // La marca de la tienda = Categoría del producto (decisión del dueño 2026-11-27); también vale si viene en la columna marca.
+    $in = implode(',', array_fill(0, count($b), '?'));
+    return [$sql . " AND (p.category IN ($in) OR p.brand IN ($in))", array_merge($b, $b)];
 }
 
 /** Categorías marcadas como «Promocional» (salen primero en la tienda). */

@@ -50,8 +50,13 @@ if (!empty($_GET['facets'])) { // opciones de los filtros (se piden una vez al a
     $out['facets'] = ['brands' => $o['brands'] ?? [], 'prices' => !empty($o['prices'])];
     if ($tienda) {
         $allowed = tiendaBrands();
-        if ($allowed) $out['facets']['brands'] = array_values(array_filter($out['facets']['brands'], fn($b) => in_array(is_array($b) ? ($b['name'] ?? $b['brand'] ?? '') : $b, $allowed, true)));
         [$tr, $tp] = tiendaRulesSql();
+        // Marcas = categorías (con productos que cumplen las reglas de la tienda), limitadas a las permitidas.
+        $bs = $db->prepare("SELECT p.category FROM products p WHERE TRIM(p.category) <> ''" . $tr . ' GROUP BY p.category ORDER BY COUNT(*) DESC');
+        $bs->execute($tp);
+        $bn = array_column($bs->fetchAll(PDO::FETCH_NUM), 0);
+        if ($allowed) $bn = array_values(array_filter($bn, fn($n) => in_array($n, $allowed, true)));
+        $out['facets']['brands'] = $bn;
         $promo = promoCategories($db);
         $cs = $db->prepare("SELECT p.category AS name, COUNT(*) AS n, MIN(p.cover_image_url) AS cover FROM products p WHERE TRIM(p.category) <> ''" . $tr . ' GROUP BY p.category');
         $cs->execute($tp);
@@ -83,7 +88,7 @@ if ($q === '' && !$filtersOn && !$tienda) {
 }
 
 if ($wantProducts) {
-    $f = ['marca' => $flt['marca'], 'cat' => $tienda ? $flt['cat'] : [], 'carpeta' => $folderId !== '' ? [$folderId] : [], 'pmin' => $flt['pmin'], 'pmax' => $flt['pmax'], 'foto' => true, 'contiene' => '', 'stock' => $flt['stock']];
+    $f = ['marca' => $tienda ? [] : $flt['marca'], 'cat' => $tienda ? ($flt['marca'] ?: $flt['cat']) : [], 'carpeta' => $folderId !== '' ? [$folderId] : [], 'pmin' => $flt['pmin'], 'pmax' => $flt['pmax'], 'foto' => true, 'contiene' => '', 'stock' => $flt['stock']];
     [$sql, $params] = catalogFilterSql($db, $f);
     if ($genero !== '') { $sql .= ' AND p.gender = ?'; $params[] = $genero; }
     if ($tienda) { [$tr, $tp] = tiendaRulesSql(); $sql .= $tr; $params = array_merge($params, $tp); }
