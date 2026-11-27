@@ -1699,7 +1699,7 @@ function shopBankInfo(): string
     return trim(appSetting('tienda_bank_info', ''));
 }
 
-/** Marcas que muestra la tienda (/tienda). Ajuste «tienda_brands» (separadas por coma); por defecto todas (como Vender); «*» = todas. */
+/** Marcas que muestra la tienda (/tienda). Ajuste «tienda_marcas» (separadas por coma); por defecto todas (como Vender); «*» = todas. */
 function tiendaBrands(): array
 {
     $v = trim(appSetting('tienda_marcas', '*'));

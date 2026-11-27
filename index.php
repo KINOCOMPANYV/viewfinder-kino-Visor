@@ -1108,7 +1108,8 @@ if ($uri === '/health') {
         $db->query("SELECT 1");
         jsonCachedResponse(['status' => 'ok', 'db' => 'connected'], 10);
     } catch (\Exception $e) {
-        jsonResponse(['status' => 'error', 'db' => $e->getMessage()], 500);
+        error_log('[health] ' . $e->getMessage()); // el detalle va al log, no a la respuesta pública
+        jsonResponse(['status' => 'error', 'db' => 'unavailable'], 500);
     }
 }
 
