@@ -11,7 +11,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         setAppSetting($db, 'tienda_bank_info', mb_substr(trim((string) ($_POST['bank'] ?? '')), 0, 800, 'UTF-8'));
         setAppSetting($db, 'tienda_tagline', mb_substr(trim((string) ($_POST['tagline'] ?? '')), 0, 120, 'UTF-8'));
         setAppSetting($db, 'tienda_hero_sku', mb_substr(trim((string) ($_POST['hero_sku'] ?? '')), 0, 60, 'UTF-8'));
-        setAppSetting($db, 'tienda_brands', mb_substr(trim((string) ($_POST['brands'] ?? '')), 0, 200, 'UTF-8') ?: '*');
+        setAppSetting($db, 'tienda_marcas', mb_substr(trim((string) ($_POST['brands'] ?? '')), 0, 200, 'UTF-8') ?: '*');
         setAppSetting($db, 'tienda_delivery', mb_substr(trim((string) ($_POST['delivery'] ?? '')), 0, 200, 'UTF-8'));
         $clip = fn(string $k, int $n) => mb_substr(trim((string) ($_POST[$k] ?? '')), 0, $n, 'UTF-8');
         setAppSetting($db, 'tienda_banner_on', !empty($_POST['banner_on']) ? '1' : '0');
@@ -59,7 +59,7 @@ include __DIR__ . '/../../templates/admin/partials/v2_start.php';
     <label>Datos para transferencia (banco, cuenta, titular, Nequi…)
         <textarea class="v2-input" name="bank" rows="4" maxlength="800" style="width:100%"><?= e(shopBankInfo()) ?></textarea></label>
     <label>Marcas que muestra la tienda = Categoría del producto (separadas por coma; «*» = todas)
-        <input class="v2-input" name="brands" value="<?= e(appSetting('tienda_brands', 'POEDAGAR')) ?>" maxlength="200" style="width:100%" placeholder="POEDAGAR"></label>
+        <input class="v2-input" name="brands" value="<?= e(appSetting('tienda_marcas', '*')) ?>" maxlength="200" style="width:100%" placeholder="* = todas"></label>
     <?php
     // Diagnóstico: cuántos productos pasan cada regla de la tienda (para saber por qué /tienda sale vacía).
     $dg = [];
@@ -75,7 +75,7 @@ include __DIR__ . '/../../templates/admin/partials/v2_start.php';
         $dg['… y de las marcas de arriba (lo que muestra la tienda)'] = (int) $q3->fetchColumn();
     } catch (\Throwable $e) { $dg['Error al contar'] = 0; }
     ?>
-    <p style="margin:0;color:var(--color-text-muted);font-size:.9em">Marcas guardadas: <b><?= e(appSetting('tienda_brands', 'POEDAGAR')) ?></b><?php foreach ($dg as $k => $v): ?><br><?= e($k) ?>: <b><?= (int) $v ?></b><?php endforeach; ?></p>
+    <p style="margin:0;color:var(--color-text-muted);font-size:.9em">Marcas guardadas: <b><?= e(appSetting('tienda_marcas', '*')) ?></b><?php foreach ($dg as $k => $v): ?><br><?= e($k) ?>: <b><?= (int) $v ?></b><?php endforeach; ?></p>
     <label>Frase bajo el nombre (opcional)
         <input class="v2-input" name="tagline" value="<?= e(appSetting('tienda_tagline', 'Medellín · Bogotá · Panamá')) ?>" maxlength="120" style="width:100%"></label>
     <label>Entrega (opcional, se muestra en el pedido)
