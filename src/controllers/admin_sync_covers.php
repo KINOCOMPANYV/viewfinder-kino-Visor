@@ -20,7 +20,9 @@ $db = getDB();
 
 $isCron = false;
 $cronToken = env('CRON_SECRET', '');
-if ($cronToken !== '' && isset($_GET['token']) && hash_equals($cronToken, $_GET['token'])) {
+// El secreto va mejor en la cabecera X-Cron-Token (la URL queda en los logs); ?token= sigue valiendo por compatibilidad
+$givenToken = (string) ($_SERVER['HTTP_X_CRON_TOKEN'] ?? ($_GET['token'] ?? ''));
+if ($cronToken !== '' && $givenToken !== '' && hash_equals($cronToken, $givenToken)) {
     $isCron = true;
 } else {
     // La sesión ya es manejada por index.php
