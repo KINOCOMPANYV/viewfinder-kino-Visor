@@ -29,8 +29,11 @@ if ($orderId > 0) {
             $err = Orders::move($db, $orderId, (string) ($_POST['to'] ?? ''), trim((string) ($_POST['note'] ?? '')), $me, $role);
         } elseif ($act === 'discount') {
             $pct = max(0.0, min(100.0, (float) str_replace(',', '.', (string) ($_POST['pct'] ?? '0'))));
-            if ($role === 'vendedor' && $pct > Orders::MAX_SELLER_DISCOUNT) {
-                $err = 'El vendedor da hasta ' . Orders::MAX_SELLER_DISCOUNT . '%; más lo autoriza un Administrador.';
+            $max = Orders::maxDiscount($role);
+            if ($max === 0.0) {
+                $err = 'Tu perfil no puede dar descuentos.';
+            } elseif ($max !== null && $pct > $max) {
+                $err = 'Tu perfil da hasta ' . $max . '%; más lo autoriza un Administrador.';
             } elseif (in_array($order['stage'], ['facturado', 'cancelado'], true)) {
                 $err = 'Este pedido ya está cerrado.';
             } else {
@@ -81,7 +84,7 @@ if ($orderId > 0) {
                         if ($r['cover_image_url']) $covers[$r['sku']] = parseStoredCover($r['cover_image_url'], 200)['url'];
                     }
                 }
-                $whData = ['id' => (int) $wh['id'], 'status' => $wh['status'], 'who' => $wh['checked_by'] ?: ($me['name'] ?? $me['username'] ?? ''), 'lines' => $lines, 'covers' => $covers];
+                $whData = ['id' => (int) $wh['id'], 'status' => $wh['status'], 'pct' => (float) $order['discount_pct'], 'who' => $wh['checked_by'] ?: ($me['name'] ?? $me['username'] ?? ''), 'lines' => $lines, 'covers' => $covers];
             }
         }
         $s = $db->prepare('SELECT * FROM order_history WHERE order_id = ? ORDER BY id DESC');

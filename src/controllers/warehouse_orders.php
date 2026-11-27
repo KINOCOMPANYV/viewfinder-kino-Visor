@@ -20,6 +20,14 @@ if (in_array($woAction, ['create', 'save', 'delete', 'invoice'], true)) {
         jsonResponse(['error' => 'Token inválido. Recarga la página.'], 403);
     }
 }
+// Permisos por rol (matriz 2026-11-27): alistar = Bodega/Admin; marcar facturado = Facturación/Admin.
+require_once __DIR__ . '/../services/Orders.php';
+if ($woAction === 'save' && !Orders::can(currentRole(), 'alistar')) {
+    jsonResponse(['error' => 'Tu perfil no puede alistar. Lo hace Bodega o Administración.'], 403);
+}
+if ($woAction === 'invoice' && !Orders::can(currentRole(), 'facturar')) {
+    jsonResponse(['error' => 'Tu perfil no puede marcar facturado. Lo hace Facturación o Administración.'], 403);
+}
 session_write_close();
 
 $woRow = function (array $r, bool $full = false): array {
@@ -166,9 +174,9 @@ if ($woAction === 'save') {
         $ok = false;
         if ($pw !== '') {
             try {
-                $us = $db->query("SELECT password_hash FROM users WHERE is_active = 1 AND role IN ('admin','dev','facturacion')");
-                foreach ($us->fetchAll(PDO::FETCH_COLUMN) as $h) {
-                    if (password_verify($pw, (string) $h)) {
+                $us = $db->query("SELECT password_hash, role FROM users WHERE is_active = 1");
+                foreach ($us->fetchAll(PDO::FETCH_ASSOC) as $u) {
+                    if (Orders::can((string) $u['role'], 'desbloquear') && password_verify($pw, (string) $u['password_hash'])) {
                         $ok = true;
                         break;
                     }

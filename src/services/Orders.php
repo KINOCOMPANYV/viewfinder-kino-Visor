@@ -13,15 +13,35 @@ class Orders
         'facturado' => 'Facturado',
         'cancelado' => 'Cancelado',
     ];
-    /** Quién puede pasar a cada etapa (dev/admin siempre). */
+    /** Quién puede pasar a cada etapa (dev/admin siempre). Matriz etapa × rol aprobada 2026-11-27 (docs/AVANCES.md). */
     private const WHO = [
         'por_alistar' => ['vendedor', 'facturacion'],
-        'en_alistamiento' => ['bodega', 'facturacion'],
-        'listo_facturar' => ['bodega', 'facturacion'],
+        'en_alistamiento' => ['bodega'],
+        'listo_facturar' => ['bodega'],
         'facturado' => ['facturacion'],
         'cancelado' => ['facturacion'], // regla 5: solo Admin o Facturación
     ];
-    public const MAX_SELLER_DISCOUNT = 10.0; // regla 4
+    /** Acciones dentro del pedido (dev/admin siempre). El servidor las valida en orders_v2.php y warehouse_orders.php. */
+    private const CAN = [
+        'alistar' => ['bodega'],              // cantidades, «Alistado», nota, finalizar
+        'desbloquear' => ['facturacion'],     // abrir un producto ya alistado (con su contraseña)
+        'facturar' => ['facturacion'],        // marcar / quitar «Facturado»
+        'descuento' => ['vendedor', 'facturacion'],
+    ];
+    public const MAX_SELLER_DISCOUNT = 10.0; // regla 4: más de esto solo Admin
+
+    public static function can(string $role, string $action): bool
+    {
+        if (in_array($role, ['admin', 'dev'], true)) return true;
+        return in_array($role, self::CAN[$action] ?? [], true);
+    }
+
+    /** Descuento máximo del rol (null = sin límite, 0 = no puede). */
+    public static function maxDiscount(string $role): ?float
+    {
+        if (in_array($role, ['admin', 'dev'], true)) return null;
+        return self::can($role, 'descuento') ? self::MAX_SELLER_DISCOUNT : 0.0;
+    }
 
     public static function label(string $s): string { return self::STAGES[$s] ?? $s; }
 
