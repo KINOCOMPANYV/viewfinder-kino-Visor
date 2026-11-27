@@ -5,9 +5,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     try {
         if (!verifyCsrf()) throw new RuntimeException('La sesión expiró: recarga la página.');
         $phone = preg_replace('/\D+/', '', (string) ($_POST['notify'] ?? '')) ?: '';
-        if (strlen($phone) < 10) throw new RuntimeException('Escribe un celular válido (10 dígitos).');
         $db = getDB();
-        setAppSetting($db, 'tienda_notify_phone', $phone);
+        if ($phone !== '' && strlen($phone) < 10) throw new RuntimeException('Escribe un celular válido (10 dígitos).');
+        if ($phone !== '') setAppSetting($db, 'tienda_notify_phone', $phone); // vacío = se deja el que ya había (antes bloqueaba todo el guardado, banner incluido)
         setAppSetting($db, 'tienda_bank_info', mb_substr(trim((string) ($_POST['bank'] ?? '')), 0, 800, 'UTF-8'));
         setAppSetting($db, 'tienda_tagline', mb_substr(trim((string) ($_POST['tagline'] ?? '')), 0, 120, 'UTF-8'));
         setAppSetting($db, 'tienda_hero_sku', mb_substr(trim((string) ($_POST['hero_sku'] ?? '')), 0, 60, 'UTF-8'));
@@ -58,7 +58,7 @@ include __DIR__ . '/../../templates/admin/partials/v2_start.php';
         <input class="v2-input" name="notify" value="<?= e(substr(shopNotifyPhone(), 2)) ?>" inputmode="tel" maxlength="20" style="width:100%"></label>
     <label>Datos para transferencia (banco, cuenta, titular, Nequi…)
         <textarea class="v2-input" name="bank" rows="4" maxlength="800" style="width:100%"><?= e(shopBankInfo()) ?></textarea></label>
-    <label>Marcas que muestra la tienda (separadas por coma; «*» = todas)
+    <label>Marcas que muestra la tienda = Categoría del producto (separadas por coma; «*» = todas)
         <input class="v2-input" name="brands" value="<?= e(appSetting('tienda_brands', 'POEDAGAR')) ?>" maxlength="200" style="width:100%" placeholder="POEDAGAR"></label>
     <label>Frase bajo el nombre (opcional)
         <input class="v2-input" name="tagline" value="<?= e(appSetting('tienda_tagline', 'Medellín · Bogotá · Panamá')) ?>" maxlength="120" style="width:100%"></label>

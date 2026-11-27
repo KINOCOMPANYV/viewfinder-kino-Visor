@@ -19,9 +19,9 @@ $pickPhoto = function (string $where, array $args = []) {
     } catch (\Throwable $e) { return null; }
 };
 $heroSku = trim(appSetting('tienda_hero_sku', ''));
-$hero = ($heroSku !== '' ? $pickPhoto('AND sku = ?', [$heroSku]) : null)
-    ?? $pickPhoto("AND brand IN ('POEDAGAR','JOEFOX') AND price_suggested > 0 ORDER BY (brand = 'POEDAGAR') DESC, sku");
-$joefoxPhoto = $pickPhoto("AND brand = 'JOEFOX' ORDER BY (price_suggested > 0) DESC, sku DESC");
+$hero = ($heroSku !== '' ? $pickPhoto('AND p.sku = ?', [$heroSku]) : null)
+    ?? $pickPhoto("AND p.category IN ('POEDAGAR','JOEFOX') AND p.price_suggested > 0 ORDER BY (p.category = 'POEDAGAR') DESC, p.sku");
+$joefoxPhoto = $pickPhoto("AND p.category = 'JOEFOX' ORDER BY (p.price_suggested > 0) DESC, p.sku DESC");
 $img = '/assets/img/marcas/';
 $okBrands = tiendaBrands(); // vacío = todas
 $showBrand = fn(string $b) => !$okBrands || in_array($b, $okBrands, true);
