@@ -60,6 +60,22 @@ include __DIR__ . '/../../templates/admin/partials/v2_start.php';
         <textarea class="v2-input" name="bank" rows="4" maxlength="800" style="width:100%"><?= e(shopBankInfo()) ?></textarea></label>
     <label>Marcas que muestra la tienda = Categoría del producto (separadas por coma; «*» = todas)
         <input class="v2-input" name="brands" value="<?= e(appSetting('tienda_brands', 'POEDAGAR')) ?>" maxlength="200" style="width:100%" placeholder="POEDAGAR"></label>
+    <?php
+    // Diagnóstico: cuántos productos pasan cada regla de la tienda (para saber por qué /tienda sale vacía).
+    $dg = [];
+    try {
+        $dbq = getDB();
+        $stk = stockSql('p');
+        $base = "FROM products p WHERE p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > ''";
+        $n = fn(string $w, array $a = []) => (function () use ($dbq, $base, $w, $a) { $q = $dbq->prepare("SELECT COUNT(*) $base $w"); $q->execute($a); return (int) $q->fetchColumn(); })();
+        $dg['Catálogo encendido + foto'] = $n('');
+        $dg['… y con stock > 0'] = $n(" AND $stk > 0");
+        [$tr, $tp] = tiendaRulesSql();
+        $q3 = $dbq->prepare('SELECT COUNT(*) FROM products p WHERE 1=1' . $tr); $q3->execute($tp);
+        $dg['… y de las marcas de arriba (lo que muestra la tienda)'] = (int) $q3->fetchColumn();
+    } catch (\Throwable $e) { $dg['Error al contar'] = 0; }
+    ?>
+    <p style="margin:0;color:var(--color-text-muted);font-size:.9em">Marcas guardadas: <b><?= e(appSetting('tienda_brands', 'POEDAGAR')) ?></b><?php foreach ($dg as $k => $v): ?><br><?= e($k) ?>: <b><?= (int) $v ?></b><?php endforeach; ?></p>
     <label>Frase bajo el nombre (opcional)
         <input class="v2-input" name="tagline" value="<?= e(appSetting('tienda_tagline', 'Medellín · Bogotá · Panamá')) ?>" maxlength="120" style="width:100%"></label>
     <label>Entrega (opcional, se muestra en el pedido)
