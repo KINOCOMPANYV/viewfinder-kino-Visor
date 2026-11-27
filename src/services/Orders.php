@@ -66,6 +66,28 @@ class Orders
         return [$order[$i + 1], 'cancelado'];
     }
 
+    /** Quién tiene que actuar en cada etapa (texto para la lista). */
+    public const TURN = ['recibido' => 'Vendedor / Facturación', 'por_alistar' => 'Bodega', 'en_alistamiento' => 'Bodega', 'listo_facturar' => 'Facturación'];
+
+    /** Siguiente paso que le toca a este rol: ['move'=>etapa,'label'=>…] (botón directo), ['go'=>'#alistar','label'=>…] (abre el pedido) o null. */
+    public static function nextAction(string $role, string $stage): ?array
+    {
+        if ($stage === 'recibido' && self::canMove($role, 'por_alistar')) return ['move' => 'por_alistar', 'label' => 'Pasar a alistar'];
+        if (in_array($stage, ['por_alistar', 'en_alistamiento'], true) && self::can($role, 'alistar')) return ['go' => '#alistar', 'label' => $stage === 'por_alistar' ? 'Empezar a alistar' : 'Seguir alistando'];
+        if ($stage === 'listo_facturar' && self::canMove($role, 'facturado')) return ['go' => '', 'label' => 'Facturar'];
+        return null;
+    }
+
+    /** «hace 3 h» / «hace 2 d» desde una fecha MySQL; y nivel: 0 normal, 1 > 1 día, 2 > 3 días. */
+    public static function age(?string $since): array
+    {
+        $t = $since ? strtotime($since) : false;
+        if (!$t) return ['', 0];
+        $m = max(0, (int) ((time() - $t) / 60));
+        $txt = $m < 60 ? 'hace ' . max(1, $m) . ' min' : ($m < 1440 ? 'hace ' . intdiv($m, 60) . ' h' : 'hace ' . intdiv($m, 1440) . ' d');
+        return [$txt, $m > 4320 ? 2 : ($m > 1440 ? 1 : 0)];
+    }
+
     /** Ficha del cliente por WhatsApp (se crea sola, regla 1). */
     public static function customer(PDO $db, string $name, string $phone): ?int
     {
