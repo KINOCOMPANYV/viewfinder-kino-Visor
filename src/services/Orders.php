@@ -175,7 +175,7 @@ class Orders
     }
 
     /** Lo llama Pedidos bodega al crear/guardar/facturar: refleja su avance en la etapa del pedido núcleo. */
-    public static function syncWarehouse(PDO $db, int $whId): void
+    public static function syncWarehouse(PDO $db, int $whId, ?array $user = null, string $role = ''): void
     {
         try {
             $w = $db->prepare('SELECT * FROM warehouse_orders WHERE id = ?');
@@ -187,7 +187,8 @@ class Orders
             $o = $o->fetch(PDO::FETCH_ASSOC);
             if (!$o) {
                 $id = self::create($db, ['stage' => 'por_alistar', 'origin' => 'extractor', 'customer_name' => $w['client'], 'warehouse_order_id' => $whId,
-                    'items_count' => $w['items_count'], 'created_by' => 'Lista Bodega']);
+                    'items_count' => $w['items_count'], 'created_by' => 'Lista Bodega' . ($user ? ' · ' . ($user['name'] !== '' ? $user['name'] : $user['username']) : ''),
+                    'seller_user_id' => ($role === 'vendedor' && $user) ? (int) $user['id'] : null, 'user' => $user]);
                 $o = ['id' => $id, 'stage' => 'por_alistar'];
             }
             $to = $w['invoiced_at'] ? 'facturado' : ($w['status'] === 'listo' ? 'listo_facturar' : ((int) $w['checked_count'] > 0 ? 'en_alistamiento' : 'por_alistar'));

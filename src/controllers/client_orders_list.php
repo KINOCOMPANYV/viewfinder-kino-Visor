@@ -4,7 +4,14 @@ $db = getDB();
 $orders = [];
 $items = [];
 try {
-    $orders = $db->query("SELECT * FROM client_orders ORDER BY id DESC LIMIT 100")->fetchAll();
+    // Vendedor: solo pedidos de su cartera (pedido núcleo con seller_user_id = él); los demás perfiles ven todo.
+    if (currentRole() === 'vendedor') {
+        $st = $db->prepare("SELECT * FROM client_orders WHERE id IN (SELECT client_order_id FROM orders WHERE seller_user_id = ? AND client_order_id IS NOT NULL) ORDER BY id DESC LIMIT 100");
+        $st->execute([(int) (sessionUser()['id'] ?? 0)]);
+        $orders = $st->fetchAll();
+    } else {
+        $orders = $db->query("SELECT * FROM client_orders ORDER BY id DESC LIMIT 100")->fetchAll();
+    }
     if ($orders) {
         $ids = array_column($orders, 'id');
         $st = $db->prepare("SELECT * FROM client_order_items WHERE order_id IN (" . implode(',', array_fill(0, count($ids), '?')) . ") ORDER BY id");
