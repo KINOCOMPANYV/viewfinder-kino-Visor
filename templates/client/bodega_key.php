@@ -35,7 +35,7 @@ $bodegaOn = (string) env('PEDIDOS_CLAVE', '') !== '';
             <input type="hidden" name="next" value="<?= e($bodegaNext ?? '/pedidos-alistar') ?>">
             <button type="submit">Entrar</button>
         <?php else: ?>
-            <p>Solo el administrador puede entrar por ahora. Para que bodega entre con una clave, define la variable
+            <p>Para pedir clave a bodega define la variable
                 <b>PEDIDOS_CLAVE</b> en Railway.</p>
         <?php endif; ?>
         <p><a href="/admin/login">Entrar como administrador</a></p>
