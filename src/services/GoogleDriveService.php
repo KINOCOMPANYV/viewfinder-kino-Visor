@@ -49,6 +49,12 @@ class GoogleDriveService
             'access_type' => 'offline',
             'prompt' => 'consent',
         ];
+        // state: número de un solo uso guardado en la sesión; el callback lo exige (evita que otro sitio
+        // nos conecte a SU cuenta de Google). Caduca a los 10 minutos.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['oauth_state'] = ['v' => bin2hex(random_bytes(16)), 't' => time()];
+            $params['state'] = $_SESSION['oauth_state']['v'];
+        }
         return 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query($params);
     }
 
