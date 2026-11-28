@@ -10,7 +10,7 @@ $v2 = ['nav' => $v2Nav ?? 'gestion', 'sub' => $adminNav];
 <link rel="stylesheet" href="/assets/css/v2.css?v=<?= @filemtime(BASE_DIR . '/assets/css/v2.css') ?>">
 <?php include __DIR__ . '/v2_side.php'; ?>
 <header class="v2-top v2-legacy-top">
-    <button class="v2-burger" type="button" aria-label="Menú" onclick="document.body.classList.toggle('v2-open')"><span></span></button>
+    <button class="v2-burger" type="button" aria-label="Abrir menú" aria-controls="v2Side" aria-expanded="false" data-v2-menu-toggle><span></span></button>
     <?php if (isset($v2Crumb)): ?>
     <nav class="v2-crumb"><?php foreach ($v2Crumb as $ci => [$ct, $ch]): ?><?= $ci ? ' <span>›</span> ' : '' ?><?php if ($ch): ?><a href="<?= e($ch) ?>"><?= e($ct) ?></a><?php else: ?><b><?= e($ct) ?></b><?php endif; ?><?php endforeach; ?></nav>
     <?php else: ?>
