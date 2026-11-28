@@ -169,7 +169,7 @@ function requireAdmin(): void
 /**
  * Pedidos bodega (/pedidos-alistar, su API y /pedido-bodega?id=N): solo el admin logueado o un equipo
  * que ya escribió la clave de bodega (env PEDIDOS_CLAVE). La clave se recuerda 180 días en una cookie
- * firmada; cambiar PEDIDOS_CLAVE en Railway cierra todos los equipos. Sin PEDIDOS_CLAVE: solo el admin.
+ * firmada; cambiar PEDIDOS_CLAVE en Railway cierra todos los equipos. Sin PEDIDOS_CLAVE: abierto (como antes).
  */
 function bodegaCookieValue(): string
 {
@@ -183,7 +183,10 @@ function isBodegaAllowed(): bool
         return true;
     }
     $want = bodegaCookieValue();
-    return $want !== '' && hash_equals($want, (string) ($_COOKIE['kino_bodega'] ?? ''));
+    if ($want === '') {
+        return true; // decisión del dueño (2026-11-28): sin PEDIDOS_CLAVE, Pedidos bodega queda abierto como antes
+    }
+    return hash_equals($want, (string) ($_COOKIE['kino_bodega'] ?? ''));
 }
 
 function requireBodega(): void
