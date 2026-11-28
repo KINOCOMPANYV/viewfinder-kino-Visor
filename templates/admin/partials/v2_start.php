@@ -31,6 +31,16 @@ $v2 = ($v2 ?? []) + ['nav' => '', 'sub' => '', 'title' => 'Admin', 'subtitle' =>
                     <span class="v2-user-txt"><b><?= e($v2Name) ?></b><small><?= e(Users::label($v2Role)) ?></small></span></div>
             </div>
         </header>
+        <?php
+        // Inventario SYS desactualizado (solo quienes pueden cargarlo). Lee la última carga aplicada en inventory_imports.
+        $v2Inv = null;
+        if (in_array(currentRole(), ['admin', 'dev', 'facturacion'], true)) {
+            try { require_once __DIR__ . '/../../../src/services/InventorySync.php'; $v2Inv = (new InventorySync(getDB()))->freshness(); } catch (Throwable $e) { $v2Inv = null; }
+        }
+        if ($v2Inv && $v2Inv['stale']): ?>
+        <a class="v2-cobro v2-cobro--40" href="/admin/inventario">
+            ‼ <b>Inventario SYS sin actualizar:</b> <?= $v2Inv['minutes'] === null ? 'todavía no hay ninguna carga.' : 'la última carga fue hace ' . e(InventorySync::ageText($v2Inv['minutes'])) . '.' ?> <u>Subir archivo</u></a>
+        <?php endif; ?>
         <?php if ($v2Cobro[0] && in_array(currentRole(), ['vendedor', 'facturacion', 'admin', 'dev'], true)): ?>
         <a class="v2-cobro<?= $v2Cobro[1] ? ' v2-cobro--40' : '' ?>" href="/clientes?cartera=<?= $v2Cobro[1] ? '40' : '20' ?>">
             <?= $v2Cobro[1] ? '‼' : '⚠' ?> <b>Por cobrar:</b> <?= currentRole() === 'vendedor' ? 'tienes ' : '' ?><?= $v2Cobro[0] ?> cliente<?= $v2Cobro[0] > 1 ? 's' : '' ?> con deuda de más de 20 días<?= $v2Cobro[1] ? ' (' . $v2Cobro[1] . ' de más de 40)' : '' ?>. <u>Ver lista</u></a>

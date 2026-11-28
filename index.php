@@ -609,6 +609,13 @@ if ($uri === '/admin/hoja') {
     exit;
 }
 
+if ($uri === '/api/inventario/subir') {
+    // El agente que descarga el Excel de SYS lo sube aquí con la clave INVENTORY_UPLOAD_TOKEN (cabecera X-Inventory-Token).
+    checkRateLimit(20);
+    include __DIR__ . '/src/controllers/api_inventory_upload.php';
+    exit;
+}
+
 if ($uri === '/admin/inventario') {
     requireAdmin();
     include __DIR__ . '/src/controllers/admin_inventory.php';

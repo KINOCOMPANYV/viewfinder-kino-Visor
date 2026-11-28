@@ -196,6 +196,7 @@ El "cómo funciona" está en `docs/ARQUITECTURA.md`; aquí solo el qué y el por
   Reemplaza las etapas 5 (app instalable, pausada) y 6 (búsqueda) del plan UX.
 
 ## Historial (1 línea por PR)
+- Rama `claude/project-thread-logwox` (2026-11-28, sobre v2): **automatización SYS**: aviso rojo arriba de cada pantalla v2 (Admin/Dev/Facturación) si la última carga SYS aplicada tiene más de `INVENTORY_STALE_MINUTES` (60); `POST /api/inventario/subir` para el agente (token `INVENTORY_UPLOAD_TOKEN`, mínimo 9000 filas, sin reprocesar el mismo archivo). Falta: el agente que descarga de SYS (escritorio remoto) y definir quién exporta y cuándo. Shopify Poedagar ya se actualizó a mano el 2026-11-27 (×2,8).
 - 2026-11-27 (v2): Clientes: ficha `/clientes/{id}` (deuda, pedidos, comprado, promedio, lo que más compra, historial) y «+ Nuevo pedido» que abre Vender con el cliente ya puesto. El vendedor solo ve los suyos.
 - 2026-11-27 (v2): Vender: al elegir un cliente que ya compró sale «Último pedido … ↻ Repetir» (suma sus productos al carrito; ruta `/clientes/ultimo`, el vendedor solo ve los suyos).
 - 2026-11-27 (v2): Pedidos más intuitivo: columna «Siguiente paso» con botón directo por rol, «Le toca a», antigüedad en la etapa (ámbar >1 d, rojo >3 d) y filtro «⚡ Me toca a mí». Plan A+B+C aprobado (B Vender, C Clientes pendientes).
