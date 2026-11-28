@@ -81,6 +81,7 @@
             + '<button type="button" class="tn-detail" data-quick="' + esc(it.sku) + '">Ver detalle</button>'
             + '<div class="tn-act"></div></div></article>';
     }
+    let lastCat = null;
     async function load(reset) {
         const seq = ++st.seq; const grid = $('tnGrid');
         if (reset) { st.page = 1; grid.innerHTML = '<div class="tn-skel"></div>'.repeat(8); $('tnEmpty').hidden = true; $('tnMore').hidden = true; }
@@ -88,8 +89,14 @@
         try { d = await api(params()); } catch (e) { if (seq === st.seq) grid.innerHTML = '<p class="tn-empty">No pudimos cargar los productos. Revisa tu conexión e intenta de nuevo.</p>'; return; }
         if (seq !== st.seq) return;
         if (reset) { grid.innerHTML = ''; paintCats(); }
-        const base = grid.children.length;
-        grid.insertAdjacentHTML('beforeend', d.items.map((it, i) => card(it, base + i)).join(''));
+        if (reset) lastCat = null;
+        const group = !st.q && !st.cat && !st.marca;
+        const base = grid.querySelectorAll('.tn-card').length;
+        grid.insertAdjacentHTML('beforeend', d.items.map((it, i) => {
+            let h = '';
+            if (group && it.category !== lastCat) { lastCat = it.category; h = '<h3 class="tn-cat">' + esc(it.category || 'Sin categoría') + '</h3>'; }
+            return h + card(it, base + i);
+        }).join(''));
         grid.querySelectorAll('.tn-card:not([data-ok])').forEach((c) => { c.dataset.ok = '1'; paintAdd(c, c.dataset.sku); });
         st.pages = d.pages;
         $('tnMore').hidden = st.page >= st.pages;

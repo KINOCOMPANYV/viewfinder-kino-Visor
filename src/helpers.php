@@ -1728,6 +1728,15 @@ function promoCategories(PDO $db): array
 }
 
 
+/** Orden por categoría para agrupar listas (v2): promocionales primero, luego A-Z, «sin categoría» al final. */
+function categoryOrderSql(PDO $db, string $col = 'p.category'): string
+{
+    $c = "COALESCE(TRIM($col), '')";
+    $promo = promoCategories($db);
+    $p = $promo ? "($c IN (" . implode(',', array_map([$db, 'quote'], $promo)) . ')) DESC, ' : '';
+    return "{$p}($c = '') ASC, $c ASC";
+}
+
 /** Enlace permitido en la tienda (banner, galería): vacío, #ancla, /ruta-interna o https://. Otro valor → ''. */
 function tiendaSafeLink(string $link): string
 {

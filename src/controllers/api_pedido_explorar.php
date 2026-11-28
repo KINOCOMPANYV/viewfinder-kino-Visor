@@ -25,7 +25,7 @@ $mapRow = function (array $r): array {
     return [
         'sku' => $r['sku'], 'name' => $name === $r['sku'] ? '' : $name, 'cover' => $cv['url'], 'video' => $cv['video'],
         'price' => (float) $r['price_suggested'] > 0 ? (int) round((float) $r['price_suggested']) : 0,
-        'stock' => $r['stock'] === null ? null : (int) $r['stock'],
+        'stock' => $r['stock'] === null ? null : (int) $r['stock'], 'category' => trim((string) ($r['category'] ?? '')),
     ];
 };
 // ?skus=A,B → datos de esos códigos (para dibujar el carrito)
@@ -34,7 +34,7 @@ if (isset($_GET['skus'])) {
     $items = [];
     if ($codes) {
         [$tr, $tp] = $tienda ? tiendaRulesSql() : ['', []];
-        $st = $db->prepare('SELECT p.sku, p.name, p.cover_image_url, p.price_suggested, ' . stockSql('p') . ' AS stock FROM products p WHERE p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > \'\' AND p.sku IN (' . implode(',', array_fill(0, count($codes), '?')) . ')' . $tr);
+        $st = $db->prepare('SELECT p.sku, p.name, p.category, p.cover_image_url, p.price_suggested, ' . stockSql('p') . ' AS stock FROM products p WHERE p.archived = 0 AND p.is_active = 1 AND p.cover_image_url > \'\' AND p.sku IN (' . implode(',', array_fill(0, count($codes), '?')) . ')' . $tr);
         $st->execute(array_merge($codes, $tp));
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $items[] = $mapRow($r);
     }
@@ -98,10 +98,7 @@ if ($wantProducts) {
         : ($flt['oprecio'] === 'asc' ? '(p.price_suggested IS NULL OR p.price_suggested = 0), p.price_suggested ASC, p.sku ASC'
         : ($flt['ocodigo'] === 'desc' ? 'p.sku DESC' : 'p.sku ASC'));
     $orderArgs = [];
-    if ($catMode && $flt['oprecio'] === '' && $flt['ocodigo'] === '') { // categorías promocionales primero (el código exacto de una búsqueda sigue yendo antes)
-        $promo = promoCategories($db);
-        if ($promo) $order = '(p.category IN (' . implode(',', array_map([$db, 'quote'], $promo)) . ')) DESC, ' . $order;
-    }
+    if ($q === '') $order = categoryOrderSql($db) . ', ' . $order; // agrupado por categoría (promocionales primero); el precio/código ordena dentro de cada una
     if ($q !== '') {
         $clean = preg_replace('/\.\w{2,4}$/i', '', $q);
         $forms = skuExactForms($clean) ?: [''];
@@ -124,7 +121,7 @@ if ($wantProducts) {
     $cnt->execute($params);
     $out['total'] = (int) $cnt->fetchColumn();
     $out['pages'] = max(1, (int) ceil($out['total'] / $per));
-    $st = $db->prepare('SELECT p.sku, p.name, p.cover_image_url, p.price_suggested, ' . stockSql('p') . " AS stock $base ORDER BY $order LIMIT $per OFFSET " . (($page - 1) * $per));
+    $st = $db->prepare('SELECT p.sku, p.name, p.category, p.cover_image_url, p.price_suggested, ' . stockSql('p') . " AS stock $base ORDER BY $order LIMIT $per OFFSET " . (($page - 1) * $per));
     $st->execute(array_merge($params, $orderArgs));
     foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $out['items'][] = $mapRow($r);

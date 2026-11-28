@@ -7,7 +7,7 @@ $st->execute([$shopToken]);
 $o = $st->fetch(PDO::FETCH_ASSOC);
 $items = [];
 if ($o) {
-    $s = $db->prepare("SELECT i.sku, i.name, i.qty, i.unit_price, p.cover_image_url FROM client_order_items i LEFT JOIN products p ON CONVERT(p.sku USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(i.sku USING utf8mb4) COLLATE utf8mb4_unicode_ci WHERE i.order_id = ? ORDER BY i.id");
+    $s = $db->prepare("SELECT i.sku, i.name, i.qty, i.unit_price, p.cover_image_url, p.category FROM client_order_items i LEFT JOIN products p ON CONVERT(p.sku USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(i.sku USING utf8mb4) COLLATE utf8mb4_unicode_ci WHERE i.order_id = ? ORDER BY " . categoryOrderSql($db, 'p.category') . ", i.id");
     $s->execute([$o['id']]);
     $items = $s->fetchAll(PDO::FETCH_ASSOC);
 } else {
@@ -37,7 +37,8 @@ $wa = 'https://wa.me/' . shopNotifyPhone() . '?text=' . rawurlencode('Hola Kino 
     <h1>Pedido <?= e((string) $o['number']) ?></h1>
     <div class="tn-meta"><span><?= e($o['customer_name']) ?> · <?= e($o['customer_phone']) ?></span><span><?= e(substr((string) $o['created_at'], 0, 10)) ?></span></div>
     <ul class="tn-ol">
-    <?php foreach ($items as $i): $cv = parseStoredCover($i['cover_image_url'] ?? '', 400); ?>
+    <?php $lc = null; foreach ($items as $i): $cv = parseStoredCover($i['cover_image_url'] ?? '', 400); $ic = trim((string) ($i['category'] ?? ''));
+        if ($ic !== $lc): $lc = $ic; ?><li class="tn-cat" style="display:block"><?= e($ic !== '' ? $ic : 'Sin categoría') ?></li><?php endif; ?>
         <li><?= $cv['url'] !== '' ? '<img src="' . e($cv['url']) . '" alt="' . e($i['sku']) . '" loading="lazy">' : '<span></span>' ?>
             <div><b><?= e(trim(str_ireplace($i['sku'], '', (string) $i['name'])) ?: $i['sku']) ?></b><small><?= e($i['sku']) ?> · <?= (int) $i['qty'] ?> × $<?= number_format((float) $i['unit_price'], 0, ',', '.') ?></small></div>
             <b>$<?= number_format((float) $i['unit_price'] * (int) $i['qty'], 0, ',', '.') ?></b></li>

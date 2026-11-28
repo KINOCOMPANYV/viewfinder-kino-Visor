@@ -83,3 +83,5 @@
 .mo-v2{max-width:none;padding:0 0 6rem}
 .mo-v2 .mo-cartbox{top:1rem}
 @media (max-width:900px){.mo-v2 .mo-grid{grid-template-columns:minmax(0,1fr)}}
+.mo-cat{grid-column:1/-1;margin:.9rem 0 .1rem;padding-bottom:.35rem;border-bottom:1px solid var(--color-border,#34343a);font-size:.74rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted,#8e8e93)}
+.mo-cat:first-child{margin-top:0}

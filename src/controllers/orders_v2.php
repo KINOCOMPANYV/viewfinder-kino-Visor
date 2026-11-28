@@ -49,7 +49,7 @@ if ($orderId > 0) {
     $history = [];
     if ($order) {
         if ($order['client_order_id']) {
-            $s = $db->prepare('SELECT i.sku, i.name, i.qty, i.unit_price, p.cover_image_url FROM client_order_items i LEFT JOIN products p ON CONVERT(p.sku USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(i.sku USING utf8mb4) COLLATE utf8mb4_unicode_ci WHERE i.order_id = ? ORDER BY i.id');
+            $s = $db->prepare('SELECT i.sku, i.name, i.qty, i.unit_price, p.cover_image_url, p.category FROM client_order_items i LEFT JOIN products p ON CONVERT(p.sku USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(i.sku USING utf8mb4) COLLATE utf8mb4_unicode_ci WHERE i.order_id = ? ORDER BY ' . categoryOrderSql($db, 'p.category') . ', i.id');
             $s->execute([$order['client_order_id']]);
             $items = $s->fetchAll(PDO::FETCH_ASSOC);
         }
@@ -75,16 +75,20 @@ if ($orderId > 0) {
                     }
                 }
                 $covers = [];
+                $cats = [];
                 if ($lines) {
                     $skus = array_values(array_unique(array_map(fn($l) => (string) ($l['code'] ?? ''), $lines)));
                     $in = implode(',', array_fill(0, count($skus), '?'));
-                    $cs = $db->prepare("SELECT sku, cover_image_url FROM products WHERE sku IN ($in)");
+                    $cs = $db->prepare("SELECT sku, cover_image_url, category FROM products WHERE sku IN ($in)");
                     $cs->execute($skus);
                     foreach ($cs->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                        $cats[$r['sku']] = trim((string) $r['category']);
                         if ($r['cover_image_url']) $covers[$r['sku']] = parseStoredCover($r['cover_image_url'], 200)['url'];
                     }
                 }
-                $whData = ['id' => (int) $wh['id'], 'status' => $wh['status'], 'pct' => (float) $order['discount_pct'], 'client' => (string) $order['customer_name'], 'number' => (string) $order['number'], 'who' => $wh['checked_by'] ?: ($me['name'] ?? $me['username'] ?? ''), 'lines' => $lines, 'covers' => $covers];
+                $pr = promoCategories($db); $rest = array_values(array_diff(array_unique(array_filter($cats, 'strlen')), $pr)); sort($rest, SORT_NATURAL | SORT_FLAG_CASE);
+                $catOrder = array_values(array_merge(array_values(array_intersect($pr, $cats)), $rest));
+                $whData = ['id' => (int) $wh['id'], 'status' => $wh['status'], 'pct' => (float) $order['discount_pct'], 'client' => (string) $order['customer_name'], 'number' => (string) $order['number'], 'who' => $wh['checked_by'] ?: ($me['name'] ?? $me['username'] ?? ''), 'lines' => $lines, 'covers' => $covers, 'cats' => $cats, 'catOrder' => $catOrder];
             }
         }
         $s = $db->prepare('SELECT * FROM order_history WHERE order_id = ? ORDER BY id DESC');

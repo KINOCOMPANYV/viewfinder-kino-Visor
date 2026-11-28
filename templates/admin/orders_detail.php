@@ -47,7 +47,7 @@
     <?php endif; ?>
     <?php if ($items): ?>
     <div class="v2-card" style="margin-bottom:1rem"><table class="v2-table"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio c/u</th></tr></thead><tbody>
-        <?php foreach ($items as $it): ?><tr>
+        <?php $lc = null; foreach ($items as $it): $ic = trim((string) ($it['category'] ?? '')); if ($ic !== $lc): $lc = $ic; ?><tr class="v2-cathead"><td colspan="3"><?= e($ic !== '' ? $ic : 'Sin categoría') ?></td></tr><?php endif; ?><tr>
             <td><div class="v2-prod"><?php if (!empty($it['cover_image_url'])): $cv = parseStoredCover($it["cover_image_url"], 200); ?><img class="v2-thumb" loading="lazy" src="<?= e($cv["url"]) ?>" alt=""><?php endif; ?>
                 <div><div class="v2-name"><?= e($it['name']) ?></div><a class="v2-code" href="/producto/<?= e(rawurlencode($it['sku'])) ?>"><?= e($it['sku']) ?></a></div></div></td>
             <td><?= (int) $it['qty'] ?></td><td><?= e(priceText($it['unit_price'])) ?></td></tr><?php endforeach; ?>

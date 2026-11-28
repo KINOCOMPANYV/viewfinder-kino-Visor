@@ -34,9 +34,16 @@
             '<div class="mo-step">' + (q ? '<button type="button" data-d="-1" aria-label="Menos">−</button><span>' + q + '</span><button type="button" data-d="1" aria-label="Más">+</button>'
                 : '<button type="button" class="mo-addbtn" data-add="1">+ Agregar</button>') + '</div></div>';
     }
+    let lastCat = null;
     function drawItems(items, append) {
         items.forEach((p) => { meta[p.sku] = p; });
-        const html = items.map(tile).join('');
+        if (!append) lastCat = null;
+        const group = !st.q && !st.marca; // con búsqueda o una sola categoría no hacen falta encabezados
+        const html = items.map((p) => {
+            let h = '';
+            if (group && p.category !== lastCat) { lastCat = p.category; h = '<h3 class="mo-cat">' + esc(p.category || 'Sin categoría') + '</h3>'; }
+            return h + tile(p);
+        }).join('');
         $('moItems').innerHTML = append ? $('moItems').innerHTML + html : html;
     }
     function crumbs(path) {

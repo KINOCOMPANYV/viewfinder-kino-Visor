@@ -90,12 +90,18 @@
                 }).catch(() => { st.textContent = '⚠️ No se pudo cambiar.'; });
         });
     }
+    // Agrupado por categoría (promocionales primero, luego A-Z, sin categoría al final); un producto cambiado se queda en el grupo del original.
+    const catOf = (l) => (d.cats || {})[l.code] || (l.base && (d.cats || {})[l.base.code]) || '';
+    const rank = (c) => { const i = (d.catOrder || []).indexOf(c); return c === '' ? 1e9 : (i < 0 ? 1e6 : i); };
+    const displayLines = () => lines.map((l, i) => [l, i]).sort((a, b) => rank(catOf(a[0])) - rank(catOf(b[0])) || a[1] - b[1]).map((x) => x[0]);
     function draw() {
-        list.innerHTML = lines.map((l) => {
+        let lc = null;
+        list.innerHTML = displayLines().map((l) => {
+            const c = catOf(l); const hd = c !== lc ? (lc = c, '<div class="v2-cathead-d">' + esc(c || 'Sin categoría') + '</div>') : '';
             const img = covers[l.code] ? '<img class="v2-thumb al-zoom" loading="lazy" src="' + esc(covers[l.code]) + '" alt="Ver foto grande" title="Ver foto grande" data-code="' + esc(l.code) + '" data-name="' + esc(l.name) + '">' : '';
             const lock = ro || l.checked; // alistado = bloqueado; solo Administración/Facturación lo abren con contraseña
             const off = lock ? ' disabled' : '';
-            return '<div class="v2-prod" style="padding:.55rem 0;border-top:1px solid var(--color-border);gap:.7rem;align-items:center;' + (l.qty === 0 ? 'opacity:.5' : '') + '">' + img +
+            return hd + '<div class="v2-prod" style="padding:.55rem 0;border-top:1px solid var(--color-border);gap:.7rem;align-items:center;' + (l.qty === 0 ? 'opacity:.5' : '') + '">' + img +
                 '<div style="flex:1;min-width:0"><div class="v2-name">' + esc(l.name) + '</div><span class="v2-code">' + esc(l.code) + ' · pedido ' + l.origQty + '</span>' +
                 '<input data-i="' + l.id + '" data-f="note" value="' + esc(l.note) + '" placeholder="Nota (faltante, cambio…)"' + off + ' style="display:block;width:100%;margin-top:.3rem;padding:.35rem .5rem;border-radius:6px;border:1px solid var(--color-border-hover);background:var(--color-bg);color:inherit">' +
                 (l.base && l.code !== l.base.code ? '<div class="v2-code" style="margin-top:.25rem">🔄 Cambiado · antes ' + esc(l.base.code) + (lock ? '' : ' <button class="v2-chip" data-a="undo" data-i="' + l.id + '">Deshacer</button>') + '</div>' : '') +
