@@ -115,5 +115,22 @@ try {
     check($xlsx['items'][0]['code'] === 'M8291-1' && $xlsx['items'][0]['stock'] === 7 && $xlsx['items'][0]['price'] === 45000.0, 'Importación real de un XLSX generado: código, existencias y precio correctos');
 } finally { unlink($file); }
 
+// Alerta de inventario sin actualizar y archivo repetido (agente)
+$db = fixture();
+$sync = new InventorySync($db, fn() => sheet(), fn($db, $columns) => ['celdas' => 0]);
+$now = strtotime('2026-11-28 12:00:00 UTC');
+$f = $sync->freshness(60, $now);
+check($f['stale'] && $f['minutes'] === null && $f['last'] === null, 'Sin ninguna carga, el inventario se considera sin actualizar');
+$id = $sync->import(parsed([item('M8291-1', 5, 300)]), 'SYS.xlsx', str_repeat('b', 64), true, false, ['username' => 'Agente SYS']);
+$db->exec("UPDATE inventory_imports SET completed_at = '2026-11-28 11:30:00' WHERE id = $id");
+$f = $sync->freshness(60, $now);
+check(!$f['stale'] && $f['minutes'] === 30, 'Una carga de hace 30 minutos no genera alerta');
+$f = $sync->freshness(60, strtotime('2026-11-28 13:00:00 UTC'));
+check($f['stale'] && $f['minutes'] === 90, 'Una carga de hace 90 minutos sí genera alerta');
+$db->exec("INSERT INTO inventory_imports (filename, source_hash, status, sheet_status, result_json, created_at, completed_at) VALUES ('x.xlsx', '" . str_repeat('c', 64) . "', 'failed', 'not_requested', '{}', '2026-11-28 11:59:00', '2026-11-28 11:59:00')");
+check($sync->freshness(60, $now)['minutes'] === 30, 'Una carga fallida no cuenta como inventario actualizado');
+check($sync->latestAppliedHash() === str_repeat('b', 64), 'Se conoce el hash de la última carga aplicada para no repetirla');
+check(InventorySync::ageText(45) === '45 min' && InventorySync::ageText(135) === '2 h 15 min' && InventorySync::ageText(120) === '2 h' && InventorySync::ageText(1500) === '1 día' && InventorySync::ageText(3000) === '2 días', 'El tiempo sin actualizar se escribe en lenguaje claro');
+
 echo "$checks comprobaciones; $fails fallos.\n";
 exit($fails ? 1 : 0);

@@ -45,6 +45,37 @@ class InventorySync
         return (int) $this->db->query("SELECT id FROM inventory_imports WHERE status IN ('applied', 'partial') ORDER BY id DESC LIMIT 1")->fetchColumn();
     }
 
+    /** Hash del archivo de la última carga aplicada (para no reprocesar el mismo Excel). */
+    public function latestAppliedHash(): string
+    {
+        return (string) $this->db->query("SELECT source_hash FROM inventory_imports WHERE status IN ('applied', 'partial') ORDER BY id DESC LIMIT 1")->fetchColumn();
+    }
+
+    /**
+     * ¿Cuánto hace que no se aplica un inventario SYS? Alerta cuando pasan más de $maxMinutes
+     * (INVENTORY_STALE_MINUTES, 60 por defecto). Sin migración 047 no hay nada que avisar.
+     * @return array{last:?string,minutes:?int,max:int,stale:bool}
+     */
+    public function freshness(?int $maxMinutes = null, ?int $now = null): array
+    {
+        $max = $maxMinutes ?? max(1, (int) env('INVENTORY_STALE_MINUTES', '60'));
+        if (!$this->ready()) return ['last' => null, 'minutes' => null, 'max' => $max, 'stale' => false];
+        $last = $this->db->query("SELECT MAX(completed_at) FROM inventory_imports WHERE status IN ('applied', 'partial')")->fetchColumn() ?: null;
+        $ts = $last ? strtotime($last . ' UTC') : false;
+        if ($ts === false) return ['last' => null, 'minutes' => null, 'max' => $max, 'stale' => true];
+        $minutes = max(0, intdiv(($now ?? time()) - $ts, 60));
+        return ['last' => $last, 'minutes' => $minutes, 'max' => $max, 'stale' => $minutes > $max];
+    }
+
+    /** 135 → «2 h 15 min»; 3000 → «2 días». */
+    public static function ageText(int $minutes): string
+    {
+        if ($minutes < 60) return $minutes . ' min';
+        if ($minutes < 1440) return intdiv($minutes, 60) . ' h' . ($minutes % 60 ? ' ' . ($minutes % 60) . ' min' : '');
+        $d = intdiv($minutes, 1440);
+        return $d . ($d === 1 ? ' día' : ' días');
+    }
+
     public function latestAppliedSummary(): ?array
     {
         return $this->db->query("SELECT id, filename, status, sheet_status, user_name, created_at FROM inventory_imports
