@@ -56,7 +56,11 @@ $xlsx = '/admin/products?' . http_build_query(array_filter($filters, fn($v) => $
             <th>Catálogo</th>
         </tr></thead>
         <tbody>
-        <?php foreach ($products as $p): $cover = parseStoredCover($p['cover_image_url'], 120); $s = $p['stock_n']; ?>
+        <?php $lastCat = null; foreach ($products as $p): $cover = parseStoredCover($p['cover_image_url'], 120); $s = $p['stock_n'];
+            $pc = trim((string) $p['category']);
+            if ($pc !== $lastCat): $lastCat = $pc; ?>
+            <tr class="v2-cathead"><td colspan="5"><?= e($pc !== '' ? $pc : 'Sin categoría') ?><?php if (in_array($pc, $promoCats, true)): ?> <small>· Promocional</small><?php endif; ?></td></tr>
+            <?php endif; ?>
             <tr data-id="<?= (int) $p['id'] ?>" class="<?= $p['is_active'] ? '' : 'off' ?>">
                 <td><div class="v2-prod">
                     <?php if ($cover['url']): ?><img class="v2-thumb" src="<?= e($cover['url']) ?>" alt="" loading="lazy" onerror="this.outerHTML='<div class=\'v2-thumb\'>📷</div>'"><?php else: ?><div class="v2-thumb">📷</div><?php endif; ?>

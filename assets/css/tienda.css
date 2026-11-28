@@ -349,3 +349,6 @@ body.tn-lock { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .tn-gal-track { scroll-behavior: auto; } .tn-gal-ph img { transition: none; } }
 @media (hover: hover) and (pointer: fine) { .tn-gal-nav:not([hidden]) { display: flex; } }
+
+.tn-cat { grid-column: 1 / -1; margin: 1.1rem 0 .1rem; padding-bottom: .4rem; border-bottom: 1px solid var(--color-border); font-size: .74rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-muted); }
+.tn-cat:first-child { margin-top: 0; }

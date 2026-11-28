@@ -33,7 +33,7 @@ $page = min($page, $totalPages);
 
 $stmt = $db->prepare(
     "SELECT id, sku, name, brand, category, price_suggested, {$stock} AS stock_n, cover_image_url, is_active, in_sheet, from_drive
-     FROM products WHERE {$where} ORDER BY {$orders[$orden]}, sku LIMIT {$perPage} OFFSET " . (($page - 1) * $perPage)
+     FROM products WHERE {$where} ORDER BY " . categoryOrderSql($db, 'category') . ", {$orders[$orden]}, sku LIMIT {$perPage} OFFSET " . (($page - 1) * $perPage)
 );
 $stmt->execute($params);
 $products = $stmt->fetchAll();
