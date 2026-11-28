@@ -1,8 +1,8 @@
 <?php
 /**
- * Pedidos bodega (tabla warehouse_orders, migración 035). JSON, sin clave (igual que Lista Bodega), POST con X-CSRF-TOKEN.
+ * Pedidos bodega (tabla warehouse_orders, migración 035). JSON; acceso con requireBodega() (admin o clave de bodega), POST con X-CSRF-TOKEN.
  * $woAction: 'list' (GET) | 'create' (POST {order}) | 'get' (GET, $woId) | 'save' (POST {lines, who, checked, total, done}, $woId)
- *   | 'delete' (POST {password}, $woId): borra el pedido si la clave coincide con env PEDIDOS_DELETE_PASSWORD (por defecto 3312).
+ *   | 'delete' (POST {password}, $woId): borra el pedido si la clave coincide con env PEDIDOS_DELETE_PASSWORD (sin valor por defecto: si falta, no se borra).
  *   | 'invoice' (POST {on}, $woId): marca (on=true) o quita la marca «Facturado» (invoiced_at) de un pedido listo.
  * El checklist y el PDF siguen en el dispositivo (assets/js/warehouse_order.js); aquí solo se guarda el pedido y su avance.
  */
@@ -94,7 +94,10 @@ if ($woAction === 'create') {
 }
 
 if ($woAction === 'delete') {
-    $pass = env('PEDIDOS_DELETE_PASSWORD', '3312');
+    $pass = (string) env('PEDIDOS_DELETE_PASSWORD', '');
+    if ($pass === '') { // sin clave por defecto: hay que definirla en Railway
+        jsonResponse(['error' => 'Borrar está apagado: falta la variable PEDIDOS_DELETE_PASSWORD en Railway.'], 403);
+    }
     if (!hash_equals($pass, (string) ($input['password'] ?? ''))) {
         jsonResponse(['error' => 'Contraseña incorrecta.'], 403);
     }

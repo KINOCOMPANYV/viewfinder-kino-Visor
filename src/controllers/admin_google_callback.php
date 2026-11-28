@@ -17,6 +17,14 @@ if (!empty($_GET['error'])) {
     $fail('Google no autorizó la conexión: ' . $_GET['error']);
 }
 
+// state de un solo uso (lo puso getAuthUrl en la sesión): si no coincide, la vuelta no salió de este botón.
+$st = $_SESSION['oauth_state'] ?? null;
+unset($_SESSION['oauth_state']);
+if (!is_array($st) || time() - (int) ($st['t'] ?? 0) > 600
+    || !hash_equals((string) ($st['v'] ?? ''), (string) ($_GET['state'] ?? ''))) {
+    $fail('La conexión con Google caducó o no salió de este panel.');
+}
+
 $code = $_GET['code'] ?? '';
 if ($code === '') {
     $fail('No se recibió código de autorización de Google.');
