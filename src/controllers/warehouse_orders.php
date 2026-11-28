@@ -1,8 +1,8 @@
 <?php
 /**
- * Pedidos bodega (tabla warehouse_orders, migración 035). JSON, sin clave (igual que Lista Bodega), POST con X-CSRF-TOKEN.
+ * Pedidos bodega (tabla warehouse_orders, migración 035). JSON, solo personal (requireStaff en index.php; vendedor = solo su cartera), POST con X-CSRF-TOKEN.
  * $woAction: 'list' (GET) | 'create' (POST {order}) | 'get' (GET, $woId) | 'save' (POST {lines, who, checked, total, done}, $woId)
- *   | 'delete' (POST {password}, $woId): borra el pedido si la clave coincide con env PEDIDOS_DELETE_PASSWORD (por defecto 3312).
+ *   | 'delete' (POST {password}, $woId): borra el pedido si la clave coincide con env PEDIDOS_DELETE_PASSWORD (sin valor por defecto: si falta, no se borra).
  *   | 'invoice' (POST {on}, $woId): marca (on=true) o quita la marca «Facturado» (invoiced_at) de un pedido listo.
  * El checklist y el PDF siguen en el dispositivo (assets/js/warehouse_order.js); aquí solo se guarda el pedido y su avance.
  */
@@ -55,15 +55,25 @@ $woRow = function (array $r, bool $full = false): array {
 $cols = 'id, number, client, order_date, items_count, checked_count, status, checked_by, total_final,
          UNIX_TIMESTAMP(created_at) AS created_ts, UNIX_TIMESTAMP(updated_at) AS updated_ts, UNIX_TIMESTAMP(finished_at) AS finished_ts, UNIX_TIMESTAMP(invoiced_at) AS invoiced_ts';
 
+// Vendedor: solo los pedidos de su cartera (pedido núcleo con seller_user_id = él). Los demás perfiles ven todo.
+$woMine = '1=1';
+$woMineArgs = [];
+if (currentRole() === 'vendedor') {
+    $woMine = 'id IN (SELECT warehouse_order_id FROM orders WHERE seller_user_id = ? AND warehouse_order_id IS NOT NULL)';
+    $woMineArgs = [(int) (sessionUser()['id'] ?? 0)];
+}
+
 if ($woAction === 'list') {
-    $rows = $db->query("SELECT $cols FROM warehouse_orders
-        ORDER BY status = 'listo', CASE WHEN status = 'listo' THEN finished_at END DESC, created_at DESC LIMIT 300")->fetchAll(PDO::FETCH_ASSOC);
+    $st = $db->prepare("SELECT $cols FROM warehouse_orders WHERE $woMine
+        ORDER BY status = 'listo', CASE WHEN status = 'listo' THEN finished_at END DESC, created_at DESC LIMIT 300");
+    $st->execute($woMineArgs);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     jsonResponse(['orders' => array_map($woRow, $rows)]);
 }
 
 if ($woAction === 'get') {
-    $st = $db->prepare("SELECT $cols, order_json, lines_json FROM warehouse_orders WHERE id = ?");
-    $st->execute([$woId]);
+    $st = $db->prepare("SELECT $cols, order_json, lines_json FROM warehouse_orders WHERE id = ? AND $woMine");
+    $st->execute(array_merge([$woId], $woMineArgs));
     $r = $st->fetch(PDO::FETCH_ASSOC);
     if (!$r) {
         jsonResponse(['error' => 'Ese pedido no existe.'], 404);
@@ -100,12 +110,16 @@ if ($woAction === 'create') {
         count($order['items']), json_encode($order, JSON_UNESCAPED_UNICODE)]);
     $newId = (int) $db->lastInsertId();
     require_once __DIR__ . '/../services/Orders.php';
-    Orders::syncWarehouse($db, $newId);
+    // Quien lo envía queda registrado; si es vendedor, el pedido entra a su cartera (así lo sigue viendo).
+    Orders::syncWarehouse($db, $newId, sessionUser(), currentRole());
     jsonResponse(['id' => $newId, 'existing' => false]);
 }
 
 if ($woAction === 'delete') {
-    $pass = env('PEDIDOS_DELETE_PASSWORD', '3312');
+    $pass = (string) env('PEDIDOS_DELETE_PASSWORD', '');
+    if ($pass === '') { // sin clave por defecto: hay que definirla en Railway
+        jsonResponse(['error' => 'Borrar está apagado: falta la variable PEDIDOS_DELETE_PASSWORD en Railway.'], 403);
+    }
     if (!hash_equals($pass, (string) ($input['password'] ?? ''))) {
         jsonResponse(['error' => 'Contraseña incorrecta.'], 403);
     }

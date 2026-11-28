@@ -30,6 +30,25 @@ class DbBackup
         if (!$gz) {
             throw new RuntimeException('No se pudo crear el archivo del respaldo.');
         }
+        // Foto consistente: todas las tablas se leen en el mismo instante (InnoDB, REPEATABLE READ), aunque
+        // alguien guarde un pedido mientras corre el respaldo. Si ya hay una transacción abierta, no se toca.
+        $snap = !$db->inTransaction();
+        if ($snap) {
+            $db->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+            $db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT');
+        }
+        try {
+            return self::dumpTables($db, $path, $gz);
+        } finally {
+            if ($snap) {
+                $db->exec('COMMIT');
+            }
+        }
+    }
+
+    /** @return array{tables: int, rows: int, bytes: int} */
+    private static function dumpTables(PDO $db, string $path, $gz): array
+    {
         $tables = $db->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'")->fetchAll(PDO::FETCH_COLUMN);
         $counts = [];
         $body = [];
