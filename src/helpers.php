@@ -167,6 +167,45 @@ function requireAdmin(): void
 }
 
 /**
+ * Pedidos bodega (/pedidos-alistar, su API y /pedido-bodega?id=N): solo el admin logueado o un equipo
+ * que ya escribió la clave de bodega (env PEDIDOS_CLAVE). La clave se recuerda 180 días en una cookie
+ * firmada; cambiar PEDIDOS_CLAVE en Railway cierra todos los equipos. Sin PEDIDOS_CLAVE: solo el admin.
+ */
+function bodegaCookieValue(): string
+{
+    $key = (string) env('PEDIDOS_CLAVE', '');
+    return $key === '' ? '' : hash_hmac('sha256', 'kino-bodega-v1', $key);
+}
+
+function isBodegaAllowed(): bool
+{
+    if (isAdminLoggedIn()) {
+        return true;
+    }
+    $want = bodegaCookieValue();
+    return $want !== '' && hash_equals($want, (string) ($_COOKIE['kino_bodega'] ?? ''));
+}
+
+function requireBodega(): void
+{
+    if (isBodegaAllowed()) {
+        return;
+    }
+    $isAjax = ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET' || !empty($_SERVER['HTTP_X_CSRF_TOKEN'])
+        || str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json');
+    if ($isAjax) {
+        http_response_code(401);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => 'Falta la clave de bodega: abre 📋 Pedidos bodega en este equipo y escríbela.']);
+        exit;
+    }
+    http_response_code(401);
+    $bodegaNext = $_SERVER['REQUEST_URI'] ?? '/pedidos-alistar';
+    include __DIR__ . '/../templates/client/bodega_key.php';
+    exit;
+}
+
+/**
  * Genera un token CSRF y lo guarda en sesión.
  */
 function csrfToken(): string

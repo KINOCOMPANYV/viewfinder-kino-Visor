@@ -332,11 +332,32 @@ if ($uri === '/lista-pedido') {
 }
 
 if ($uri === '/pedido-bodega') {
+    if ((int) ($_GET['id'] ?? 0) > 0) {
+        requireBodega(); // con ?id=N lee y guarda en el servidor; sin id es solo local
+    }
     include __DIR__ . '/templates/client/warehouse_order.php';
     exit;
 }
 
-// Pedidos bodega (warehouse_orders): lista roja/verde y su API JSON
+// Pedidos bodega (warehouse_orders): lista roja/verde y su API JSON. Solo admin o equipo con la clave de bodega.
+if ($uri === '/pedidos-alistar/entrar' && $method === 'POST') {
+    checkRateLimit(10); // frena probar claves a la fuerza
+    $next = (string) ($_POST['next'] ?? '/pedidos-alistar');
+    if (!preg_match('#^/(pedidos-alistar|pedido-bodega)([/?]|$)#', $next)) {
+        $next = '/pedidos-alistar';
+    }
+    $want = bodegaCookieValue();
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', (string) ($_POST['csrf_token'] ?? ''))
+        || $want === '' || !hash_equals((string) env('PEDIDOS_CLAVE', ''), (string) ($_POST['clave'] ?? ''))) {
+        $_SESSION['bodega_error'] = 'Clave incorrecta.';
+        redirect($next);
+    }
+    setcookie('kino_bodega', $want, ['expires' => time() + 180 * 86400, 'path' => '/', 'httponly' => true, 'secure' => $isHttps, 'samesite' => 'Lax']);
+    redirect($next);
+}
+if (str_starts_with($uri, '/pedidos-alistar')) {
+    requireBodega();
+}
 if ($uri === '/pedidos-alistar') {
     include __DIR__ . '/templates/client/warehouse_orders.php';
     exit;
