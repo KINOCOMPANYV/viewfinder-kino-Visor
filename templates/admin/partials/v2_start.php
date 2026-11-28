@@ -16,13 +16,14 @@ $v2 = ($v2 ?? []) + ['nav' => '', 'sub' => '', 'title' => 'Admin', 'subtitle' =>
     <script src="/assets/js/theme.js?v=<?= APP_VERSION ?>"></script>
     <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="/assets/css/v2.css?v=<?= @filemtime(BASE_DIR . '/assets/css/v2.css') ?>">
+    <?php foreach (($v2['styles'] ?? []) as $sheet): ?><link rel="stylesheet" href="<?= e(assetVersion($sheet)) ?>"><?php endforeach; ?>
 </head>
 <body class="v2">
 <div class="v2-shell">
     <?php include __DIR__ . '/v2_side.php'; ?>
     <main class="v2-main">
         <header class="v2-top">
-            <button class="v2-burger" type="button" aria-label="Menú" onclick="document.body.classList.toggle('v2-open')"><span></span></button>
+            <button class="v2-burger" type="button" aria-label="Abrir menú" aria-controls="v2Side" aria-expanded="false" data-v2-menu-toggle><span></span></button>
             <h1><?= e($v2['title']) ?></h1>
             <?php if ($v2['subtitle'] !== ''): ?><p class="v2-sub"><?= e($v2['subtitle']) ?></p><?php endif; ?>
             <div class="v2-top-actions">

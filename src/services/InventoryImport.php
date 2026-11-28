@@ -18,13 +18,15 @@ class InventoryImport
     /** Tipos del reporte: nombre para la persona, qué significa y qué hacer (pantalla y Excel) */
     public const TYPES = [
         'stock_diferente' => ['Stock cambia', 'El stock SYS es distinto al que tiene la Hoja master.', 'Normal. Se corrige solo al pegar la columna STOCK en la Hoja master.'],
-        'stock_negativo' => ['Stock negativo', 'SYS tiene menos de 0 unidades.', 'En la Hoja master queda 0. Revisar ese código en SYS.'],
+        'stock_negativo' => ['Stock negativo', 'SYS tiene menos de 0 unidades.', 'Se publica como 0 si marcaste esa opción. Revisa ese código en SYS.'],
         'duplicado_inventario' => ['Repetido en SYS', 'El mismo código está 2 veces en el archivo SYS, escrito distinto (espacio, guion o «:»).', 'Dejar uno solo en SYS. Para la Hoja master se usa el que se escribe igual que en ella.'],
         'duplicado_hoja' => ['Repetido en Hoja master', 'El mismo código está 2 veces en la Hoja master, escrito distinto (por ejemplo NO610-1 y NO:610-1).', 'Decidir qué fila queda. Cada fila recibe el stock del código escrito igual en SYS.'],
         'varias_filas_inventario' => ['Varias filas SYS → un código', 'Varias filas SYS caen en el mismo código de la Hoja master.', 'Se suman. Revisar si alguna sobra en SYS.'],
         'solo_hoja' => ['Falta en SYS', 'Está en la Hoja master pero no en el archivo SYS.', 'Se deja el stock que tenía. Revisar si el código está bien escrito en alguno de los dos.'],
         'solo_inventario' => ['Falta en Hoja master', 'Tiene existencias en SYS pero no existe en la Hoja master.', 'Si se vende, agregarlo a la Hoja master. Si no, ignorarlo.'],
-        'precio_diferente' => ['Precio distinto', 'El Precio SYS no coincide con la columna PRICE de la Hoja master.', 'Solo informativo: no se cambia nada. Corregir donde esté mal.'],
+        'precio_diferente' => ['Precio distinto', 'El Precio SYS no coincide con la columna PRICE de la Hoja master.', 'Al importar se actualiza KINO y, si se solicita, la Hoja master.'],
+        'codigo_ambiguo' => ['Código por revisar', 'El código puede corresponder a varios productos y no hay coincidencia exacta.', 'No se actualiza ese código. Corrige su referencia en SYS o en la Hoja master.'],
+        'precio_conflictivo' => ['Precios en conflicto', 'Varias filas del mismo producto tienen precios SYS distintos.', 'Ese producto conserva sus datos. Corrige los precios y vuelve a importar.'],
     ];
 
     /** Columnas del reporte con títulos claros */
@@ -48,7 +50,9 @@ class InventoryImport
         $readme[] = ['Archivo SYS', '', $meta['archivo'] ?? ''];
         $readme[] = ['Fecha', '', $meta['fecha'] ?? ''];
         $readme[] = ['Cómo se cruzan', '', 'Primero el código exacto; si no está, el mismo código con o sin «M:», «M», «M-».'];
-        $readme[] = ['Para actualizar', '', 'Descarga «Columna STOCK para pegar» y pega STOCK nuevo en la columna STOCK de la Hoja master, desde la fila 2.'];
+        $readme[] = ['Resultado KINO', '', isset($meta['aplicado']) ? $meta['aplicado'] . ' productos actualizados' : 'Consulta el resultado de la carga'];
+        $readme[] = ['Hoja master', '', $meta['hoja'] ?? 'Consulta el estado del envío en Inventario'];
+        $readme[] = ['Si falta enviar a Google', '', 'Abre la última carga en Inventario y usa Reintentar envío. Las columnas para pegar quedan disponibles como alternativa manual.'];
         $sheets = ['Léeme' => ['rows' => $readme, 'widths' => [24, 10, 60, 60]]];
         $cols = self::REPORT_COLUMNS;
         foreach (self::TYPES as $k => [$label]) {
@@ -86,34 +90,67 @@ class InventoryImport
      * Cruce por clave normalizada con todos los productos (también «Solo Drive»); varias filas del mismo código se suman.
      * @return int productos actualizados
      */
-    public static function applyToVisor(PDO $db, array $items, bool $negativeToZero = true): int
+    public static function applyToVisor(PDO $db, array $items, bool $negativeToZero = true, ?float $multiplier = null): int
     {
-        // Clave exacta primero (NO610-1 y NO:610-1 son productos distintos si ambos existen en SYS); si no, la normalizada (suma)
-        $byExact = $by = [];
-        foreach ($items as $it) {
-            foreach ([[&$byExact, self::exactKey($it['code'])], [&$by, self::looseKey($it['code'])]] as [&$map, $k]) {
-                $map[$k]['stock'] = ($map[$k]['stock'] ?? 0) + $it['stock'];
-                if (!isset($map[$k]['price']) && $it['price'] !== null && $it['price'] > 0) $map[$k]['price'] = $it['price'];
-            }
-            unset($map);
-        }
-        $st = $db->prepare("UPDATE products SET sys_stock = ?, sys_price = ?, sys_at = NOW() WHERE id = ?");
-        $n = 0;
-        $db->beginTransaction();
+        $ownTransaction = !$db->inTransaction();
+        if ($ownTransaction) $db->beginTransaction();
         try {
-            foreach ($db->query("SELECT id, sku FROM products")->fetchAll() as $p) {
-                $d = $byExact[self::exactKey((string) $p['sku'])] ?? $by[self::looseKey((string) $p['sku'])] ?? null;
-                if (!$d) continue;
-                $st->execute([$negativeToZero ? max(0, $d['stock']) : $d['stock'], $d['price'] ?? null, $p['id']]);
-                $n++;
+            $products = $db->query('SELECT id, sku, sys_price FROM products')->fetchAll(PDO::FETCH_ASSOC);
+            $matches = self::matchItems($items, $products);
+            $updates = [];
+            foreach ($matches['assigned'] as $i => $rows) {
+                $value = self::itemTotals($rows);
+                if ($value['conflict']) continue;
+                $updates[] = [(int) $products[$i]['id'], $negativeToZero ? max(0, $value['stock']) : $value['stock'],
+                    $value['price'] ?? $products[$i]['sys_price']];
             }
-            $db->commit();
+            // Una consulta por tanda: stock y precio SYS se publican junto con el precio público.
+            $at = gmdate('Y-m-d H:i:s');
+            foreach (array_chunk($updates, 250) as $chunk) {
+                $case = str_repeat('WHEN ? THEN ? ', count($chunk));
+                $params = [];
+                foreach ([1, 2] as $col) foreach ($chunk as $row) array_push($params, $row[0], $row[$col]);
+                $params[] = $at;
+                foreach ($chunk as $row) $params[] = $row[0];
+                $db->prepare("UPDATE products SET sys_stock = CASE id {$case}END, sys_price = CASE id {$case}END, sys_at = ? WHERE id IN ("
+                    . implode(',', array_fill(0, count($chunk), '?')) . ')')->execute($params);
+            }
+            recomputePublicPrices($db, $multiplier);
+            if ($ownTransaction) $db->commit();
+            return count($updates);
         } catch (\Throwable $e) {
-            $db->rollBack();
+            if ($ownTransaction && $db->inTransaction()) $db->rollBack();
             throw $e;
         }
-        recomputePublicPrices($db); // precio público = Precio SYS × multiplicador
-        return $n;
+    }
+
+    /** Resolver único para KINO y Hoja master. Una coincidencia normalizada ambigua nunca se adivina. */
+    public static function matchItems(array $items, array $targets): array
+    {
+        $exact = $loose = [];
+        foreach ($targets as $i => $target) {
+            $sku = (string) $target['sku'];
+            if ($sku === '') continue;
+            $exact['s:' . self::exactKey($sku)] ??= $i;
+            $loose['s:' . self::looseKey($sku)][] = $i;
+        }
+        $assigned = $missing = $ambiguous = [];
+        foreach ($items as $item) {
+            $i = $exact['s:' . self::exactKey($item['code'])] ?? null;
+            $candidates = $loose['s:' . self::looseKey($item['code'])] ?? [];
+            if ($i === null && count($candidates) === 1) $i = $candidates[0];
+            if ($i !== null) $assigned[$i][] = $item;
+            elseif ($candidates) $ambiguous[] = $item;
+            else $missing[] = $item;
+        }
+        return ['assigned' => $assigned, 'missing' => $missing, 'ambiguous' => $ambiguous];
+    }
+
+    public static function itemTotals(array $items): array
+    {
+        $prices = [];
+        foreach ($items as $item) if (($item['price'] ?? 0) > 0) $prices[number_format((float) $item['price'], 2, '.', '')] = (float) $item['price'];
+        return ['stock' => (int) array_sum(array_column($items, 'stock')), 'price' => $prices ? reset($prices) : null, 'conflict' => count($prices) > 1];
     }
 
     private const HEADERS = [
@@ -223,6 +260,7 @@ class InventoryImport
         $e = unpack('vdisk/vcdisk/ventries/vtotal/Vsize/Voffset', substr($data, $eocd + 4, 16));
         $p = $e['offset'];
         $out = [];
+        $expanded = 0;
         for ($i = 0; $i < $e['total']; $i++) {
             if (substr($data, $p, 4) !== "PK\x01\x02") break;
             $h = unpack('vmethod/Vtime/Vcrc/Vcsize/Vusize/vnlen/velen/vclen', substr($data, $p + 10, 24));
@@ -230,9 +268,11 @@ class InventoryImport
             $name = substr($data, $p + 46, $h['nlen']);
             $p += 46 + $h['nlen'] + $h['elen'] + $h['clen'];
             if (!in_array($name, $names, true) && !preg_match($pattern, $name)) continue;
+            $expanded += (int) $h['usize'];
+            if ($expanded > 64 * 1024 * 1024) throw new RuntimeException('El contenido del Excel es demasiado grande. Exporta únicamente el inventario, sin otras hojas ni contenido adicional.');
             $l = unpack('vnlen/velen', substr($data, $local + 26, 4));
             $raw = substr($data, $local + 30 + $l['nlen'] + $l['elen'], $h['csize']);
-            $content = $h['method'] === 8 ? @gzinflate($raw) : ($h['method'] === 0 ? $raw : false);
+            $content = $h['method'] === 8 ? @gzinflate($raw, 64 * 1024 * 1024) : ($h['method'] === 0 ? $raw : false);
             if ($content === false) throw new RuntimeException("No se pudo descomprimir {$name} del Excel.");
             $out[$name] = $content;
         }
@@ -267,6 +307,9 @@ class InventoryImport
             if ($code === '') continue;
             $stockRaw = trim((string) ($r[$map['stock']] ?? ''));
             $priceRaw = isset($map['price']) ? trim((string) ($r[$map['price']] ?? '')) : '';
+            if ($stockRaw !== '' && !preg_match('/^-?\s*\d[\d\s.,]*$/uD', $stockRaw)) throw new RuntimeException('Existencias inválidas en la fila ' . ($ri + 1) . ' (' . $code . '). Corrige el archivo; no se aplicó ningún cambio.');
+            $priceNumber = preg_replace('/(?:COP|\$|\s)/iu', '', $priceRaw);
+            if ($priceRaw !== '' && (!preg_match('/^\d[\d.,]*$/D', $priceNumber) || MasterSheet::parseNumber($priceRaw) < 0)) throw new RuntimeException('Precio inválido en la fila ' . ($ri + 1) . ' (' . $code . '). Corrige el archivo.');
             $items[] = [
                 'line' => $ri + 1,
                 'code' => $code,
@@ -383,27 +426,37 @@ class InventoryImport
         }
 
         // Cada artículo → fila de la hoja (exacto, luego normalizado)
-        $assign = [];
+        $matches = self::matchItems($items, $sheet);
+        $assign = $matches['assigned'];
+        foreach ($matches['ambiguous'] as $it) $add('codigo_ambiguo', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, 'Hay varias coincidencias posibles: se conserva la información actual');
         $onlyInv = $onlyInvStock = 0;
-        $crear = [];
+        $crear = $newGroups = [];
+        $newConflicts = 0;
         try { $cond = function_exists('condemnedIndex') ? condemnedIndex(getDB()) : []; } catch (\Throwable $e) { $cond = []; }
-        foreach ($items as $it) {
-            $i = $exact[self::exactKey($it['code'])] ?? ($loose[self::looseKey($it['code'])][0] ?? null);
-            if ($i !== null) { $assign[$i][] = $it; continue; }
+        foreach ($matches['missing'] as $it) {
             $onlyInv++;
+            $newGroups['s:' . self::looseKey($it['code'])][] = $it;
             if ($it['stock'] != 0) {
                 $onlyInvStock++;
-                $ek = self::exactKey($it['code']);
-                if ($it['stock'] > 0 && !($cond && isCondemnedCode($it['code'], $cond))) {
-                    if (isset($crear[$ek])) $crear[$ek]['stock'] += $it['stock'];
-                    else { $fk = self::familyKey($it['code']); $crear[$ek] = ['code' => $it['code'], 'desc' => $it['desc'], 'stock' => $it['stock'], 'price' => $it['price'], 'familia' => $fk !== '' ? ($famIdx[$fk][0] ?? '') : ''];  }
-                }
                 $add('solo_inventario', $it['code'], '', $it['desc'], $it['stock'], null, $it['price'], null, 'No está en la Hoja master' . ($it['stock'] < 0 ? ' (stock negativo)' : ''));
             }
         }
+        foreach ($newGroups as $group) {
+            $it = $group[0];
+            $totals = self::itemTotals($group);
+            $forms = array_unique(array_map(fn($r) => self::exactKey($r['code']), $group));
+            if ($totals['conflict'] || count($forms) > 1) {
+                $newConflicts++;
+                $add($totals['conflict'] ? 'precio_conflictivo' : 'codigo_ambiguo', implode(' + ', array_column($group, 'code')), '', $it['desc'], $totals['stock'], null, null, null, 'Corrige esta referencia antes de crearla en la Hoja master');
+                continue;
+            }
+            if ($totals['stock'] <= 0 || ($cond && isCondemnedCode($it['code'], $cond))) continue;
+            $fk = self::familyKey($it['code']);
+            $crear[] = ['code' => $it['code'], 'desc' => $it['desc'], 'stock' => $totals['stock'], 'price' => $totals['price'], 'familia' => $fk !== '' ? ($famIdx[$fk][0] ?? '') : ''];
+        }
 
         $paste = [];
-        $c = ['iguales' => 0, 'diferentes' => 0, 'negativos' => 0, 'solo_hoja' => 0, 'precio' => 0, 'varias' => 0];
+        $c = ['iguales' => 0, 'diferentes' => 0, 'negativos' => 0, 'solo_hoja' => 0, 'precio' => 0, 'varias' => 0, 'conflictos' => $newConflicts];
         foreach ($sheet as $i => $s) {
             $its = $assign[$i] ?? [];
             if (!$its) {
@@ -412,9 +465,16 @@ class InventoryImport
                     'PRICE_actual' => $s['price'], 'PRICE_nuevo' => $s['price']];
                 continue;
             }
-            $sum = array_sum(array_column($its, 'stock'));
+            $values = self::itemTotals($its);
+            if ($values['conflict']) {
+                $c['conflictos']++;
+                $add('precio_conflictivo', implode(' + ', array_column($its, 'code')), $s['sku'], $s['name'], null, $s['stock'], null, $s['price'], 'No se actualiza este producto hasta corregir los precios distintos');
+                $paste[] = ['fila_hoja' => $s['row'], 'SKU' => $s['sku'], 'STOCK_actual' => $s['stock'], 'STOCK_nuevo' => $s['stock'], 'PRICE_actual' => $s['price'], 'PRICE_nuevo' => $s['price']];
+                continue;
+            }
+            $sum = $values['stock'];
             $codes = implode(' + ', array_column($its, 'code'));
-            $price = $its[0]['price'];
+            $price = $values['price'];
             if (count($its) > 1) { $c['varias']++; $add('varias_filas_inventario', $codes, $s['sku'], $s['name'], $sum, $s['stock'], $price, $s['price'], 'Varias filas SYS caen en este código: se suman'); }
             $new = $sum;
             if ($sum < 0) {
@@ -433,7 +493,7 @@ class InventoryImport
                 'PRICE_actual' => $s['price'], 'PRICE_nuevo' => $price !== null && $price > 0 ? $price : $s['price']];
         }
 
-        $order = array_flip(['duplicado_inventario', 'duplicado_hoja', 'varias_filas_inventario', 'stock_negativo', 'solo_hoja', 'precio_diferente', 'stock_diferente', 'solo_inventario']);
+        $order = array_flip(['codigo_ambiguo', 'precio_conflictivo', 'duplicado_inventario', 'duplicado_hoja', 'varias_filas_inventario', 'stock_negativo', 'solo_hoja', 'precio_diferente', 'stock_diferente', 'solo_inventario']);
         usort($report, fn($a, $b) => [$order[$a['tipo']], $a['codigo_hoja'] ?: $a['codigo_inventario']] <=> [$order[$b['tipo']], $b['codigo_hoja'] ?: $b['codigo_inventario']]);
 
         return [
@@ -442,9 +502,11 @@ class InventoryImport
                 'iguales' => $c['iguales'], 'diferentes' => $c['diferentes'], 'negativos' => $c['negativos'],
                 'solo_hoja' => $c['solo_hoja'], 'solo_inventario' => $onlyInv, 'solo_inventario_con_stock' => $onlyInvStock,
                 'duplicados_inventario' => $dupInv, 'duplicados_hoja' => $dupSheet, 'varias_filas' => $c['varias'], 'precio_diferente' => $c['precio'],
+                'conflictos' => $c['conflictos'] + count($matches['ambiguous']),
             ],
             'report' => $report,
             'paste' => $paste,
+            'matched_skus' => array_values(array_map(fn($i) => $sheet[$i]['sku'], array_keys(array_filter($assign, fn($rows) => !self::itemTotals($rows)['conflict'])))),
             'crear' => array_values($crear), // códigos SYS con stock > 0 que faltan en la Hoja master (botón «Crear»)
         ];
     }

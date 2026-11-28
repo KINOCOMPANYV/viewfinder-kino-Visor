@@ -32,6 +32,7 @@ $v2Menu = [
     ['vender', '/vender', 'Vender', '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>'],
     ['pedidos', '/pedidos', 'Pedidos', '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>'],
     ['productos', '/admin/productos', 'Productos', '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'],
+    ['inventario', '/admin/inventario', 'Inventario', '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="M3 8v9l9 5 9-5V8M12 13v9"/>'],
     ['catalogo', '/tienda', 'Catálogo Online', '<circle cx="9" cy="20" r="1.3"/><circle cx="18" cy="20" r="1.3"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 7H6"/>'],
     ['clientes', '/clientes', 'Clientes', '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
     ['transacciones', null, 'Transacciones', '<path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
@@ -44,7 +45,7 @@ $v2Menu = [
 ];
 // Usuarios, Productos y Configuraciones son solo del administrador: no se muestran a los demás perfiles
 if (!isAdminLoggedIn()) {
-    $v2Menu = array_values(array_filter($v2Menu, fn($m) => !in_array($m[0], ['productos', 'usuarios', 'gestion'], true)));
+    $v2Menu = array_values(array_filter($v2Menu, fn($m) => !in_array($m[0], ['productos', 'inventario', 'usuarios', 'gestion'], true)));
 }
 // Extractor y Manifiestos: solo el personal (igual que sus rutas)
 if (!isStaff()) {
@@ -57,7 +58,7 @@ $v2CfgOpen = $v2['nav'] === 'gestion';
             <a href="/admin">KINO COMPANY S.A.S</a>
             <span class="v2-badge">Sistema v2</span>
         </div>
-        <nav class="v2-menu">
+        <nav class="v2-menu" aria-label="Módulos de KINO">
             <?php foreach ($v2Menu as [$key, $href, $label, $svg]): $on = $v2['nav'] === $key; ?>
                 <?php if ($key === 'gestion'): ?>
                     <details class="v2-group"<?= $v2CfgOpen ? ' open' : '' ?>>
@@ -76,11 +77,12 @@ $v2CfgOpen = $v2['nav'] === 'gestion';
                 <?php elseif ($href === null): ?>
                     <span class="v2-item off" title="Módulo en construcción"><svg viewBox="0 0 24 24" aria-hidden="true"><?= $svg ?></svg><?= e($label) ?><em>Pronto</em></span>
                 <?php else: ?>
-                    <a class="v2-item<?= $on ? ' on' : '' ?>" href="<?= $href ?>"<?= $key === 'catalogo' ? ' target="_blank"' : '' ?>>
+                    <a class="v2-item<?= $on ? ' on' : '' ?>" href="<?= $href ?>"<?= $on ? ' aria-current="page"' : '' ?><?= $key === 'catalogo' ? ' target="_blank" rel="noopener"' : '' ?>>
                         <?php if ($key === 'pedidos' && $v2Pending): ?><b class="v2-count"><?= $v2Pending ?></b><?php elseif ($key === 'clientes' && $v2Cobro[0]): ?><b class="v2-count v2-count--cobro" title="Clientes por cobrar (más de 20 días)"><?= $v2Cobro[0] ?></b><?php else: ?><svg viewBox="0 0 24 24" aria-hidden="true"><?= $svg ?></svg><?php endif; ?><?= e($label) ?></a>
                 <?php endif; ?>
             <?php endforeach; ?>
         </nav>
         <a class="v2-logout" href="/admin/logout">Cerrar sesión</a>
     </aside>
-    <div class="v2-scrim" onclick="document.body.classList.remove('v2-open')"></div>
+    <button class="v2-scrim" type="button" aria-label="Cerrar menú" tabindex="-1"></button>
+    <script src="<?= e(assetVersion('/assets/js/v2_shell.js')) ?>" defer></script>

@@ -15,6 +15,7 @@ $xlsx = '/admin/products?' . http_build_query(array_filter($filters, fn($v) => $
             <input type="search" name="q" value="<?= e($filters['q']) ?>" placeholder="Buscar código, nombre, marca…" autocomplete="off"></label>
         <label class="v2-chip<?= $nFilt ? ' on' : '' ?>" for="kpFt">Filtro <?php if ($nFilt): ?><b><?= $nFilt ?></b><?php endif; ?></label>
         <span class="v2-spacer"></span>
+        <a class="v2-act" href="/admin/inventario">Actualizar inventario SYS</a>
         <a class="v2-act" href="#" title="Categorías y promocionales" onclick="document.getElementById('kpCats').showModal();return false"><?= $ico('<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>') ?>Categorías</a>
         <a class="v2-act" href="<?= e($xlsx) ?>"><?= $ico('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5-5 5 5"/><path d="M12 5v12"/>') ?>Exportar</a>
         <a class="v2-btn soon" href="/admin/products" title="Crear/editar productos: por ahora en Productos v1 y la Hoja master"><?= $ico('<path d="M12 5v14M5 12h14"/>') ?>Producto</a>
